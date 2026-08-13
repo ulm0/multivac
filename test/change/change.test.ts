@@ -8,6 +8,14 @@ import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 
+// CI containers have no git identity; apply's greenfield commit inherits the
+// environment (deliberately — multivac never fabricates identity), so the test
+// provides one the way a real machine would.
+for (const [k, v] of Object.entries({
+  GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
+  GIT_COMMITTER_NAME: 'mvac-test', GIT_COMMITTER_EMAIL: 'test@invalid',
+})) process.env[k] ??= v;
+
 const tmp = mkdtempSync(join(tmpdir(), 'mvac-change-'));
 const eco = makeScratchEcosystem(tmp);
 const ctx = { cwd: eco.brain };
