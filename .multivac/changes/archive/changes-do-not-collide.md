@@ -1,13 +1,15 @@
 ---
 slug: changes-do-not-collide
-status: open
+status: archived
 repos:
   self:
-    status: branched
+    status: landed
 landing_order:
   - - self
 invariants:
-  touches: []
+  touches:
+    - MV-13
+    - MV-18
   adds:
     - MV-25
     - MV-26
@@ -51,18 +53,19 @@ its own; it only says which route it took.
 ## Reserved invariant IDs (MV-26)
 
 The store is **a row in the law table in `proposed` state**, not a new file.
-Justification: `.multivac/invariants.md` is already the ID registry, already read by both
-`new` and `plan`, already travels with the repo, and `verify` already knows the
-state — "proposed rows never block, not even under `--strict`" predates this
-change. A separate reservation file would have to be taught to `verify`,
-gitignored or tracked, and reconciled with the table it duplicates. Zero new
-machinery beats one more store.
+Justification: `.multivac/invariants.md` is already the ID registry, already
+read by both `new` and `plan`, already travels with the repo, and `verify`
+already knows the state — "proposed rows never block, not even under
+`--strict`" predates this change. A separate reservation file would have to be
+taught to `verify`, gitignored or tracked, and reconciled with the table it
+duplicates. Zero new machinery beats one more store.
 
 Race safety is not the atomic rename alone (two readers would still pick the
-same ID): the read-append-write runs under an exclusive `.multivac/invariants.md.lock`
-created with `wx` — the one filesystem primitive that is atomic across
-processes — and the row is then written to a temp file and renamed into place.
-A stale lock is named in the error with the command to remove it.
+same ID): the read-append-write runs under an exclusive
+`.multivac/invariants.md.lock` created with `wx` — the one filesystem
+primitive that is atomic across processes — and the row is then written to a
+temp file and renamed into place. A stale lock is named in the error with the
+command to remove it.
 
 `new` reserves one ID and writes it into `invariants.adds`; `plan` reserves any
 declared add that is still free, and **fails** when the ID is already in the
@@ -90,8 +93,7 @@ law.
 
 **Known ceiling:** a reservation is only visible to checkouts that share the
 brain's `.multivac/changes/` and `.multivac/invariants.md` — the shared brain
-tree where `new` and
-`plan` run, before `apply` moves the agent into a worktree. Two agents on two
-unmerged branches (or two clones) still cannot see each other's rows; that is
-the merge-time problem git already owns, and this change does not pretend to
-solve it.
+tree where `new` and `plan` run, before `apply` moves the agent into a
+worktree. Two agents on two unmerged branches (or two clones) still cannot see
+each other's rows; that is the merge-time problem git already owns, and this
+change does not pretend to solve it.
