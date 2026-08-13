@@ -27,3 +27,7 @@ checks them on every commit.
 <!-- @anchor MV-07 brain:src/lib/config.ts /must include "absent"/ -->
 | MV-08 | Installs are pnpm-only, guarded at preinstall. | specified | active | 2026-08-13 | [package.json](package.json) |
 <!-- @anchor MV-08 brain:package.json /only-allow pnpm/ -->
+| MV-09 | Verify in a repo without `.multivac/config.yml` resolves the brain through the mount, scopes to that repo's anchors plus `*` anchors, same exit matrix. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-09 brain:src/commands/verify.ts /findMount/ -->
+<!-- @anchor MV-09 brain:src/commands/verify.ts /resolveRepoKey/ -->
+<!-- @anchor MV-09 brain:test/verify/consumer.test.ts /scoped/ -->
