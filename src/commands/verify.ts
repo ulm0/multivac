@@ -2,9 +2,9 @@
 // offline, sub-second. Exit matrix: blocking modes (absent/count) gate
 // always; present/unique gate only under --strict; moved self-heals, exit 0.
 
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { loadConfig, ConfigError } from '../lib/config.js';
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
+import { basename, join, resolve } from 'node:path';
+import { loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
 import { lastFetchAge, lsTreeGitlink, run as git } from '../lib/git.js';
 import { dim, green, red, say, warn, yellow } from '../lib/out.js';
 import {
@@ -68,12 +68,95 @@ async function stalenessLines(brainDir: string, cfg: Config): Promise<string[]> 
   return lines;
 }
 
+/** Consumer scope: evaluate one declared repo's anchors (+ `*` scoped to it). */
+export interface VerifyScope {
+  repoKey: string;
+  /** The consumer checkout on disk (the cwd verify ran from). */
+  dir: string;
+}
+
 export interface EvaluateOpts {
   /** Restrict evaluation to these claim ids (change close gate). */
   claimIds?: string[];
   strict?: boolean;
   /** false = --check: report moved without rewriting. Default false. */
   write?: boolean;
+  /** Set when verify runs from a consumer repo instead of the brain. */
+  scope?: VerifyScope;
+}
+
+/**
+ * A cwd without a config may be a consumer repo with the brain mounted in a
+ * subdirectory. A mount is any direct child directory that IS a brain (has
+ * .multivac/config.yml); `.brain` — the default mount name — wins outright.
+ * ponytail: one level deep, single-candidate only; ambiguity resolves to null
+ * and the normal "no config" error names the fix.
+ */
+export function findMount(dir: string): string | null {
+  const isBrain = (d: string): boolean => existsSync(join(d, CONFIG_PATH));
+  const preferred = join(dir, '.brain');
+  if (isBrain(preferred)) return preferred;
+  let entries: import('node:fs').Dirent[];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+  const hits = entries
+    .filter((e) => e.isDirectory() && isBrain(join(dir, e.name)))
+    .map((e) => join(dir, e.name));
+  return hits.length === 1 ? hits[0] : null;
+}
+
+/** git@host:a/b.git, https://host/a/b.git, host/a/b -> "host/a/b". */
+const normUrl = (u: string): string =>
+  u
+    .trim()
+    .replace(/\.git\/?$/, '')
+    .replace(/^[a-z+]+:\/\/(?:[^@/]+@)?/, '')
+    .replace(/^(?:[^@/]+@)?([^:/]+):/, '$1/')
+    .toLowerCase();
+
+const real = (p: string): string => {
+  try {
+    return realpathSync(p);
+  } catch {
+    return p;
+  }
+};
+
+/**
+ * Which registry key is this consumer checkout? Match by path (the entry
+ * resolves to the checkout), by origin url, or by directory basename;
+ * `--repo` overrides. Anything else is a ConfigError that says what to pass.
+ */
+export async function resolveRepoKey(
+  cfg: Config,
+  mount: string,
+  consumerDir: string,
+  flag?: string,
+): Promise<string> {
+  const keys = Object.keys(cfg.repos);
+  if (flag !== undefined) {
+    if (cfg.repos[flag]) return flag;
+    throw new ConfigError(
+      `--repo "${flag}" is not declared in the brain's config — declared: ${keys.join(', ') || '(none)'}`,
+    );
+  }
+  const origin = await git(consumerDir, ['remote', 'get-url', 'origin']).catch(() => null);
+  const consumerReal = real(consumerDir);
+  const matched = keys.filter((key) => {
+    const e = cfg.repos[key];
+    if (e.url && origin && normUrl(e.url) === normUrl(origin)) return true;
+    if (real(resolve(mount, e.path)) === consumerReal) return true;
+    return basename(e.path) === basename(consumerDir);
+  });
+  if (matched.length === 1) return matched[0];
+  throw new ConfigError(
+    matched.length === 0
+      ? `this checkout matches no repo declared in the brain at ${mount} — run \`multivac verify --repo <key>\` (declared: ${keys.join(', ') || '(none)'})`
+      : `this checkout matches several declared repos (${matched.join(', ')}) — disambiguate with \`multivac verify --repo <key>\``,
+  );
 }
 
 interface Evaluated {
@@ -92,6 +175,10 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
   const collected = await collectBrainAnchors(brainDir);
   const diagnostics = collected.diagnostics;
   let anchors = collected.anchors;
+  if (opts.scope) {
+    const k = opts.scope.repoKey;
+    anchors = anchors.filter((a) => a.repoKey === k || a.repoKey === '*');
+  }
   if (opts.claimIds) {
     const ids = new Set(opts.claimIds);
     anchors = anchors.filter((a) => ids.has(a.claimId));
@@ -115,11 +202,14 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
     (a) => knownKey(a.repoKey) && (states.get(a.claimId) !== 'retired' || a.mode === 'absent'),
   );
 
-  const handles: RepoHandle[] = Object.entries(cfg.repos).map(([key, e]) => {
-    const p = resolve(brainDir, e.path);
-    return { key, dir: existsSync(p) ? p : null };
-  });
-  handles.push({ key: 'brain', dir: brainDir });
+  // Scoped: only the consumer checkout is a target — `*` legs see it alone.
+  const handles: RepoHandle[] = opts.scope
+    ? [{ key: opts.scope.repoKey, dir: opts.scope.dir }]
+    : Object.entries(cfg.repos).map(([key, e]) => {
+        const p = resolve(brainDir, e.path);
+        return { key, dir: existsSync(p) ? p : null };
+      });
+  if (!opts.scope) handles.push({ key: 'brain', dir: brainDir });
 
   const claims = await evaluateAnchors(evalAnchors, handles, {
     brainDir,
@@ -171,20 +261,36 @@ export async function evaluate(
 async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   let strict = false;
   let check = false;
+  let repoFlag: string | undefined;
   let dir = '.';
-  for (const a of argv) {
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
     if (a === '--strict') strict = true;
     else if (a === '--check') check = true;
+    else if (a === '--repo') repoFlag = argv[++i];
     else if (a.startsWith('-')) {
-      warn(`unknown flag "${a}" — verify takes [dir], --strict, --check`);
+      warn(`unknown flag "${a}" — verify takes [dir], --strict, --check, --repo <key>`);
       return 2;
     } else dir = a;
   }
-  const brainDir = resolve(ctx.cwd, dir);
+  const startDir = resolve(ctx.cwd, dir);
 
   let ev: Evaluated;
+  let brainDir = startDir;
+  let scope: VerifyScope | undefined;
   try {
-    ev = await evaluateCore(brainDir, { strict, write: !check });
+    // Consumer repo: no config here, but the brain is mounted in a subdir.
+    if (!existsSync(join(startDir, CONFIG_PATH))) {
+      const mount = findMount(startDir);
+      if (mount) {
+        const cfg = await loadConfig(mount);
+        scope = { repoKey: await resolveRepoKey(cfg, mount, startDir, repoFlag), dir: startDir };
+        brainDir = mount;
+      }
+    }
+    // Consumer mode never rewrites moved globs: the mount is usually a pinned
+    // submodule — the heal belongs in the brain checkout.
+    ev = await evaluateCore(brainDir, { strict, write: !check && !scope, scope });
   } catch (e) {
     if (e instanceof ConfigError) {
       warn(e.message);
@@ -196,6 +302,7 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   const { blockingBroken, exitCode } = ev.report;
 
   // Report.
+  if (scope) say(`scoped to repo "${scope.repoKey}" · brain at ${brainDir}`);
   const anchored = rows.filter((r) => anchors.some((a) => a.claimId === r.id)).length;
   const pct = rows.length ? ` (${Math.round((anchored / rows.length) * 100)}%)` : '';
   say(`${rows.length} claims · ${anchored} anchored${pct}`);
@@ -219,7 +326,9 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
       );
     }
   }
-  for (const line of await stalenessLines(brainDir, cfg)) say(line);
+  // Staleness compares mounts across the whole ecosystem — brain-checkout
+  // concern, meaningless relative to a mounted brain's own paths.
+  if (!scope) for (const line of await stalenessLines(brainDir, cfg)) say(line);
   say('');
   say(
     `${blockingBroken} blocking broken · exit ${exitCode}` +
