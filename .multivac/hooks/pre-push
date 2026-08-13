@@ -1,0 +1,5 @@
+#!/bin/sh
+# multivac hook shim — managed by `multivac doors`; regenerate, do not edit.
+# Missing mvac never blocks a commit: enforcement degrades, it does not lock out.
+command -v mvac >/dev/null 2>&1 || exit 0
+exec mvac verify

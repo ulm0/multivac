@@ -1,0 +1,6 @@
+# multivac configuration — seeded by `multivac init`.
+# Edit directly; adopting a new agent later is one line here + `multivac doors`.
+# Single-repo ecosystem: the brain IS the code repo, so no repos are declared;
+# anchors target the implicit `brain` key.
+doors: [agents]
+authorities: [published, specified, open]
