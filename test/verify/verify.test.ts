@@ -300,3 +300,24 @@ test('config rejects an unknown staleness value, naming the two allowed', async 
   );
   assert.equal(await runVerify(e.brain), 2);
 });
+
+test('staleness: block — a pin ahead of the channel is not stale, never gates', async () => {
+  const e = eco();
+  git(e.brain, 'branch', 'chan'); // channel stays at current HEAD
+  commitFile(e.brain, 'notes.md', '# notes\n');
+  const pin = git(e.brain, 'rev-parse', 'HEAD'); // one ahead of chan
+  git(e.repos.api, 'update-index', '--add', '--cacheinfo', `160000,${pin},.brain`);
+  git(e.repos.api, 'commit', '-q', '-m', 'mount brain ahead of channel');
+  writeFileSync(
+    join(e.brain, '.multivac/config.yml'),
+    'staleness: block\nchannel: chan\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n',
+  );
+  setLaw(
+    e.brain,
+    '| INV-14 | accounts table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-14 api:db/migrations/*.sql /create[[:space:]]+table/i -->',
+  );
+  const { code, out } = await captured(() => runVerify(e.brain));
+  assert.equal(code, 0); // "behind" is the fact that gates; ahead is fine
+  assert.doesNotMatch(out, /stale {5}api/);
+});

@@ -69,15 +69,21 @@ async function stalenessLines(
       continue;
     }
     if (pin === channelSha) continue;
-    staleCount++;
     const behind = await git(brainDir, ['rev-list', '--count', `${pin}..${channelSha}`]).catch(
       () => '?',
     );
+    // "Behind" is the fact that gates: the channel has commits the pin lacks.
+    // A pin ahead of the channel (behind 0) is not stale at all; a count that
+    // cannot be computed ('?', pin object unknown locally) reports, never
+    // gates — the same never-guess rule as an unresolvable channel ref.
+    if (behind === '0') continue;
+    if (behind !== '?') staleCount++;
+    const gated = gate && behind !== '?';
     const age = await lastFetchAge(brainDir).catch(() => null);
     const ageStr = age === null ? 'never fetched' : `last fetch ${fmtAge(age)} ago`;
     lines.push(
       `  stale     ${key}: pin ${behind} behind ${channel} · ${ageStr} — ` +
-        `${gate ? 'blocking (staleness: block); ' : ''}run \`multivac repos sync\``,
+        `${gated ? 'blocking (staleness: block); ' : ''}run \`multivac repos sync\``,
     );
   }
   return { lines, staleCount };
