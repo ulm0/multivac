@@ -1,9 +1,9 @@
 ---
 slug: everything-multivac-owns
-status: open
+status: archived
 repos:
   self:
-    status: branched
+    status: landed
 landing_order:
   - - self
 invariants:
