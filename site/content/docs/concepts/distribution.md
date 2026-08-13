@@ -18,19 +18,23 @@ the consumer door tells it what binds and that the change may cross repos.
 A pinned mount gives reproducible builds and stale docs. Always-latest gives
 freshness and irreproducible builds. The tool doesn't choose:
 
-> The pin stays, and `verify` reports when it is behind the declared channel
+> The pin stays, and `verify` checks it against the declared channel
 > (`channel:` in `.multivac/config.yml`, global or per repo). Reproducible
 > *and* fresh, with the debt visible instead of silent.
 
-Offline by construction: staleness compares the pin against the locally
-known remote-tracking ref — best-effort, no network — and the report carries
-the last-fetch age:
+By default a stale pin **reports**. Set `staleness: block` and a pin behind
+its channel becomes a blocking failure — exit 1, with the fix in the line:
 
 ```txt
-stale     api: pin 35 behind origin/main · last fetch 6d ago — run `multivac repos sync`
+stale     api: pin 35 behind origin/main · last fetch 6d ago — blocking (staleness: block); run `multivac repos sync`
 ```
-Fetching happens only in explicit operations (`repos sync`,
-`change plan/apply`), never in `verify` or hooks.
+
+Offline by construction: staleness compares the pin against the locally
+known remote-tracking ref — best-effort, no network — and the report carries
+the last-fetch age. A channel ref that does not resolve locally stays a
+report even under `block`: offline never guesses and never gates. Fetching
+happens only in explicit operations (`repos sync`, `change plan/apply`),
+never in `verify` or hooks.
 
 ## Doors
 
@@ -56,7 +60,9 @@ projection at all: `AGENTS.md` alone, already read by most harnesses —
 `doors` also installs the enforcement floor where it projects: in each
 consumer repo it writes the versioned `.multivac/hooks/` directory and
 points `core.hooksPath` at it — the same git-hook shim as the brain's,
-running `verify` scoped to that repo's anchors. The breaking commits happen
+running `verify` scoped to that repo's anchors. With `strict_pre_push: true`
+in config, the pre-push shim runs `verify --strict`; pre-commit stays on the
+default policy either way. The breaking commits happen
 in the code repos, so "everything that commits" includes them. `doors`
 writes working trees only, never commits on its own; absent repos are
 skipped and reported.

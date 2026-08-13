@@ -561,9 +561,12 @@ a size threshold.
 The pinned submodule gives reproducible builds and stale docs. Always-latest
 gives freshness and irreproducible builds. The tool doesn't choose:
 
-> **Pin + staleness check.** The pin stays, and `verify` fails if it is behind
-> the declared channel (`channel:` in `.multivac/config.yml`, global or per repo).
-> Reproducible *and* fresh, with the debt visible instead of silent.
+> **Pin + staleness check.** The pin stays, and `verify` checks it against
+> the declared channel (`channel:` in `.multivac/config.yml`, global or per repo):
+> a stale pin reports by default, and gates (exit 1) under `staleness: block`
+> — flipping the default is an open owner decision. Reproducible *and* fresh,
+> with the debt visible instead of silent. `strict_pre_push: true` installs
+> the pre-push shim as `verify --strict`.
 
 Offline by construction: staleness compares the pin against the **locally
 known remote-tracking ref** — best-effort, no network — and the report

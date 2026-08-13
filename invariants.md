@@ -31,3 +31,11 @@ checks them on every commit.
 <!-- @anchor MV-09 brain:src/commands/verify.ts /findMount/ -->
 <!-- @anchor MV-09 brain:src/commands/verify.ts /resolveRepoKey/ -->
 <!-- @anchor MV-09 brain:test/verify/consumer.test.ts /scoped/ -->
+| MV-10 | With `staleness: block`, a pin behind the declared channel is a blocking verify failure (exit 1) naming the sync command; the default stays `report`, and an unresolvable channel ref reports, never gates. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-10 brain:src/lib/config.ts /staleness/ -->
+<!-- @anchor MV-10 brain:src/commands/verify.ts /staleness[[:space:]]*===[[:space:]]*'block'/ -->
+<!-- @anchor MV-10 brain:test/verify/verify.test.ts /staleness:[[:space:]]*block/ -->
+| MV-11 | `doors` installs the pre-push shim with `--strict` when `strict_pre_push: true`; the default remains the default-policy shim. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-11 brain:src/lib/config.ts /strict_pre_push/ -->
+<!-- @anchor MV-11 brain:src/commands/doors.ts /strictPrePush/ -->
+<!-- @anchor MV-11 brain:test/doors/doors.test.ts /strict_pre_push/ -->

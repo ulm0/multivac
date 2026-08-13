@@ -249,3 +249,54 @@ test('pin staleness reports offline: gitlink vs local channel ref + fetch age', 
   assert.match(out, /never fetched|last fetch/);
   assert.match(out, /repos sync/);
 });
+
+/** Same fixture as the report test: brain mounted in api, pin one behind. */
+function staleEco(): { e: ScratchEcosystem; branch: string } {
+  const e = eco();
+  const branch = git(e.brain, 'symbolic-ref', '--short', 'HEAD');
+  const pin = git(e.brain, 'rev-parse', 'HEAD');
+  git(e.repos.api, 'update-index', '--add', '--cacheinfo', `160000,${pin},.brain`);
+  git(e.repos.api, 'commit', '-q', '-m', 'mount brain');
+  commitFile(e.brain, 'notes.md', '# notes\n');
+  setLaw(
+    e.brain,
+    '| INV-14 | accounts table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-14 api:db/migrations/*.sql /create[[:space:]]+table/i -->',
+  );
+  return { e, branch };
+}
+
+test('staleness: block — a resolvable stale pin exits 1 with the sync command', async () => {
+  const { e, branch } = staleEco();
+  writeFileSync(
+    join(e.brain, '.multivac/config.yml'),
+    `staleness: block\nchannel: ${branch}\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n`,
+  );
+  const { code, out } = await captured(() => runVerify(e.brain));
+  assert.equal(code, 1);
+  assert.match(out, new RegExp(`stale\\s+api: pin 1 behind ${branch}`));
+  assert.match(out, /blocking \(staleness: block\)/);
+  assert.match(out, /repos sync/);
+  assert.match(out, /1 stale pin blocking/);
+});
+
+test('staleness: block — unresolvable channel ref reports, never gates (offline)', async () => {
+  const { e } = staleEco();
+  writeFileSync(
+    join(e.brain, '.multivac/config.yml'),
+    'staleness: block\nchannel: origin/nowhere\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n',
+  );
+  const { code, out } = await captured(() => runVerify(e.brain));
+  assert.equal(code, 0); // offline never guesses, never gates
+  assert.match(out, /stale\?\s+api: channel origin\/nowhere unknown locally/);
+  assert.match(out, /repos sync/);
+});
+
+test('config rejects an unknown staleness value, naming the two allowed', async () => {
+  const { e } = staleEco();
+  writeFileSync(
+    join(e.brain, '.multivac/config.yml'),
+    'staleness: sometimes\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n',
+  );
+  assert.equal(await runVerify(e.brain), 2);
+});
