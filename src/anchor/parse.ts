@@ -31,9 +31,19 @@ export function parseAnchors(text: string, file: string): ParseResult {
   const anchors: Anchor[] = [];
   const diagnostics: ParseDiagnostic[] = [];
   const lines = text.split('\n');
+  let inFence = false;
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const line = i + 1;
+    // Fenced code blocks are documentation, not law: an example anchor in a
+    // ``` fence must never parse as a live anchor (found dogfooding on DESIGN.md).
+    if (/^\s*(```|~~~)/.test(raw)) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    // 4-space indent is a CommonMark code block; real anchors are flush-left.
+    if (/^ {4,}/.test(raw)) continue;
     const bad = (message: string): void => {
       diagnostics.push({ file, line, message });
     };

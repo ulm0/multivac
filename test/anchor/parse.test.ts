@@ -130,3 +130,21 @@ test('readClaimRows parses the law table, skipping header and separator', async 
   // missing file = zero claims, not an error
   assert.deepEqual(await readClaimRows(mkdtempSync(join(tmpdir(), 'mvac-empty-'))), []);
 });
+
+test('code blocks are documentation, not law: fenced and indented anchors are skipped', () => {
+  const text = [
+    '```markdown',
+    '<!-- @anchor INV-01 api:x/*.sql /revoke/ -->',
+    '<!-- @anchor BAD this is malformed -->',
+    '```',
+    '    <!-- @anchor INV-02 api:*.md /also indented, also malformed -->',
+    '~~~',
+    '<!-- @anchor INV-03 api:*.md /fenced/ absent -->',
+    '~~~',
+    '<!-- @anchor INV-04 api:*.md /live/ absent -->',
+  ].join('\n');
+  const { anchors, diagnostics } = parseAnchors(text, 'DESIGN.md');
+  assert.deepEqual(diagnostics, []);
+  assert.equal(anchors.length, 1);
+  assert.equal(anchors[0].claimId, 'INV-04');
+});
