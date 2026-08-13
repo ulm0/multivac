@@ -1,0 +1,39 @@
+stages:
+  - test
+  - deploy
+
+test:
+  stage: test
+  image: node:24
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@10.20.0 --activate
+  script:
+    - pnpm install --frozen-lockfile
+    - pnpm test
+  cache:
+    key: pnpm
+    paths:
+      - .pnpm-store/
+  variables:
+    PNPM_HOME: "$CI_PROJECT_DIR/.pnpm-store"
+    npm_config_store_dir: "$CI_PROJECT_DIR/.pnpm-store"
+
+pages:
+  stage: deploy
+  image: hugomods/hugo:std-go-git-0.165.0
+  script:
+    - cd site
+    - hugo --minify --baseURL https://multivac.ulm0.com/
+    - mv public ../public
+  cache:
+    key: hugo-go-mod
+    paths:
+      - .gomodcache/
+  variables:
+    GOMODCACHE: "$CI_PROJECT_DIR/.gomodcache"
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

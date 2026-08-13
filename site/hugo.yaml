@@ -1,0 +1,50 @@
+baseURL: https://multivac.ulm0.com/
+locale: en-us
+title: multivac
+
+module:
+  imports:
+    - path: github.com/imfing/hextra
+
+enableInlineShortcodes: true
+
+menu:
+  main:
+    - name: Docs
+      pageRef: /docs
+      weight: 1
+    - name: Search
+      weight: 2
+      params:
+        type: search
+    - name: GitLab
+      url: https://gitlab.com/ulm0/multivac
+      weight: 3
+      params:
+        icon: gitlab
+
+params:
+  navbar:
+    displayTitle: true
+    displayLogo: false
+
+  theme:
+    default: dark
+    displayToggle: true
+
+  page:
+    width: normal
+
+  footer:
+    enable: true
+    displayCopyright: false
+    displayPoweredBy: false
+
+  editURL:
+    enable: false
+
+  search:
+    enable: true
+    type: flexsearch
+    flexsearch:
+      index: content
