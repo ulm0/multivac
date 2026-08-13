@@ -13,6 +13,7 @@ checks them on every commit.
 | MV-02 | Exactly two runtime dependencies: picomatch and yaml. A third is a design change, not a convenience. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
 <!-- @anchor MV-02 brain:package.json /"(picomatch|yaml)": "/ count=2 -->
 <!-- @anchor MV-02 brain:package.json /"dependencies":/ unique -->
+<!-- @anchor MV-02 brain:test/invariants/deps.test.ts /'picomatch', 'yaml'/ -->
 | MV-03 | Git runs via execFile with an argument vector, never through a shell. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
 <!-- @anchor MV-03 brain:src/lib/git.ts /execFile/ -->
 <!-- @anchor MV-03 brain:src/lib/git.ts /exec\(|execSync|spawn|shell:[[:space:]]*true/ absent -->
