@@ -15,7 +15,7 @@ export const CONFIG_PATH = '.multivac/config.yml';
 export const LAW_PATH = '.multivac/invariants.md';
 export const CHANGES_DIR = '.multivac/changes';
 /** Where the law and the changes used to live, before they moved. */
-const LEGACY: Array<[legacy: string, now: string]> = [
+export const LEGACY: Array<[legacy: string, now: string]> = [
   ['invariants.md', LAW_PATH],
   ['changes', CHANGES_DIR],
 ];

@@ -6,7 +6,7 @@
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
-import { CHANGES_DIR, LAW_PATH, layoutError } from '../lib/config.js';
+import { CHANGES_DIR, LAW_PATH, LEGACY, layoutError } from '../lib/config.js';
 import { lsFiles, run as git } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
@@ -151,10 +151,7 @@ async function isRepoRoot(dir: string): Promise<boolean> {
  * alone — only its author knows which copy is the law.
  */
 async function migrateLegacy(dir: string): Promise<void> {
-  for (const [legacy, now] of [
-    ['invariants.md', LAW_PATH],
-    ['changes', CHANGES_DIR],
-  ]) {
+  for (const [legacy, now] of LEGACY) {
     const from = join(dir, legacy);
     const to = join(dir, now);
     if (!(await exists(from)) || (await exists(to))) continue;
