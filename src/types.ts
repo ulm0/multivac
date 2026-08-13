@@ -24,6 +24,14 @@ export interface Config {
   authorities: string[];
   /** Modes that gate (exit 1). Default [absent, count]; must include absent. */
   blocking: Mode[];
+  /**
+   * What a pin behind its channel does to verify. Default 'report';
+   * 'block' makes a resolvable stale pin exit 1. An unresolvable channel
+   * ref reports either way — offline never guesses, never gates.
+   */
+  staleness: 'report' | 'block';
+  /** yml key: strict_pre_push. doors installs `verify --strict` as pre-push. */
+  strictPrePush: boolean;
   channel?: string;
   /** Where the brain mounts inside code repos. Default ".brain". */
   mount: string;

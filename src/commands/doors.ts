@@ -120,7 +120,7 @@ async function projectInto(
       `unknown door target "${target}" — known: ${KNOWN_TARGETS.join(', ')}`,
     );
   }
-  await installHooks(dir);
+  await installHooks(dir, { strictPrePush: config.strictPrePush });
   return notices;
 }
 

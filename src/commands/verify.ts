@@ -40,8 +40,13 @@ function fmtAge(ms: number): string {
 }
 
 /** Offline pin staleness: mount gitlink in each repo vs the brain's channel ref. */
-async function stalenessLines(brainDir: string, cfg: Config): Promise<string[]> {
+async function stalenessLines(
+  brainDir: string,
+  cfg: Config,
+): Promise<{ lines: string[]; staleCount: number }> {
   const lines: string[] = [];
+  let staleCount = 0;
+  const gate = cfg.staleness === 'block';
   for (const [key, entry] of Object.entries(cfg.repos)) {
     const channel = entry.channel ?? cfg.channel;
     if (!channel) continue;
@@ -53,19 +58,29 @@ async function stalenessLines(brainDir: string, cfg: Config): Promise<string[]> 
     try {
       channelSha = await git(brainDir, ['rev-parse', '--verify', channel]);
     } catch {
-      continue; // channel ref unknown locally — nothing to compare offline
+      // Channel ref unknown locally: offline stays a report, never a guess.
+      // Silence would sell false confidence under staleness: block.
+      if (gate) {
+        lines.push(
+          `  stale?    ${key}: channel ${channel} unknown locally — reported only, ` +
+            'cannot gate offline; `multivac repos sync` fetches it',
+        );
+      }
+      continue;
     }
     if (pin === channelSha) continue;
+    staleCount++;
     const behind = await git(brainDir, ['rev-list', '--count', `${pin}..${channelSha}`]).catch(
       () => '?',
     );
     const age = await lastFetchAge(brainDir).catch(() => null);
     const ageStr = age === null ? 'never fetched' : `last fetch ${fmtAge(age)} ago`;
     lines.push(
-      `  stale     ${key}: pin ${behind} behind ${channel} · ${ageStr} — run \`multivac repos sync\``,
+      `  stale     ${key}: pin ${behind} behind ${channel} · ${ageStr} — ` +
+        `${gate ? 'blocking (staleness: block); ' : ''}run \`multivac repos sync\``,
     );
   }
-  return lines;
+  return { lines, staleCount };
 }
 
 /** Consumer scope: evaluate one declared repo's anchors (+ `*` scoped to it). */
@@ -328,13 +343,20 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   }
   // Staleness compares mounts across the whole ecosystem — brain-checkout
   // concern, meaningless relative to a mounted brain's own paths.
-  if (!scope) for (const line of await stalenessLines(brainDir, cfg)) say(line);
+  let staleBlocking = 0;
+  if (!scope) {
+    const st = await stalenessLines(brainDir, cfg);
+    for (const line of st.lines) say(line);
+    if (cfg.staleness === 'block') staleBlocking = st.staleCount;
+  }
+  const finalExit: 0 | 1 = staleBlocking > 0 ? 1 : exitCode;
   say('');
   say(
-    `${blockingBroken} blocking broken · exit ${exitCode}` +
-      (allDiags.length ? ` · ${allDiags.length} anchor parse errors` : ''),
+    `${blockingBroken} blocking broken · exit ${finalExit}` +
+      (allDiags.length ? ` · ${allDiags.length} anchor parse errors` : '') +
+      (staleBlocking ? ` · ${staleBlocking} stale pin${staleBlocking > 1 ? 's' : ''} blocking` : ''),
   );
-  return exitCode;
+  return finalExit;
 }
 
 export const verify: Command = {

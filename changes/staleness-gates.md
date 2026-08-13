@@ -3,7 +3,7 @@ slug: staleness-gates
 status: open
 repos:
   self:
-    status: planned
+    status: branched
 landing_order:
   - - self
 invariants:
@@ -14,16 +14,14 @@ invariants:
   retires: []
 claims:
   - id: MV-10
-    statement: >-
-      With `staleness: block` in config, a pin behind the declared channel is
-      a blocking verify failure (exit 1) with the sync command named. The
-      default stays `report`; an unresolvable channel ref stays a report,
-      never a guess and never a gate.
+    statement: "With `staleness: block` in config, a pin behind the declared channel
+      is a blocking verify failure (exit 1) with the sync command named. The
+      default stays `report`; an unresolvable channel ref stays a report, never
+      a guess and never a gate."
   - id: MV-11
-    statement: >-
-      doors installs the pre-push shim with --strict when
+    statement: "doors installs the pre-push shim with --strict when
       `strict_pre_push: true` is set in config; default remains the
-      default-policy shim.
+      default-policy shim."
 ---
 
 # stale pins gate verify

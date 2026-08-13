@@ -113,6 +113,11 @@ The blocking set is the `blocking:` key in config, default
 `[absent, count]`. Extending it is allowed; unblocking the tombstone —
 loosening below `[absent]` — is refused.
 
+Pin staleness reports by default. With `staleness: block` in config, a pin
+behind its declared channel is a blocking failure — exit 1, with the sync
+command in the line. A channel ref that does not resolve locally stays a
+report either way: offline never guesses and never gates.
+
 ## `doors [--no-symlink]`
 
 ```txt
@@ -217,6 +222,8 @@ Policy by invoker:
 - **git hooks and harness hooks** run the **default** policy — only
   blocking modes (`absent`, `count`) gate, so a mid-refactor commit never
   dies on a moved presence check.
+- **`strict_pre_push: true`** in config makes `doors` install the pre-push
+  shim as `verify --strict` — commits stay permissive, pushes gate like CI.
 - **CI** runs `--strict --check`: everything gates, nothing is written.
 
 Hooks live in the versioned `.multivac/hooks/` via `core.hooksPath` — they

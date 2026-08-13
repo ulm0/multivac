@@ -97,6 +97,27 @@ test('strict pre-push variant', async () => {
   assert.match(read(dir, '.multivac/hooks/pre-commit'), /exec mvac verify\n/);
 });
 
+test('strict_pre_push: true in config — doors installs verify --strict pre-push everywhere', async () => {
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'strict_pre_push: true\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n',
+  );
+  const { code } = await runDoors();
+  assert.equal(code, 0);
+  for (const repo of [eco.brain, eco.repos.api, eco.repos.web]) {
+    assert.match(read(repo, '.multivac/hooks/pre-push'), /exec mvac verify --strict\n/);
+    assert.match(read(repo, '.multivac/hooks/pre-commit'), /exec mvac verify\n/); // commit stays default policy
+  }
+  // and the consumer door names the staleness gate only when block is on
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'staleness: block\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n',
+  );
+  await runDoors();
+  assert.match(read(eco.repos.api, 'AGENTS.md'), /A pin behind its channel makes `verify` exit 1/);
+  assert.match(read(eco.repos.api, '.multivac/hooks/pre-push'), /exec mvac verify\n/); // strict off again
+});
+
 test('claude target: symlink + settings merge preserving foreign keys', async () => {
   writeFileSync(
     join(eco.brain, '.multivac/config.yml'),

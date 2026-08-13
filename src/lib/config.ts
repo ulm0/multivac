@@ -91,6 +91,16 @@ export async function loadConfig(brainDir: string): Promise<Config> {
     fail('"sdd_auto" must be true or false');
   }
 
+  const staleness = o.staleness ?? 'report';
+  if (staleness !== 'report' && staleness !== 'block') {
+    fail('"staleness" must be "report" or "block" — block makes a stale pin exit 1');
+  }
+
+  const strictPrePush = o.strict_pre_push ?? false;
+  if (typeof strictPrePush !== 'boolean') {
+    fail('"strict_pre_push" must be true or false');
+  }
+
   const reposRaw = o.repos ?? {};
   if (typeof reposRaw !== 'object' || reposRaw === null || Array.isArray(reposRaw)) {
     fail('"repos" must be a mapping of key -> path or { path, ... }');
@@ -107,6 +117,8 @@ export async function loadConfig(brainDir: string): Promise<Config> {
     grapher: optString(o.grapher, 'grapher'),
     authorities: stringList(o.authorities, 'authorities'),
     blocking,
+    staleness,
+    strictPrePush,
     channel: optString(o.channel, 'channel'),
     mount: optString(o.mount, 'mount') ?? '.brain',
     repos,
