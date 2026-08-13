@@ -7,7 +7,7 @@
 > **Named 2026-08-13** after Asimov's world-computer: the central brain
 > humanity consults for every decision, accumulating all knowledge across
 > generations — and, in "The Last Question", finally answering. CLI alias:
-> **`mvac`**. `multivac` and `mvac` both free on npm as of naming day.
+> **`mvac`**. `multivac` published on npm 2026-08-13 (0.0.1 placeholder, owner ulm0); unscoped `mvac` is blocked by npm's name-similarity rule and ships as a bin inside the `multivac` package instead.
 > Formerly the placeholder "eco".
 >
 > Session log from 2026-08-12/13. The tool — CLI, code, docs, messages — is
