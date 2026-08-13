@@ -5,7 +5,7 @@
 import { access, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
-import { run as git } from '../lib/git.js';
+import { lsFiles, run as git } from '../lib/git.js';
 import { say } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { installHooks } from '../hooks/install.js';
@@ -74,7 +74,7 @@ function parseFlags(argv: string[]): Flags {
 }
 
 /** Render .multivac/config.yml: flags land as keys, detections as comment proposals. */
-function renderConfig(f: Flags, d: Detected): string {
+function renderConfig(f: Flags, d: Detected, brainIsCode: boolean): string {
   const doors = [...new Set(['agents', ...f.agents])];
   const lines = [
     '# multivac configuration — seeded by `multivac init`.',
@@ -99,7 +99,19 @@ function renderConfig(f: Flags, d: Detected): string {
       `# grapher: ${d.grapher}`,
     );
   }
-  lines.push('# repos:', '#   backend: ../backend   # bare string = { path }');
+  if (brainIsCode) {
+    // brain==code: this repo already has source, so it is its own code repo.
+    lines.push(
+      '# brain==code: this repo is both the brain and the code it governs.',
+      '# `brain: .` says so — anchors target `brain:<glob>` and the change',
+      '# lifecycle branches here. Add sibling repos as more keys.',
+      'repos:',
+      '  brain: .',
+      '#   backend: ../backend   # bare string = { path }',
+    );
+  } else {
+    lines.push('# repos:', '#   backend: ../backend   # bare string = { path }');
+  }
   return lines.join('\n') + '\n';
 }
 
@@ -148,8 +160,14 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   if (await exists(cfgPath)) {
     say('init: .multivac/config.yml kept — edit it directly, then `multivac doors`');
   } else {
-    await writeFile(cfgPath, renderConfig(f, await detectAdapters(dir)));
-    say('init: wrote .multivac/config.yml — declare your repos under repos:');
+    // Tracked source already here = the brain is its own code repo.
+    const brainIsCode = (await lsFiles(dir).catch(() => [])).length > 0;
+    await writeFile(cfgPath, renderConfig(f, await detectAdapters(dir), brainIsCode));
+    say(
+      brainIsCode
+        ? 'init: wrote .multivac/config.yml — brain==code (repos: brain: .); add sibling repos there'
+        : 'init: wrote .multivac/config.yml — declare your repos under repos:',
+    );
   }
 
   // 1. content at root: AGENTS.md (managed block only), invariants.md, changes/.

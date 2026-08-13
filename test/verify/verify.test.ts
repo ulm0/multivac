@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem, type ScratchEcosystem } from '../helpers/fixture.js';
@@ -332,4 +332,266 @@ test('config rejects the reserved repo keys "brain" and "*"', async () => {
   assert.equal(await runVerify(e.brain), 2);
   writeFileSync(join(e.brain, '.multivac/config.yml'), 'repos:\n  "*": ../acme-api\n');
   assert.equal(await runVerify(e.brain), 2);
+});
+
+// --- untracked files and pending claims (DOGFOOD-01 annoying 2 + 3) ---
+
+/** Write a change file into the brain. dir "" = open changes/, "archive" = closed. */
+function writeChange(
+  brain: string,
+  slug: string,
+  claimIds: string[],
+  opts: { status?: 'open' | 'archived'; dir?: string } = {},
+): void {
+  const dir = join(brain, 'changes', opts.dir ?? '');
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(
+    join(dir, `${slug}.md`),
+    [
+      '---',
+      `slug: ${slug}`,
+      `status: ${opts.status ?? 'open'}`,
+      'repos:',
+      '  api:',
+      '    status: planned',
+      'landing_order:',
+      '  - - api',
+      'invariants:',
+      '  touches: []',
+      '  adds: []',
+      '  retires: []',
+      'claims:',
+      ...claimIds.flatMap((id) => [`  - id: ${id}`, '    statement: it will be true']),
+      '---',
+      '',
+      `# ${slug}`,
+      '',
+    ].join('\n'),
+  );
+}
+
+test('untracked file: the hint is `git add`, not "fix the glob"', async () => {
+  const e = eco();
+  // The code exists on disk — it was just never added. ls-files cannot see it.
+  writeFileSync(join(e.repos.api, 'src/pricing.ts'), 'export const vatRate = 0.21;\n');
+  setLaw(
+    e.brain,
+    '| INV-15 | vat rate lives in pricing | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-15 api:src/pricing.ts /vatRate/ -->',
+  );
+  const { out } = await captured(() => runVerify(e.brain, '--strict'));
+  assert.match(out, /file exists but is untracked — `git add src\/pricing\.ts`/);
+  assert.doesNotMatch(out, /fix the glob/);
+  // and the correct glob is never self-healed away
+  assert.match(readFileSync(join(e.brain, 'invariants.md'), 'utf8'), /api:src\/pricing\.ts /);
+});
+
+test('untracked file: blocking modes say it too (absent tombstone)', async () => {
+  const e = eco();
+  writeFileSync(join(e.repos.api, 'db/migrations/0002.sql'), 'SELECT 1;\n');
+  setLaw(
+    e.brain,
+    '| INV-16 | no drops in migration 2 | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-16 api:db/migrations/0002.sql /drop[[:space:]]+table/i absent -->',
+  );
+  const { code, out } = await captured(() => runVerify(e.brain));
+  assert.equal(code, 1); // a vacuous tombstone still gates
+  assert.match(out, /untracked — `git add db\/migrations\/0002\.sql`/);
+});
+
+test('a claim an open change declares is pending: never blocks, not even blocking modes', async () => {
+  const e = eco();
+  writeChange(e.brain, 'expiring-points', ['INV-17']);
+  setLaw(
+    e.brain,
+    '| INV-17 | points expire after a year | published | proposed | 2026-01-01 | x |',
+    // count= is a blocking mode: without pendency this is exit 1, always.
+    '<!-- @anchor INV-17 api:src/points.ts /expiresAt/ count=1 -->',
+  );
+  const { code, out } = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(code, 0);
+  assert.match(out, /pending/);
+  assert.match(out, /declared by open change expiring-points/);
+  assert.match(out, /0 blocking broken · exit 0/);
+});
+
+test('pendency is not self-heal: a pending claim never rewrites its glob', async () => {
+  const e = eco();
+  writeChange(e.brain, 'port-move', ['INV-18']);
+  setLaw(
+    e.brain,
+    '| INV-18 | port is fixed | published | active | 2026-01-01 | x |',
+    // The regex matches src/server.ts — self-heal would rewrite this glob.
+    '<!-- @anchor INV-18 api:src/app/*.ts /port = 8080/ -->',
+  );
+  const { code, out } = await captured(() => runVerify(e.brain));
+  assert.equal(code, 0);
+  assert.match(out, /pending/);
+  assert.doesNotMatch(out, /moved/);
+  assert.match(readFileSync(join(e.brain, 'invariants.md'), 'utf8'), /api:src\/app\/\*\.ts/);
+});
+
+test('a closed change confers nothing: archived and non-open claims still gate', async () => {
+  const e = eco();
+  writeChange(e.brain, 'landed-already', ['INV-19'], { dir: 'archive', status: 'archived' });
+  writeChange(e.brain, 'also-closed', ['INV-19'], { status: 'archived' });
+  setLaw(
+    e.brain,
+    '| INV-19 | points expire after a year | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-19 api:src/points.ts /expiresAt/ count=1 -->',
+  );
+  const { code, out } = await captured(() => runVerify(e.brain));
+  assert.equal(code, 1);
+  assert.doesNotMatch(out, /pending/);
+});
+
+// --- MV-20: one predicate behind the printed line and the exit code --------
+
+/**
+ * The agreement itself: a line marked blocking exists exactly when the run
+ * gated. Report text and exit code cannot disagree — the "pin 0 behind"
+ * class of bug, where a line said blocking and the gate said otherwise.
+ */
+function agrees(code: number, out: string): boolean {
+  const marked = out
+    .split('\n')
+    .filter((l) => l.endsWith(' · blocking') || l.includes('blocking (staleness: block)'));
+  return (marked.length > 0) === (code === 1);
+}
+
+test('staleness: report text and exit code cannot disagree', async () => {
+  // Stale pin, gating.
+  const { e, branch } = staleEco();
+  const cfg = (body: string): void =>
+    writeFileSync(join(e.brain, '.multivac/config.yml'), body);
+  cfg(`staleness: block\nchannel: ${branch}\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n`);
+  let r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1);
+  assert.ok(agrees(r.code, r.out), r.out);
+
+  // Same pin, staleness: report — the line loses its marker with the gate.
+  cfg(`channel: ${branch}\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n`);
+  r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 0);
+  assert.ok(agrees(r.code, r.out), r.out);
+
+  // Channel unknown locally: reported, never gated, never marked.
+  cfg('staleness: block\nchannel: origin/nowhere\nrepos:\n  api: ../acme-api\n');
+  r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 0);
+  assert.ok(agrees(r.code, r.out), r.out);
+});
+
+test('vacuous: report text and exit code cannot disagree', async () => {
+  const e = eco();
+  setLaw(
+    e.brain,
+    // present is not in blocking: [absent, count] — vacuous here reports.
+    '| INV-20 | the pricing table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-20 api:pricing/**/*.sql /create[[:space:]]+table/ -->',
+  );
+  let r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 0);
+  assert.match(r.out, /vacuous/);
+  assert.match(r.out, /reported only/);
+  assert.ok(agrees(r.code, r.out), r.out);
+
+  // --strict promotes the same leg: marker and gate move together.
+  r = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(r.code, 1);
+  assert.match(r.out, / · blocking/);
+  assert.ok(agrees(r.code, r.out), r.out);
+
+  // A blocking mode marks and gates without --strict.
+  setLaw(
+    e.brain,
+    '| INV-21 | no plaintext card numbers | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-21 api:pricing/**/*.sql /card_number/ absent -->',
+  );
+  r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1);
+  assert.match(r.out, / · blocking/);
+  assert.ok(agrees(r.code, r.out), r.out);
+});
+
+/** The number the summary line leads with, and the `· blocking` markers above it. */
+function summaryVsMarkers(out: string): { summary: number; marked: number } {
+  const m = /^(\d+) blocking broken · exit/m.exec(out);
+  assert.ok(m, `no summary line in:\n${out}`);
+  return {
+    summary: Number(m[1]),
+    marked: out
+      .split('\n')
+      .filter((l) => l.endsWith(' · blocking') || l.includes('blocking (staleness: block)')).length,
+  };
+}
+
+test('the summary counts the same predicate the markers do — --strict included', async () => {
+  const e = eco();
+  // unique is not in blocking: [absent, count], so this leg gates only under
+  // --strict. The old summary printed the non-strict tally: "0 blocking
+  // broken · exit 1", printed under a line marked blocking.
+  commitFile(e.repos.api, 'src/token.ts', 'export const TTL = 900;\nexport const TTL2 = 900;\n');
+  setLaw(
+    e.brain,
+    '| INV-22 | one TTL | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-22 api:src/token.ts /TTL[0-9]* = 900/ unique -->',
+  );
+  const r = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(r.code, 1);
+  const { summary, marked } = summaryVsMarkers(r.out);
+  assert.equal(marked, 1);
+  assert.equal(summary, 1, `summary says ${summary} under ${marked} blocking lines:\n${r.out}`);
+  assert.ok(agrees(r.code, r.out), r.out);
+});
+
+test('a mixed run: every marked line is counted once, and only those', async () => {
+  const e = eco();
+  commitFile(e.repos.api, 'src/token.ts', 'export const TTL = 900;\nexport const TTL2 = 900;\n');
+  setLaw(
+    e.brain,
+    // gates without --strict (absent over a vacuous glob)
+    '| INV-23 | dead path stays dead | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-23 api:db/gone/** /anything/ absent -->',
+    // gates only under --strict
+    '| INV-24 | one TTL | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-24 api:src/token.ts /TTL[0-9]* = 900/ unique -->',
+    // never gates: a proposed row is informational
+    '| INV-25 | future law | published | proposed | 2026-01-01 | x |',
+    '<!-- @anchor INV-25 api:src/nothing.ts /nope/ absent -->',
+  );
+  let r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1);
+  assert.deepEqual(summaryVsMarkers(r.out), { summary: 1, marked: 1 });
+
+  r = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(r.code, 1);
+  assert.deepEqual(summaryVsMarkers(r.out), { summary: 2, marked: 2 });
+});
+
+test('a pending claim is named in the summary, not only in the body', async () => {
+  const e = eco();
+  writeChange(e.brain, 'expiring-points', ['INV-26']);
+  setLaw(
+    e.brain,
+    '| INV-26 | points expire after a year | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-26 api:src/points.ts /expiresAt/ count=1 -->',
+  );
+  const r = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(r.code, 0);
+  // exit 0 is the grace; silence about what bought it is not.
+  assert.match(r.out, /1 claim held pending by open change expiring-points — not gating/);
+  assert.match(r.out, /close or delete the change to unmask them/);
+});
+
+test('nothing pending: the summary says nothing about pendency', async () => {
+  const e = eco();
+  setLaw(
+    e.brain,
+    '| INV-27 | accounts table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-27 api:db/migrations/*.sql /create[[:space:]]+table[[:space:]]+accounts/i -->',
+  );
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 0);
+  assert.doesNotMatch(r.out, /held pending/);
 });

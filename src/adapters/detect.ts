@@ -43,17 +43,23 @@ export async function artifactPresent(
   return false;
 }
 
+/** True when `bin` is executable on PATH — the hook shim's `command -v`, in Node. */
+export async function onPath(bin: string): Promise<boolean> {
+  for (const dir of (process.env.PATH ?? '').split(delimiter)) {
+    if (!dir) continue;
+    const ok = await access(join(dir, bin), constants.X_OK).then(
+      () => true,
+      () => false,
+    );
+    if (ok) return true;
+  }
+  return false;
+}
+
 /** True when any of the spec's binary names is executable on PATH. */
 export async function binaryPresent(spec: AdapterSpec): Promise<boolean> {
   for (const bin of spec.binaries) {
-    for (const dir of (process.env.PATH ?? '').split(delimiter)) {
-      if (!dir) continue;
-      const ok = await access(join(dir, bin), constants.X_OK).then(
-        () => true,
-        () => false,
-      );
-      if (ok) return true;
-    }
+    if (await onPath(bin)) return true;
   }
   return false;
 }

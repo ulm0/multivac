@@ -28,7 +28,8 @@ not multivac's.
 
 Scaffolds the brain. Side effects, completely: writes `AGENTS.md` (the
 door, managed block only — never clobbers yours) and `invariants.md` (the
-law table, zero rows) at the root, plus `changes/`; writes the machinery
+law table, zero rows) at the root, plus `changes/` with a
+`.gitkeep` so the lifecycle's directory survives a clone; writes the machinery
 under `.multivac/` (`config.yml`, `hooks/`, gitignored `cache/`); runs
 `git init` when the directory is not a repo; points `core.hooksPath` at
 `.multivac/hooks/` and writes the `pre-commit`/`pre-push` shims there.

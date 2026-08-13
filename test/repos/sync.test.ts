@@ -6,15 +6,15 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { gitInit } from '../helpers/fixture.js';
 import { reposList, reposSync } from '../../src/commands/repos.js';
 
 const tmp = mkdtempSync(join(tmpdir(), 'mvac-repos-'));
 
 // A bare "remote" with one committed file.
 const src = join(tmp, 'src');
-mkdirSync(src);
+gitInit(src);
 for (const args of [
-  ['init', '-q'],
   ['config', 'user.email', 'test@acme.example'],
   ['config', 'user.name', 'Acme Test'],
 ]) {

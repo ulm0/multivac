@@ -20,6 +20,9 @@ import {
   binaryPresent,
   pathExists,
 } from '../adapters/detect.js';
+import { HOOKS_DIR, INACTIVE_FIX, findRunner } from '../hooks/install.js';
+import { collectBrainAnchors } from '../anchor/parse.js';
+import { makeMatcher } from '../lib/glob.js';
 
 const BEGIN = '<!-- multivac:begin -->';
 const label = (s: string): string => s.padEnd(11);
@@ -35,6 +38,7 @@ function fmtAge(ms: number): string {
 async function presentRepoDirs(brain: string, cfg: Config): Promise<string[]> {
   const dirs: string[] = [];
   for (const e of Object.values(cfg.repos)) {
+    if (e.isBrain) continue; // the brain dir is always searched separately
     const d = resolve(brain, e.path);
     if (await pathExists(d)) dirs.push(d);
   }
@@ -116,6 +120,7 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
     { scope: 'brain', dir: brain, name: cfg.grapher },
   ];
   for (const [key, e] of Object.entries(cfg.repos)) {
+    if (e.isBrain) continue; // already covered by the brain scope above
     const dir = resolve(brain, e.path);
     if (await pathExists(dir)) {
       scopes.push({ scope: key, dir, name: e.grapher ?? cfg.grapher });
@@ -153,9 +158,13 @@ async function reposLine(brain: string, cfg: Config): Promise<string> {
   const entries = Object.entries(cfg.repos);
   if (entries.length === 0) return `none declared — add repos: to ${CONFIG_PATH}`;
   const missing: string[] = [];
+  const notes: string[] = [];
   let present = 0;
   for (const [key, e] of entries) {
-    if (await pathExists(resolve(brain, e.path))) {
+    if (e.isBrain) {
+      present++;
+      notes.push(`${key}: brain==code (this repo)`);
+    } else if (await pathExists(resolve(brain, e.path))) {
       present++;
     } else {
       missing.push(
@@ -165,12 +174,17 @@ async function reposLine(brain: string, cfg: Config): Promise<string> {
       );
     }
   }
-  return [`${present}/${entries.length} present`, ...missing].join(' · ');
+  return [`${present}/${entries.length} present`, ...notes, ...missing].join(' · ');
 }
 
 async function pinsLine(brain: string, cfg: Config): Promise<string> {
-  const entries = Object.entries(cfg.repos);
-  if (entries.length === 0) return 'no repos declared';
+  // brain==code entries have nothing to mount: the brain is already here.
+  const entries = Object.entries(cfg.repos).filter(([, e]) => !e.isBrain);
+  if (entries.length === 0) {
+    return Object.keys(cfg.repos).length === 0
+      ? 'no repos declared'
+      : 'brain==code — no mount to pin';
+  }
   const parts: string[] = [];
   for (const [key, e] of entries) {
     const dir = resolve(brain, e.path);
@@ -221,20 +235,105 @@ async function pinsLine(brain: string, cfg: Config): Promise<string> {
 async function hooksLine(brain: string): Promise<string> {
   const hp = await git.run(brain, ['config', 'core.hooksPath']).catch(() => null);
   const parts: string[] = [
-    hp === '.multivac/hooks'
+    hp === HOOKS_DIR
       ? 'core.hooksPath ok'
       : hp
-        ? `core.hooksPath is ${hp}, expected .multivac/hooks → git config core.hooksPath .multivac/hooks`
-        : 'core.hooksPath unset → git config core.hooksPath .multivac/hooks',
+        ? `core.hooksPath is ${hp}, expected ${HOOKS_DIR} → git config core.hooksPath ${HOOKS_DIR}`
+        : `core.hooksPath unset → git config core.hooksPath ${HOOKS_DIR}`,
   ];
+  let installed = true;
   for (const shim of ['pre-commit', 'pre-push']) {
+    const present = await pathExists(join(brain, HOOKS_DIR, shim));
+    installed &&= present;
     parts.push(
-      (await pathExists(join(brain, '.multivac/hooks', shim)))
-        ? `${shim} ok`
+      present
+        ? `${shim} installed`
         : `${shim} missing → run \`multivac init .\` to rewrite the shims`,
     );
   }
+  // Installed is not enforcing: the shim exits 0 when nothing can run it.
+  const runner = await findRunner(brain);
+  if (installed) {
+    parts.push(
+      runner
+        ? `active (${runner})`
+        : `INACTIVE — no runnable multivac, the shims verify nothing → ${INACTIVE_FIX}`,
+    );
+  }
   return parts.join(' · ');
+}
+
+/** Config file at a repo root: tsconfig*, package*, *.config.*, .*rc[.ext]. */
+const ROOT_CONFIG = /^(tsconfig.*|package.*|.+\.config\..+|\.[^.]+rc(\..+)?)$/;
+
+/** Scripts of a repo's package.json as one blob. Absent or broken = "". */
+async function scriptText(dir: string): Promise<string> {
+  try {
+    const pkg = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')) as {
+      scripts?: Record<string, string>;
+    };
+    return Object.values(pkg.scripts ?? {}).join('\n');
+  } catch {
+    return '';
+  }
+}
+
+/** Why an untracked file looks build-critical, or null. */
+function buildCritical(
+  file: string,
+  scripts: string,
+  anchored: (f: string) => boolean,
+): string | null {
+  if (!file.includes('/') && ROOT_CONFIG.test(file)) return 'root config';
+  // ponytail: substring, not a shell parse — catches `tsc -p tsconfig.test.json`
+  // and misses paths a script builds by concatenation. Upgrade when that bites.
+  if (file && scripts.includes(file)) return 'package.json script';
+  if (anchored(file)) return 'anchor glob';
+  return null;
+}
+
+/**
+ * Untracked-but-needed. A file that was never `git add`ed is invisible to
+ * everything reading the tree through `git ls-files` — verify included — so a
+ * repo can build here and fail on a fresh checkout. Name the untracked,
+ * non-ignored files that look build-critical. Warning only: doctor diagnoses.
+ */
+async function untrackedLine(brain: string, cfg: Config): Promise<string> {
+  const anchors = await collectBrainAnchors(brain).then(
+    (r) => r.anchors,
+    () => [],
+  );
+  const brainKeys = ['brain', '*'];
+  const scopes = [{ name: 'brain', dir: brain, keys: brainKeys }];
+  for (const [key, e] of Object.entries(cfg.repos)) {
+    if (e.isBrain) {
+      brainKeys.push(key); // an alias for this same tree
+      continue;
+    }
+    const dir = resolve(brain, e.path);
+    if (await pathExists(dir)) scopes.push({ name: key, dir, keys: [key, '*'] });
+  }
+  const flagged: string[] = [];
+  for (const s of scopes) {
+    const files = await git.untrackedFiles(s.dir).catch(() => []);
+    if (files.length === 0) continue;
+    const scripts = await scriptText(s.dir);
+    const matchers = anchors
+      .filter((a) => s.keys.includes(a.repoKey))
+      .map((a) => makeMatcher(a.include, a.excludes));
+    for (const f of files) {
+      const why = buildCritical(f, scripts, (x) => matchers.some((m) => m(x)));
+      if (why) flagged.push(`${f} (${s.name}, ${why})`);
+    }
+  }
+  if (flagged.length === 0) return 'nothing build-critical untracked';
+  const shown = flagged.slice(0, 8);
+  const more = flagged.length - shown.length;
+  return (
+    `WARNING ${flagged.length} build-critical file${flagged.length === 1 ? '' : 's'} ` +
+    `untracked — git add or ignore: ${shown.join(', ')}` +
+    (more ? ` · +${more} more` : '')
+  );
 }
 
 /** Build the full report. Exit 1 only when the config itself is invalid. */
@@ -261,6 +360,7 @@ export async function doctorReport(
     label('repos') + (await reposLine(brainDir, cfg)),
     label('pins') + (await pinsLine(brainDir, cfg)),
     label('hooks') + (await hooksLine(brainDir)),
+    label('untracked') + (await untrackedLine(brainDir, cfg)),
   ];
   return { lines, exit: 0 };
 }

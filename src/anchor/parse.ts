@@ -20,6 +20,11 @@ export interface ParseResult {
 const GRAMMAR =
   '<!-- @anchor <CLAIM-ID> <repo>:<glob> [!<glob> ...] /<regex>/[i] [present|absent|unique|count=N] -->';
 
+/** The glob dialect, named wherever a glob is rejected — it is not shell. */
+const GLOB_DIALECT =
+  'globs are picomatch patterns over repo-relative paths: `**` crosses directories, ' +
+  '`{a,b}` alternates, and dotfiles match';
+
 /** First whitespace-delimited token + the rest. */
 const nibble = (s: string): [string, string] => {
   const m = s.match(/^(\S+)\s*/);
@@ -68,7 +73,10 @@ export function parseAnchors(text: string, file: string): ParseResult {
     [repoSpec, rest] = nibble(rest);
     const colon = repoSpec.indexOf(':');
     if (colon <= 0 || colon === repoSpec.length - 1) {
-      bad(`"${repoSpec || '(nothing)'}" is not <repo>:<glob> — add the repo key, a colon, and the glob`);
+      bad(
+        `"${repoSpec || '(nothing)'}" is not <repo>:<glob> — add the repo key, a colon, and the glob; ` +
+          GLOB_DIALECT,
+      );
       continue;
     }
     const repoKey = repoSpec.slice(0, colon);
@@ -79,7 +87,7 @@ export function parseAnchors(text: string, file: string): ParseResult {
       let tok: string;
       [tok, rest] = nibble(rest);
       if (tok === '!') {
-        bad('empty !exclusion — remove the bare "!" or attach a glob to it');
+        bad(`empty !exclusion — remove the bare "!" or attach a glob to it; ${GLOB_DIALECT}`);
         malformed = true;
         break;
       }

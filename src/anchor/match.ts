@@ -3,7 +3,7 @@
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { lsFiles } from '../lib/git.js';
+import { lsFiles, untrackedFiles } from '../lib/git.js';
 import { filterFiles } from '../lib/glob.js';
 import { compileAnchorRegex } from '../lib/regex.js';
 import { sqlStatements } from './normalize.js';
@@ -17,6 +17,7 @@ export interface Match {
 /** Caches ls-files and file text per repo checkout for one verify run. */
 export class RepoScanner {
   private list?: Promise<string[]>;
+  private others?: Promise<string[]>;
   private texts = new Map<string, Promise<string | null>>();
 
   constructor(readonly dir: string) {}
@@ -24,6 +25,12 @@ export class RepoScanner {
   files(): Promise<string[]> {
     this.list ??= lsFiles(this.dir);
     return this.list;
+  }
+
+  /** Untracked, non-ignored files. Read only when a glob comes up empty. */
+  untracked(): Promise<string[]> {
+    this.others ??= untrackedFiles(this.dir);
+    return this.others;
   }
 
   /** File text, or null for binary (NUL in first 8KB) or unreadable files. */

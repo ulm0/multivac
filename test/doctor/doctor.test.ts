@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { doctorReport } from '../../src/commands/doctor.js';
+import { installHooks } from '../../src/hooks/install.js';
 
 const line = (lines: string[], section: string): string => {
   const l = lines.find((x) => x.startsWith(section));
@@ -145,6 +146,40 @@ repos: {}
   }
 });
 
+test('doctor: hooks installed but inactive is a warning, active names the runner', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-hooks-')));
+  await installHooks(eco.brain);
+
+  // empty PATH: shims are on disk, nothing can run them
+  const old = process.env.PATH;
+  process.env.PATH = mkdtempSync(join(tmpdir(), 'mvac-empty-bin-'));
+  try {
+    let hooks = line((await doctorReport(eco.brain)).lines, 'hooks');
+    assert.match(hooks, /pre-commit installed/);
+    assert.match(hooks, /INACTIVE — no runnable multivac/);
+    assert.match(hooks, /npm i -g multivac/);
+
+    // built but not installed: still inactive. node would exit 1 on the first
+    // bare import, and an exit 1 out of pre-commit blocks the commit.
+    mkdirSync(join(eco.brain, 'dist'), { recursive: true });
+    writeFileSync(join(eco.brain, 'dist/cli.js'), '// built\n');
+    const binDir = join(eco.brain, '..', 'nodebin');
+    mkdirSync(binDir, { recursive: true });
+    writeFileSync(join(binDir, 'node'), '#!/bin/sh\nexit 0\n');
+    chmodSync(join(binDir, 'node'), 0o755);
+    process.env.PATH = binDir;
+    assert.match(line((await doctorReport(eco.brain)).lines, 'hooks'), /INACTIVE/);
+
+    // built AND installed: active, and it says which runner
+    mkdirSync(join(eco.brain, 'node_modules'), { recursive: true });
+    hooks = line((await doctorReport(eco.brain)).lines, 'hooks');
+    assert.match(hooks, /active \(node dist\/cli\.js\)/);
+    assert.equal(/INACTIVE/.test(hooks), false);
+  } finally {
+    process.env.PATH = old;
+  }
+});
+
 test('doctor: invalid config is the one exit-1 case', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'mvac-doc4-'));
   mkdirSync(join(dir, '.multivac'), { recursive: true });
@@ -152,4 +187,57 @@ test('doctor: invalid config is the one exit-1 case', async () => {
   const { lines, exit } = await doctorReport(dir);
   assert.equal(exit, 1);
   assert.match(line(lines, 'config'), /invalid/);
+});
+
+test('doctor: untracked build-critical files are a warning, scratch notes are not', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-untracked-')));
+  // never `git add`ed: the file the build reads, and a note nobody builds with
+  writeFileSync(join(eco.brain, 'tsconfig.test.json'), '{"extends": "./tsconfig.json"}\n');
+  mkdirSync(join(eco.brain, 'notes'), { recursive: true });
+  writeFileSync(join(eco.brain, 'notes/scratch.md'), 'thinking out loud\n');
+
+  const { lines, exit } = await doctorReport(eco.brain);
+  assert.equal(exit, 0); // a warning never gates: doctor diagnoses
+  const untracked = line(lines, 'untracked');
+  assert.match(untracked, /untracked — git add or ignore/);
+  assert.match(untracked, /tsconfig\.test\.json \(brain, root config\)/);
+  assert.equal(/scratch\.md/.test(untracked), false);
+});
+
+test('doctor: package.json scripts and anchor globs make a file build-critical', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-untracked2-')));
+  writeFileSync(
+    join(eco.brain, 'invariants.md'),
+    `# Invariants
+
+| ID | statement | authority | state | date | source |
+| --- | --- | --- | --- | --- | --- |
+| ACME-1 | the api ships a server | specified | active | 2026-08-13 | [x](x) |
+<!-- @anchor ACME-1 api:src/**.ts /listen/ -->
+`,
+  );
+  writeFileSync(
+    join(eco.brain, 'package.json'),
+    JSON.stringify({ scripts: { build: 'sh tools/build.sh' } }) + '\n',
+  );
+  mkdirSync(join(eco.brain, 'tools'), { recursive: true });
+  writeFileSync(join(eco.brain, 'tools/build.sh'), 'echo build\n');
+  // untracked in another declared repo, covered by that repo's anchor glob
+  writeFileSync(join(eco.repos.api, 'src/routes.ts'), 'export const listen = 1;\n');
+  writeFileSync(join(eco.repos.api, 'src/notes.txt'), 'scratch\n');
+
+  const { lines, exit } = await doctorReport(eco.brain);
+  assert.equal(exit, 0);
+  const untracked = line(lines, 'untracked');
+  assert.match(untracked, /tools\/build\.sh \(brain, package\.json script\)/);
+  assert.match(untracked, /src\/routes\.ts \(api, anchor glob\)/);
+  assert.equal(/notes\.txt/.test(untracked), false);
+});
+
+test('doctor: a tree with nothing untracked says so', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-untracked3-')));
+  assert.match(
+    line((await doctorReport(eco.brain)).lines, 'untracked'),
+    /nothing build-critical untracked/,
+  );
 });

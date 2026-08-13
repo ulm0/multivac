@@ -146,6 +146,39 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
   return { slug, status, repos, landing_order: lo, invariants, claims };
 }
 
+/** Prose that YAML cannot hold unquoted: a ": " mapping, a " #" comment, an indicator start. */
+const UNSAFE_PLAIN = /:\s|\s#|^[-?:,[\]{}#&*!|>'"%@`]/;
+
+/** `statement: staleness: block` -> `statement: "staleness: block"`, or undefined if that is not the problem. */
+function quotedRewrite(line: string): string | undefined {
+  const m = /^\s*(?:-\s+)?([\w.-]+):\s+(\S.*?)\s*$/.exec(line);
+  if (!m || !UNSAFE_PLAIN.test(m[2])) return undefined;
+  // JSON string escapes are a subset of YAML's double-quoted style.
+  return `${m[1]}: ${JSON.stringify(m[2])}`;
+}
+
+/** Turn a raw YAML parser error into the line, the source, and the fix to type. */
+function frontmatterError(label: string, fm: string, e: unknown): ChangeError {
+  const err = e as { message?: string; linePos?: { line: number; col: number }[] };
+  const fmLine = err.linePos?.[0]?.line;
+  const src = fmLine === undefined ? undefined : fm.split('\n')[fmLine - 1];
+  // Frontmatter starts on file line 2: line 1 is the opening ---.
+  const fileLine = fmLine === undefined ? undefined : fmLine + 1;
+  // The parser counts lines inside the frontmatter; drop its position so only ours is quoted.
+  const why = (err.message ?? String(e))
+    .split('\n')[0]
+    .replace(/ at line \d+, column \d+:?$/, '');
+  const out = [`${label}: invalid frontmatter YAML${fileLine ? ` at line ${fileLine}` : ''}: ${why}`];
+  if (src !== undefined) out.push(`  ${fileLine} | ${src}`);
+  const fix = src === undefined ? undefined : quotedRewrite(src);
+  out.push(
+    fix
+      ? `  prose is not YAML — quote the value: ${fix}`
+      : '  quote any value holding ": ", " #" or a leading -, or write it as a | block scalar',
+  );
+  return new ChangeError(out.join('\n'));
+}
+
 export function parseChange(text: string, label = 'change file'): ParsedChange {
   const m = /^---\n([\s\S]*?)\n---\n/.exec(text);
   if (!m) {
@@ -157,23 +190,26 @@ export function parseChange(text: string, label = 'change file'): ParsedChange {
   try {
     raw = parse(m[1]);
   } catch (e) {
-    throw new ChangeError(
-      `${label}: invalid frontmatter YAML: ${(e as Error).message} — fix the syntax`,
-    );
+    throw frontmatterError(label, m[1], e);
   }
   const body = text.slice(m[0].length).replace(/^\n/, '');
   return { change: normalizeChange(raw, label), body };
 }
 
 export function serializeChange(change: ChangeFile, body: string): string {
-  const fm = stringify({
-    slug: change.slug,
-    status: change.status,
-    repos: change.repos,
-    landing_order: change.landing_order,
-    invariants: change.invariants,
-    claims: change.claims,
-  });
+  const fm = stringify(
+    {
+      slug: change.slug,
+      status: change.status,
+      repos: change.repos,
+      landing_order: change.landing_order,
+      invariants: change.invariants,
+      claims: change.claims,
+    },
+    // lineWidth: 0 — never fold prose onto continuation lines: the writer's
+    // statement comes back the way it was written. Quoting is the library's job.
+    { lineWidth: 0 },
+  );
   const b = body === '' || body.endsWith('\n') ? body : `${body}\n`;
   return `---\n${fm}---\n\n${b}`;
 }
@@ -188,7 +224,7 @@ export function scaffoldChange(slug: string, title: string): ParsedChange {
       invariants: { touches: [], adds: [], retires: [] },
       claims: [],
     },
-    body: `# ${title}\n\nDeclare repos, landing_order, invariants and claims in the frontmatter,\nthen run \`multivac change plan ${slug}\`.\n`,
+    body: `# ${title}\n\nDeclare repos, landing_order, invariants and claims in the frontmatter,\nthen run \`multivac change plan ${slug}\`.\n\nStatements are prose: quote any value holding a colon —\n\`statement: "staleness: block"\`.\n\nmultivac owns the frontmatter formatting: every lifecycle step rewrites it, so\nhand-tuned layout will not survive. Values round-trip unchanged; the body,\nbelow the closing ---, is yours.\n`,
   };
 }
 

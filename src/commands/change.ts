@@ -4,8 +4,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { join, relative, resolve } from 'node:path';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
 import { loadConfig } from '../lib/config.js';
 import { lsFiles, run as gitRun } from '../lib/git.js';
@@ -63,12 +63,13 @@ async function runSdd(
 
 function repoEntryOf(cfg: Config, key: string): Config['repos'][string] {
   const entry = cfg.repos[key];
-  if (!entry) {
-    throw new ChangeError(
-      `repo "${key}" not declared in .multivac/config.yml — add repos.${key} with a path`,
-    );
-  }
-  return entry;
+  if (entry) return entry;
+  // `brain` is the reserved handle for the brain itself: a change may name it
+  // whether or not the config spells out the `brain: .` (brain==code) idiom.
+  if (key === 'brain') return { path: '.', isBrain: true };
+  throw new ChangeError(
+    `repo "${key}" not declared in .multivac/config.yml — add repos.${key} with a path, or use "brain" for the brain itself`,
+  );
 }
 
 async function clone(url: string, abs: string, key: string): Promise<void> {
@@ -76,35 +77,176 @@ async function clone(url: string, abs: string, key: string): Promise<void> {
   say(`${key}: cloned ${url} -> ${abs}`);
 }
 
-async function branchBase(repo: string): Promise<string> {
-  for (const ref of ['origin/main', 'main']) {
-    try {
-      await gitRun(repo, ['rev-parse', '--verify', '--quiet', ref]);
-      return ref;
-    } catch {
-      /* next candidate */
-    }
-  }
-  return 'HEAD';
+interface BranchBase {
+  ref: string;
+  sha: string;
+  why: string;
 }
 
-async function ensureBranch(repo: string, slug: string, key: string): Promise<void> {
-  const exists = await gitRun(repo, [
-    'rev-parse',
-    '--verify',
-    '--quiet',
-    `refs/heads/${slug}`,
-  ]).then(
+const refSha = (repo: string, ref: string): Promise<string | null> =>
+  gitRun(repo, ['rev-parse', '--verify', '--quiet', ref]).then(
+    (s) => s,
+    () => null,
+  );
+
+const containsCommit = (repo: string, ancestor: string, descendant: string): Promise<boolean> =>
+  gitRun(repo, ['merge-base', '--is-ancestor', ancestor, descendant]).then(
     () => true,
     () => false,
   );
-  if (exists) {
-    say(`${key}: branch ${slug} already exists — git -C ${repo} switch ${slug}`);
-    return;
+
+/**
+ * Candidate default-branch names, most authoritative first. `main`/`master` is
+ * a guess: a repo whose trunk is called anything else used to fall straight
+ * through to HEAD. Ask git what it already knows offline first — where
+ * `origin/HEAD` points, and the `init.defaultBranch` this machine creates
+ * repos with — before guessing.
+ */
+async function baseNames(repo: string): Promise<string[]> {
+  const names: string[] = [];
+  const originHead = await gitRun(repo, [
+    'symbolic-ref',
+    '--short',
+    'refs/remotes/origin/HEAD',
+  ]).catch(() => null);
+  if (originHead) names.push(originHead.replace(/^origin\//, ''));
+  const configured = await gitRun(repo, ['config', '--get', 'init.defaultBranch']).catch(
+    () => null,
+  );
+  if (configured) names.push(configured);
+  return [...new Set([...names.filter(Boolean), 'main', 'master'])];
+}
+
+/** The branch HEAD is on, or null on a detached HEAD. */
+const currentBranch = (repo: string): Promise<string | null> =>
+  gitRun(repo, ['symbolic-ref', '--short', '--quiet', 'HEAD']).then(
+    (s) => s || null,
+    () => null,
+  );
+
+/**
+ * The newer of the local default branch and its remote-tracking ref. A brain
+ * that has never been pushed is normal, so a merely-existing `origin/main` is
+ * not authority. No network: only refs git already has.
+ */
+async function branchBase(repo: string): Promise<BranchBase> {
+  for (const name of await baseNames(repo)) {
+    const local = await refSha(repo, `refs/heads/${name}`);
+    const remote = await refSha(repo, `refs/remotes/origin/${name}`);
+    if (!local && !remote) continue;
+    if (local && !remote) return { ref: name, sha: local, why: `no origin/${name} known locally` };
+    if (!local && remote) {
+      return { ref: `origin/${name}`, sha: remote, why: `no local ${name}` };
+    }
+    if (local === remote) {
+      return { ref: name, sha: local!, why: `${name} and origin/${name} are the same commit` };
+    }
+    if (await containsCommit(repo, remote!, local!)) {
+      return { ref: name, sha: local!, why: `local ${name} is ahead of origin/${name}` };
+    }
+    if (await containsCommit(repo, local!, remote!)) {
+      return { ref: `origin/${name}`, sha: remote!, why: `origin/${name} is ahead of local ${name}` };
+    }
+    return { ref: name, sha: local!, why: `${name} and origin/${name} diverged — keeping local` };
   }
+  // Last resort. HEAD is the trunk in a fresh repo and somebody else's change
+  // branch in a busy one, and nothing offline tells the two apart — so name the
+  // branch being built on instead of hiding it behind the word "HEAD".
+  const head = await refSha(repo, 'HEAD');
+  const on = await currentBranch(repo);
+  return {
+    ref: 'HEAD',
+    sha: head ?? '',
+    why: `no default branch found — branching from the checked-out ${on ? `branch ${on}` : 'detached HEAD'}; its commits come along`,
+  };
+}
+
+interface MergeEvidence extends BranchBase {
+  merged: boolean;
+  /** Why there is no evidence — only set when `merged` is false. */
+  missing?: string;
+}
+
+/**
+ * Local evidence that a change landed: the change branch is contained in the
+ * repo's default branch, which has moved past it. Equality proves nothing —
+ * that is equally a branch just created and a fast-forward — and absence
+ * proves nothing either: a squash, or a merge that only happened on the
+ * remote, leaves no local trace. Offline; never authority to refuse. Null when
+ * there is no default branch to check against.
+ */
+async function mergedLocally(repo: string, slug: string): Promise<MergeEvidence | null> {
   const base = await branchBase(repo);
-  await gitRun(repo, base === 'HEAD' ? ['switch', '-c', slug] : ['switch', '-c', slug, base]);
-  say(`${key}: branched ${slug} from ${base}`);
+  if (!base.sha || base.ref === 'HEAD') return null;
+  const head = await refSha(repo, `refs/heads/${slug}`);
+  if (head === null) return { ...base, merged: false, missing: `no local branch ${slug}` };
+  if (head === base.sha) {
+    return {
+      ...base,
+      merged: false,
+      missing: `${slug} and ${base.ref} are the same commit — a fresh branch looks exactly like a fast-forward`,
+    };
+  }
+  if (await containsCommit(repo, head, base.sha)) return { ...base, merged: true };
+  return { ...base, merged: false, missing: `${slug} is not contained in ${base.ref} here` };
+}
+
+const hasOrigin = (repo: string): Promise<boolean> =>
+  gitRun(repo, ['remote']).then(
+    (s) => s.split('\n').includes('origin'),
+    () => false,
+  );
+
+/** Absolute path of a change repo key, or null when nothing declares it. */
+function repoAbs(brain: string, cfg: Config, key: string): string | null {
+  const entry = cfg.repos[key] ?? (key === 'brain' ? { path: '.' } : undefined);
+  return entry ? resolve(brain, entry.path) : null;
+}
+
+/** Paths git lists (tab-indented) in a "would be overwritten by checkout" abort. */
+const blockedPaths = (message: string): string[] =>
+  [...message.matchAll(/^\t(.+?)\s*$/gm)].map((m) => m[1]);
+
+/**
+ * Switch `repo` onto the change branch, carrying `carry` (repo-relative paths,
+ * the change's own declaration files) across the switch: git must never abort
+ * on the files the lifecycle itself just wrote. Anything else that blocks the
+ * switch is refused by name, with the command that unblocks it.
+ */
+async function ensureBranch(
+  repo: string,
+  slug: string,
+  key: string,
+  carry: string[],
+): Promise<void> {
+  const exists = (await refSha(repo, `refs/heads/${slug}`)) !== null;
+  const base = exists ? null : await branchBase(repo);
+  const held = new Map<string, string>();
+  for (const rel of carry) {
+    const abs = join(repo, rel);
+    if (!existsSync(abs)) continue;
+    held.set(rel, await readFile(abs, 'utf8'));
+    await rm(abs);
+  }
+  try {
+    await gitRun(repo, base ? ['switch', '-c', slug, base.ref] : ['switch', slug]);
+  } catch (e) {
+    const blocked = blockedPaths((e as Error).message);
+    const list = blocked.length > 0 ? blocked.join(' ') : '.';
+    throw new ChangeError(
+      `${key}: cannot branch ${slug} — uncommitted work would be overwritten: ${list}\n` +
+        `  commit it, or park it: git -C ${repo} stash push -- ${list}\n` +
+        `  then re-run: multivac change apply ${slug}`,
+    );
+  } finally {
+    for (const [rel, text] of held) {
+      await mkdir(dirname(join(repo, rel)), { recursive: true });
+      await writeFile(join(repo, rel), text);
+    }
+  }
+  if (exists) say(`${key}: branch ${slug} already exists — switched to it, reusing`);
+  else say(`${key}: branched ${slug} from ${base!.ref} ${base!.sha.slice(0, 7)} — ${base!.why}`);
+  if (held.size > 0) say(`${key}: carried onto the branch: ${[...held.keys()].join(' ')}`);
 }
 
 /** Greenfield: git init, consumer door, first commit. Branching happens after. */
@@ -194,7 +336,7 @@ async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number
       if (entry.url) await clone(entry.url, abs, key);
       else say(`${key}: missing at ${abs}, no url — greenfield; \`change apply ${slug}\` creates it`);
     } else {
-      say(`${key}: ${abs}`);
+      say(`${key}: ${abs}${entry.isBrain ? ' (brain==code)' : ''}`);
     }
   }
   say('landing order:');
@@ -208,7 +350,14 @@ async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number
         : `invariant ${id}: not in invariants.md — add the row or drop it from the change`,
     );
   }
-  for (const id of change.invariants.adds) say(`invariant ${id}: new — add its row before close`);
+  for (const id of change.invariants.adds) {
+    const st = states.get(id);
+    say(
+      st
+        ? `invariant ${id}: already in invariants.md (${st}) — not new; move it to touches, or pick a free id`
+        : `invariant ${id}: new — add its row before close`,
+    );
+  }
   const anchored = await anchoredClaimIds(brain);
   for (const c of change.claims) {
     if (!anchored.has(c.id)) {
@@ -237,7 +386,10 @@ async function cmdApply(
       if (entry.url) await clone(entry.url, abs, key);
       else await greenfield(abs, key, slug, cfg);
     }
-    await ensureBranch(abs, slug, key);
+    // The declaration file lives in the brain and belongs to this change: it
+    // rides along instead of blocking the switch that the lifecycle asked for.
+    const carry = abs === resolve(brain) ? [relative(brain, changePath(brain, slug))] : [];
+    await ensureBranch(abs, slug, key, carry);
     parsed.change.repos[key].status = bump(parsed.change.repos[key].status, 'branched');
     await saveChange(brain, parsed);
   }
@@ -277,7 +429,17 @@ async function cmdLand(
       }
       change.repos[landed].status = 'landed';
       await saveChange(brain, parsed);
-      say(`${landed}: recorded as landed`);
+      const abs = repoAbs(brain, cfg, landed);
+      const ev = abs && existsSync(abs) ? await mergedLocally(abs, slug) : null;
+      if (ev?.merged) {
+        say(`${landed}: recorded as landed — ${slug} is merged into ${ev.ref} ${ev.sha.slice(0, 7)}`);
+      } else {
+        say(
+          `${landed}: recorded as landed — recording without evidence: ` +
+            `${ev?.missing ?? 'no local default branch to check a merge against'} ` +
+            '(a squash or a remote-only merge looks like this too)',
+        );
+      }
     } else {
       say(`${landed}: already landed`);
     }
@@ -287,9 +449,21 @@ async function cmdLand(
     say(`stage ${i + 1} [${s.state}] ${s.repos.map((k) => `${k}:${change.repos[k].status}`).join(' ')}`);
     if (s.state === 'ready') {
       for (const k of s.repos.filter((k) => change.repos[k].status !== 'landed')) {
-        const abs = cfg.repos[k] ? resolve(brain, cfg.repos[k].path) : k;
-        say(`  ${k}: git -C ${abs} push -u origin ${slug}`);
-        say(`  ${k}: open MR ${slug} -> main (state the landing order in the description)`);
+        const abs = repoAbs(brain, cfg, k) ?? k;
+        const ev = existsSync(abs) ? await mergedLocally(abs, slug) : null;
+        if (ev?.merged) {
+          say(`  ${k}: ${slug} is already merged into ${ev.ref} — record it: multivac change land ${slug} --landed ${k}`);
+          continue;
+        }
+        // A repo with no origin lands locally; telling it to push is noise.
+        if (await hasOrigin(abs)) {
+          say(`  ${k}: git -C ${abs} push -u origin ${slug}`);
+          say(`  ${k}: open MR ${slug} -> ${ev?.ref ?? 'main'} (state the landing order in the description)`);
+        } else {
+          say(
+            `  ${k}: no origin remote — land locally: git -C ${abs} switch ${ev?.ref ?? 'main'} && git merge --no-ff ${slug}`,
+          );
+        }
         say(`  ${k}: once merged: multivac change land ${slug} --landed ${k}`);
       }
     }
@@ -330,6 +504,10 @@ async function cmdClose(
   await runSdd(cfg, brain, 'archive', slug, noSdd);
   const dest = await archiveChange(brain, parsed);
   say(`archived -> ${relative(brain, dest)}`);
+  // The rename is a working-tree edit like any other: say so, with the command.
+  say(
+    `archived — commit this: git -C ${brain} add -A changes && git commit -m "Archive the ${slug} change"`,
+  );
   if (cfg.grapher) {
     say(`graph: refresh with \`${cfg.grapher} update .\` in the changed repos`);
   }

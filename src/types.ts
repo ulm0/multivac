@@ -3,8 +3,17 @@
 /** Anchor evaluation modes. `count` carries its N in Anchor.count. */
 export type Mode = 'present' | 'absent' | 'unique' | 'count';
 
-/** Per-leg verify states. */
-export type LegState = 'ok' | 'moved' | 'broken' | 'vacuous' | 'unevaluated';
+/**
+ * Per-leg verify states. `pending` is a claim an open change declares before
+ * its code exists: informational, never blocking, never self-healed.
+ */
+export type LegState =
+  | 'ok'
+  | 'pending'
+  | 'moved'
+  | 'broken'
+  | 'vacuous'
+  | 'unevaluated';
 
 /** One declared repo in .multivac/config.yml. Bare string = { path }. */
 export interface RepoEntry {
@@ -12,6 +21,12 @@ export interface RepoEntry {
   url?: string;
   grapher?: string;
   channel?: string;
+  /**
+   * brain==code: the path resolves to the brain root, so this entry IS the
+   * brain. Set by loadConfig. Such an entry carries the brain door, is
+   * reached through the implicit `brain` handle, and has no mount to pin.
+   */
+  isBrain?: boolean;
 }
 
 /** Parsed .multivac/config.yml with defaults applied. */

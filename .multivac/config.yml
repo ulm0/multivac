@@ -1,9 +1,9 @@
 # multivac configuration — seeded by `multivac init`.
 # Edit directly; adopting a new agent later is one line here + `multivac doors`.
-# Single-repo ecosystem: the brain IS the code repo. Anchors target the
-# implicit `brain` key; `self` exists so the change lifecycle can declare
-# changes that land in this very repo.
+# brain==code: this repo is both the brain and the code it governs.
+# `brain: .` says so — anchors target `brain:<glob>`, the change lifecycle
+# branches here, and there is no mount or pin to check.
 doors: [agents]
 authorities: [published, specified, open]
 repos:
-  self: .
+  brain: .

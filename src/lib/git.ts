@@ -29,6 +29,16 @@ export async function lsFiles(repo: string): Promise<string[]> {
   return out.split('\0').filter(Boolean);
 }
 
+/**
+ * Untracked, non-ignored files, repo-relative. Only ever a hint: a glob that
+ * matches nothing tracked but hits one of these means `git add`, not a broken
+ * glob.
+ */
+export async function untrackedFiles(repo: string): Promise<string[]> {
+  const out = await run(repo, ['ls-files', '-z', '--others', '--exclude-standard']);
+  return out.split('\0').filter(Boolean);
+}
+
 export async function headSha(repo: string): Promise<string> {
   return run(repo, ['rev-parse', 'HEAD']);
 }

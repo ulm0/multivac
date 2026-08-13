@@ -23,7 +23,8 @@ checks them on every commit.
 <!-- @anchor MV-05 brain:src/lib/regex.ts /is not POSIX ERE/ -->
 <!-- @anchor MV-05 brain:src/lib/regex.ts /RegexDialectError/ -->
 | MV-06 | A broken or vacuous leg in a blocking mode exits 1 — the exit matrix has no second answer. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
-<!-- @anchor MV-06 brain:src/commands/verify.ts /blockingBroken > 0/ -->
+<!-- @anchor MV-06 brain:src/commands/verify.ts /cfg\.blocking\.includes/ -->
+<!-- @anchor MV-06 brain:src/commands/verify.ts /gating\.size > 0/ -->
 | MV-07 | The tombstone cannot be unblocked: config refuses a `blocking:` list without `absent`. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
 <!-- @anchor MV-07 brain:src/lib/config.ts /must include "absent"/ -->
 | MV-08 | Installs are pnpm-only, guarded at preinstall. | specified | active | 2026-08-13 | [package.json](package.json) |
@@ -40,3 +41,76 @@ checks them on every commit.
 <!-- @anchor MV-11 brain:src/lib/config.ts /strict_pre_push/ -->
 <!-- @anchor MV-11 brain:src/commands/doors.ts /strictPrePush/ -->
 <!-- @anchor MV-11 brain:test/doors/doors.test.ts /strict_pre_push/ -->
+| MV-12 | A repo entry whose path resolves to the brain root IS the brain: brain door, never a consumer door, and no mount or pin check. `brain` is a first-class repo key in config, change files and anchors; `*` stays reserved. Spelling is not identity: two keys naming one tree — through `.`, `..` or a symlink — are one evaluation target, so a `*` leg never counts the same file twice. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-12 brain:src/lib/config.ts /const isBrain = samePath/ -->
+<!-- @anchor MV-12 brain:src/lib/paths.ts /export const samePath/ -->
+<!-- @anchor MV-12 brain:src/anchor/evaluate.ts /const key = realPath/ -->
+<!-- @anchor MV-12 brain:src/commands/doors.ts /entry\.isBrain/ -->
+<!-- @anchor MV-12 brain:src/commands/doctor.ts /brain==code/ -->
+<!-- @anchor MV-12 brain:src/commands/change.ts /reserved handle for the brain/ -->
+<!-- @anchor MV-12 brain:test/repos/brain-first-class.test.ts /brain==code/ -->
+<!-- @anchor MV-12 brain:test/repos/brain-first-class.test.ts /a symlinked alias is the same tree/ -->
+| MV-13 | `change apply` bases each branch on the newer of the default branch and its remote-tracking ref, offline, and prints the base with its sha and why. The default branch is what git already knows — `origin/HEAD`, then `init.defaultBranch`, then main, then master — and only with none of them does it fall back to HEAD, naming the checked-out branch it is building on. The change's own declaration file is carried across the switch, anything else blocking it is refused by name with the unblocking command, and an existing branch is reused. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-13 brain:src/commands/change.ts /merge-base.*--is-ancestor/ -->
+<!-- @anchor MV-13 brain:src/commands/change.ts /function baseNames/ -->
+<!-- @anchor MV-13 brain:src/commands/change.ts /branching from the checked-out/ -->
+<!-- @anchor MV-13 brain:src/commands/change.ts /carried onto the branch/ -->
+<!-- @anchor MV-13 brain:src/commands/change.ts /uncommitted work would be overwritten/ -->
+<!-- @anchor MV-13 brain:test/change/apply-base.test.ts /local main is ahead/ -->
+<!-- @anchor MV-13 brain:test/change/apply-base.test.ts /neither main nor master/ -->
+| MV-14 | The hook shim resolves a runnable multivac in order — `mvac` on PATH, `npx --no-install multivac`, repo-local `node dist/cli.js` found from the hook itself — and with none of them warns on stderr and exits 0, never blocking the commit. Runnable means installed: a `dist/` with no `node_modules` beside it is not a runner, because node exits 1 on its first bare import and that exit blocks the commit. `doctor` reports the same order: hooks active (naming the runner) or INACTIVE with the fix. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-14 brain:src/hooks/install.ts /exec npx --no-install multivac/ -->
+<!-- @anchor MV-14 brain:src/hooks/install.ts /root\/dist\/cli\.js/ -->
+<!-- @anchor MV-14 brain:src/hooks/install.ts /-d "\$root\/node_modules"/ -->
+<!-- @anchor MV-14 brain:src/commands/doctor.ts /findRunner/ -->
+<!-- @anchor MV-14 brain:test/init/hook-shim.test.ts /never wedge a commit/ -->
+<!-- @anchor MV-14 brain:test/init/hook-shim.test.ts /never a blocked commit/ -->
+| MV-15 | Claim prose survives the frontmatter: any statement — colons like `staleness: block`, hashes, quotes, newlines, leading dashes — round-trips through serialize/parse unchanged and unreflowed, and a frontmatter YAML error names the offending line and the quoting fix instead of the raw parser message. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-15 brain:src/change/file.ts /lineWidth:[[:space:]]*0/ -->
+<!-- @anchor MV-15 brain:src/change/file.ts /quotedRewrite/ -->
+<!-- @anchor MV-15 brain:test/change/file.test.ts /statement:[[:space:]]staleness:[[:space:]]block/ -->
+| MV-16 | When an anchor's glob matches no tracked file but an untracked file on disk would match it, verify says the file exists untracked and names `git add <path>`, never "fix the glob", and no self-heal rewrites that glob elsewhere. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-16 brain:src/lib/git.ts /--others/ -->
+<!-- @anchor MV-16 brain:src/anchor/evaluate.ts /file exists but is untracked/ -->
+<!-- @anchor MV-16 brain:test/verify/verify.test.ts /not "fix the glob"/ -->
+| MV-17 | A claim listed by an open `changes/<slug>.md` is pending: its failing legs report as pending naming that change, never block (not even under `--strict`, not even in a blocking mode), and are never chased by self-heal. A closed or archived change confers nothing. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-17 brain:src/commands/verify.ts /openChangeClaims/ -->
+<!-- @anchor MV-17 brain:src/anchor/evaluate.ts /pendingBy/ -->
+<!-- @anchor MV-17 brain:test/verify/verify.test.ts /confers nothing/ -->
+| MV-18 | The lifecycle reports what it knows: `plan` checks `invariants.adds` against the law table the way it checks touches and retires; `land` records `--landed` against local evidence — the change branch contained in the default branch — and says "recording without evidence" when it has none; `close` ends by naming the commit that stores the archive. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-18 brain:src/commands/change.ts /already in invariants\.md/ -->
+<!-- @anchor MV-18 brain:src/commands/change.ts /recording without evidence/ -->
+<!-- @anchor MV-18 brain:src/commands/change.ts /archived — commit this/ -->
+<!-- @anchor MV-18 brain:test/change/lifecycle-polish.test.ts /recording without evidence/ -->
+| MV-19 | The anchor include/exclude globs are picomatch patterns over repo-relative paths (`**` crosses directories, `{a,b}` alternates, dotfiles match) — stated in the design and the site's anchor grammar, and named in the parse error that rejects a malformed repo spec. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-19 brain:src/anchor/parse.ts /picomatch patterns/ -->
+<!-- @anchor MV-19 brain:DESIGN.md /glob dialect is picomatch/ -->
+<!-- @anchor MV-19 brain:site/content/docs/guide/writing-anchors.md /picomatch pattern/ -->
+<!-- @anchor MV-19 brain:test/anchor/parse.test.ts /picomatch/ -->
+| MV-20 | One predicate decides whether a diagnostic gates, and every printed number and the exit code read it: a line marked blocking always exits 1, a broken or vacuous leg that is not marked never gates on its own, and the summary line counts exactly the marked lines — `--strict` included. A claim an open change holds pending is named in that summary too: exit 0 is the grace, silence is not. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-20 brain:src/commands/verify.ts /function legGates/ -->
+<!-- @anchor MV-20 brain:src/commands/verify.ts /gating\.has\(l\)/ -->
+<!-- @anchor MV-20 brain:src/commands/verify.ts /const blocking = gating\.size \+ staleBlocking/ -->
+<!-- @anchor MV-20 brain:src/commands/verify.ts /claim.*held pending/ -->
+<!-- @anchor MV-20 brain:test/verify/verify.test.ts /cannot disagree/ -->
+<!-- @anchor MV-20 brain:test/verify/verify.test.ts /the same predicate the markers do/ -->
+| MV-21 | `doctor` names the untracked, non-ignored files that look build-critical — a config file at the repo root, a path a `package.json` script names, a path an anchor's include glob covers — as a warning saying `untracked — git add or ignore`. It never gates: doctor's exit code stays the config-validity answer. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-21 brain:src/commands/doctor.ts /untracked — git add or ignore/ -->
+<!-- @anchor MV-21 brain:src/commands/doctor.ts /function buildCritical/ -->
+<!-- @anchor MV-21 brain:test/doctor/doctor.test.ts /untracked — git add or ignore/ -->
+| MV-22 | multivac is MIT licensed: `LICENSE` carries the MIT text and the copyright holder, `package.json` declares `"license": "MIT"`, and the README and the site footer say so and point at the file. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-22 brain:LICENSE /Copyright \(c\) 2026 Pierre Ugaz/ unique -->
+<!-- @anchor MV-22 brain:package.json /"license": "MIT"/ -->
+<!-- @anchor MV-22 brain:README.md /MIT — see \[LICENSE\]/ -->
+<!-- @anchor MV-22 brain:site/i18n/en.yaml /MIT licensed/ -->
+<!-- @anchor MV-22 brain:test/invariants/license.test.ts /license is MIT in both/ -->
+| MV-23 | SQL statement splitting breaks only on a semicolon outside every literal, dollar-quoted body and comment: `''` escapes keep a literal open, a `$$`/`$tag$` body is closed by its own tag, and a comment's semicolons and quotes are inert. A `$` following an identifier character opens no body at all — it belongs to the identifier — so `a$b$c` does not swallow the rest of the file into one statement. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-23 brain:src/anchor/normalize.ts /function dollarTag/ -->
+<!-- @anchor MV-23 brain:src/anchor/normalize.ts /function endOfQuoted/ -->
+<!-- @anchor MV-23 brain:test/anchor/normalize.test.ts /a function body keeps its semicolons/ -->
+<!-- @anchor MV-23 brain:test/anchor/normalize.test.ts /opens no dollar body/ -->
+| MV-24 | Every git repo a test creates is initialised on an explicit `main` through the shared `gitInit` helper, so no assertion in the suite depends on the host's `init.defaultBranch`. | specified | active | 2026-08-13 | [DESIGN.md](DESIGN.md) |
+<!-- @anchor MV-24 brain:test/helpers/fixture.ts /export function gitInit/ unique -->
+<!-- @anchor MV-24 brain:test/helpers/fixture.ts /'init', '-q', '-b', 'main'/ -->
+<!-- @anchor MV-24 brain:test/** !test/helpers/fixture.ts /'init', '-q'/ absent -->
+<!-- @anchor MV-24 brain:test/helpers/scaffold.test.ts /whatever the host init\.defaultBranch says/ -->

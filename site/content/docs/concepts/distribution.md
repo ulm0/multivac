@@ -13,6 +13,12 @@ Every code repo mounts the brain — default folder `.brain/`, configurable
 per ecosystem. An agent entering a consumer repo finds the brain there, and
 the consumer door tells it what binds and that the change may cross repos.
 
+One exception, and it is the common one for a single project: when the brain
+IS the code repo (`repos: { brain: . }`, see
+[Getting started](../../guide/getting-started/)), there is nothing to mount
+and nothing to pin. That repo keeps the brain door, and mount, pin and
+staleness checks skip it entirely.
+
 ## Pin + staleness
 
 A pinned mount gives reproducible builds and stale docs. Always-latest gives

@@ -57,6 +57,61 @@ test('validation rejects bad status, unknown and duplicate landing keys', () => 
     e instanceof ChangeError && e.message.includes('missing from landing_order'));
 });
 
+test('any claim prose round-trips: colons, hashes, quotes, newlines, dashes', () => {
+  const prose = [
+    'staleness: block',
+    'a # not a comment',
+    'quotes "double" and \'single\'',
+    'first line\nsecond line',
+    '- leading dash',
+    '  padded   inside  ',
+    'a statement long enough to be folded by the default eighty-column line width, holding a run of words that must come back byte for byte',
+  ];
+  const c: ChangeFile = {
+    ...sample,
+    claims: prose.map((statement, i) => ({ id: `CLM-${i}`, statement })),
+  };
+  const text = serializeChange(c, '# body\n');
+  const back = parseChange(text, 't');
+  assert.deepEqual(back.change.claims.map((x) => x.statement), prose);
+  // and again: what was written is what parses next time
+  assert.equal(serializeChange(back.change, back.body), text);
+  // no folding: every statement stays on the line it started on
+  assert.ok(text.includes('statement: "staleness: block"'));
+});
+
+test('a colon in unquoted prose is an error naming the line and the quoted fix', () => {
+  const broken = `---
+slug: points-expire
+status: open
+claims:
+  - id: CLM-1
+    statement: staleness: block
+---
+
+# body
+`;
+  assert.throws(
+    () => parseChange(broken, 'changes/points-expire.md'),
+    (e: unknown) => {
+      assert.ok(e instanceof ChangeError, 'ChangeError');
+      // line 6 of the file, its source, and the exact rewrite to type
+      assert.match(e.message, /at line 6/);
+      assert.match(e.message, /6 \| {5}statement: staleness: block/);
+      // only our line number, not the parser's frontmatter-relative one
+      assert.doesNotMatch(e.message, /line 5/);
+      assert.ok(e.message.includes('statement: "staleness: block"'), e.message);
+      return true;
+    },
+  );
+});
+
+test('a frontmatter error with no quotable line still teaches quoting', () => {
+  const broken = '---\nslug: "unterminated\nstatus: open\n---\n\n# body\n';
+  assert.throws(() => parseChange(broken, 't'), (e: unknown) =>
+    e instanceof ChangeError && /block scalar/.test(e.message));
+});
+
 test('missing frontmatter is a ChangeError that says what to do', () => {
   assert.throws(() => parseChange('# no frontmatter\n', 't'), (e: unknown) =>
     e instanceof ChangeError && e.message.includes('---'));
@@ -88,7 +143,7 @@ function report(states: Record<string, 'ok' | 'moved' | 'broken'>): VerifyReport
         ? [{ anchor: {} as never, state, detail: 'add the marker back to src/x.ts' }]
         : [],
     })),
-    counts: { ok: 0, moved: 0, broken: 0, vacuous: 0, unevaluated: 0 },
+    counts: { ok: 0, pending: 0, moved: 0, broken: 0, vacuous: 0, unevaluated: 0 },
     blockingBroken: 0,
     exitCode: 0,
   };

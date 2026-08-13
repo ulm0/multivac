@@ -1,11 +1,14 @@
 // Legs -> LegResult -> ClaimResult. AND semantics: every leg must hold,
 // the claim inherits the worst leg. `moved` self-heals: a present leg with
 // zero in-glob matches and exactly one match elsewhere rewrites its glob
-// in the source markdown.
+// in the source markdown. A claim an open change declares is `pending`
+// instead of failing: declare-first is the flow, not a regression.
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import type { Anchor, ClaimResult, LegResult, LegState } from '../types.js';
+import { filterFiles } from '../lib/glob.js';
+import { realPath } from '../lib/paths.js';
 import { RepoScanner, scanLeg, scanWholeRepo } from './match.js';
 
 /** A declared repo resolved for this run. dir null = not on disk. */
@@ -18,14 +21,17 @@ export interface EvaluateOptions {
   brainDir: string;
   /** false = --check: report moved without rewriting. */
   write: boolean;
+  /** claim id -> slug of the open change that declares it. Those legs pend. */
+  pendingBy?: Map<string, string>;
 }
 
 const RANK: Record<LegState, number> = {
   ok: 0,
-  unevaluated: 1,
-  moved: 2,
-  vacuous: 3,
-  broken: 4,
+  pending: 1,
+  unevaluated: 2,
+  moved: 3,
+  vacuous: 4,
+  broken: 5,
 };
 
 interface Target {
@@ -50,6 +56,22 @@ async function rewriteGlob(a: Anchor, newGlob: string, brainDir: string): Promis
   await writeFile(path, lines.join('\n'));
 }
 
+/**
+ * verify sees the world through `git ls-files`, so a file that exists but was
+ * never added is invisible and every empty-glob message says "fix the glob" —
+ * the wrong thing to debug. Returns the `git add` hint when the same globs hit
+ * an untracked file, null otherwise.
+ */
+async function untrackedHint(a: Anchor, targets: Target[]): Promise<string | null> {
+  for (const t of targets) {
+    const hits = filterFiles(await t.scanner.untracked(), a.include, a.excludes);
+    if (hits.length === 0) continue;
+    const more = hits.length > 3 ? ` (+${hits.length - 3} more)` : '';
+    return `file exists but is untracked — \`git add ${hits.slice(0, 3).join(' ')}\`${more}`;
+  }
+  return null;
+}
+
 async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Promise<LegResult> {
   if (targets.length === 0) {
     return {
@@ -72,17 +94,27 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
   const list =
     matches.slice(0, 3).map(label).join(', ') + (n > 3 ? ` +${n - 3} more` : '');
   const where = star ? 'any declared repo' : a.repoKey;
-  const leg = (state: LegState, detail?: string, movedTo?: string): LegResult => ({
-    anchor: a,
-    state,
-    matchCount: n,
-    movedTo,
-    detail,
-  });
+  // Declared by an open change: the code is not written yet, by design.
+  const pendingSlug = opts.pendingBy?.get(a.claimId);
+  const leg = (state: LegState, detail?: string, movedTo?: string): LegResult =>
+    pendingSlug !== undefined && state !== 'ok'
+      ? {
+          anchor: a,
+          state: 'pending',
+          matchCount: n,
+          detail: `declared by open change ${pendingSlug} — pending${detail ? `; ${detail}` : ''}`,
+        }
+      : { anchor: a, state, matchCount: n, movedTo, detail };
+  // Empty glob: is the file simply not added yet?
+  const untracked = globFileCount === 0 ? await untrackedHint(a, targets) : null;
 
   switch (a.mode) {
     case 'present': {
       if (n > 0) return leg('ok');
+      // Both of these also mean: do not self-heal. Rewriting a glob that is
+      // right (the file is untracked) or not yet due (pending) chases noise.
+      if (untracked) return leg('vacuous', untracked);
+      if (pendingSlug !== undefined) return leg('broken');
       // Self-heal: search the whole repo(s) for the one place it moved to.
       const candidates: TaggedMatch[] = [];
       for (const t of targets) {
@@ -121,7 +153,8 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
       if (globFileCount === 0) {
         return leg(
           'vacuous',
-          'glob matched no tracked files — a rename greens this tombstone silently; fix the glob',
+          untracked ??
+            'glob matched no tracked files — a rename greens this tombstone silently; fix the glob',
         );
       }
       if (n === 0) return leg('ok');
@@ -129,7 +162,10 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
     }
     case 'unique': {
       if (globFileCount === 0) {
-        return leg('vacuous', 'glob matched no tracked files — fix the glob so the check can see');
+        return leg(
+          'vacuous',
+          untracked ?? 'glob matched no tracked files — fix the glob so the check can see',
+        );
       }
       if (n === 1) return leg('ok');
       if (n === 0) {
@@ -142,7 +178,10 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
     }
     case 'count': {
       if (globFileCount === 0) {
-        return leg('vacuous', `glob matched no tracked files — count=${a.count} cannot ratchet; fix the glob`);
+        return leg(
+          'vacuous',
+          untracked ?? `glob matched no tracked files — count=${a.count} cannot ratchet; fix the glob`,
+        );
       }
       if (n === a.count) return leg('ok');
       return leg(
@@ -172,10 +211,21 @@ export async function evaluateAnchors(
     }
     return s;
   };
+  // Two keys can name one directory (brain==code, or a symlinked alias):
+  // `*` scans it once. Spelling is not identity — compare the real paths, or
+  // `unique` reports the same file:line twice and `count=N` doubles.
+  const seenDirs = new Set<string>();
+  const starHandles = handles.filter((h) => {
+    if (h.dir === null) return true;
+    const key = realPath(h.dir);
+    if (seenDirs.has(key)) return false;
+    seenDirs.add(key);
+    return true;
+  });
   const claims = new Map<string, ClaimResult>();
   for (const a of anchors) {
     const wanted =
-      a.repoKey === '*' ? handles : handles.filter((h) => h.key === a.repoKey);
+      a.repoKey === '*' ? starHandles : handles.filter((h) => h.key === a.repoKey);
     const targets: Target[] = wanted
       .filter((h): h is RepoHandle & { dir: string } => h.dir !== null)
       .map((h) => ({ key: h.key, scanner: scanner(h.dir) }));
