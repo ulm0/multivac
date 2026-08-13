@@ -2,10 +2,13 @@
 // offline, sub-second. Exit matrix: blocking modes (absent/count) gate
 // always; present/unique gate only under --strict; moved self-heals, exit 0.
 
-import { existsSync, readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
+import { changesDir, parseChange } from '../change/file.js';
 import { loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
 import { lastFetchAge, lsTreeGitlink, run as git } from '../lib/git.js';
+import { samePath } from '../lib/paths.js';
 import { dim, green, red, say, warn, yellow } from '../lib/out.js';
 import {
   collectBrainAnchors,
@@ -19,35 +22,77 @@ import type {
   Command,
   CommandContext,
   Config,
+  LegResult,
   LegState,
   VerifyReport,
 } from '../types.js';
 
-const STATE_ORDER: LegState[] = ['ok', 'moved', 'broken', 'vacuous', 'unevaluated'];
+const STATE_ORDER: LegState[] = [
+  'ok',
+  'pending',
+  'moved',
+  'broken',
+  'vacuous',
+  'unevaluated',
+];
 
 const paint = (state: LegState, s: string): string =>
   state === 'ok'
     ? green(s)
     : state === 'moved'
       ? yellow(s)
-      : state === 'unevaluated'
+      : state === 'unevaluated' || state === 'pending'
         ? dim(s)
         : red(s);
+
+/**
+ * claim id -> slug of the open change declaring it. Declare-first is the
+ * lifecycle's flow, so those claims are pending, not regressions. Only
+ * `changes/<slug>.md` counts: `changes/archive/` is closed and confers
+ * nothing. A change file that will not parse is `change`'s diagnostic to
+ * raise, never a reason for verify to say anything.
+ */
+async function openChangeClaims(brainDir: string): Promise<Map<string, string>> {
+  const dir = changesDir(brainDir);
+  const out = new Map<string, string>();
+  let names: string[];
+  try {
+    names = readdirSync(dir).filter((n) => n.endsWith('.md'));
+  } catch {
+    return out;
+  }
+  for (const name of names) {
+    try {
+      const { change } = parseChange(await readFile(join(dir, name), 'utf8'), name);
+      if (change.status !== 'open') continue;
+      for (const c of change.claims) if (!out.has(c.id)) out.set(c.id, change.slug);
+    } catch {
+      continue;
+    }
+  }
+  return out;
+}
 
 function fmtAge(ms: number): string {
   const h = Math.round(ms / 3_600_000);
   return h >= 24 ? `${Math.round(h / 24)}d` : h >= 1 ? `${h}h` : `${Math.round(ms / 60_000)}m`;
 }
 
+/**
+ * A printed diagnostic and whether it gates the exit. One record, so the
+ * text and the count can never disagree (DOGFOOD-01 polish 8).
+ */
+interface Diagnostic {
+  text: string;
+  gates: boolean;
+}
+
 /** Offline pin staleness: mount gitlink in each repo vs the brain's channel ref. */
-async function stalenessLines(
-  brainDir: string,
-  cfg: Config,
-): Promise<{ lines: string[]; staleCount: number }> {
-  const lines: string[] = [];
-  let staleCount = 0;
+async function stalenessLines(brainDir: string, cfg: Config): Promise<Diagnostic[]> {
+  const lines: Diagnostic[] = [];
   const gate = cfg.staleness === 'block';
   for (const [key, entry] of Object.entries(cfg.repos)) {
+    if (entry.isBrain) continue; // brain==code: no mount here, nothing to pin
     const channel = entry.channel ?? cfg.channel;
     if (!channel) continue;
     const dir = resolve(brainDir, entry.path);
@@ -61,10 +106,12 @@ async function stalenessLines(
       // Channel ref unknown locally: offline stays a report, never a guess.
       // Silence would sell false confidence under staleness: block.
       if (gate) {
-        lines.push(
-          `  stale?    ${key}: channel ${channel} unknown locally — reported only, ` +
+        lines.push({
+          text:
+            `  stale?    ${key}: channel ${channel} unknown locally — reported only, ` +
             'cannot gate offline; `multivac repos sync` fetches it',
-        );
+          gates: false,
+        });
       }
       continue;
     }
@@ -77,16 +124,19 @@ async function stalenessLines(
     // cannot be computed ('?', pin object unknown locally) reports, never
     // gates — the same never-guess rule as an unresolvable channel ref.
     if (behind === '0') continue;
-    if (behind !== '?') staleCount++;
-    const gated = gate && behind !== '?';
+    // The one predicate for this line: it gates iff the config blocks AND the
+    // count is real. The text below prints "blocking" from the same boolean.
+    const gates = gate && behind !== '?';
     const age = await lastFetchAge(brainDir).catch(() => null);
     const ageStr = age === null ? 'never fetched' : `last fetch ${fmtAge(age)} ago`;
-    lines.push(
-      `  stale     ${key}: pin ${behind} behind ${channel} · ${ageStr} — ` +
-        `${gated ? 'blocking (staleness: block); ' : ''}run \`multivac repos sync\``,
-    );
+    lines.push({
+      text:
+        `  stale     ${key}: pin ${behind} behind ${channel} · ${ageStr} — ` +
+        `${gates ? 'blocking (staleness: block); ' : ''}run \`multivac repos sync\``,
+      gates,
+    });
   }
-  return { lines, staleCount };
+  return lines;
 }
 
 /** Consumer scope: evaluate one declared repo's anchors (+ `*` scoped to it). */
@@ -138,14 +188,6 @@ const normUrl = (u: string): string =>
     .replace(/^(?:[^@/]+@)?([^:/]+):/, '$1/')
     .toLowerCase();
 
-const real = (p: string): string => {
-  try {
-    return realpathSync(p);
-  } catch {
-    return p;
-  }
-};
-
 /**
  * Which registry key is this consumer checkout? Match by path (the entry
  * resolves to the checkout), by origin url, or by directory basename;
@@ -165,11 +207,10 @@ export async function resolveRepoKey(
     );
   }
   const origin = await git(consumerDir, ['remote', 'get-url', 'origin']).catch(() => null);
-  const consumerReal = real(consumerDir);
   const matched = keys.filter((key) => {
     const e = cfg.repos[key];
     if (e.url && origin && normUrl(e.url) === normUrl(origin)) return true;
-    if (real(resolve(mount, e.path)) === consumerReal) return true;
+    if (samePath(resolve(mount, e.path), consumerDir)) return true;
     return basename(e.path) === basename(consumerDir);
   });
   if (matched.length === 1) return matched[0];
@@ -180,6 +221,25 @@ export async function resolveRepoKey(
   );
 }
 
+/**
+ * THE predicate: does this leg gate the exit? The exit matrix counts it and
+ * the report line prints `· blocking` from it, so a printed line can never
+ * contradict its own gate (DOGFOOD-01 polish 8, the "pin 0 behind" class of
+ * bug). Proposed rows are informational; `pending`, `moved` and
+ * `unevaluated` are not failures; everything else gates in a blocking mode,
+ * or in any mode under --strict.
+ */
+function legGates(
+  leg: LegResult,
+  rowState: string | undefined,
+  cfg: Config,
+  strict: boolean,
+): boolean {
+  if (rowState === 'proposed') return false;
+  if (leg.state !== 'broken' && leg.state !== 'vacuous') return false;
+  return cfg.blocking.includes(leg.anchor.mode) || strict;
+}
+
 interface Evaluated {
   cfg: Config;
   rows: { id: string; state: string }[];
@@ -187,6 +247,10 @@ interface Evaluated {
   allDiags: ParseDiagnostic[];
   states: Map<string, string>;
   claims: ClaimResult[];
+  /** Legs that gate this run, by identity — what the report marks blocking. */
+  gating: Set<LegResult>;
+  /** claim id -> open change holding it pending. Empty in a claim-scoped run. */
+  pendingBy: Map<string, string>;
   report: VerifyReport;
 }
 
@@ -226,33 +290,43 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
   // Scoped: only the consumer checkout is a target — `*` legs see it alone.
   const handles: RepoHandle[] = opts.scope
     ? [{ key: opts.scope.repoKey, dir: opts.scope.dir }]
-    : Object.entries(cfg.repos).map(([key, e]) => {
-        const p = resolve(brainDir, e.path);
-        return { key, dir: existsSync(p) ? p : null };
-      });
+    : Object.entries(cfg.repos)
+        // A declared `brain: .` is the implicit handle pushed below; any
+        // other brain==code key resolves to the brain dir on its own, and
+        // evaluateAnchors scans one directory once for `*` legs.
+        .filter(([key]) => key !== 'brain')
+        .map(([key, e]) => {
+          const p = resolve(brainDir, e.path);
+          return { key, dir: existsSync(p) ? p : null };
+        });
   if (!opts.scope) handles.push({ key: 'brain', dir: brainDir });
 
+  // Pendency is a reporting grace, and the close gate is where it ends: a
+  // claim-scoped run (change close) asks for the unmasked truth.
+  const pendingBy = opts.claimIds ? new Map<string, string>() : await openChangeClaims(brainDir);
   const claims = await evaluateAnchors(evalAnchors, handles, {
     brainDir,
     write: opts.write ?? false,
+    pendingBy,
   });
 
-  // Exit matrix. Proposed rows never block, not even under --strict.
+  // Exit matrix — one loop, one predicate. `blockingBroken` is the headline
+  // number (blocking modes alone); `gating` is what this run actually gates
+  // on, --strict included, and it is what the report marks.
+  const gating = new Set<LegResult>();
   let blockingBroken = 0;
-  let anyBad = false;
   for (const c of claims) {
-    if (states.get(c.claimId) === 'proposed') continue;
+    const rowState = states.get(c.claimId);
     for (const l of c.legs) {
-      if (l.state !== 'broken' && l.state !== 'vacuous') continue;
-      anyBad = true;
-      if (cfg.blocking.includes(l.anchor.mode)) blockingBroken++;
+      if (legGates(l, rowState, cfg, false)) blockingBroken++;
+      if (legGates(l, rowState, cfg, opts.strict === true)) gating.add(l);
     }
   }
-  const exitCode: 0 | 1 =
-    allDiags.length > 0 || blockingBroken > 0 || (opts.strict === true && anyBad) ? 1 : 0;
+  const exitCode: 0 | 1 = allDiags.length > 0 || gating.size > 0 ? 1 : 0;
 
   const counts: Record<LegState, number> = {
     ok: 0,
+    pending: 0,
     moved: 0,
     broken: 0,
     vacuous: 0,
@@ -267,6 +341,8 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
     allDiags,
     states,
     claims,
+    gating,
+    pendingBy,
     report: { claims, counts, blockingBroken, exitCode },
   };
 }
@@ -321,14 +397,20 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
     }
     throw e;
   }
-  const { cfg, rows, anchors, allDiags, states, claims } = ev;
-  const { blockingBroken, exitCode } = ev.report;
+  const { cfg, rows, anchors, allDiags, states, claims, gating } = ev;
+  const { exitCode } = ev.report;
 
-  // Report.
-  if (scope) say(`scoped to repo "${scope.repoKey}" · brain at ${brainDir}`);
+  // Report. Scoped runs evaluate scope-filtered anchors, so the brain-wide
+  // coverage percentage would read as a collapse ("11 claims · 3 anchored
+  // (27%)") when nothing is wrong: say what was counted instead.
   const anchored = rows.filter((r) => anchors.some((a) => a.claimId === r.id)).length;
-  const pct = rows.length ? ` (${Math.round((anchored / rows.length) * 100)}%)` : '';
-  say(`${rows.length} claims · ${anchored} anchored${pct}`);
+  if (scope) {
+    say(`scoped to repo "${scope.repoKey}" · brain at ${brainDir}`);
+    say(`${anchored} of ${rows.length} brain claims anchor into "${scope.repoKey}"`);
+  } else {
+    const pct = rows.length ? ` (${Math.round((anchored / rows.length) * 100)}%)` : '';
+    say(`${rows.length} claims · ${anchored} anchored${pct}`);
+  }
   say('');
   const counts = ev.report.counts;
   for (const s of STATE_ORDER) {
@@ -341,8 +423,15 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
     for (const l of c.legs) {
       if (l.state === 'ok') continue;
       const a = l.anchor;
-      const note =
-        states.get(c.claimId) === 'proposed' ? ' · proposed row — informational, never blocks' : '';
+      // The gate marker comes from the gating set, never from a second
+      // reading of the state: what this line says is what the exit does.
+      const note = gating.has(l)
+        ? ' · blocking'
+        : states.get(c.claimId) === 'proposed'
+          ? ' · proposed row — informational, never blocks'
+          : l.state === 'broken' || l.state === 'vacuous'
+            ? ` · reported only — "${a.mode}" is not in blocking: and this run is not --strict`
+            : '';
       say(
         `  ${paint(l.state, l.state.padEnd(9))} ${c.claimId} [${a.mode}] ${a.file}:${a.line}` +
           `${l.detail ? ` · ${l.detail}` : ''}${note}`,
@@ -353,17 +442,36 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   // concern, meaningless relative to a mounted brain's own paths.
   let staleBlocking = 0;
   if (!scope) {
-    const st = await stalenessLines(brainDir, cfg);
-    for (const line of st.lines) say(line);
-    if (cfg.staleness === 'block') staleBlocking = st.staleCount;
+    for (const d of await stalenessLines(brainDir, cfg)) {
+      say(d.text);
+      if (d.gates) staleBlocking++;
+    }
   }
   const finalExit: 0 | 1 = staleBlocking > 0 ? 1 : exitCode;
+  // The summary counts THE predicate — the same `gating` set the per-leg lines
+  // read for their `· blocking` marker — never a second tally computed with
+  // different arguments. `blockingBroken` answers a different question (blocking
+  // modes alone, --strict ignored) and printing it here made `--strict` runs say
+  // "0 blocking broken · exit 1" under a line marked blocking.
+  const blocking = gating.size + staleBlocking;
+  // A pending claim is a real failure a change file is holding back: exit 0 is
+  // the grace, silence is not. Name what is masked and who masks it.
+  const masking = [
+    ...new Set(claims.filter((c) => c.state === 'pending').map((c) => ev.pendingBy.get(c.claimId))),
+  ].filter((s): s is string => s !== undefined);
   say('');
   say(
-    `${blockingBroken} blocking broken · exit ${finalExit}` +
+    `${blocking} blocking broken · exit ${finalExit}` +
       (allDiags.length ? ` · ${allDiags.length} anchor parse errors` : '') +
       (staleBlocking ? ` · ${staleBlocking} stale pin${staleBlocking > 1 ? 's' : ''} blocking` : ''),
   );
+  if (masking.length > 0) {
+    say(
+      `  ${ev.report.counts.pending} claim${ev.report.counts.pending > 1 ? 's' : ''} held pending ` +
+        `by open change${masking.length > 1 ? 's' : ''} ${masking.join(', ')} — not gating; ` +
+        'close or delete the change to unmask them',
+    );
+  }
   return finalExit;
 }
 

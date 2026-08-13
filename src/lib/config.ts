@@ -1,8 +1,9 @@
 // Load and validate .multivac/config.yml. Every error says how to fix it.
 
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { parse } from 'yaml';
+import { samePath } from './paths.js';
 import type { Config, Mode, RepoEntry } from '../types.js';
 
 export class ConfigError extends Error {}
@@ -107,13 +108,24 @@ export async function loadConfig(brainDir: string): Promise<Config> {
   }
   const repos: Record<string, RepoEntry> = {};
   for (const [k, v] of Object.entries(reposRaw as Record<string, unknown>)) {
-    if (k === 'brain' || k === '*') {
-      // A declared "brain" would collide with the implicit brain handle and
-      // let consumer-scoped verify evaluate the brain's own anchors against
-      // a consumer checkout; "*" already means every repo in anchor legs.
-      fail(`repos.${k === '*' ? '"*"' : k} is a reserved key — rename the repo`);
+    if (k === '*') {
+      fail('repos."*" is a reserved key — "*" means every repo in anchor legs; rename the repo');
     }
-    repos[k] = repoEntry(k, v);
+    const entry = repoEntry(k, v);
+    // brain==code: an entry whose path IS the brain root is the brain itself.
+    // Through a symlink too — otherwise the brain is a "consumer repo" that
+    // gets a consumer door, a mount nag, and a second scan of its own files.
+    const isBrain = samePath(resolve(brainDir, entry.path), brainDir);
+    if (isBrain) entry.isBrain = true;
+    if (k === 'brain' && !isBrain) {
+      // A "brain" key pointing elsewhere collides with the implicit brain
+      // handle: consumer-scoped verify would evaluate the brain's own
+      // anchors against a consumer checkout. `brain: .` is the one meaning.
+      fail(
+        `repos.brain must be the brain itself (path .) — it is "${entry.path}"; rename the repo`,
+      );
+    }
+    repos[k] = entry;
   }
 
   return {

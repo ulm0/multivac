@@ -79,7 +79,7 @@ reference ecosystem already operates by hand.
 ```
 multivac change new "points expire"
 multivac change plan     # which repos, in what order, which invariants it touches
-multivac change apply    # branch per repo from origin/main, edits, commits
+multivac change apply    # branch per repo from the newest default branch, edits, commits
 multivac change land     # MRs respecting the declared order
 multivac change close    # updates the brain and verifies
 ```
@@ -123,6 +123,34 @@ A change whose repos **don't exist yet**: `apply` creates them, with their
 first commit and their door. The brain precedes the code — which is exactly
 starting point 1. No second machinery needed; `apply` must know how to create,
 not only edit.
+
+### Branching is local-first, and says what it did
+
+A brain that has never been pushed is the normal state of a young ecosystem,
+so a merely-existing `origin/main` is not authority. `apply` bases each branch
+on the **newer of the local default branch and its remote-tracking ref**,
+decided by ancestry from refs git already has (no network, same offline rule
+as staleness); diverged histories keep the local side. The chosen base is
+**always printed with its sha and why** — a branch that silently starts ten
+commits in the past is the expensive kind of surprise.
+
+Two corollaries. The change's own declaration file (`changes/<slug>.md`) is
+**carried across the switch**: the lifecycle wrote it, so it can never be the
+thing that aborts the lifecycle. Anything else that would be overwritten is
+refused by name with the exact command that unblocks it — never git's raw
+stderr. And a branch that already exists is switched to and reported: `apply`
+is re-runnable.
+
+### The tool owns the frontmatter, so prose can be prose
+
+A claim statement is a sentence, and sentences contain colons: `staleness:
+block` typed into a value is valid prose and invalid YAML. Since the lifecycle
+is the writer, **the writer does the quoting**: every save serializes through
+one function that quotes what needs quoting and never folds a long statement
+onto continuation lines, so a statement comes back exactly as written. When a
+hand-edited file does break, the error is the teaching kind — the file line,
+the offending source line, and the quoted rewrite to type — never the parser's
+raw complaint about compact mappings.
 
 ### The tool already ran by hand, twice
 
@@ -234,9 +262,31 @@ init` points `core.hooksPath` at a versioned directory —
 `.multivac/hooks/` — so the hook travels with the clone and there is no
 install step to forget.
 
+A versioned hook still needs something to run. The shim resolves a runnable
+multivac in a fixed order — `mvac` on PATH, then `npx --no-install multivac`
+when the package sits in the repo's `node_modules`, then the repo-local build
+`node <repo>/dist/cli.js` located from the hook's own path — so a
+build-from-source clone enforces itself with no global install. When none of
+the three exists the shim warns loudly on stderr and exits 0: a broken
+install degrades enforcement, it never wedges a commit. Because "installed"
+and "enforcing" are then two different states, `doctor` reports both — the
+shims on disk, and whether anything can run them.
+
 The sub-second latency budget, already in the design for session ergonomics,
 becomes mandatory here: a slow `pre-commit` gets `--no-verify`'d once and
 never comes back.
+
+**The blind spot of a git-native model: the file nobody added.** Everything
+here reads the tree through `git ls-files`, so a file that exists on disk and
+was never `git add`ed does not exist for the tool — the repo builds on this
+machine and fails on a fresh checkout, and no claim was ever false. `doctor`
+closes it as a diagnosis, not a gate: it lists the untracked, non-ignored
+files and names the ones that look build-critical — a config file at the repo
+root (`tsconfig*`, `package*`, `*.config.*`, `.*rc`), a path a `package.json`
+script names, or a path an anchor's include glob covers, that last one being
+law about to evaluate against a file git cannot see. The line reads
+`untracked — git add or ignore` and moves no exit code: deciding which of your
+scratch files belongs in the repo is not the tool's call.
 
 ## The four jobs
 
@@ -282,6 +332,12 @@ explicit, one leg per line:
 - **`repo` is the registry key from `.multivac/config.yml`** (`backend`),
   never the directory name (`acme-backend`). `*` covers every declared repo **plus
   the brain itself**.
+- **The glob dialect is picomatch**, matched against repo-relative,
+  `/`-separated paths as `git ls-files` prints them: `**` crosses directory
+  boundaries, `{a,b}` alternates, and dotfiles match (`brain:**` sees
+  `.multivac/config.yml`). It is not shell globbing and not a regex —
+  `src/*.ts` does not see `src/lib/git.ts`; write `src/**/*.ts`. The parse
+  errors that reject a glob say so.
 - **`!<glob>` excludes**, applied after the include glob
   (`backend:** !db/tests/** /secret_key_/ absent`). The surviving file
   set is what gets matched — and what counts toward zero-file (vacuous)
@@ -338,8 +394,12 @@ defects 1–2):
   splits one grant across lines; every single-line `absent` tombstone over
   SQL DDL had a demonstrated in-repo escape. On `.sql` and config files the
   matcher normalizes per statement — whitespace runs, newlines included,
-  collapse to one space — before the regex runs. Line-based `absent` over
-  DDL is unsound and multivac does not offer it.
+  collapse to one space — before the regex runs. The statement boundary is a
+  semicolon *outside* every literal, dollar-quoted body and comment: `''`
+  keeps a literal open, a `$$`/`$tag$` body is closed only by its own tag,
+  and a comment's semicolons and quotes are inert — otherwise a function
+  body would be chopped into halves no tombstone was written against.
+  Line-based `absent` over DDL is unsound and multivac does not offer it.
 - **Append-only history takes the latest definition or the ratchet.**
   `present` over `migrations/*.sql` proves "was built this way", never
   "still is"; `unique` and `count` conflate history with HEAD. Over an
@@ -391,6 +451,14 @@ reporting. Four states, not two:
   files**. For `absent`/`count` this is a **failure**, blocking: a directory
   rename silently greens every tombstone otherwise (verified live in
   Measurement 1). For `present`/`unique` it reports as broken.
+  Zero tracked files, but an **untracked** file on disk the same globs match,
+  is a different sentence: `file exists but is untracked — git add <path>`.
+  The glob is right; git cannot see the file. Self-heal stands down there.
+- **pending** — the claim is listed by an **open** `changes/<slug>.md`: it was
+  declared before its code exists, which is the lifecycle's flow, not a
+  regression. Failing legs print the owning change, never gate (in any mode,
+  strict included), and self-heal never chases them. A closed or archived
+  change confers nothing, and `change close` still demands a genuine `ok`.
 
 One exit matrix, no second answer:
 
@@ -399,6 +467,7 @@ One exit matrix, no second answer:
 | broken or vacuous leg in a blocking mode (`absent`, `count`) | **exit 1** | exit 1 |
 | broken `present` / `unique` | reported, exit 0 | exit 1 |
 | moved (self-healed) | exit 0 | exit 0 |
+| pending (claim of an open change) | exit 0 | exit 0 |
 
 Who invokes what: git hooks (`pre-commit`, `pre-push`) and harness hooks run
 the **default** policy — only blocking modes gate, so a mid-refactor commit
@@ -500,6 +569,31 @@ repos:
 
 `path` for the local layout, `url` for cloning where missing. The object
 form is canonical; a bare string value is shorthand for `{ path: … }`.
+
+**brain==code, the single-repo shape.** A repo entry whose `path` resolves to
+the brain root IS the brain — the shape of every small project. `brain` is
+the reserved key for it, and the blessed idiom is one line:
+
+```yaml
+# brain==code: this repo is both the brain and the code it governs.
+repos:
+  brain: .
+```
+
+Detection is by resolved path, not by key: any key pointing at `.` is the
+brain. It carries the **brain door**, never a consumer door (there is no
+mount to point at); `doctor` reports it as `brain==code (this repo)` and runs
+no mount, pin or staleness check against it; `verify` reaches it through the
+implicit `brain` handle, so `*` legs scan that directory once, not once per
+key; `change` accepts `brain` as a repo key in the change file — declared in
+the config or not — and branches in place. `init` writes the idiom above when
+the repo it initializes already has tracked source, and the commented example
+when it does not.
+
+`brain` and `*` stay reserved: `*` is every repo in an anchor leg, and a
+`brain` key pointing anywhere other than the brain root is refused (it would
+let consumer-scoped verify evaluate the brain's law against a consumer
+checkout). Reserved means *it works*, not merely *it errors*.
 
 **Cloning: implicit paths never, explicit operations yes.** The "multivac never
 installs anything" rule is about *tools* (graphify, speckit — foreign
@@ -718,7 +812,10 @@ repos:
    managed block states the brain is empty and points at the skill; see
    "Session zero") and `invariants.md` (the law table with its format and
    zero rows). An existing `AGENTS.md` is never clobbered — only the
-   managed block is written.
+   managed block is written. Creates **`changes/`** with a `.gitkeep` so the
+   directory the lifecycle writes into survives the first clone — the file
+   is the only scaffolding init leaves behind, and `change new` never has to
+   ask whether the directory exists.
 2. Writes the **machinery** under `.multivac/`: `config.yml` (where the
    flags land), `hooks/`, and a gitignored `cache/`.
 3. Runs **`git init`** when the directory is not already a git repo (the
@@ -941,11 +1038,18 @@ verifies is documentation that lies about the code you already have.
 ## Open decisions
 
 - `doors` vs `entrypoints`.
-- License, and whether the LLM parts are optional — they should be: requiring
-  an API key at install shrinks the funnel.
+- Whether the LLM parts are optional — they should be: requiring an API key at
+  install shrinks the funnel. (This started life bundled with the licensing
+  question; the licensing half is resolved below.)
 
 Resolved 2026-08-13:
 
+- **The license is MIT**, owner's decision. Copyright Pierre Ugaz, full text in
+  `LICENSE`, declared in `package.json`, echoed in the README and the site
+  footer, held as law by MV-22. The deterministic core needs no API key and
+  wants to be dropped into other people's ecosystems, so copyleft would buy
+  nothing and cost adoption. This unblocks publishing the real package — the
+  `0.0.1` name placeholder went out as `UNLICENSED` deliberately.
 - The tool lives in the **agent session**, CI as an optional net. Pitch:
   "your agent verifies its own context before acting."
 - **Agent-agnostic, `AGENTS.md` canonical, no privileged second adapter.**

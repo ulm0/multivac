@@ -26,13 +26,17 @@ export function countActiveInvariants(md: string): number {
 
 /** Render the brain door block body (no markers). */
 export function renderBrainDoor(config: Config, activeInvariants: number): string {
-  const repoLines = Object.entries(config.repos).map(
-    ([key, r]) => `- ${key}: ${r.path}${r.url ? ` (${r.url})` : ''}`,
-  );
+  const entries = Object.entries(config.repos);
+  const brainIsCode = entries.some(([, r]) => r.isBrain);
+  // brain==code entries are this repo: they belong in the sentence, not the list.
+  const repoLines = entries
+    .filter(([, r]) => !r.isBrain)
+    .map(([key, r]) => `- ${key}: ${r.path}${r.url ? ` (${r.url})` : ''}`);
   const lines = [
     '## multivac — brain door',
     '',
-    'This repo is the brain: the source of law and change for its ecosystem.',
+    'This repo is the brain: the source of law and change for its ecosystem.' +
+      (brainIsCode ? ' It is also the code it governs — anchors target `brain:<glob>`.' : ''),
     ...(repoLines.length > 0 ? ['', 'Repos in this ecosystem:', ...repoLines] : []),
     '',
     '- Law lives in `invariants.md`. Cite rows by ID; a rule quoted without its ID does not bind.',

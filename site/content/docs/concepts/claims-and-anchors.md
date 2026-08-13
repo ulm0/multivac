@@ -41,6 +41,9 @@ rendered, greppable, no parallel file to drift. One leg per line:
 - **`repo` is the registry key** from `.multivac/config.yml` (`backend`),
   never the directory name (`acme-backend`). `*` covers every declared repo
   plus the brain itself.
+- **The glob dialect is picomatch** over repo-relative, `/`-separated paths
+  (`git ls-files` output): `**` crosses directories, `{a,b}` alternates,
+  dotfiles match. Not shell globbing, not a regex.
 - **`!<glob>` excludes**, applied after the include. The surviving file set
   is what gets matched — and what counts toward vacuity.
 - **Flags**: `i` only.

@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Brain-driven development CLI",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=24"

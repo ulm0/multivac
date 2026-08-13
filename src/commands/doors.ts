@@ -148,6 +148,12 @@ async function run(_argv: string[], ctx: CommandContext): Promise<number> {
 
   const consumerBody = renderConsumerDoor(config);
   for (const [key, entry] of Object.entries(config.repos)) {
+    if (entry.isBrain) {
+      // brain==code: this entry IS the brain, which already carries the brain
+      // door. A consumer door here would point at a mount that cannot exist.
+      say(`${key}: brain==code — the brain door is this repo's door`);
+      continue;
+    }
     const dir = resolve(brainDir, entry.path);
     if (!existsSync(join(dir, '.git'))) {
       say(

@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeScratchEcosystem, type ScratchEcosystem } from '../helpers/fixture.js';
+import { gitInit, makeScratchEcosystem, type ScratchEcosystem } from '../helpers/fixture.js';
 import { verify } from '../../src/commands/verify.js';
 
 function git(cwd: string, ...args: string[]): string {
@@ -93,7 +93,7 @@ test('unmatchable checkout asks for --repo; the flag scopes it', async () => {
   const e = mountedEco(...LAW);
   // A consumer whose basename/path/url match nothing in the registry.
   const stray = join(mkdtempSync(join(tmpdir(), 'mvac-stray-')), 'checkout');
-  execFileSync('git', ['init', '-q', stray], { stdio: 'ignore' });
+  gitInit(stray);
   execFileSync('git', ['clone', '-q', e.brain, join(stray, '.brain')], { stdio: 'ignore' });
   const { code, out } = await captured(() => runVerify(stray));
   assert.equal(code, 2);
@@ -113,4 +113,13 @@ test('consumer mode never rewrites a moved glob into the mount', async () => {
   assert.equal(code, 0);
   assert.match(out, /moved/);
   assert.equal(readFileSync(join(e.mount, 'invariants.md'), 'utf8'), before);
+});
+
+test('the scoped header counts what it evaluated, not the whole brain', async () => {
+  const e = mountedEco(...LAW);
+  // Three brain claims, one of which anchors into api (plus the `*` leg).
+  const { out } = await captured(() => runVerify(e.repos.api));
+  assert.match(out, /2 of 3 brain claims anchor into "api"/);
+  // No coverage percentage: the scoped denominator would read as a collapse.
+  assert.doesNotMatch(out, /anchored \(/);
 });

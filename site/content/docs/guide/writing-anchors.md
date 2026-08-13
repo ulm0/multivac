@@ -23,6 +23,10 @@ drift:
 - **repo-key** is the registry key from `.multivac/config.yml` (`api`),
   never the directory name (`acme-api`). `*` = every declared repo plus the
   brain itself.
+- **glob** is a picomatch pattern over repo-relative, `/`-separated paths
+  (what `git ls-files` prints): `**` crosses directories, `{a,b}`
+  alternates, dotfiles match. Not shell, not regex — `src/*.ts` misses
+  `src/lib/git.ts`, so write `src/**/*.ts`.
 - **`!<glob>`** excludes, applied after the include. The surviving file set
   is what gets matched — and what counts toward vacuity.
 - **Flags**: `i` only.

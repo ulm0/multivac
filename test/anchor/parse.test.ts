@@ -148,3 +148,15 @@ test('code blocks are documentation, not law: fenced and indented anchors are sk
   assert.equal(anchors.length, 1);
   assert.equal(anchors[0].claimId, 'INV-04');
 });
+
+test('a rejected glob names the dialect: picomatch, not shell', () => {
+  const { diagnostics } = parseAnchors(
+    ['<!-- @anchor INV-1 apiglob /re/ -->', '<!-- @anchor INV-2 api:src/** ! /re/ -->'].join('\n'),
+    'invariants.md',
+  );
+  assert.equal(diagnostics.length, 2);
+  for (const d of diagnostics) {
+    assert.match(d.message, /picomatch/);
+    assert.match(d.message, /\*\*/);
+  }
+});

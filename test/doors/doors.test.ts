@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeScratchEcosystem } from '../helpers/fixture.js';
+import { gitInit, makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
 import { countActiveInvariants } from '../../src/doors/brain.js';
@@ -91,7 +91,7 @@ test('hook shims installed and core.hooksPath set, brain and consumers', () => {
 
 test('strict pre-push variant', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'mvac-hooks-'));
-  execFileSync('git', ['-C', dir, 'init', '-q']);
+  gitInit(dir);
   await installHooks(dir, { strictPrePush: true });
   assert.match(read(dir, '.multivac/hooks/pre-push'), /verify --strict/);
   assert.match(read(dir, '.multivac/hooks/pre-commit'), /exec mvac verify\n/);

@@ -39,7 +39,7 @@ Exactly these files, nothing else:
 ```txt
 AGENTS.md                  the door — first thing any agent reads
 invariants.md              the law table, zero rows
-changes/                   one file per ecosystem change (empty)
+changes/.gitkeep           holds changes/ — one file per change lands here
 .multivac/config.yml       the registry: repos, doors, adapters
 .multivac/hooks/pre-commit runs `mvac verify` on every commit
 .multivac/hooks/pre-push   same, on push
@@ -125,4 +125,23 @@ repos:
 ```
 
 The key (`api`) is the registry name anchors use — never the directory name.
+
+### One repo? Say so
+
+When the brain IS the code repo — the usual shape for a single project —
+declare it with the reserved `brain` key:
+
+```yaml
+doors: [agents]
+# brain==code: this repo is both the brain and the code it governs.
+repos:
+  brain: .
+```
+
+`mvac init` writes exactly that when the repo it initializes already has
+tracked source. Anchors then target `brain:<glob>`, `mvac change` branches
+right here, and `doctor` stops looking for a brain mount there is no reason
+to have — nothing is submoduled into itself. Sibling repos are more keys
+alongside it whenever the project grows into an ecosystem.
+
 Then fill the brain: [Session zero](../session-zero).

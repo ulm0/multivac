@@ -1,5 +1,17 @@
 #!/bin/sh
 # multivac hook shim — managed by `multivac doors`; regenerate, do not edit.
-# Missing mvac never blocks a commit: enforcement degrades, it does not lock out.
-command -v mvac >/dev/null 2>&1 || exit 0
-exec mvac verify
+# Runner order: mvac on PATH, npx --no-install, repo-local build. No runnable
+# multivac never blocks a commit: it warns loudly and exits 0.
+case $0 in */*) hookdir=${0%/*} ;; *) hookdir=. ;; esac
+root=$(CDPATH= cd -- "$hookdir/../.." && pwd) || exit 0
+if command -v mvac >/dev/null 2>&1; then
+  exec mvac verify
+fi
+if [ -f "$root/node_modules/multivac/package.json" ] && command -v npx >/dev/null 2>&1; then
+  exec npx --no-install multivac verify
+fi
+if [ -f "$root/dist/cli.js" ] && command -v node >/dev/null 2>&1; then
+  exec node "$root/dist/cli.js" verify
+fi
+echo "multivac: hooks INACTIVE — no runnable multivac, nothing was verified. Fix: install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)" >&2
+exit 0

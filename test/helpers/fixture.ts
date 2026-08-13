@@ -14,9 +14,22 @@ function git(cwd: string, ...args: string[]): void {
   execFileSync('git', ['-C', cwd, ...args], { stdio: 'ignore' });
 }
 
-function initRepo(dir: string, files: Record<string, string>): void {
+/**
+ * Create `dir` and init a git repo on an explicit `main`.
+ *
+ * Every test that asserts on a branch name asserts on `main`, but the branch
+ * `git init` picks comes from `init.defaultBranch` — commonly `main` in a
+ * developer's global config, unset in CI images, where git falls back to
+ * `master`. Passing `-b` makes the suite say what it means instead of
+ * inheriting the host's opinion. All test repos go through here.
+ */
+export function gitInit(dir: string): void {
   mkdirSync(dir, { recursive: true });
-  git(dir, 'init', '-q');
+  git(dir, 'init', '-q', '-b', 'main');
+}
+
+function initRepo(dir: string, files: Record<string, string>): void {
+  gitInit(dir);
   git(dir, 'config', 'user.email', 'test@acme.example');
   git(dir, 'config', 'user.name', 'Acme Test');
   for (const [rel, content] of Object.entries(files)) {

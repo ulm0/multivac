@@ -1,0 +1,4 @@
+# The theme renders this as the footer copyright line (markdownified).
+copyright: >-
+  multivac is [MIT licensed](https://gitlab.com/ulm0/multivac/-/blob/main/LICENSE).
+  © 2026 Pierre Ugaz.
