@@ -19,7 +19,7 @@ test:
     PNPM_HOME: "$CI_PROJECT_DIR/.pnpm-store"
     npm_config_store_dir: "$CI_PROJECT_DIR/.pnpm-store"
 
-# The tool gates its own repo: this repo is its own brain (invariants.md),
+# The tool gates its own repo: this repo is its own brain (.multivac/invariants.md),
 # and every push re-verifies the law against the source.
 selfverify:
   stage: test

@@ -47,7 +47,7 @@ test('empty brain: door says so; consumer doors + user content preserved', async
   const apiDoor = read(eco.repos.api, 'AGENTS.md');
   assert.ok(apiDoor.startsWith(userText)); // user bytes untouched
   assert.match(apiDoor, /The change may cross repos/);
-  assert.match(apiDoor, /\.brain\/invariants\.md/);
+  assert.match(apiDoor, /\.brain\/\.multivac\/invariants\.md/);
   assert.match(apiDoor, /multivac verify/);
   assert.match(read(eco.repos.web, 'AGENTS.md'), /consumer door/);
 });
@@ -59,7 +59,7 @@ test('populated brain drops the session-zero line; reruns are zero-diff', async 
     '| INV-01 | api owns accounts | api | active | 2026-08-13 | seed |\n' +
     '| INV-02 | dead rule | api | retired | 2026-08-13 | seed |\n';
   assert.equal(countActiveInvariants(table), 1);
-  writeFileSync(join(eco.brain, 'invariants.md'), `# Invariants\n\n${table}`);
+  writeFileSync(join(eco.brain, '.multivac/invariants.md'), `# Invariants\n\n${table}`);
 
   await runDoors();
   const once = read(eco.brain, 'AGENTS.md');

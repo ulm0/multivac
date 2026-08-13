@@ -31,7 +31,7 @@ const HEADER = [
 ];
 
 function setLaw(brain: string, ...lines: string[]): void {
-  writeFileSync(join(brain, 'invariants.md'), [...HEADER, ...lines, ''].join('\n'));
+  writeFileSync(join(brain, '.multivac/invariants.md'), [...HEADER, ...lines, ''].join('\n'));
 }
 
 function runVerify(brain: string, ...flags: string[]): Promise<number> {
@@ -112,10 +112,10 @@ test('moved: one out-of-glob match rewrites the glob in place, exit 0', async ()
   );
   // --check reports but never writes
   assert.equal(await runVerify(e.brain, '--check'), 0);
-  assert.match(readFileSync(join(e.brain, 'invariants.md'), 'utf8'), /api:src\/app\/\*\.ts/);
+  assert.match(readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8'), /api:src\/app\/\*\.ts/);
   // default rewrites in place
   assert.equal(await runVerify(e.brain), 0);
-  const law = readFileSync(join(e.brain, 'invariants.md'), 'utf8');
+  const law = readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8');
   assert.match(law, /api:src\/server\.ts /);
   // and the healed anchor now verifies ok
   assert.equal(await runVerify(e.brain, '--strict'), 0);
@@ -134,7 +134,7 @@ test('moved never rewrites the glob to an excluded file', async () => {
   assert.equal(code, 1);
   assert.match(out, /broken/);
   assert.doesNotMatch(out, /moved/);
-  assert.match(readFileSync(join(e.brain, 'invariants.md'), 'utf8'), /api:README\.md /);
+  assert.match(readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8'), /api:README\.md /);
 });
 
 test('exit matrix: broken present reports at exit 0, gates under --strict', async () => {

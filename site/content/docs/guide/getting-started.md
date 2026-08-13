@@ -29,7 +29,7 @@ $ mvac init .
 init: git init — the brain is git-native
 init: wrote .multivac/config.yml — declare your repos under repos:
 init: wrote AGENTS.md — the door; your agent reads it first
-init: wrote invariants.md — the law table, zero rows
+init: wrote .multivac/invariants.md — the law table, zero rows
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
 init: done — load the multivac skill to fill the brain (see AGENTS.md)
 ```
@@ -37,16 +37,18 @@ init: done — load the multivac skill to fill the brain (see AGENTS.md)
 Exactly these files, nothing else:
 
 ```txt
-AGENTS.md                  the door — first thing any agent reads
-invariants.md              the law table, zero rows
-changes/.gitkeep           holds changes/ — one file per change lands here
-.multivac/config.yml       the registry: repos, doors, adapters
-.multivac/hooks/pre-commit runs `mvac verify` on every commit
-.multivac/hooks/pre-push   same, on push
-.multivac/.gitignore       ignores .multivac/cache/
+AGENTS.md                    the door — first thing any agent reads
+.multivac/invariants.md      the law table, zero rows
+.multivac/changes/           one file per ecosystem change (empty)
+.multivac/config.yml         the registry: repos, doors, adapters
+.multivac/hooks/pre-commit   runs `mvac verify` on every commit
+.multivac/hooks/pre-push     same, on push
+.multivac/.gitignore         ignores .multivac/cache/
 ```
 
-Content at the root, machinery under `.multivac/`. `git init` runs only when
+`AGENTS.md` is the one file multivac writes at the root, because that is
+where harnesses read it; everything else it owns lives under `.multivac/`,
+out of the way of your own content. `git init` runs only when
 the directory is not already a repo. `core.hooksPath` is pointed at
 `.multivac/hooks/`, so the hooks are versioned and travel with the clone —
 no install step to forget.
@@ -83,13 +85,13 @@ This brain is empty on purpose. Load the multivac skill and fill it:
 - existing ecosystem: `multivac seed`, then validate the proposed rows
 - from scratch: run the interview
 
-The law lives in `invariants.md` (anchored claims); every decision enters
+The law lives in `.multivac/invariants.md` (anchored claims); every decision enters
 as a `multivac change`. Run `multivac verify` before acting on anything
 you read here.
 <!-- multivac:end -->
 ```
 
-`invariants.md` is the law table with its format and zero rows:
+`.multivac/invariants.md` is the law table with its format and zero rows:
 
 ```markdown
 # Invariants

@@ -95,7 +95,7 @@ Four fields:
    invariant is never relaxed in code — it is changed in the law first.
 4. **Which claims it makes true**, and with them, their anchors.
 
-A change is a **file in the brain**: `changes/<slug>.md`, carrying the four
+A change is a **file in the brain**: `.multivac/changes/<slug>.md`, carrying the four
 declared fields — repos, the landing-order graph, invariants touched, claims
 made true with their anchors — plus per-repo status
 (planned / branched / committed / MR / landed). That file is the state the
@@ -307,7 +307,7 @@ The unit is not the document. It is the claim:
 
     statement + authority + anchor + state + date
 
-The serialized home is the law table in `invariants.md`, one row per claim —
+The serialized home is the law table in `.multivac/invariants.md`, one row per claim —
 `| ID | statement | authority | state | date | source |` — the exact format
 `init` writes with zero rows. `state` and `date` live in the row because
 `verify` reads them: `proposed` rows never block, `retired` rows evaluate
@@ -546,13 +546,37 @@ States: `proposed → active → amended → retired`.
 
 ## The ecosystem registry
 
-**The brain is the registry**, and it splits **content from machinery**.
-Content — what a human or agent reads — lives at the root: `AGENTS.md`,
-`invariants.md`, `changes/`. Machinery — what only the tool reads — lives
-under `.multivac/`: `config.yml` (the registry below; supersedes the root
-`multivac.yml` of earlier drafts), `hooks/` (the `core.hooksPath` target),
-and `cache/` (gitignored). Consumer repos get the same split where
-applicable: door at the root, machinery under `.multivac/`.
+**The brain is the registry**, and it splits **the user's content from
+multivac's artifacts**. Everything the tool creates and manages lives under
+`.multivac/`: `config.yml` (the registry below; supersedes the root
+`multivac.yml` of earlier drafts), `invariants.md` (the law), `changes/`
+(the open changes plus their `archive/`), `hooks/` (the `core.hooksPath`
+target) and `cache/` (gitignored). The one exception is **`AGENTS.md` at the
+repo root**, because that is where harnesses read it. Everything else at the
+root belongs to the user and is never touched. Consumer repos get the same
+shape: door at the root, everything else under `.multivac/`.
+
+    <brain>/
+      AGENTS.md                  the one exception
+      <the user's own content>   untouched, wherever they keep it
+      .multivac/
+        config.yml
+        invariants.md
+        changes/  (+ archive/)
+        hooks/
+        cache/
+
+The line is not "content vs machinery" — that split scattered the tool's own
+files through the user's repo and made every path a judgement call. It is
+**whose file is this**: multivac's artifacts are multivac's to move, and they
+all live in one directory the user can ignore.
+
+A brain written before the move keeps the law and `changes/` at the root.
+`multivac init` migrates it (`git mv` where the file is tracked, so history
+follows), `doctor` names that command, and every other command refuses to read
+a half-moved brain — reading it as-is would find zero claims and pass. A brain
+holding **both** layouts is an error: which file is the law is not the tool's
+guess to make.
 
 ```yaml
 # .multivac/config.yml
@@ -808,26 +832,26 @@ repos:
 
 `init`'s side effects, enumerated once and completely:
 
-1. Writes the **content files at the root**: `AGENTS.md` (the door — its
-   managed block states the brain is empty and points at the skill; see
-   "Session zero") and `invariants.md` (the law table with its format and
-   zero rows). An existing `AGENTS.md` is never clobbered — only the
-   managed block is written. Creates **`changes/`** with a `.gitkeep` so the
-   directory the lifecycle writes into survives the first clone — the file
-   is the only scaffolding init leaves behind, and `change new` never has to
-   ask whether the directory exists.
-2. Writes the **machinery** under `.multivac/`: `config.yml` (where the
-   flags land), `hooks/`, and a gitignored `cache/`.
+1. Writes **`AGENTS.md` at the root** — the door, and the only file multivac
+   writes there; its managed block states the brain is empty and points at
+   the skill (see "Session zero"). An existing `AGENTS.md` is never clobbered
+   — only the managed block is written.
+2. Writes **everything else under `.multivac/`**: `config.yml` (where the
+   flags land), `invariants.md` (the law table with its format and zero
+   rows), `changes/`, `hooks/`, and a gitignored `cache/`. A brain still
+   holding `invariants.md` or `changes/` at its root is **migrated** here
+   first, with `git mv` where it can, and says so; a brain holding both
+   layouts is refused.
 3. Runs **`git init`** when the directory is not already a git repo (the
    model is git-native; see "Where it runs").
 4. Points **`core.hooksPath`** at `.multivac/hooks/` and writes the
    `pre-commit` / `pre-push` scripts there, so the hooks travel with the
    clone and there is no install step to forget.
 
-"Two root files and not one more" scopes to **content scaffolding**: no
-template gallery, no empty sections, no per-agent folders. The machinery
-above is not content — it is the enforcement floor. Empty scaffolding is the noise
-that keeps a brain from being read.
+"One root file and not one more" is the whole scaffolding budget: no template
+gallery, no empty sections, no per-agent folders. What lands under
+`.multivac/` is not scaffolding — it is the enforcement floor. Empty
+scaffolding is the noise that keeps a brain from being read.
 
 Authority levels are **configurable**: published/specified/open comes from a
 world where the published promise rules. A fintech wants
@@ -1020,7 +1044,7 @@ verifies is documentation that lies about the code you already have.
    the tool has a floor — and no competitor has it.
    **DONE 2026-08-13** — see "Measurement 1 results" below. 95.1% anchorable;
    the grammar stands, with five measured defects to fix.
-3. **`multivac change`** — the `changes/<slug>.md` format, the five
+3. **`multivac change`** — the `.multivac/changes/<slug>.md` format, the five
    subcommands, the close-time scoped verify. Acceptance test, also gifted
    by history: **replay the documented manual runs** from their full
    transcripts — same repos, same landing order, same MRs. The tool

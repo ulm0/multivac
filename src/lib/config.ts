@@ -1,6 +1,6 @@
 // Load and validate .multivac/config.yml. Every error says how to fix it.
 
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
@@ -9,7 +9,44 @@ import type { Config, Mode, RepoEntry } from '../types.js';
 export class ConfigError extends Error {}
 
 const MODES: Mode[] = ['present', 'absent', 'unique', 'count'];
+// Everything multivac creates lives here. AGENTS.md at the root is the one
+// exception: harnesses read it there.
 export const CONFIG_PATH = '.multivac/config.yml';
+export const LAW_PATH = '.multivac/invariants.md';
+export const CHANGES_DIR = '.multivac/changes';
+/** Where the law and the changes used to live, before they moved. */
+const LEGACY: Array<[legacy: string, now: string]> = [
+  ['invariants.md', LAW_PATH],
+  ['changes', CHANGES_DIR],
+];
+
+const exists = (p: string): Promise<boolean> => access(p).then(() => true, () => false);
+
+/**
+ * The pre-.multivac layout kept the law and the changes at the repo root.
+ * Reading the brain there would find zero claims and pass silently, so every
+ * command refuses instead — with the command that migrates. Both layouts at
+ * once is unresolvable by the tool: nobody but the author knows which file is
+ * the law.
+ */
+export async function layoutError(brainDir: string): Promise<string | null> {
+  for (const [legacy, now] of LEGACY) {
+    if (!(await exists(join(brainDir, legacy)))) continue;
+    if (await exists(join(brainDir, now))) {
+      return (
+        `${brainDir} has both ${legacy} and ${now} — multivac reads ${now}; ` +
+        `merge anything you still want out of ${legacy} into it and delete it ` +
+        `(or rename ${legacy} if it is your own content, not multivac's)`
+      );
+    }
+    return (
+      `${brainDir} still keeps ${legacy} at the root — everything multivac owns ` +
+      `now lives under .multivac/ (${now}); run \`multivac init .\` there to move it ` +
+      '(git mv, history preserved)'
+    );
+  }
+  return null;
+}
 
 function fail(msg: string): never {
   throw new ConfigError(`${CONFIG_PATH}: ${msg}`);
@@ -55,6 +92,8 @@ function repoEntry(key: string, v: unknown): RepoEntry {
 
 /** Load config from `<brainDir>/.multivac/config.yml`, defaults applied. */
 export async function loadConfig(brainDir: string): Promise<Config> {
+  const stale = await layoutError(brainDir);
+  if (stale) throw new ConfigError(stale);
   const file = join(brainDir, CONFIG_PATH);
   let raw: string;
   try {

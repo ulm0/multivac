@@ -1,9 +1,10 @@
-// changes/<slug>.md — the change file: YAML frontmatter + free markdown body.
+// .multivac/changes/<slug>.md — the change file: YAML frontmatter + body.
 // Parse/serialize/validate, load/save/archive, landing-order plan, close gate.
 
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
+import { CHANGES_DIR } from '../lib/config.js';
 import type { VerifyReport } from '../types.js';
 
 export class ChangeError extends Error {}
@@ -37,9 +38,11 @@ export interface ParsedChange {
   body: string;
 }
 
-export const changesDir = (brain: string): string => join(brain, 'changes');
+export const changesDir = (brain: string): string => join(brain, CHANGES_DIR);
 export const changePath = (brain: string, slug: string): string =>
   join(changesDir(brain), `${slug}.md`);
+/** Brain-relative path, for messages: `.multivac/changes/<slug>.md`. */
+export const changeRel = (slug: string): string => `${CHANGES_DIR}/${slug}.md`;
 
 function strList(v: unknown, key: string, errs: string[]): string[] {
   if (v === undefined || v === null) return [];
@@ -235,13 +238,13 @@ export async function loadChange(brain: string, slug: string): Promise<ParsedCha
     text = await readFile(file, 'utf8');
   } catch {
     throw new ChangeError(
-      `no changes/${slug}.md — run \`multivac change new ${slug} "<title>"\` first`,
+      `no ${changeRel(slug)} — run \`multivac change new ${slug} "<title>"\` first`,
     );
   }
-  const parsed = parseChange(text, `changes/${slug}.md`);
+  const parsed = parseChange(text, changeRel(slug));
   if (parsed.change.slug !== slug) {
     throw new ChangeError(
-      `changes/${slug}.md: frontmatter slug "${parsed.change.slug}" does not match the filename — fix the slug`,
+      `${changeRel(slug)}: frontmatter slug "${parsed.change.slug}" does not match the filename — fix the slug`,
     );
   }
   return parsed;
@@ -255,7 +258,7 @@ export async function saveChange(brain: string, parsed: ParsedChange): Promise<v
   );
 }
 
-/** Archive: status -> archived, file moves to changes/archive/<slug>.md. Returns dest path. */
+/** Archive: status -> archived, file moves to <changes>/archive/<slug>.md. Returns dest path. */
 export async function archiveChange(brain: string, parsed: ParsedChange): Promise<string> {
   parsed.change.status = 'archived';
   const dir = join(changesDir(brain), 'archive');

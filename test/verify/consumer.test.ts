@@ -27,7 +27,7 @@ const HEADER = [
 /** Brain with law committed, then mounted (local clone) at <api>/.brain. */
 function mountedEco(...law: string[]): ScratchEcosystem & { mount: string } {
   const e = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-consumer-')));
-  writeFileSync(join(e.brain, 'invariants.md'), [...HEADER, ...law, ''].join('\n'));
+  writeFileSync(join(e.brain, '.multivac/invariants.md'), [...HEADER, ...law, ''].join('\n'));
   git(e.brain, 'add', '-A');
   git(e.brain, 'commit', '-q', '-m', 'law');
   const mount = join(e.repos.api, '.brain');
@@ -108,11 +108,11 @@ test('consumer mode never rewrites a moved glob into the mount', async () => {
     '| INV-C4 | port is fixed | published | active | 2026-01-01 | x |',
     '<!-- @anchor INV-C4 api:src/app/*.ts /port = 8080/ -->',
   );
-  const before = readFileSync(join(e.mount, 'invariants.md'), 'utf8');
+  const before = readFileSync(join(e.mount, '.multivac/invariants.md'), 'utf8');
   const { code, out } = await captured(() => runVerify(e.repos.api));
   assert.equal(code, 0);
   assert.match(out, /moved/);
-  assert.equal(readFileSync(join(e.mount, 'invariants.md'), 'utf8'), before);
+  assert.equal(readFileSync(join(e.mount, '.multivac/invariants.md'), 'utf8'), before);
 });
 
 test('the scoped header counts what it evaluated, not the whole brain', async () => {

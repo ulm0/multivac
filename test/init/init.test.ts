@@ -6,11 +6,13 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  renameSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { doctorReport } from '../../src/commands/doctor.js';
 import { init } from '../../src/commands/init.js';
 import { loadConfig } from '../../src/lib/config.js';
 
@@ -51,18 +53,62 @@ test('init scaffolds the enumerated side effects and nothing more', async () => 
   assert.deepEqual(cfg.doors, ['agents', 'claude']);
   assert.equal(readFileSync(join(dir, '.multivac/.gitignore'), 'utf8'), 'cache/\n');
 
-  // content files: door with managed block, law table header, changes/
+  // door at the root with its managed block; law table and changes/ under .multivac/
   const door = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
   assert.ok(door.includes('<!-- multivac:begin -->'));
   assert.ok(door.includes('<!-- multivac:end -->'));
-  const inv = readFileSync(join(dir, 'invariants.md'), 'utf8');
+  const inv = readFileSync(join(dir, '.multivac/invariants.md'), 'utf8');
   assert.ok(inv.includes('| ID | statement | authority | state | date | source |'));
   assert.ok(inv.includes('| --- | --- | --- | --- | --- | --- |'));
-  statSync(join(dir, 'changes/.gitkeep'));
+  statSync(join(dir, '.multivac/changes/.gitkeep'));
 
-  // enumerated side effects and nothing more: no stray root files
+  // AGENTS.md is the one exception: everything else multivac owns is in .multivac/
   const roots = readdirSync(dir).filter((n) => n !== '.git');
-  assert.deepEqual(roots.sort(), ['.multivac', 'AGENTS.md', 'changes', 'invariants.md']);
+  assert.deepEqual(roots.sort(), ['.multivac', 'AGENTS.md']);
+});
+
+test('init migrates a brain still holding the law and changes/ at its root', async () => {
+  const dir = tmp();
+  execFileSync('git', ['-C', dir, 'init', '-q']);
+  execFileSync('git', ['-C', dir, 'config', 'user.email', 'test@acme.example']);
+  execFileSync('git', ['-C', dir, 'config', 'user.name', 'Acme Test']);
+  writeFileSync(join(dir, 'invariants.md'), '# Invariants\n\n| INV-01 | old law |\n');
+  mkdirSync(join(dir, 'changes/archive'), { recursive: true });
+  writeFileSync(join(dir, 'changes/archive/old.md'), 'archived\n');
+  execFileSync('git', ['-C', dir, 'add', '-A'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', dir, 'commit', '-qm', 'legacy layout'], { stdio: 'ignore' });
+
+  assert.equal(await init.run([], { cwd: dir }), 0);
+  assert.match(readFileSync(join(dir, '.multivac/invariants.md'), 'utf8'), /old law/);
+  assert.equal(readFileSync(join(dir, '.multivac/changes/archive/old.md'), 'utf8'), 'archived\n');
+  assert.deepEqual(readdirSync(dir).filter((n) => n !== '.git').sort(), ['.multivac', 'AGENTS.md']);
+  // git mv, so the move is staged as a rename and history follows the file
+  const staged = execFileSync('git', ['-C', dir, 'diff', '--cached', '--name-status', '-M']).toString();
+  assert.match(staged, /^R.*invariants\.md\t\.multivac\/invariants\.md$/m);
+  // and the migrated brain loads
+  assert.equal((await loadConfig(dir)).doors.length, 1);
+});
+
+test('a brain holding both layouts is refused, by init and by every loader', async () => {
+  const dir = tmp();
+  await init.run([], { cwd: dir });
+  writeFileSync(join(dir, 'invariants.md'), '# a second law\n');
+
+  assert.equal(await init.run([], { cwd: dir }), 1, 'init refuses to guess');
+  await assert.rejects(loadConfig(dir), /has both invariants\.md and \.multivac\/invariants\.md/);
+  const { exit, lines } = await doctorReport(dir);
+  assert.equal(exit, 1);
+  assert.match(lines.join('\n'), /has both invariants\.md and \.multivac\/invariants\.md/);
+});
+
+test('doctor names the migration command for a legacy brain', async () => {
+  const dir = tmp();
+  await init.run([], { cwd: dir });
+  renameSync(join(dir, '.multivac/invariants.md'), join(dir, 'invariants.md'));
+
+  const { exit, lines } = await doctorReport(dir);
+  assert.equal(exit, 1);
+  assert.match(lines.join('\n'), /multivac init /);
 });
 
 test('init is idempotent: second run is a zero-diff', async () => {

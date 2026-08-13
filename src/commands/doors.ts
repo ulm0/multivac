@@ -13,7 +13,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Command, CommandContext, Config } from '../types.js';
-import { ConfigError, loadConfig } from '../lib/config.js';
+import { ConfigError, LAW_PATH, loadConfig } from '../lib/config.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
@@ -137,7 +137,7 @@ async function run(_argv: string[], ctx: CommandContext): Promise<number> {
     throw e;
   }
 
-  const invariants = await readOrNull(join(brainDir, 'invariants.md'));
+  const invariants = await readOrNull(join(brainDir, LAW_PATH));
   const active = invariants === null ? 0 : countActiveInvariants(invariants);
   const report = (name: string, notices: string[]): void => {
     say(`${name}: door + hooks updated`);

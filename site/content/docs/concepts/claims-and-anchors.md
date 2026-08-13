@@ -7,7 +7,7 @@ The unit is not the document. It is the claim:
 
     statement + authority + anchor + state + date
 
-The serialized home is the law table in `invariants.md`, one row per claim —
+The serialized home is the law table in `.multivac/invariants.md`, one row per claim —
 `| ID | statement | authority | state | date | source |` — the exact format
 `init` writes with zero rows. `state` and `date` live in the row because
 `verify` reads them: `proposed` rows never block; `retired` rows evaluate
@@ -168,8 +168,8 @@ $ mvac verify
   ok         44
   moved       3
   broken      1
-  moved     INV-07 [present] invariants.md:31 · glob rewritten to sql/002_roles.sql — review the diff
-  broken    INV-15 [present] invariants.md:52 · no match in backend — restore the code or retire the claim
+  moved     INV-07 [present] .multivac/invariants.md:31 · glob rewritten to sql/002_roles.sql — review the diff
+  broken    INV-15 [present] .multivac/invariants.md:52 · no match in backend — restore the code or retire the claim
 
 0 blocking broken · exit 0
 ```

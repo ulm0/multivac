@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
-import { loadConfig } from '../lib/config.js';
+import { CHANGES_DIR, CONFIG_PATH, LAW_PATH, loadConfig } from '../lib/config.js';
 import { lsFiles, run as gitRun } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
@@ -22,6 +22,7 @@ import {
   type RepoStatus,
   archiveChange,
   changePath,
+  changeRel,
   closeGate,
   landingPlan,
   loadChange,
@@ -259,12 +260,12 @@ async function greenfield(abs: string, key: string, slug: string, cfg: Config): 
   say(`${key}: created ${abs} — git init, door written, first commit`);
 }
 
-/** invariants.md table rows: id -> state cell (4th column). */
+/** Law table rows: id -> state cell (4th column). */
 async function invariantStates(brain: string): Promise<Map<string, string>> {
   const map = new Map<string, string>();
   let text: string;
   try {
-    text = await readFile(join(brain, 'invariants.md'), 'utf8');
+    text = await readFile(join(brain, LAW_PATH), 'utf8');
   } catch {
     return map;
   }
@@ -305,11 +306,11 @@ async function cmdNew(
   noSdd: boolean,
 ): Promise<number> {
   if (existsSync(changePath(brain, slug))) {
-    warn(`changes/${slug}.md already exists — edit it, or pick another slug`);
+    warn(`${changeRel(slug)} already exists — edit it, or pick another slug`);
     return 1;
   }
   await saveChange(brain, scaffoldChange(slug, title));
-  say(`created changes/${slug}.md — declare repos, landing_order, invariants, claims`);
+  say(`created ${changeRel(slug)} — declare repos, landing_order, invariants, claims`);
   await runSdd(cfg, brain, 'propose', slug, noSdd);
   return 0;
 }
@@ -318,7 +319,7 @@ async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number
   const { change } = await loadChange(brain, slug);
   const keys = Object.keys(change.repos);
   if (keys.length === 0) {
-    warn(`changes/${slug}.md declares no repos — add repos: { <key>: { status: planned } }`);
+    warn(`${changeRel(slug)} declares no repos — add repos: { <key>: { status: planned } }`);
     return 1;
   }
   let rc = 0;
@@ -347,7 +348,7 @@ async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number
     say(
       st
         ? `invariant ${id}: ${st}`
-        : `invariant ${id}: not in invariants.md — add the row or drop it from the change`,
+        : `invariant ${id}: not in ${LAW_PATH} — add the row or drop it from the change`,
     );
   }
   for (const id of change.invariants.adds) {
@@ -376,7 +377,7 @@ async function cmdApply(
   const parsed = await loadChange(brain, slug);
   const keys = Object.keys(parsed.change.repos);
   if (keys.length === 0) {
-    warn(`changes/${slug}.md declares no repos — declare them, then re-run apply`);
+    warn(`${changeRel(slug)} declares no repos — declare them, then re-run apply`);
     return 1;
   }
   for (const key of keys) {
@@ -409,7 +410,7 @@ async function cmdLand(
   const parsed = await loadChange(brain, slug);
   const { change } = parsed;
   if (Object.keys(change.repos).length === 0) {
-    warn(`changes/${slug}.md declares no repos — declare repos and landing_order first`);
+    warn(`${changeRel(slug)} declares no repos — declare repos and landing_order first`);
     return 1;
   }
   if (landed !== undefined) {
@@ -527,7 +528,7 @@ const slugify = (title: string): string =>
 
 function usage(): void {
   say('multivac change <sub> <slug> [args]');
-  say('  new "<title>"          scaffold changes/<slug>.md, slug from title (+ SDD propose)');
+  say(`  new "<title>"          scaffold ${CHANGES_DIR}/<slug>.md, slug from title (+ SDD propose)`);
   say('  new <slug> "<title>"   same, with an explicit slug');
   say('  plan <slug>            resolve repos, landing graph, invariants, claims');
   say('  apply <slug>           branch per repo (greenfield repos get created)');

@@ -3,7 +3,7 @@ title: Running changes
 weight: 4
 ---
 
-A change is a file in the brain — `changes/<slug>.md` — that five
+A change is a file in the brain — `.multivac/changes/<slug>.md` — that five
 subcommands read and write, across days and machines. It is not done when
 it merges; it is done when its anchors resolve.
 
@@ -22,7 +22,7 @@ All output below is real, captured from a two-repo scratch ecosystem
 
 ```txt
 $ mvac change new "points expire"
-created changes/points-expire.md — declare repos, landing_order, invariants, claims
+created .multivac/changes/points-expire.md — declare repos, landing_order, invariants, claims
 ```
 
 The scaffold:
@@ -161,13 +161,13 @@ api: branched — land every stage first (multivac change land points-expire)
 ```
 
 exit 1. When everything landed and the declared claims have their rows and
-anchors in `invariants.md`, close re-runs verify **scoped to the declared
+anchors in `.multivac/invariants.md`, close re-runs verify **scoped to the declared
 claims**:
 
 ```txt
 $ mvac change close points-expire
 INV-02: ok
-archived -> changes/archive/points-expire.md
+archived -> .multivac/changes/archive/points-expire.md
 ```
 
 The change file is archived, never deleted; its `status` flips to

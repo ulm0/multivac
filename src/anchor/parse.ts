@@ -3,6 +3,7 @@
 
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { CHANGES_DIR, LAW_PATH } from '../lib/config.js';
 import { compileAnchorRegex, RegexDialectError } from '../lib/regex.js';
 import type { Anchor, Mode } from '../types.js';
 
@@ -140,20 +141,22 @@ export function parseAnchors(text: string, file: string): ParseResult {
 }
 
 /**
- * Collect anchors from the brain: every .md at the root (invariants.md
- * included) plus changes/*.md. Anchor.file is brain-relative.
+ * Collect anchors from the brain: every .md at the root (the user's own
+ * content may carry anchors) plus multivac's own — `.multivac/*.md`
+ * (invariants.md) and `.multivac/changes/*.md`. Anchor.file is brain-relative.
  */
 export async function collectBrainAnchors(brainDir: string): Promise<ParseResult> {
   const rels: string[] = [];
-  for (const e of await readdir(brainDir, { withFileTypes: true })) {
-    if (e.isFile() && e.name.endsWith('.md')) rels.push(e.name);
-  }
-  try {
-    for (const e of await readdir(join(brainDir, 'changes'), { withFileTypes: true })) {
-      if (e.isFile() && e.name.endsWith('.md')) rels.push(join('changes', e.name));
+  for (const dir of ['.', '.multivac', CHANGES_DIR]) {
+    try {
+      for (const e of await readdir(join(brainDir, dir), { withFileTypes: true })) {
+        if (e.isFile() && e.name.endsWith('.md')) {
+          rels.push(dir === '.' ? e.name : join(dir, e.name));
+        }
+      }
+    } catch {
+      // directory not there yet — fine
     }
-  } catch {
-    // no changes/ yet — fine
   }
   const result: ParseResult = { anchors: [], diagnostics: [] };
   for (const rel of rels.sort()) {
@@ -170,11 +173,11 @@ export interface ClaimRow {
   state: string;
 }
 
-/** Parse the law table in invariants.md. Missing file = zero claims. */
+/** Parse the law table in .multivac/invariants.md. Missing file = zero claims. */
 export async function readClaimRows(brainDir: string): Promise<ClaimRow[]> {
   let text: string;
   try {
-    text = await readFile(join(brainDir, 'invariants.md'), 'utf8');
+    text = await readFile(join(brainDir, LAW_PATH), 'utf8');
   } catch {
     return [];
   }
