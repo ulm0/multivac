@@ -1,0 +1,92 @@
+// Shared domain types. Every module codes against these; keep them boring.
+
+/** Anchor evaluation modes. `count` carries its N in Anchor.count. */
+export type Mode = 'present' | 'absent' | 'unique' | 'count';
+
+/** Per-leg verify states. */
+export type LegState = 'ok' | 'moved' | 'broken' | 'vacuous' | 'unevaluated';
+
+/** One declared repo in .multivac/config.yml. Bare string = { path }. */
+export interface RepoEntry {
+  path: string;
+  url?: string;
+  grapher?: string;
+  channel?: string;
+}
+
+/** Parsed .multivac/config.yml with defaults applied. */
+export interface Config {
+  doors: string[];
+  sdd?: string;
+  /** yml key: sdd_auto. Default true. */
+  sddAuto: boolean;
+  grapher?: string;
+  authorities: string[];
+  /** Modes that gate (exit 1). Default [absent, count]; must include absent. */
+  blocking: Mode[];
+  channel?: string;
+  /** Where the brain mounts inside code repos. Default ".brain". */
+  mount: string;
+  repos: Record<string, RepoEntry>;
+}
+
+/**
+ * One anchor leg, parsed from
+ * <!-- @anchor <CLAIM-ID> <repo-key>:<glob> [!<glob> ...] /<regex>/[flags] [mode] -->
+ */
+export interface Anchor {
+  claimId: string;
+  /** Registry key, or "*" for every declared repo plus the brain. */
+  repoKey: string;
+  include: string;
+  excludes: string[];
+  /** POSIX-ERE-with-classes source, uncompiled. */
+  regexSource: string;
+  /** Only "i" or "". */
+  regexFlags: string;
+  mode: Mode;
+  /** Set iff mode === 'count'. */
+  count?: number;
+  /** Brain file the anchor comment lives in. */
+  file: string;
+  /** 1-based line of the comment. */
+  line: number;
+}
+
+/** Result of evaluating one leg. */
+export interface LegResult {
+  anchor: Anchor;
+  state: LegState;
+  /** Matches found (files, or file:line). */
+  matchCount?: number;
+  /** For moved: the rewritten glob. */
+  movedTo?: string;
+  /** Terse, actionable: what to DO. */
+  detail?: string;
+}
+
+/** All legs of one claim; state is the worst leg's. */
+export interface ClaimResult {
+  claimId: string;
+  state: LegState;
+  legs: LegResult[];
+}
+
+export interface VerifyReport {
+  claims: ClaimResult[];
+  counts: Record<LegState, number>;
+  /** Broken/vacuous legs in a blocking mode — nonzero means exit 1 always. */
+  blockingBroken: number;
+  exitCode: 0 | 1;
+}
+
+export interface CommandContext {
+  cwd: string;
+}
+
+/** A CLI subcommand. Dispatch is a lookup over a Command[], not a framework. */
+export interface Command {
+  name: string;
+  help: string;
+  run(argv: string[], ctx: CommandContext): Promise<number>;
+}

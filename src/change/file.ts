@@ -1,0 +1,282 @@
+// changes/<slug>.md — the change file: YAML frontmatter + free markdown body.
+// Parse/serialize/validate, load/save/archive, landing-order plan, close gate.
+
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { parse, stringify } from 'yaml';
+import type { VerifyReport } from '../types.js';
+
+export class ChangeError extends Error {}
+
+export const REPO_STATUSES = [
+  'planned',
+  'branched',
+  'committed',
+  'mr',
+  'landed',
+] as const;
+export type RepoStatus = (typeof REPO_STATUSES)[number];
+
+export interface ChangeClaim {
+  id: string;
+  statement: string;
+}
+
+export interface ChangeFile {
+  slug: string;
+  status: 'open' | 'archived';
+  repos: Record<string, { status: RepoStatus }>;
+  /** Ordered stages; repos in one stage may land in parallel. */
+  landing_order: string[][];
+  invariants: { touches: string[]; adds: string[]; retires: string[] };
+  claims: ChangeClaim[];
+}
+
+export interface ParsedChange {
+  change: ChangeFile;
+  body: string;
+}
+
+export const changesDir = (brain: string): string => join(brain, 'changes');
+export const changePath = (brain: string, slug: string): string =>
+  join(changesDir(brain), `${slug}.md`);
+
+function strList(v: unknown, key: string, errs: string[]): string[] {
+  if (v === undefined || v === null) return [];
+  if (!Array.isArray(v) || v.some((x) => typeof x !== 'string')) {
+    errs.push(`"${key}" must be a list of strings`);
+    return [];
+  }
+  return v as string[];
+}
+
+/** Validate a parsed frontmatter object into a ChangeFile, or throw listing every problem. */
+export function normalizeChange(raw: unknown, label: string): ChangeFile {
+  const errs: string[] = [];
+  const o = (
+    raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
+  ) as Record<string, unknown>;
+  if (o !== raw) errs.push('frontmatter must be a YAML mapping');
+
+  let slug = '';
+  if (typeof o.slug === 'string' && o.slug !== '') slug = o.slug;
+  else errs.push('"slug" must be a non-empty string');
+
+  let status: ChangeFile['status'] = 'open';
+  if (o.status === 'open' || o.status === 'archived') status = o.status;
+  else errs.push('"status" must be "open" or "archived"');
+
+  const repos: ChangeFile['repos'] = {};
+  const reposRaw = o.repos ?? {};
+  if (typeof reposRaw !== 'object' || reposRaw === null || Array.isArray(reposRaw)) {
+    errs.push('"repos" must be a mapping key -> { status }');
+  } else {
+    for (const [k, v] of Object.entries(reposRaw as Record<string, unknown>)) {
+      const st = (v as { status?: unknown } | null)?.status;
+      if (
+        v === null ||
+        typeof v !== 'object' ||
+        !REPO_STATUSES.includes(st as RepoStatus)
+      ) {
+        errs.push(`repos.${k}.status must be one of ${REPO_STATUSES.join('|')}`);
+        continue;
+      }
+      repos[k] = { status: st as RepoStatus };
+    }
+  }
+
+  const lo: string[][] = [];
+  const loRaw = o.landing_order ?? [];
+  if (!Array.isArray(loRaw)) {
+    errs.push('"landing_order" must be a list of stages, each a list of repo keys');
+  } else {
+    for (const stage of loRaw) {
+      if (!Array.isArray(stage) || stage.some((x) => typeof x !== 'string')) {
+        errs.push('each landing_order stage must be a list of repo keys');
+        continue;
+      }
+      lo.push(stage as string[]);
+    }
+  }
+  const seen = new Set<string>();
+  for (const k of lo.flat()) {
+    if (!repos[k]) errs.push(`landing_order names "${k}" which is not in repos`);
+    if (seen.has(k)) errs.push(`landing_order lists "${k}" twice`);
+    seen.add(k);
+  }
+  if (lo.length > 0) {
+    for (const k of Object.keys(repos)) {
+      if (!seen.has(k)) errs.push(`repo "${k}" missing from landing_order — add it to a stage`);
+    }
+  }
+
+  let invariants: ChangeFile['invariants'] = { touches: [], adds: [], retires: [] };
+  const invRaw = o.invariants;
+  if (invRaw !== undefined && invRaw !== null) {
+    if (typeof invRaw !== 'object' || Array.isArray(invRaw)) {
+      errs.push('"invariants" must be a mapping { touches, adds, retires }');
+    } else {
+      const io = invRaw as Record<string, unknown>;
+      invariants = {
+        touches: strList(io.touches, 'invariants.touches', errs),
+        adds: strList(io.adds, 'invariants.adds', errs),
+        retires: strList(io.retires, 'invariants.retires', errs),
+      };
+    }
+  }
+
+  const claims: ChangeClaim[] = [];
+  const claimsRaw = o.claims ?? [];
+  if (!Array.isArray(claimsRaw)) {
+    errs.push('"claims" must be a list of { id, statement }');
+  } else {
+    for (const c of claimsRaw) {
+      const cc = c as { id?: unknown; statement?: unknown } | null;
+      if (cc === null || typeof cc.id !== 'string' || typeof cc.statement !== 'string') {
+        errs.push('each claim needs a string "id" and "statement"');
+        continue;
+      }
+      claims.push({ id: cc.id, statement: cc.statement });
+    }
+  }
+
+  if (errs.length > 0) {
+    throw new ChangeError(`${label}: ${errs.join('; ')} — fix the frontmatter`);
+  }
+  return { slug, status, repos, landing_order: lo, invariants, claims };
+}
+
+export function parseChange(text: string, label = 'change file'): ParsedChange {
+  const m = /^---\n([\s\S]*?)\n---\n/.exec(text);
+  if (!m) {
+    throw new ChangeError(
+      `${label}: missing YAML frontmatter — start the file with --- and declare slug/status/repos`,
+    );
+  }
+  let raw: unknown;
+  try {
+    raw = parse(m[1]);
+  } catch (e) {
+    throw new ChangeError(
+      `${label}: invalid frontmatter YAML: ${(e as Error).message} — fix the syntax`,
+    );
+  }
+  const body = text.slice(m[0].length).replace(/^\n/, '');
+  return { change: normalizeChange(raw, label), body };
+}
+
+export function serializeChange(change: ChangeFile, body: string): string {
+  const fm = stringify({
+    slug: change.slug,
+    status: change.status,
+    repos: change.repos,
+    landing_order: change.landing_order,
+    invariants: change.invariants,
+    claims: change.claims,
+  });
+  const b = body === '' || body.endsWith('\n') ? body : `${body}\n`;
+  return `---\n${fm}---\n\n${b}`;
+}
+
+export function scaffoldChange(slug: string, title: string): ParsedChange {
+  return {
+    change: {
+      slug,
+      status: 'open',
+      repos: {},
+      landing_order: [],
+      invariants: { touches: [], adds: [], retires: [] },
+      claims: [],
+    },
+    body: `# ${title}\n\nDeclare repos, landing_order, invariants and claims in the frontmatter,\nthen run \`multivac change plan ${slug}\`.\n`,
+  };
+}
+
+export async function loadChange(brain: string, slug: string): Promise<ParsedChange> {
+  const file = changePath(brain, slug);
+  let text: string;
+  try {
+    text = await readFile(file, 'utf8');
+  } catch {
+    throw new ChangeError(
+      `no changes/${slug}.md — run \`multivac change new ${slug} "<title>"\` first`,
+    );
+  }
+  const parsed = parseChange(text, `changes/${slug}.md`);
+  if (parsed.change.slug !== slug) {
+    throw new ChangeError(
+      `changes/${slug}.md: frontmatter slug "${parsed.change.slug}" does not match the filename — fix the slug`,
+    );
+  }
+  return parsed;
+}
+
+export async function saveChange(brain: string, parsed: ParsedChange): Promise<void> {
+  await mkdir(changesDir(brain), { recursive: true });
+  await writeFile(
+    changePath(brain, parsed.change.slug),
+    serializeChange(parsed.change, parsed.body),
+  );
+}
+
+/** Archive: status -> archived, file moves to changes/archive/<slug>.md. Returns dest path. */
+export async function archiveChange(brain: string, parsed: ParsedChange): Promise<string> {
+  parsed.change.status = 'archived';
+  const dir = join(changesDir(brain), 'archive');
+  await mkdir(dir, { recursive: true });
+  const dest = join(dir, `${parsed.change.slug}.md`);
+  await writeFile(dest, serializeChange(parsed.change, parsed.body));
+  await unlink(changePath(brain, parsed.change.slug));
+  return dest;
+}
+
+export type StageState = 'landed' | 'ready' | 'blocked';
+export interface Stage {
+  repos: string[];
+  state: StageState;
+}
+
+/**
+ * Landing plan: stages in declared order. A stage is landed when every repo in
+ * it landed, ready when it is the first unlanded stage, blocked otherwise.
+ * Empty landing_order = one stage of all repos.
+ */
+export function landingPlan(c: ChangeFile): Stage[] {
+  const keys = Object.keys(c.repos);
+  const stages = c.landing_order.length > 0 ? c.landing_order : keys.length > 0 ? [keys] : [];
+  let earlierUnlanded = false;
+  return stages.map((repos) => {
+    const allLanded = repos.every((k) => c.repos[k]?.status === 'landed');
+    const state: StageState = allLanded ? 'landed' : earlierUnlanded ? 'blocked' : 'ready';
+    if (!allLanded) earlierUnlanded = true;
+    return { repos, state };
+  });
+}
+
+/** Close gate: every declared claim must verify ok (moved = self-healed, passes). */
+export function closeGate(
+  report: VerifyReport,
+  claimIds: string[],
+): { ok: boolean; lines: string[] } {
+  const byId = new Map(report.claims.map((c) => [c.claimId, c]));
+  const lines: string[] = [];
+  let ok = true;
+  for (const id of claimIds) {
+    const c = byId.get(id);
+    if (!c) {
+      ok = false;
+      lines.push(`${id}: no anchors evaluated — add an anchor for the claim, then re-run close`);
+      continue;
+    }
+    if (c.state === 'ok' || c.state === 'moved') {
+      lines.push(`${id}: ${c.state}`);
+      continue;
+    }
+    ok = false;
+    const detail = c.legs.map((l) => l.detail).filter(Boolean).join('; ');
+    lines.push(
+      `${id}: ${c.state}${detail ? ` — ${detail}` : ''} — make the claim true or fix the anchor, then re-run close`,
+    );
+  }
+  return { ok, lines };
+}

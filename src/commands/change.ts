@@ -1,0 +1,418 @@
+// multivac change — new / plan / apply / land / close. The mechanics are
+// deterministic; SDD steps are adapter calls that degrade to notices.
+
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { existsSync } from 'node:fs';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join, relative, resolve } from 'node:path';
+import type { Command, Config, VerifyReport } from '../types.js';
+import { loadConfig } from '../lib/config.js';
+import { lsFiles, run as gitRun } from '../lib/git.js';
+import { say, warn } from '../lib/out.js';
+import { applyManagedBlock } from '../doors/block.js';
+import { renderConsumerDoor } from '../doors/consumer.js';
+import { sddSpec } from '../adapters/registry.js';
+import { binaryPresent } from '../adapters/detect.js';
+import { evaluate } from './verify.js';
+import {
+  ChangeError,
+  REPO_STATUSES,
+  type ParsedChange,
+  type RepoStatus,
+  archiveChange,
+  changePath,
+  closeGate,
+  landingPlan,
+  loadChange,
+  saveChange,
+  scaffoldChange,
+} from '../change/file.js';
+
+const execFileP = promisify(execFile);
+
+
+/** Run one SDD workflow step. Declared+absent binary = notice, never a failure. */
+async function runSdd(
+  cfg: Config,
+  brain: string,
+  step: 'propose' | 'apply' | 'archive',
+  slug: string,
+  noSdd: boolean,
+): Promise<void> {
+  if (!cfg.sdd || !cfg.sddAuto || noSdd) return;
+  const spec = sddSpec(cfg.sdd);
+  if (spec && !(await binaryPresent(spec))) {
+    say(`sdd ${cfg.sdd}: binary not found — ${step} skipped; ${spec.installHint}`);
+    return;
+  }
+  const bin = spec?.binaries[0] ?? cfg.sdd;
+  const args = [step, slug];
+  try {
+    await execFileP(bin, args, { cwd: brain });
+    say(`sdd ${cfg.sdd}: ${step} done`);
+  } catch (e) {
+    const err = e as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      say(`sdd ${cfg.sdd}: binary not found — ${step} skipped; install it or set sdd_auto: false`);
+    } else {
+      warn(`sdd ${cfg.sdd}: ${step} failed (${err.message.split('\n')[0]}) — run it by hand`);
+    }
+  }
+}
+
+function repoEntryOf(cfg: Config, key: string): Config['repos'][string] {
+  const entry = cfg.repos[key];
+  if (!entry) {
+    throw new ChangeError(
+      `repo "${key}" not declared in .multivac/config.yml — add repos.${key} with a path`,
+    );
+  }
+  return entry;
+}
+
+async function clone(url: string, abs: string, key: string): Promise<void> {
+  await execFileP('git', ['clone', '--quiet', url, abs]);
+  say(`${key}: cloned ${url} -> ${abs}`);
+}
+
+async function branchBase(repo: string): Promise<string> {
+  for (const ref of ['origin/main', 'main']) {
+    try {
+      await gitRun(repo, ['rev-parse', '--verify', '--quiet', ref]);
+      return ref;
+    } catch {
+      /* next candidate */
+    }
+  }
+  return 'HEAD';
+}
+
+async function ensureBranch(repo: string, slug: string, key: string): Promise<void> {
+  const exists = await gitRun(repo, [
+    'rev-parse',
+    '--verify',
+    '--quiet',
+    `refs/heads/${slug}`,
+  ]).then(
+    () => true,
+    () => false,
+  );
+  if (exists) {
+    say(`${key}: branch ${slug} already exists — git -C ${repo} switch ${slug}`);
+    return;
+  }
+  const base = await branchBase(repo);
+  await gitRun(repo, base === 'HEAD' ? ['switch', '-c', slug] : ['switch', '-c', slug, base]);
+  say(`${key}: branched ${slug} from ${base}`);
+}
+
+/** Greenfield: git init, consumer door, first commit. Branching happens after. */
+async function greenfield(abs: string, key: string, slug: string, cfg: Config): Promise<void> {
+  await mkdir(abs, { recursive: true });
+  await execFileP('git', ['init', '-q', abs]);
+  await writeFile(join(abs, 'AGENTS.md'), applyManagedBlock(null, renderConsumerDoor(cfg)));
+  await gitRun(abs, ['add', '-A']);
+  await gitRun(abs, ['commit', '-q', '-m', `multivac: init ${key} (change ${slug})`]);
+  say(`${key}: created ${abs} — git init, door written, first commit`);
+}
+
+/** invariants.md table rows: id -> state cell (4th column). */
+async function invariantStates(brain: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  let text: string;
+  try {
+    text = await readFile(join(brain, 'invariants.md'), 'utf8');
+  } catch {
+    return map;
+  }
+  for (const line of text.split('\n')) {
+    const cells = line.split('|').map((s) => s.trim());
+    if (cells.length >= 6 && cells[1] && cells[1] !== 'ID' && !/^-+$/.test(cells[1])) {
+      map.set(cells[1], cells[4] || '?');
+    }
+  }
+  return map;
+}
+
+/** Every claim ID that has at least one @anchor line somewhere in the brain. */
+async function anchoredClaimIds(brain: string): Promise<Set<string>> {
+  const found = new Set<string>();
+  for (const rel of await lsFiles(brain)) {
+    let text: string;
+    try {
+      text = await readFile(join(brain, rel), 'utf8');
+    } catch {
+      continue;
+    }
+    for (const m of text.matchAll(/@anchor[ \t]+(\S+)/g)) found.add(m[1]);
+  }
+  return found;
+}
+
+const bump = (cur: RepoStatus, min: RepoStatus): RepoStatus =>
+  REPO_STATUSES.indexOf(cur) >= REPO_STATUSES.indexOf(min) ? cur : min;
+
+// --- subcommands ---
+
+async function cmdNew(
+  brain: string,
+  cfg: Config,
+  slug: string,
+  title: string,
+  noSdd: boolean,
+): Promise<number> {
+  if (existsSync(changePath(brain, slug))) {
+    warn(`changes/${slug}.md already exists — edit it, or pick another slug`);
+    return 1;
+  }
+  await saveChange(brain, scaffoldChange(slug, title));
+  say(`created changes/${slug}.md — declare repos, landing_order, invariants, claims`);
+  await runSdd(cfg, brain, 'propose', slug, noSdd);
+  return 0;
+}
+
+async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number> {
+  const { change } = await loadChange(brain, slug);
+  const keys = Object.keys(change.repos);
+  if (keys.length === 0) {
+    warn(`changes/${slug}.md declares no repos — add repos: { <key>: { status: planned } }`);
+    return 1;
+  }
+  let rc = 0;
+  for (const key of keys) {
+    let entry: Config['repos'][string];
+    try {
+      entry = repoEntryOf(cfg, key);
+    } catch (e) {
+      warn((e as Error).message);
+      rc = 1;
+      continue;
+    }
+    const abs = resolve(brain, entry.path);
+    if (!existsSync(abs)) {
+      if (entry.url) await clone(entry.url, abs, key);
+      else say(`${key}: missing at ${abs}, no url — greenfield; \`change apply ${slug}\` creates it`);
+    } else {
+      say(`${key}: ${abs}`);
+    }
+  }
+  say('landing order:');
+  landingPlan(change).forEach((s, i) => say(`  stage ${i + 1}: ${s.repos.join(', ')}`));
+  const states = await invariantStates(brain);
+  for (const id of [...change.invariants.touches, ...change.invariants.retires]) {
+    const st = states.get(id);
+    say(
+      st
+        ? `invariant ${id}: ${st}`
+        : `invariant ${id}: not in invariants.md — add the row or drop it from the change`,
+    );
+  }
+  for (const id of change.invariants.adds) say(`invariant ${id}: new — add its row before close`);
+  const anchored = await anchoredClaimIds(brain);
+  for (const c of change.claims) {
+    if (!anchored.has(c.id)) {
+      say(`claim ${c.id}: no anchor — add <!-- @anchor ${c.id} <repo>:<glob> /<regex>/ --> before close`);
+    }
+  }
+  return rc;
+}
+
+async function cmdApply(
+  brain: string,
+  cfg: Config,
+  slug: string,
+  noSdd: boolean,
+): Promise<number> {
+  const parsed = await loadChange(brain, slug);
+  const keys = Object.keys(parsed.change.repos);
+  if (keys.length === 0) {
+    warn(`changes/${slug}.md declares no repos — declare them, then re-run apply`);
+    return 1;
+  }
+  for (const key of keys) {
+    const entry = repoEntryOf(cfg, key);
+    const abs = resolve(brain, entry.path);
+    if (!existsSync(abs)) {
+      if (entry.url) await clone(entry.url, abs, key);
+      else await greenfield(abs, key, slug, cfg);
+    }
+    await ensureBranch(abs, slug, key);
+    parsed.change.repos[key].status = bump(parsed.change.repos[key].status, 'branched');
+    await saveChange(brain, parsed);
+  }
+  await runSdd(cfg, brain, 'apply', slug, noSdd);
+  say(
+    `next: write the feature in each repo on branch ${slug}, commit, then \`multivac change land ${slug}\``,
+  );
+  return 0;
+}
+
+async function cmdLand(
+  brain: string,
+  cfg: Config,
+  slug: string,
+  landed: string | undefined,
+): Promise<number> {
+  const parsed = await loadChange(brain, slug);
+  const { change } = parsed;
+  if (Object.keys(change.repos).length === 0) {
+    warn(`changes/${slug}.md declares no repos — declare repos and landing_order first`);
+    return 1;
+  }
+  if (landed !== undefined) {
+    if (!change.repos[landed]) {
+      warn(`repo "${landed}" is not in this change — check the frontmatter`);
+      return 1;
+    }
+    if (change.repos[landed].status !== 'landed') {
+      const plan = landingPlan(change);
+      const idx = plan.findIndex((s) => s.repos.includes(landed));
+      if (plan[idx].state === 'blocked') {
+        const readyIdx = plan.findIndex((s) => s.state === 'ready');
+        warn(
+          `${landed} is in stage ${idx + 1}, which is blocked — land stage ${readyIdx + 1} first`,
+        );
+        return 1;
+      }
+      change.repos[landed].status = 'landed';
+      await saveChange(brain, parsed);
+      say(`${landed}: recorded as landed`);
+    } else {
+      say(`${landed}: already landed`);
+    }
+  }
+  const plan = landingPlan(change);
+  for (const [i, s] of plan.entries()) {
+    say(`stage ${i + 1} [${s.state}] ${s.repos.map((k) => `${k}:${change.repos[k].status}`).join(' ')}`);
+    if (s.state === 'ready') {
+      for (const k of s.repos.filter((k) => change.repos[k].status !== 'landed')) {
+        const abs = cfg.repos[k] ? resolve(brain, cfg.repos[k].path) : k;
+        say(`  ${k}: git -C ${abs} push -u origin ${slug}`);
+        say(`  ${k}: open MR ${slug} -> main (state the landing order in the description)`);
+        say(`  ${k}: once merged: multivac change land ${slug} --landed ${k}`);
+      }
+    }
+    if (s.state === 'blocked') say('  waiting on an earlier stage — do not push yet');
+  }
+  if (plan.every((s) => s.state === 'landed')) {
+    say(`all stages landed — run \`multivac change close ${slug}\``);
+  }
+  return 0;
+}
+
+async function cmdClose(
+  brain: string,
+  cfg: Config,
+  slug: string,
+  noSdd: boolean,
+): Promise<number> {
+  const parsed = await loadChange(brain, slug);
+  const unlanded = Object.entries(parsed.change.repos).filter(([, r]) => r.status !== 'landed');
+  if (unlanded.length > 0) {
+    for (const [k, r] of unlanded) {
+      warn(`${k}: ${r.status} — land every stage first (multivac change land ${slug})`);
+    }
+    return 1;
+  }
+  const ids = parsed.change.claims.map((c) => c.id);
+  if (ids.length > 0) {
+    const report = await evaluate(brain, { claimIds: ids });
+    const gate = closeGate(report, ids);
+    for (const l of gate.lines) say(l);
+    if (!gate.ok) {
+      warn('claims are not green — close refused; fix the red claims, then re-run close');
+      return 1;
+    }
+  } else {
+    say('no claims declared — nothing to verify');
+  }
+  await runSdd(cfg, brain, 'archive', slug, noSdd);
+  const dest = await archiveChange(brain, parsed);
+  say(`archived -> ${relative(brain, dest)}`);
+  if (cfg.grapher) {
+    say(`graph: refresh with \`${cfg.grapher} update .\` in the changed repos`);
+  }
+  return 0;
+}
+
+// --- dispatch ---
+
+const SUBS = ['new', 'plan', 'apply', 'land', 'close'] as const;
+
+/** "Points expire!" -> "points-expire". */
+const slugify = (title: string): string =>
+  title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+function usage(): void {
+  say('multivac change <sub> <slug> [args]');
+  say('  new "<title>"          scaffold changes/<slug>.md, slug from title (+ SDD propose)');
+  say('  new <slug> "<title>"   same, with an explicit slug');
+  say('  plan <slug>            resolve repos, landing graph, invariants, claims');
+  say('  apply <slug>           branch per repo (greenfield repos get created)');
+  say('  land <slug>            landing-order report; --landed <repo> records a merge');
+  say('  close <slug>           verify claims, archive the change');
+  say('flags: --no-sdd (skip SDD steps), --landed <repo> (land only)');
+}
+
+export const change: Command = {
+  name: 'change',
+  help: 'new/plan/apply/land/close — the ecosystem change lifecycle',
+  async run(argv, ctx): Promise<number> {
+    const pos: string[] = [];
+    let noSdd = false;
+    let landed: string | undefined;
+    for (let i = 0; i < argv.length; i++) {
+      const a = argv[i];
+      if (a === '--no-sdd') noSdd = true;
+      else if (a === '--landed') landed = argv[++i];
+      else if (a.startsWith('--')) {
+        warn(`unknown flag ${a} — run \`multivac change\` for usage`);
+        return 2;
+      } else pos.push(a);
+    }
+    let [sub, slug, title] = pos;
+    if (!sub || !(SUBS as readonly string[]).includes(sub)) {
+      usage();
+      return 2;
+    }
+    if (sub === 'new' && slug && title === undefined) {
+      // canonical form: multivac change new "<title>" — derive the slug
+      title = slug;
+      slug = slugify(title);
+    }
+    if (!slug || !/^[a-z0-9][a-z0-9._-]*$/i.test(slug)) {
+      warn(`usage: multivac change ${sub} <slug> — slug is letters/digits/dots/dashes`);
+      return 2;
+    }
+    if (sub === 'new' && !title) {
+      warn(`usage: multivac change new "<title>"`);
+      return 2;
+    }
+    const brain = ctx.cwd;
+    const cfg = await loadConfig(brain);
+    try {
+      switch (sub) {
+        case 'new':
+          return await cmdNew(brain, cfg, slug, title, noSdd);
+        case 'plan':
+          return await cmdPlan(brain, cfg, slug);
+        case 'apply':
+          return await cmdApply(brain, cfg, slug, noSdd);
+        case 'land':
+          return await cmdLand(brain, cfg, slug, landed);
+        default:
+          return await cmdClose(brain, cfg, slug, noSdd);
+      }
+    } catch (e) {
+      if (e instanceof ChangeError) {
+        warn(e.message);
+        return 1;
+      }
+      throw e;
+    }
+  },
+};

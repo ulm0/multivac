@@ -1,0 +1,9 @@
+internal/
+.DS_Store
+node_modules/
+dist/
+dist-test/
+.multivac/cache/
+site/public/
+site/.hugo_build.lock
+site/_vendor/
