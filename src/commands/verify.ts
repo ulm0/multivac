@@ -308,6 +308,8 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
         scope = { repoKey: await resolveRepoKey(cfg, mount, startDir, repoFlag), dir: startDir };
         brainDir = mount;
       }
+    } else if (repoFlag !== undefined) {
+      warn(`--repo only scopes verify from a consumer repo — ${startDir} is a brain; flag ignored`);
     }
     // Consumer mode never rewrites moved globs: the mount is usually a pinned
     // submodule — the heal belongs in the brain checkout.

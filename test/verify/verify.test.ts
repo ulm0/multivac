@@ -321,3 +321,15 @@ test('staleness: block — a pin ahead of the channel is not stale, never gates'
   assert.equal(code, 0); // "behind" is the fact that gates; ahead is fine
   assert.doesNotMatch(out, /stale {5}api/);
 });
+
+test('config rejects the reserved repo keys "brain" and "*"', async () => {
+  const e = eco();
+  setLaw(e.brain);
+  writeFileSync(
+    join(e.brain, '.multivac/config.yml'),
+    'repos:\n  brain: ../acme-api\n',
+  );
+  assert.equal(await runVerify(e.brain), 2);
+  writeFileSync(join(e.brain, '.multivac/config.yml'), 'repos:\n  "*": ../acme-api\n');
+  assert.equal(await runVerify(e.brain), 2);
+});

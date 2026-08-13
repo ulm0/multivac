@@ -107,6 +107,12 @@ export async function loadConfig(brainDir: string): Promise<Config> {
   }
   const repos: Record<string, RepoEntry> = {};
   for (const [k, v] of Object.entries(reposRaw as Record<string, unknown>)) {
+    if (k === 'brain' || k === '*') {
+      // A declared "brain" would collide with the implicit brain handle and
+      // let consumer-scoped verify evaluate the brain's own anchors against
+      // a consumer checkout; "*" already means every repo in anchor legs.
+      fail(`repos.${k === '*' ? '"*"' : k} is a reserved key — rename the repo`);
+    }
     repos[k] = repoEntry(k, v);
   }
 
