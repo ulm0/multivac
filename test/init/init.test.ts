@@ -65,7 +65,10 @@ test('init scaffolds the enumerated side effects and nothing more', async () => 
   // config seeded from flags, loadable by the real loader
   const cfg = await loadConfig(dir);
   assert.deepEqual(cfg.doors, ['agents', 'claude']);
-  assert.equal(readFileSync(join(dir, '.multivac/.gitignore'), 'utf8'), 'cache/\n');
+  assert.equal(
+    readFileSync(join(dir, '.multivac/.gitignore'), 'utf8'),
+    'cache/\nworktrees/\n',
+  );
 
   // door at the root with its managed block; law table and changes/ under .multivac/
   const door = readFileSync(join(dir, 'AGENTS.md'), 'utf8');

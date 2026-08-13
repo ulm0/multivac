@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
@@ -19,6 +19,10 @@ for (const [k, v] of Object.entries({
 
 const git = (cwd: string, ...args: string[]): string =>
   execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).trim();
+
+/** Where apply puts the work: the per-change worktree (MV-25). */
+const wt = (brain: string, slug: string): string =>
+  join(brain, '.multivac/worktrees', slug, 'brain');
 
 const capture = async (fn: () => Promise<number>): Promise<{ code: number; out: string }> => {
   const lines: string[] = [];
@@ -68,8 +72,8 @@ test('plan checks adds against the law table, not only touches/retires', async (
   // the row exists: it is not new, whatever the change file says
   assert.match(out, /invariant ACME-1: already in \.multivac\/invariants\.md \(active\) — not new/);
   assert.doesNotMatch(out, /invariant ACME-1: new/);
-  // the row that really is missing keeps the old line
-  assert.match(out, /invariant ACME-9: new — add its row before close/);
+  // the row that really is missing is reserved here, at declare time (MV-26)
+  assert.match(out, /invariant ACME-9: reserved — proposed row in \.multivac\/invariants\.md/);
 });
 
 test('land records a local merge as evidence, and offers the local path with no origin', async () => {
@@ -81,9 +85,13 @@ test('land records a local merge as evidence, and offers the local path with no 
   assert.doesNotMatch(ready.out, /push -u origin/);
 
   assert.equal(await change.run(['apply', 'merged-here'], { cwd: b }), 0);
-  git(b, 'add', '-A');
-  git(b, 'commit', '-q', '-m', 'the change');
-  git(b, 'switch', '-q', 'main');
+  // the work happens in the change's worktree; the shared tree stays on main
+  git(wt(b, 'merged-here'), 'add', '-A');
+  git(wt(b, 'merged-here'), 'commit', '-q', '-m', 'the change');
+  assert.equal(git(b, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
+  // the branch now carries the declaration; the shared tree's untracked copy
+  // is the same file, and git will not let a merge write over it
+  rmSync(join(b, '.multivac/changes/merged-here.md'));
   git(b, 'merge', '-q', '--no-ff', '-m', 'merge', 'merged-here');
 
   const seen = await capture(() => change.run(['land', 'merged-here'], { cwd: b }));
@@ -112,8 +120,8 @@ test('land without a local merge records anyway, and says it has no evidence', a
   // real work on the branch, never merged: still recorded, still no evidence
   await declare(b, 'never-merged');
   assert.equal(await change.run(['apply', 'never-merged'], { cwd: b }), 0);
-  git(b, 'add', '-A');
-  git(b, 'commit', '-q', '-m', 'work');
+  git(wt(b, 'never-merged'), 'add', '-A');
+  git(wt(b, 'never-merged'), 'commit', '-q', '-m', 'work');
   const second = await capture(() =>
     change.run(['land', 'never-merged', '--landed', 'brain'], { cwd: b }),
   );
@@ -126,6 +134,6 @@ test('close names the commit that stores the archive', async () => {
   assert.equal(await change.run(['land', 'say-commit', '--landed', 'brain'], { cwd: b }), 0);
   const { code, out } = await capture(() => change.run(['close', 'say-commit'], { cwd: b }));
   assert.equal(code, 0);
-  assert.match(out, /archived — commit this: git -C .* add -A changes && git commit -m "Archive the say-commit change"/);
+  assert.match(out, /archived — commit this: git -C .* add -A \.multivac\/changes && git commit -m "Archive the say-commit change"/);
   assert.match(git(b, 'status', '--porcelain', '-uall'), /changes\/archive\/say-commit\.md/);
 });

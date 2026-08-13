@@ -1,11 +1,16 @@
 // `change apply` in a brain that has never been pushed: the base is the newer
 // of local main and origin/main (printed, with why), and the change's own
 // declaration file rides onto the branch instead of aborting the switch.
+//
+// Since MV-25 the branch lands in a per-change worktree, so the shared tree
+// stays where it was. The base, the wording and the carry are unchanged; the
+// in-place switch — and its refusal — is the fallback, forced here the way an
+// old git would force it.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
@@ -44,6 +49,16 @@ function brainWithStaleRemote(): { brain: string; behind: string; ahead: string 
   git(eco.brain, 'add', '-A');
   git(eco.brain, 'commit', '-q', '-m', 'local-only commit');
   return { brain: eco.brain, behind, ahead: git(eco.brain, 'rev-parse', 'HEAD') };
+}
+
+/** Where apply puts the work for `slug` in a brain==code repo. */
+const wt = (brain: string, slug: string): string =>
+  join(brain, '.multivac/worktrees', slug, 'brain');
+
+/** Make `worktree add` fail the way an old git does: a file sits on the path. */
+function blockWorktree(brain: string, slug: string): void {
+  mkdirSync(join(brain, '.multivac/worktrees', slug), { recursive: true });
+  writeFileSync(wt(brain, slug), 'not a worktree\n');
 }
 
 async function declare(brain: string, slug: string): Promise<void> {
@@ -87,10 +102,29 @@ test('the uncommitted declaration file is carried onto the branch', async () => 
   assert.equal(code, 0);
   assert.doesNotMatch(out, /would be overwritten/);
   assert.match(out, /carried onto the branch: \.multivac\/changes\/carry-me\.md/);
-  assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'carry-me');
+  assert.equal(git(wt(brain, 'carry-me'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'carry-me');
+  assert.ok(existsSync(join(wt(brain, 'carry-me'), '.multivac/changes/carry-me.md')));
+  // the shared tree never moved, and still holds the declaration apply wrote
+  assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
   assert.ok(existsSync(decl));
   // same declaration, only the status bumped by apply itself
   assert.equal(before.replace('status: planned', 'status: branched'), readFileSync(decl, 'utf8'));
+});
+
+test('the same carry happens when the fallback switches in place', async () => {
+  const { brain } = brainWithStaleRemote();
+  await declare(brain, 'carry-in-place');
+  blockWorktree(brain, 'carry-in-place');
+  const decl = join(brain, '.multivac/changes/carry-in-place.md');
+
+  const { code, out } = await capture(() =>
+    change.run(['apply', 'carry-in-place'], { cwd: brain }),
+  );
+  assert.equal(code, 0);
+  assert.match(out, /no worktree available — branching in place/);
+  assert.match(out, /carried onto the branch: \.multivac\/changes\/carry-in-place\.md/);
+  assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'carry-in-place');
+  assert.ok(existsSync(decl));
 });
 
 test('other uncommitted work is refused by name with the command, not a raw git error', async () => {
@@ -101,6 +135,8 @@ test('other uncommitted work is refused by name with the command, not a raw git 
   git(brain, 'reset', '--hard', '-q', behind);
   writeFileSync(join(brain, 'notes.md'), '# dirty\n');
   await declare(brain, 'blocked');
+  // only the in-place fallback can be blocked by the shared tree at all
+  blockWorktree(brain, 'blocked');
 
   const lines: string[] = [];
   const orig = console.error;
@@ -113,7 +149,8 @@ test('other uncommitted work is refused by name with the command, not a raw git 
   }
   assert.equal(code, 1);
   const msg = lines.join('\n');
-  assert.match(msg, /cannot branch blocked — uncommitted work would be overwritten: notes\.md/);
+  assert.match(msg, /cannot branch blocked — .* carries uncommitted work: notes\.md/);
+  assert.match(msg, /apply will not switch it to blocked under another change/);
   assert.match(msg, /git -C .* stash push -- notes\.md/);
   assert.match(msg, /multivac change apply blocked/);
   // nothing lost: the dirty file and the declaration are still there
@@ -125,12 +162,24 @@ test('other uncommitted work is refused by name with the command, not a raw git 
 test('an existing branch is reused, not a failure', async () => {
   const { brain } = brainWithStaleRemote();
   await declare(brain, 'again');
+  // no worktree: the branch is created in place, then re-applied onto it
+  blockWorktree(brain, 'again');
   assert.equal(await change.run(['apply', 'again'], { cwd: brain }), 0);
   git(brain, 'switch', '-q', 'main');
   const { code, out } = await capture(() => change.run(['apply', 'again'], { cwd: brain }));
   assert.equal(code, 0);
   assert.match(out, /branch again already exists — switched to it, reusing/);
   assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'again');
+});
+
+test('a worktree that is already there is reused, not re-created', async () => {
+  const { brain } = brainWithStaleRemote();
+  await declare(brain, 'twice');
+  assert.equal(await change.run(['apply', 'twice'], { cwd: brain }), 0);
+  const { code, out } = await capture(() => change.run(['apply', 'twice'], { cwd: brain }));
+  assert.equal(code, 0);
+  assert.match(out, /worktree .*twice.brain \(already there\)/);
+  assert.equal(git(wt(brain, 'twice'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'twice');
 });
 
 test('origin/HEAD names the trunk when it is neither main nor master', async () => {
@@ -151,8 +200,11 @@ test('origin/HEAD names the trunk when it is neither main nor master', async () 
   assert.equal(code, 0);
   assert.match(out, /branched mine from trunk [0-9a-f]{7}/);
   assert.equal(git(brain, 'rev-parse', 'mine^{commit}'), trunk);
-  // the other change's commit did not come along
-  assert.ok(!existsSync(join(brain, 'theirs.md')));
+  // the other change's commit did not come along into the new checkout
+  assert.ok(!existsSync(join(wt(brain, 'mine'), 'theirs.md')));
+  // and the other change's tree was left exactly where it was
+  assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'someone-elses-change');
+  assert.ok(existsSync(join(brain, 'theirs.md')));
 });
 
 test('no default branch at all: the fallback names the branch it is building on', async () => {

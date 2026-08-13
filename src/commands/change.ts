@@ -4,7 +4,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, rmdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
 import { CHANGES_DIR, CONFIG_PATH, LAW_PATH, loadConfig } from '../lib/config.js';
@@ -29,6 +29,7 @@ import {
   saveChange,
   scaffoldChange,
 } from '../change/file.js';
+import { readLaw, releaseUnused, reserveId } from '../change/reserve.js';
 
 const execFileP = promisify(execFile);
 
@@ -222,6 +223,28 @@ async function ensureBranch(
 ): Promise<void> {
   const exists = (await refSha(repo, `refs/heads/${slug}`)) !== null;
   const base = exists ? null : await branchBase(repo);
+  // git carries uncommitted edits onto a branch it creates at the same commit,
+  // which is how one agent's work used to follow another onto the wrong branch.
+  // Anything the lifecycle did not write itself refuses the switch, by name,
+  // before git gets a chance to be helpful. Worktrees are machinery, not work.
+  if ((await currentBranch(repo)) !== slug) {
+    // -uall: an untracked directory collapses to `changes/`, which no carry
+    // path would ever match — the files have to be named one by one.
+    const busy = (await gitRun(repo, ['status', '--porcelain', '-uall']))
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => l.slice(3).trim())
+      .filter((p) => !carry.includes(p) && !p.startsWith('.multivac/worktrees/'));
+    if (busy.length > 0) {
+      const list = busy.slice(0, 3).join(' ') + (busy.length > 3 ? ` +${busy.length - 3}` : '');
+      throw new ChangeError(
+        `${key}: cannot branch ${slug} — ${repo} carries uncommitted work: ${list}\n` +
+          `  apply will not switch it to ${slug} under another change\n` +
+          `  commit it, or park it: git -C ${repo} stash push -- ${list}\n` +
+          `  then re-run: multivac change apply ${slug}`,
+      );
+    }
+  }
   const held = new Map<string, string>();
   for (const rel of carry) {
     const abs = join(repo, rel);
@@ -250,6 +273,103 @@ async function ensureBranch(
   if (held.size > 0) say(`${key}: carried onto the branch: ${[...held.keys()].join(' ')}`);
 }
 
+/** Machinery, so it lives under `.multivac/` — and gitignored there. */
+export const worktreePath = (brain: string, slug: string, key: string): string =>
+  join(brain, '.multivac', 'worktrees', slug, key);
+
+/**
+ * The change gets its own checkout. Two agents in one repo must not share a
+ * working tree: switching it under the other one moves their edits onto the
+ * wrong branch. Returns the worktree, or null when git cannot make one.
+ */
+async function ensureWorktree(
+  brain: string,
+  repo: string,
+  slug: string,
+  key: string,
+): Promise<string | null> {
+  const wt = worktreePath(brain, slug, key);
+  // A registration whose directory is gone refuses every later checkout.
+  await gitRun(repo, ['worktree', 'prune']).catch(() => {});
+  if (existsSync(join(wt, '.git'))) {
+    say(`${key}: worktree ${wt} (already there)`);
+    return wt;
+  }
+  const exists = (await refSha(repo, `refs/heads/${slug}`)) !== null;
+  const base = exists ? null : await branchBase(repo);
+  try {
+    await gitRun(
+      repo,
+      base ? ['worktree', 'add', '-b', slug, wt, base.ref] : ['worktree', 'add', wt, slug],
+    );
+  } catch {
+    return null;
+  }
+  // Same sentence the in-place switch prints: where the branch came from is
+  // the same fact whichever checkout it lands in.
+  if (base) say(`${key}: branched ${slug} from ${base.ref} ${base.sha.slice(0, 7)} — ${base.why}`);
+  else say(`${key}: branch ${slug} already exists — switched to it, reusing`);
+  say(`${key}: worktree ${wt}`);
+  return wt;
+}
+
+/**
+ * Where the agent works for this repo: the worktree, or — when git cannot make
+ * one — the repo itself, branched in place by the same `ensureBranch` the
+ * lifecycle has always used, refusal and carry included.
+ */
+async function ensureWorkspace(
+  brain: string,
+  repo: string,
+  slug: string,
+  key: string,
+  carry: string[],
+): Promise<string> {
+  const wt = await ensureWorktree(brain, repo, slug, key);
+  if (wt === null) {
+    say(`${key}: no worktree available — branching in place`);
+    await ensureBranch(repo, slug, key, carry);
+    return repo;
+  }
+  // brain==code: the declaration is uncommitted in the brain tree, so the
+  // worktree would not have it. Carry it, the way the in-place switch does.
+  for (const rel of carry) {
+    const from = join(repo, rel);
+    const to = join(wt, rel);
+    if (!existsSync(from) || existsSync(to)) continue;
+    await mkdir(dirname(to), { recursive: true });
+    await copyFile(from, to);
+    say(`${key}: carried onto the branch: ${rel}`);
+  }
+  return wt;
+}
+
+/** close: the worktrees go with the change. Uncommitted work is never forced. */
+async function removeWorktrees(
+  brain: string,
+  cfg: Config,
+  keys: string[],
+  slug: string,
+): Promise<void> {
+  for (const key of keys) {
+    const wt = worktreePath(brain, slug, key);
+    if (!existsSync(wt)) continue;
+    const repo = repoAbs(brain, cfg, key);
+    if (!repo) continue;
+    try {
+      await gitRun(repo, ['worktree', 'remove', wt]);
+      say(`${key}: worktree removed (${wt})`);
+    } catch {
+      warn(
+        `${key}: worktree ${wt} still has uncommitted work — ` +
+          `\`git -C ${repo} worktree remove --force ${wt}\` when you are done with it`,
+      );
+    }
+  }
+  // rmdir, never recursive: a worktree that refused to go still holds work.
+  await rmdir(join(brain, '.multivac', 'worktrees', slug)).catch(() => {});
+}
+
 /** Greenfield: git init, consumer door, first commit. Branching happens after. */
 async function greenfield(abs: string, key: string, slug: string, cfg: Config): Promise<void> {
   await mkdir(abs, { recursive: true });
@@ -262,20 +382,8 @@ async function greenfield(abs: string, key: string, slug: string, cfg: Config): 
 
 /** Law table rows: id -> state cell (4th column). */
 async function invariantStates(brain: string): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  let text: string;
-  try {
-    text = await readFile(join(brain, LAW_PATH), 'utf8');
-  } catch {
-    return map;
-  }
-  for (const line of text.split('\n')) {
-    const cells = line.split('|').map((s) => s.trim());
-    if (cells.length >= 6 && cells[1] && cells[1] !== 'ID' && !/^-+$/.test(cells[1])) {
-      map.set(cells[1], cells[4] || '?');
-    }
-  }
-  return map;
+  const law = await readLaw(brain);
+  return new Map((law?.rows ?? []).map((r) => [r.id, r.state || '?']));
 }
 
 /** Every claim ID that has at least one @anchor line somewhere in the brain. */
@@ -309,8 +417,22 @@ async function cmdNew(
     warn(`${changeRel(slug)} already exists — edit it, or pick another slug`);
     return 1;
   }
-  await saveChange(brain, scaffoldChange(slug, title));
+  const parsed = scaffoldChange(slug, title);
+  // Allocate before anyone else reads the table: IDs picked by hand collide,
+  // and the collision only shows up at merge.
+  const reserved = await reserveId(brain, slug).catch((e) => {
+    warn(`${(e as Error).message}`);
+    return null;
+  });
+  if (reserved) parsed.change.invariants.adds = [reserved.id];
+  await saveChange(brain, parsed);
   say(`created ${changeRel(slug)} — declare repos, landing_order, invariants, claims`);
+  if (reserved) {
+    say(
+      `reserved ${reserved.id} — proposed row in ${LAW_PATH}, declared in invariants.adds; ` +
+        'drop it from both if this change adds no law',
+    );
+  }
   await runSdd(cfg, brain, 'propose', slug, noSdd);
   return 0;
 }
@@ -351,13 +473,23 @@ async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number
         : `invariant ${id}: not in ${LAW_PATH} — add the row or drop it from the change`,
     );
   }
+  // Declared adds are reserved here, at declare time. An ID another change
+  // already holds fails the plan — that argument belongs before the code, not
+  // in a merge conflict.
   for (const id of change.invariants.adds) {
-    const st = states.get(id);
-    say(
-      st
-        ? `invariant ${id}: already in ${LAW_PATH} (${st}) — not new; move it to touches, or pick a free id`
-        : `invariant ${id}: new — add its row before close`,
-    );
+    try {
+      const r = await reserveId(brain, slug, id);
+      // A `proposed` row that survived reserveId is this change's own — the
+      // one `new` allocated. Only law says "not new".
+      say(
+        r.state && r.state !== 'proposed'
+          ? `invariant ${id}: already in ${LAW_PATH} (${r.state}) — not new; move it to touches, or pick a free id`
+          : `invariant ${id}: reserved — proposed row in ${LAW_PATH}; state the rule before close`,
+      );
+    } catch (e) {
+      warn((e as Error).message);
+      rc = 1;
+    }
   }
   const anchored = await anchoredClaimIds(brain);
   for (const c of change.claims) {
@@ -380,6 +512,7 @@ async function cmdApply(
     warn(`${changeRel(slug)} declares no repos — declare them, then re-run apply`);
     return 1;
   }
+  const workspaces: string[] = [];
   for (const key of keys) {
     const entry = repoEntryOf(cfg, key);
     const abs = resolve(brain, entry.path);
@@ -387,17 +520,19 @@ async function cmdApply(
       if (entry.url) await clone(entry.url, abs, key);
       else await greenfield(abs, key, slug, cfg);
     }
-    // The declaration file lives in the brain and belongs to this change: it
-    // rides along instead of blocking the switch that the lifecycle asked for.
-    const carry = abs === resolve(brain) ? [relative(brain, changePath(brain, slug))] : [];
-    await ensureBranch(abs, slug, key, carry);
+    // The declaration file and the reserved law row live in the brain and
+    // belong to this change: they ride along instead of blocking the switch
+    // that the lifecycle itself asked for.
+    const carry =
+      abs === resolve(brain) ? [relative(brain, changePath(brain, slug)), LAW_PATH] : [];
+    workspaces.push(`${key}: ${await ensureWorkspace(brain, abs, slug, key, carry)}`);
     parsed.change.repos[key].status = bump(parsed.change.repos[key].status, 'branched');
     await saveChange(brain, parsed);
   }
   await runSdd(cfg, brain, 'apply', slug, noSdd);
-  say(
-    `next: write the feature in each repo on branch ${slug}, commit, then \`multivac change land ${slug}\``,
-  );
+  say(`work here — one checkout per repo, nobody else's tree moves:`);
+  for (const w of workspaces) say(`  ${w}`);
+  say(`then commit on branch ${slug} and run \`multivac change land ${slug}\``);
   return 0;
 }
 
@@ -507,8 +642,15 @@ async function cmdClose(
   say(`archived -> ${relative(brain, dest)}`);
   // The rename is a working-tree edit like any other: say so, with the command.
   say(
-    `archived — commit this: git -C ${brain} add -A changes && git commit -m "Archive the ${slug} change"`,
+    `archived — commit this: git -C ${brain} add -A ${CHANGES_DIR} && git commit -m "Archive the ${slug} change"`,
   );
+  // A reservation the change never used goes back to the pool; the worktrees
+  // go with the change that owned them.
+  const released = await releaseUnused(brain, slug, await anchoredClaimIds(brain));
+  if (released.length > 0) {
+    say(`released unused reservation${released.length > 1 ? 's' : ''}: ${released.join(', ')}`);
+  }
+  await removeWorktrees(brain, cfg, Object.keys(parsed.change.repos), slug);
   if (cfg.grapher) {
     say(`graph: refresh with \`${cfg.grapher} update .\` in the changed repos`);
   }
@@ -528,10 +670,10 @@ const slugify = (title: string): string =>
 
 function usage(): void {
   say('multivac change <sub> <slug> [args]');
-  say(`  new "<title>"          scaffold ${CHANGES_DIR}/<slug>.md, slug from title (+ SDD propose)`);
+  say(`  new "<title>"          scaffold ${CHANGES_DIR}/<slug>.md + reserve the next invariant id`);
   say('  new <slug> "<title>"   same, with an explicit slug');
-  say('  plan <slug>            resolve repos, landing graph, invariants, claims');
-  say('  apply <slug>           branch per repo (greenfield repos get created)');
+  say('  plan <slug>            resolve repos, landing graph, reserve declared ids, claims');
+  say('  apply <slug>           worktree per repo (greenfield repos get created)');
   say('  land <slug>            landing-order report; --landed <repo> records a merge');
   say('  close <slug>           verify claims, archive the change');
   say('flags: --no-sdd (skip SDD steps), --landed <repo> (land only)');

@@ -197,9 +197,10 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     return 1;
   }
 
-  // 2. machinery: config.yml (flags land here), gitignored cache/.
+  // 2. machinery: config.yml (flags land here), gitignored cache/ + worktrees/
+  // (change apply puts one checkout per change there — never committed).
   await mkdir(join(dir, '.multivac', 'cache'), { recursive: true });
-  await writeIfMissing(join(dir, '.multivac', '.gitignore'), 'cache/\n');
+  await writeIfMissing(join(dir, '.multivac', '.gitignore'), 'cache/\nworktrees/\n');
   const cfgPath = join(dir, '.multivac', 'config.yml');
   if (await exists(cfgPath)) {
     say('init: .multivac/config.yml kept — edit it directly, then `multivac doors`');

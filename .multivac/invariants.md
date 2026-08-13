@@ -116,6 +116,15 @@ checks them on every commit.
 <!-- @anchor MV-24 brain:test/helpers/fixture.ts /'init', '-q', '-b', 'main'/ -->
 <!-- @anchor MV-24 brain:test/** !test/helpers/fixture.ts /'init', '-q'/ absent -->
 <!-- @anchor MV-24 brain:test/helpers/scaffold.test.ts /whatever the host init\.defaultBranch says/ -->
+| MV-25 | `change apply` gives each change its own worktree under `.multivac/worktrees/<slug>/<repo>` and prints it; `close` removes it. Where git cannot make one, apply falls back in place and refuses a tree carrying another change's uncommitted work. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+<!-- @anchor MV-25 brain:src/commands/change.ts /worktreePath/ -->
+<!-- @anchor MV-25 brain:src/commands/change.ts /apply will not switch it/ -->
+<!-- @anchor MV-25 brain:src/commands/change.ts /function removeWorktrees/ -->
+<!-- @anchor MV-25 brain:test/change/concurrency.test.ts /both live at once/ -->
+| MV-26 | Invariant IDs are allocated by the tool, never by hand: `change new` reserves the next free ID as a `proposed` row in `.multivac/invariants.md` under an exclusive lock, and `plan` refuses a declared ID another change is holding. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+<!-- @anchor MV-26 brain:src/change/reserve.ts /reserveId/ -->
+<!-- @anchor MV-26 brain:src/change/reserve.ts /flag: 'wx'/ -->
+<!-- @anchor MV-26 brain:test/change/concurrency.test.ts /must not claim the same id/ -->
 | MV-32 | Everything multivac creates lives under `.multivac/` — the law, the changes and the machinery; `AGENTS.md` at the repo root is the only exception. `init` migrates a brain that still keeps them at the root, announcing every path before it moves it and using `git mv` so history follows, and it refuses rather than overwrite an occupied target. It never moves a file multivac did not write: a root `invariants.md` or `changes/` counts as multivac's only in a directory that already has `.multivac/config.yml` AND whose file parses as multivac's own law table or change file. Only two files that both parse as multivac's law are ambiguous, and that error names the one that wins; `doctor` reports the legacy layout with the command that fixes it and moves nothing itself. | specified | active | 2026-08-14 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-32 brain:src/lib/config.ts /LAW_PATH = '.multivac\/invariants.md'/ -->
 <!-- @anchor MV-32 brain:src/lib/config.ts /CHANGES_DIR = '.multivac\/changes'/ -->

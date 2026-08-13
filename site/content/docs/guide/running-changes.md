@@ -23,7 +23,14 @@ All output below is real, captured from a two-repo scratch ecosystem
 ```txt
 $ mvac change new "points expire"
 created .multivac/changes/points-expire.md — declare repos, landing_order, invariants, claims
+reserved INV-02 — proposed row in .multivac/invariants.md, declared in invariants.adds; drop it from both if this change adds no law
 ```
+
+`new` also takes the next free invariant ID out of the law table and writes it
+straight back as a `proposed` row naming this change. Never pick an ID by
+hand: two agents both picking "the next one" pick the same one, and the
+collision only surfaces at merge. A `proposed` row never gates `verify`, and
+`close` releases the reservation if the change never used it.
 
 The scaffold:
 
@@ -35,7 +42,8 @@ repos: {}
 landing_order: []
 invariants:
   touches: []
-  adds: []
+  adds:
+    - INV-02        # reserved for this change
   retires: []
 claims: []
 ---
@@ -57,7 +65,9 @@ Fill the four declared fields before writing code:
    repo must appear in a stage — `plan` refuses otherwise
    (`repo "web" missing from landing_order — add it to a stage`).
 3. **`invariants`** — `touches` ("amends INV-xx") for every rule the change
-   relaxes or reshapes, `adds` for new law, `retires` for tombstoning. An
+   relaxes or reshapes, `adds` for new law (the ID `new` reserved, or one you
+   declare — `plan` reserves it and fails if another change holds it),
+   `retires` for tombstoning. An
    invariant is never relaxed in code: the row changes first, dated, in
    this change; the code follows in the same change.
 4. **`claims`** — the statements this change makes true, with their
@@ -97,7 +107,7 @@ web: missing at ~/eco/acme-web, no url — greenfield; `change apply points-expi
 landing order:
   stage 1: api
   stage 2: web
-invariant INV-02: new — add its row before close
+invariant INV-02: reserved — proposed row in .multivac/invariants.md; state the rule before close
 claim INV-02: no anchor — add <!-- @anchor INV-02 <repo>:<glob> /<regex>/ --> before close
 ```
 
@@ -106,21 +116,34 @@ missing for close. A declared repo with a `url` and no local clone gets
 cloned here — the one place implicit cloning is allowed, because you
 explicitly asked for an operation that needs the repo.
 
-## apply — branch, or create
+## apply — a worktree per repo, or create
 
 ```txt
 $ mvac change apply points-expire
-api: branched points-expire from main
+api: branched points-expire from main cba4d83 — no origin/main known locally
+api: worktree ~/eco/brain/.multivac/worktrees/points-expire/api
 web: created ~/eco/acme-web — git init, door written, first commit
-web: branched points-expire from main
-next: write the feature in each repo on branch points-expire, commit, then `multivac change land points-expire`
+web: branched points-expire from main a5d5c36 — no origin/main known locally
+web: worktree ~/eco/brain/.multivac/worktrees/points-expire/web
+work here — one checkout per repo, nobody else's tree moves:
+  api: ~/eco/brain/.multivac/worktrees/points-expire/api
+  web: ~/eco/brain/.multivac/worktrees/points-expire/web
+then commit on branch points-expire and run `multivac change land points-expire`
 ```
 
-Each present repo gets a branch named after the slug. A repo that doesn't
-exist is created: `git init`, first commit, consumer door with the brain
-mounted — the first agent session in it already knows the law. Statuses
-move to `branched` in the change file. Write the feature on those
-branches and commit.
+Each present repo gets its own git worktree for this change, branched after
+the slug. **Write the feature in the printed paths**, not in the shared
+checkout: another agent may be running another change in the same repo, and a
+shared working tree switched under them puts their edits on your branch. A
+repo that doesn't exist is created first: `git init`, first commit, consumer
+door with the brain mounted — the first agent session in it already knows the
+law. Statuses move to `branched` in the change file; `close` removes the
+worktrees.
+
+Where git cannot make a worktree, apply branches the repo in place, as it
+always did — but refuses if that tree carries another change's uncommitted
+work, naming the files and the `git stash push` that frees it. It never
+switches a dirty tree onto your branch.
 
 ## land — the order is law
 
@@ -139,7 +162,7 @@ blocked behind an earlier stage. When an MR merges, record it:
 
 ```txt
 $ mvac change land points-expire --landed api
-api: recorded as landed
+api: recorded as landed — points-expire is merged into main 8fd47c9
 stage 1 [landed] api:landed
 stage 2 [ready] web:branched
   ...
@@ -168,10 +191,14 @@ claims**:
 $ mvac change close points-expire
 INV-02: ok
 archived -> .multivac/changes/archive/points-expire.md
+archived — commit this: git -C ~/eco/brain add -A .multivac/changes && git commit -m "Archive the points-expire change"
+api: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/api)
+web: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/web)
 ```
 
 The change file is archived, never deleted; its `status` flips to
-`archived`. If a declared claim's anchors don't hold, close fails: fix the
+`archived`. The worktrees go with it — one still holding uncommitted work is
+reported, never forced. If a declared claim's anchors don't hold, close fails: fix the
 code or fix the declaration, honestly.
 
 Decisions made mid-change become claims at close: propose the row, the

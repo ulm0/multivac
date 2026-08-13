@@ -79,7 +79,7 @@ reference ecosystem already operates by hand.
 ```
 multivac change new "points expire"
 multivac change plan     # which repos, in what order, which invariants it touches
-multivac change apply    # branch per repo from the newest default branch, edits, commits
+multivac change apply    # a worktree per repo, branched from the newest default branch
 multivac change land     # MRs respecting the declared order
 multivac change close    # updates the brain and verifies
 ```
@@ -102,6 +102,32 @@ made true with their anchors — plus per-repo status
 five subcommands read and write, across days and machines. `change close`
 re-runs `verify` **scoped to the declared claims**; on success the file is
 archived, not deleted.
+
+### Two changes at once do not collide (MV-25, MV-26)
+
+The premise is agents working an ecosystem, often several at the same time, and
+two of them in one checkout used to overwrite each other. Two rules keep them
+apart, both mechanical:
+
+- **A worktree per change.** `apply` never switches a shared working tree: each
+  declared repo gets a linked git worktree at
+  `.multivac/worktrees/<slug>/<repo>` (machinery, gitignored) and apply prints
+  the path — that is where the agent works. `close` removes them. Where git
+  cannot make one, apply says so and falls back to the same in-place switch it
+  has always used, which **refuses** a tree whose uncommitted work the switch
+  would overwrite (MV-13) instead of carrying it onto the wrong branch. The
+  change's own declaration file is the exception: apply wrote it, so apply
+  carries it — into the worktree, or across the switch.
+- **A reserved ID per change.** Invariant IDs are allocated by the tool, not by
+  hand: `change new` takes the next free ID from the law table and writes it
+  back immediately as a `proposed` row naming the change; `plan` reserves the
+  IDs a declaration adds, and **fails** on an ID another change is holding —
+  loudly, at declare time, not at merge. The table is the registry, so there is
+  no second store to reconcile, and `proposed` rows already never gate verify.
+  The read-append-write runs under an exclusive `.multivac/invariants.md.lock`
+  (`wx` — atomic across processes); an unused reservation is released at close.
+  Its ceiling: reservations are visible to whoever shares the brain checkout,
+  which is where `new` and `plan` run — not across unmerged branches.
 
 ### The fourth field closes the loop
 
