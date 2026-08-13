@@ -14,6 +14,16 @@ order, projects a single canonical agent door (`AGENTS.md`) to every harness,
 and keeps the brain's distribution pinned but fresh. Deterministic core, no
 API key required; git is the enforcement floor.
 
-**Status: design phase, pre-code.** Nothing to install yet. The full design,
-including the anchorability measurement that validated the grammar (95.1% of
-82 real invariants anchorable), is in [DESIGN.md](DESIGN.md).
+**Status: early build, pre-release.** The day-one capability is implemented
+and tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the
+`change` lifecycle — but it is not on npm yet and has not been dogfooded on a
+real ecosystem. Build from source:
+
+```sh
+git clone git@gitlab.com:ulm0/multivac.git && cd multivac
+pnpm install && pnpm run build && pnpm link --global   # bins: multivac, mvac
+```
+
+Requires Node >= 24 and pnpm. The full design, including the anchorability
+measurement that validated the grammar (95.1% of 82 real invariants
+anchorable), is in [DESIGN.md](DESIGN.md). Docs: https://multivac.ulm0.com
