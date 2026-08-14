@@ -150,6 +150,7 @@ checks them on every commit.
 <!-- @anchor MV-31 brain:site/content/docs/reference/integrations.md /^## `(agents|claude|cursor|opencode|codex|windsurf|gemini|copilot|aider)`/ count=9 -->
 <!-- @anchor MV-31 brain:site/content/docs/concepts/philosophy.md /A paraphrase ages silently/ unique -->
 <!-- @anchor MV-31 brain:site/content/docs/reference/hooks.md /universal floor/ -->
+<!-- @anchor MV-31 brain:site/content/docs/guide/install.md /^  (count|help)[[:space:]]{2}/ count=2 -->
 | MV-32 | Everything multivac creates lives under `.multivac/` — the law, the changes and the machinery; `AGENTS.md` at the repo root is the only exception. `init` migrates a brain that still keeps them at the root, announcing every path before it moves it and using `git mv` so history follows, and it refuses rather than overwrite an occupied target. It never moves a file multivac did not write: a root `invariants.md` or `changes/` counts as multivac's only in a directory that already has `.multivac/config.yml` AND whose file parses as multivac's own law table or change file. Only two files that both parse as multivac's law are ambiguous, and that error names the one that wins; `doctor` reports the legacy layout with the command that fixes it and moves nothing itself. | specified | active | 2026-08-14 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-32 brain:src/lib/config.ts /LAW_PATH = '.multivac\/invariants.md'/ -->
 <!-- @anchor MV-32 brain:src/lib/config.ts /CHANGES_DIR = '.multivac\/changes'/ -->
@@ -232,3 +233,5 @@ checks them on every commit.
 <!-- @anchor MV-43 brain:src/commands/help.ts /each is the universal/ -->
 <!-- @anchor MV-43 brain:test/verify/each.test.ts /rogue container/ -->
 <!-- @anchor MV-43 brain:site/content/docs/guide/writing-anchors.md /cross-file relation/ -->
+<!-- @anchor MV-43 brain:site/content/docs/reference/configuration.md /allowed: present, absent, unique, count, each/ -->
+<!-- @anchor MV-43 brain:site/content/_index.md /`present`, `absent`, `unique`, `count`, `each`/ unique -->

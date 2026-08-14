@@ -173,7 +173,7 @@ $ mvac verify
 An unknown mode is refused with the allowed list:
 
 ```txt
-.multivac/config.yml: "blocking" has unknown mode "sometimes" — allowed: present, absent, unique, count
+.multivac/config.yml: "blocking" has unknown mode "sometimes" — allowed: present, absent, unique, count, each
 ```
 
 ### `staleness`
