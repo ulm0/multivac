@@ -3,7 +3,7 @@ title: Commands
 weight: 1
 ---
 
-One binary, two names: `multivac` and `mvac`. Seven commands.
+One binary, two names: `multivac` and `mvac`. Nine commands.
 
 ```txt
 $ mvac --help
@@ -13,15 +13,22 @@ commands:
   init       scaffold the brain: everything multivac owns under .multivac/
   seed       deterministic boundary inventory -> .multivac/seed-report.md
   verify     check anchors against the declared repos (deterministic, offline)
+  count      dry-run an anchor leg: match count + per-file breakdown, verify's own matcher
   doors      project doors + install git hooks into the brain and declared repos
   doctor     what is declared, what was found, what is degraded, how to fix it
   repos      list declared repos; `repos sync [--shallow]` clones the missing ones
   change     new/plan/apply/land/close — the ecosystem change lifecycle
+  help       help <topic|command> — `help anchor` prints the anchor grammar on one screen
 ```
 
 Two global flags: `--help` / `-h` prints the block above and exits 0;
 `--version` / `-v` prints the version and exits 0. Running `mvac` with no
 arguments prints the same usage and exits **2**.
+
+**`--help` is an answer, never an action.** On any subcommand, `--help` or
+`-h` anywhere in the arguments is answered by the dispatcher **before the
+command runs**: usage on stdout, exit 0, no side effect on the tree.
+`mvac seed --help` prints what seed would do; it never writes a seed report.
 
 **The LLM boundary:** every command here is deterministic. No model call, no
 API key, and `verify`, `doctor` and `doors` never touch the network. `seed`
@@ -194,6 +201,36 @@ Per-leg states:
 | `pending` | the claim is listed by an open `changes/<slug>.md`: it fails, and that change is holding it — never gating, never self-healed |
 | `parse` | the anchor line does not parse |
 
+Parse diagnostics print **above** the summary — the percentage never reads as
+a headline over its own cause. And the summary names its rows: unanchored
+claim ids are listed, not only counted:
+
+```txt
+$ mvac verify
+5 claims · 3 anchored (60%)
+  unanchored: INV-02, INV-05
+```
+
+### `drift`: a recorded finding that does not gate
+
+A law-table row whose state column says `drift` records a **real,
+not-yet-fixable finding**: its legs evaluate and report — the red stays
+visible, and the summary names the ids — but they never gate, in any mode,
+`--strict` included. Writing down a true finding must not make the repo
+un-committable through the pre-commit hook; `drift` is the honest middle
+between deleting the claim and living with a red exit.
+
+```txt
+  broken    INV-09 [absent] .multivac/invariants.md:31 · forbidden pattern at docs/CONTRIBUTING.md:12 — delete it, or retire/amend the claim first · drift row — recorded finding, never blocks
+
+0 blocking broken · exit 0
+  drift: INV-09 — recorded finding, tracked in the law table, not gating; fix the code or retire the row to clear it
+```
+
+Every other row state keeps the exit matrix unchanged. Fix the code (the legs
+turn `ok`, the summary line disappears) or retire the row; flip the state back
+to `active` to make it gate again.
+
 The message is the product, not the exit code:
 
 ```txt
@@ -227,6 +264,7 @@ summary says who is holding it — exit 0 is the grace, silence is not:
 | `moved` — self-healed | **0** | **0** |
 | `unevaluated` — repo not on disk | **0** | **0** |
 | a leg belonging to a `proposed` row | **0** | **0** |
+| a leg belonging to a `drift` row — recorded finding | **0** | **0** |
 | a claim an open change declares (`pending`) | **0** | **0** |
 | anchor parse error | **1** | **1** |
 | stale pin, `staleness: report` | **0** | **0** |
@@ -293,6 +331,27 @@ With `staleness: block` the same line gains `blocking (staleness: block);`
 and exits 1. A channel ref that does not resolve locally reports either way:
 offline never guesses and never gates. A pin **ahead** of the channel is not
 stale.
+
+## `count '<repo>:<glob> [!<glob> ...] /<regex>/[i]' [dir]`
+
+The ratchet dry-run: evaluates one anchor leg — same grammar, same POSIX-ERE
+dialect, same picomatch globs, **the same parser and matcher verify runs**,
+never a reimplementation — and prints the per-file breakdown plus the total a
+`count=N` leg would see. Hand `git grep` counts differ from the real matcher
+(dialect, glob set, per-statement SQL), so pin what `count` says, not what
+grep said.
+
+```txt
+$ mvac count 'api:db/migrations/*.sql /balance/'
+  db/migrations/0001.sql  1
+  db/migrations/0002.sql  1
+2 matches in 2 tracked files — a ratchet pins count=2
+```
+
+Dry-run only: writes nothing, exits 0 even at zero matches. A malformed spec,
+a PCRE shorthand, or an unknown repo key is a usage answer, exit 2. Quote the
+spec — it is one argument. `*` as the repo key counts across every declared
+repo plus the brain, each file prefixed with its repo key.
 
 ## `doors`
 
@@ -604,6 +663,15 @@ names the commit that stores it rather than leaving it to be noticed later.
 A change with no claims says so and archives:
 `no claims declared — nothing to verify`. An empty or absent ritual prints
 nothing. Full walkthrough: [Running changes](../../guide/running-changes).
+
+## `help [topic|command]`
+
+The on-ramp. `mvac help anchor` prints the anchor grammar on one screen — the
+line format, the POSIX-ERE-only dialect with the `\s`/`\d`/`\w`/`\b`
+replacements, per-line matching (per-statement for `.sql`), `count=N` as a
+deletion ratchet across the whole glob, the one-include-glob rule (braces for
+alternatives), repo-qualified exclusions, and where anchors may live. `mvac
+help <command>` prints that command's usage; bare `mvac help` lists topics.
 
 ## Exit codes
 

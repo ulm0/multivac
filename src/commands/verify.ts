@@ -225,9 +225,12 @@ export async function resolveRepoKey(
  * THE predicate: does this leg gate the exit? The exit matrix counts it and
  * the report line prints `· blocking` from it, so a printed line can never
  * contradict its own gate (DOGFOOD-01 polish 8, the "pin 0 behind" class of
- * bug). Proposed rows are informational; `pending`, `moved` and
- * `unevaluated` are not failures; everything else gates in a blocking mode,
- * or in any mode under --strict.
+ * bug). Proposed rows are informational; a `drift` row is a recorded real
+ * finding — reported, named in the summary, never gating, so writing down a
+ * true-but-not-yet-fixable red cannot make the repo un-committable
+ * (measurement 2, finding 12); `pending`, `moved` and `unevaluated` are not
+ * failures; everything else gates in a blocking mode, or in any mode under
+ * --strict.
  */
 function legGates(
   leg: LegResult,
@@ -235,7 +238,7 @@ function legGates(
   cfg: Config,
   strict: boolean,
 ): boolean {
-  if (rowState === 'proposed') return false;
+  if (rowState === 'proposed' || rowState === 'drift') return false;
   if (leg.state !== 'broken' && leg.state !== 'vacuous') return false;
   return cfg.blocking.includes(leg.anchor.mode) || strict;
 }
@@ -410,24 +413,35 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   const { cfg, rows, anchors, allDiags, states, claims, gating } = ev;
   const { exitCode } = ev.report;
 
+  // Parse diagnostics print ABOVE the summary: a percentage that already
+  // reflects them must not read as the headline over its own cause
+  // (measurement 2, polish 13).
+  for (const d of allDiags) {
+    say(`  ${red('parse')}     ${d.file}:${d.line} — ${d.message}`);
+  }
+  if (allDiags.length > 0) say('');
+
   // Report. Scoped runs evaluate scope-filtered anchors, so the brain-wide
   // coverage percentage would read as a collapse ("11 claims · 3 anchored
   // (27%)") when nothing is wrong: say what was counted instead.
-  const anchored = rows.filter((r) => anchors.some((a) => a.claimId === r.id)).length;
+  const unanchored = rows.filter((r) => !anchors.some((a) => a.claimId === r.id));
+  const anchored = rows.length - unanchored.length;
   if (scope) {
     say(`scoped to repo "${scope.repoKey}" · brain at ${brainDir}`);
     say(`${anchored} of ${rows.length} brain claims anchor into "${scope.repoKey}"`);
   } else {
     const pct = rows.length ? ` (${Math.round((anchored / rows.length) * 100)}%)` : '';
     say(`${rows.length} claims · ${anchored} anchored${pct}`);
+    // The rows behind the percentage, not just the percentage: an unanchored
+    // claim is exactly the row a reader must judge by hand.
+    if (unanchored.length > 0) {
+      say(`  unanchored: ${unanchored.map((r) => r.id).join(', ')}`);
+    }
   }
   say('');
   const counts = ev.report.counts;
   for (const s of STATE_ORDER) {
     if (counts[s] > 0) say(`  ${paint(s, s.padEnd(9))} ${String(counts[s]).padStart(3)}`);
-  }
-  for (const d of allDiags) {
-    say(`  ${red('parse')}     ${d.file}:${d.line} — ${d.message}`);
   }
   for (const c of claims) {
     for (const l of c.legs) {
@@ -439,9 +453,11 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
         ? ' · blocking'
         : states.get(c.claimId) === 'proposed'
           ? ' · proposed row — informational, never blocks'
-          : l.state === 'broken' || l.state === 'vacuous'
-            ? ` · reported only — "${a.mode}" is not in blocking: and this run is not --strict`
-            : '';
+          : states.get(c.claimId) === 'drift'
+            ? ' · drift row — recorded finding, never blocks'
+            : l.state === 'broken' || l.state === 'vacuous'
+              ? ` · reported only — "${a.mode}" is not in blocking: and this run is not --strict`
+              : '';
       say(
         `  ${paint(l.state, l.state.padEnd(9))} ${c.claimId} [${a.mode}] ${a.file}:${a.line}` +
           `${l.detail ? ` · ${l.detail}` : ''}${note}`,
@@ -482,12 +498,30 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
         'close or delete the change to unmask them',
     );
   }
+  // A drift row is honesty on the record: a real finding, tracked in the law
+  // table, deliberately not gating. The summary names the ids so the red
+  // stays visible without punishing the act of writing it down.
+  const drifting = claims
+    .filter((c) => states.get(c.claimId) === 'drift' && c.legs.some((l) => l.state !== 'ok'))
+    .map((c) => c.claimId);
+  if (drifting.length > 0) {
+    say(
+      `  drift: ${drifting.join(', ')} — recorded finding${drifting.length > 1 ? 's' : ''}, ` +
+        'tracked in the law table, not gating; fix the code or retire the row to clear it',
+    );
+  }
   return finalExit;
 }
 
 export const verify: Command = {
   name: 'verify',
   help: 'check anchors against the declared repos (deterministic, offline)',
+  usage: [
+    'usage: multivac verify [dir] [--strict] [--check] [--repo <key>]',
+    '  --strict      broken present/unique legs also exit 1 (the CI policy)',
+    '  --check       never writes: a moved leg is reported, not self-healed',
+    '  --repo <key>  scope to one declared repo (consumer checkouts only)',
+  ],
   run: runVerify,
 };
 

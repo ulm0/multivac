@@ -694,3 +694,55 @@ test('a qualified exclusion in a single-repo leg is legal and redundant', async 
   );
   assert.equal(await runVerify(e.brain, '--strict'), 0);
 });
+
+test('a drift row never gates — the recorded finding stays visible, named in the summary', async () => {
+  const e = eco();
+  // A true finding: the forbidden pattern IS in the code. state active gates;
+  // state drift records it without making the repo un-committable.
+  setLaw(
+    e.brain,
+    '| INV-80 | no accounts grants | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-80 api:db/migrations/*.sql /GRANT/ absent -->',
+  );
+  assert.equal(await runVerify(e.brain), 1, 'active row must keep the exit matrix');
+  setLaw(
+    e.brain,
+    '| INV-80 | no accounts grants | published | drift | 2026-01-01 | x |',
+    '<!-- @anchor INV-80 api:db/migrations/*.sql /GRANT/ absent -->',
+  );
+  const r = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(r.code, 0, `drift row gated:\n${r.out}`);
+  assert.match(r.out, /drift row — recorded finding, never blocks/);
+  assert.match(r.out, /drift: INV-80 — recorded finding/);
+  assert.match(r.out, /0 blocking broken · exit 0/);
+});
+
+test('the unanchored claim ids are named, not only counted', async () => {
+  const e = eco();
+  setLaw(
+    e.brain,
+    '| INV-81 | anchored | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-81 api:README.md /acme-api/ -->',
+    '| INV-82 | a process rule, unanchorable | published | active | 2026-01-01 | x |',
+    '| INV-83 | another one | published | active | 2026-01-01 | x |',
+  );
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 0);
+  assert.match(r.out, /3 claims · 1 anchored/);
+  assert.match(r.out, /unanchored: INV-82, INV-83/);
+});
+
+test('parse diagnostics print above the summary, not below it', async () => {
+  const e = eco();
+  setLaw(
+    e.brain,
+    '| INV-84 | bad anchor | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-84 api:src/** /\\d+/ -->',
+  );
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1);
+  const parseAt = r.out.indexOf('is not POSIX ERE');
+  const summaryAt = r.out.indexOf('claims ·');
+  assert.ok(parseAt >= 0 && summaryAt >= 0, r.out);
+  assert.ok(parseAt < summaryAt, `diagnostics below the summary:\n${r.out}`);
+});
