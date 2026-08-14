@@ -1,9 +1,9 @@
 ---
 slug: the-door-for-contributors
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
