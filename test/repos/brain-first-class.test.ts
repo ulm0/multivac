@@ -108,10 +108,13 @@ test('change: brain is a lifecycle repo key, declared or not', async () => {
   writeFileSync(join(brain, '.multivac/config.yml'), BRAIN_IS_CODE);
   const applied = await capture(() => change.run(['apply', 'law-row'], ctx));
   assert.equal(applied.code, 0);
+  // the branch lands in the change's own worktree (MV-25), keyed `brain`
   assert.equal(
-    execFileSync('git', ['-C', brain, 'rev-parse', '--abbrev-ref', 'HEAD'], {
-      encoding: 'utf8',
-    }).trim(),
+    execFileSync(
+      'git',
+      ['-C', join(brain, '.multivac/worktrees/law-row/brain'), 'rev-parse', '--abbrev-ref', 'HEAD'],
+      { encoding: 'utf8' },
+    ).trim(),
     'law-row',
   );
 });

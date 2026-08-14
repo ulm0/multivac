@@ -73,12 +73,18 @@ test('declare repos + landing order + claims, then plan', async () => {
   assert.equal(await change.run(['plan', 'points-expire'], ctx), 0);
 });
 
-test('apply branches every repo and creates the greenfield one', async () => {
+const wt = (key: string, slug = 'points-expire'): string =>
+  join(eco.brain, '.multivac/worktrees', slug, key);
+
+test('apply gives every repo a worktree and creates the greenfield one', async () => {
+  const apiHead = gitOut(eco.repos.api, 'rev-parse', '--abbrev-ref', 'HEAD');
   assert.equal(await change.run(['apply', 'points-expire'], ctx), 0);
-  assert.equal(gitOut(eco.repos.api, 'rev-parse', '--abbrev-ref', 'HEAD'), 'points-expire');
-  assert.equal(gitOut(eco.repos.web, 'rev-parse', '--abbrev-ref', 'HEAD'), 'points-expire');
+  // the shared trees never move; the branch is checked out in the worktree
+  assert.equal(gitOut(eco.repos.api, 'rev-parse', '--abbrev-ref', 'HEAD'), apiHead);
+  assert.equal(gitOut(wt('api'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'points-expire');
+  assert.equal(gitOut(wt('web'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'points-expire');
   // greenfield: real repo, one commit, door with the managed block, on the branch
-  assert.equal(gitOut(svc, 'rev-parse', '--abbrev-ref', 'HEAD'), 'points-expire');
+  assert.equal(gitOut(wt('svc'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'points-expire');
   assert.equal(gitOut(svc, 'rev-list', '--count', 'HEAD'), '1');
   assert.match(readFileSync(join(svc, 'AGENTS.md'), 'utf8'), /multivac:begin/);
   const { change: c } = await loadChange(eco.brain, 'points-expire');

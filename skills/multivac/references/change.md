@@ -9,15 +9,22 @@ it merges; it is done when its anchors resolve.
 ```
 mvac change new "points expire"
 mvac change plan     # which repos, in what order, which invariants it touches
-mvac change apply    # branch per repo from origin/main, edits, commits
+mvac change apply    # a worktree per repo, branched from origin/main
 mvac change land     # MRs respecting the declared order
 mvac change close    # updates the brain and verifies the declared claims
 ```
 
 ## new — declare before you touch anything
 
-`mvac change new` scaffolds the change file. Fill its four declared fields
-before writing code:
+`mvac change new` scaffolds the change file and **reserves the next free
+invariant ID** for it — a `proposed` row in `.multivac/invariants.md` naming your change.
+Never pick an ID by hand: two agents both picking "the next one" pick the same
+one, and nobody finds out until the merge. Drop the reservation from
+`invariants.adds` if the change adds no law — `close` releases an unused one.
+`plan` reserves any ID you declare yourself and fails if another change holds
+it, naming the next free one.
+
+Fill the four declared fields before writing code:
 
 1. **Repos it touches.** Registry keys. A repo that doesn't exist yet is
    legal — greenfield apply creates it.
@@ -47,11 +54,16 @@ The file also carries per-repo status
   are present, what the order implies, what the change touches. A declared
   repo missing locally gets cloned here — the one place implicit cloning
   is allowed, because you explicitly asked for an operation that needs it.
-- **apply** branches each repo from `origin/main`, carries the edits and
-  commits, and re-projects doors where the canonical door changed. A repo
+- **apply** gives each declared repo its own **worktree** for this change —
+  `.multivac/worktrees/<slug>/<repo>`, branched from `origin/main` — and
+  prints the paths. **Work there, not in the shared checkout**: another agent
+  may be running another change in the same repo, and a shared tree moves
+  under them. It re-projects doors where the canonical door changed. A repo
   that doesn't exist is created: `git init`, first commit, consumer door
   with the brain mounted. If an SDD adapter is declared, its workflow runs
-  inside apply automatically (`--no-sdd` to skip once).
+  inside apply automatically (`--no-sdd` to skip once). Where git cannot make
+  a worktree, apply branches in place and refuses outright if the tree holds
+  someone else's uncommitted work — commit or stash it, then re-run.
 - **land** opens the MRs respecting the graph: roots first, an edge's
   target only after its source lands. Parallel where no edge says
   otherwise. Each MR description cites the change file and its position in
@@ -67,7 +79,8 @@ archive until they hold:
 - no blocking leg broke anywhere the change touched.
 
 On success the brain is updated (rows enacted by the human, journal entry,
-change file archived — never deleted). If close fails, the change is not
+change file archived — never deleted), the change's worktrees are removed,
+and a reserved ID it never used goes back to the pool. If close fails, the change is not
 done: fix the code or fix the declaration, honestly.
 
 Decisions made mid-change become claims at close: propose the row, the
