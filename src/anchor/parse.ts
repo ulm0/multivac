@@ -5,7 +5,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { CHANGES_DIR, LAW_PATH } from '../lib/config.js';
 import { compileAnchorRegex, RegexDialectError } from '../lib/regex.js';
-import type { Anchor, Mode } from '../types.js';
+import type { Anchor, Exclusion, Mode } from '../types.js';
 
 export interface ParseDiagnostic {
   file: string;
@@ -19,7 +19,7 @@ export interface ParseResult {
 }
 
 const GRAMMAR =
-  '<!-- @anchor <CLAIM-ID> <repo>:<glob> [!<glob> ...] /<regex>/[i] [present|absent|unique|count=N] -->';
+  '<!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> ...] /<regex>/[i] [present|absent|unique|count=N] -->';
 
 /** The glob dialect, named wherever a glob is rejected — it is not shell. */
 const GLOB_DIALECT =
@@ -82,7 +82,7 @@ export function parseAnchors(text: string, file: string): ParseResult {
     }
     const repoKey = repoSpec.slice(0, colon);
     const include = repoSpec.slice(colon + 1);
-    const excludes: string[] = [];
+    const excludes: Exclusion[] = [];
     let malformed = false;
     while (rest.startsWith('!')) {
       let tok: string;
@@ -92,7 +92,19 @@ export function parseAnchors(text: string, file: string): ParseResult {
         malformed = true;
         break;
       }
-      excludes.push(tok.slice(1));
+      // Same shape as the include spec: the first colon separates the repo
+      // qualifier from the glob. Bare stays bare — repo-relative everywhere.
+      const g = tok.slice(1);
+      const cut = g.indexOf(':');
+      if (cut === -1) {
+        excludes.push({ glob: g });
+      } else if (cut === 0 || cut === g.length - 1) {
+        bad(`"${tok}" is not !<repo>:<glob> — put a repo key before the colon and a glob after it`);
+        malformed = true;
+        break;
+      } else {
+        excludes.push({ repoKey: g.slice(0, cut), glob: g.slice(cut + 1) });
+      }
     }
     if (malformed) continue;
     const rm = rest.match(/^\/(.*)\/([a-zA-Z]*)(?:\s+(\S+))?$/);

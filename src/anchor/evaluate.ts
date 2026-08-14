@@ -7,7 +7,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import type { Anchor, ClaimResult, LegResult, LegState } from '../types.js';
-import { filterFiles } from '../lib/glob.js';
+import { excludeGlobs, filterFiles } from '../lib/glob.js';
 import { realPath } from '../lib/paths.js';
 import { RepoScanner, scanLeg, scanWholeRepo } from './match.js';
 
@@ -36,6 +36,8 @@ const RANK: Record<LegState, number> = {
 
 interface Target {
   key: string;
+  /** Every registry key naming this checkout — what `!key:glob` matches on. */
+  keys: string[];
   scanner: RepoScanner;
 }
 
@@ -64,7 +66,11 @@ async function rewriteGlob(a: Anchor, newGlob: string, brainDir: string): Promis
  */
 async function untrackedHint(a: Anchor, targets: Target[]): Promise<string | null> {
   for (const t of targets) {
-    const hits = filterFiles(await t.scanner.untracked(), a.include, a.excludes);
+    const hits = filterFiles(
+      await t.scanner.untracked(),
+      a.include,
+      excludeGlobs(a.excludes, t.keys),
+    );
     if (hits.length === 0) continue;
     const more = hits.length > 3 ? ` (+${hits.length - 3} more)` : '';
     return `file exists but is untracked — \`git add ${hits.slice(0, 3).join(' ')}\`${more}`;
@@ -86,7 +92,7 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
   let globFileCount = 0;
   const matches: TaggedMatch[] = [];
   for (const t of targets) {
-    const scan = await scanLeg(a, t.scanner);
+    const scan = await scanLeg(a, t.scanner, t.keys);
     globFileCount += scan.globFiles.length;
     for (const m of scan.matches) matches.push({ key: t.key, ...m });
   }
@@ -121,7 +127,7 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
       // gone would "move" onto its own law row and read green forever.
       const candidates: TaggedMatch[] = [];
       for (const t of targets) {
-        for (const m of await scanWholeRepo(a, t.scanner)) {
+        for (const m of await scanWholeRepo(a, t.scanner, t.keys)) {
           if (m.file === '.multivac' || m.file.startsWith('.multivac/')) continue;
           candidates.push({ key: t.key, ...m });
         }
@@ -226,13 +232,25 @@ export async function evaluateAnchors(
     seenDirs.add(key);
     return true;
   });
+  // Same reason, read the other way: `!brain:x` must bite in the checkout
+  // `brain` names even when a `*` leg reaches it through an alias key.
+  const aliases = new Map<string, string[]>();
+  for (const h of handles) {
+    if (h.dir === null) continue;
+    const p = realPath(h.dir);
+    aliases.set(p, [...(aliases.get(p) ?? []), h.key]);
+  }
   const claims = new Map<string, ClaimResult>();
   for (const a of anchors) {
     const wanted =
       a.repoKey === '*' ? starHandles : handles.filter((h) => h.key === a.repoKey);
     const targets: Target[] = wanted
       .filter((h): h is RepoHandle & { dir: string } => h.dir !== null)
-      .map((h) => ({ key: h.key, scanner: scanner(h.dir) }));
+      .map((h) => ({
+        key: h.key,
+        keys: aliases.get(realPath(h.dir)) ?? [h.key],
+        scanner: scanner(h.dir),
+      }));
     const result = await evalLeg(a, targets, opts);
     let claim = claims.get(a.claimId);
     if (!claim) {

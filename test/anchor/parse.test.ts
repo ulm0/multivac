@@ -28,7 +28,7 @@ test('parses the full grammar: legs, excludes, flags, modes', () => {
   assert.equal(a.mode, 'present');
   assert.equal(a.regexFlags, 'i');
   assert.deepEqual(a, { ...a, file: 'invariants.md', line: 2 });
-  assert.deepEqual(b.excludes, ['db/tests/**', 'db/tmp/**']);
+  assert.deepEqual(b.excludes, [{ glob: 'db/tests/**' }, { glob: 'db/tmp/**' }]);
   assert.equal(b.mode, 'absent');
   assert.equal(c.mode, 'count');
   assert.equal(c.count, 2);
@@ -58,6 +58,8 @@ test('each malformation names the defect at file:line', () => {
     ['<!-- @anchor INV-1 api:x/** /re/g -->', /flags/],
     ['<!-- @anchor INV-1 api:x/** re -->', /regex/],
     ['<!-- @anchor INV-1 api:x/** ! /re/ -->', /exclusion/],
+    ['<!-- @anchor INV-1 api:x/** !api: /re/ -->', /is not !<repo>:<glob>/],
+    ['<!-- @anchor INV-1 api:x/** !:x.md /re/ -->', /is not !<repo>:<glob>/],
     ['<!-- @anchor INV-1 api:x/** /re/ absent extra -->', /regex/],
     ['<!-- @anchor INV-1 api:x/** /re/', /one line/],
     ['@anchor INV-1 api:x/** /re/', /HTML comment/],
@@ -69,6 +71,19 @@ test('each malformation names the defect at file:line', () => {
     assert.equal(diagnostics[0].line, 1);
     assert.match(diagnostics[0].message, want, line);
   }
+});
+
+test('an exclusion may name its repo; the bare form stays bare', () => {
+  const { anchors, diagnostics } = parseAnchors(
+    '<!-- @anchor INV-1 *:**.md !brain:07-rules.md !tmp/** !api:README.md /PIN/ absent -->\n',
+    'f.md',
+  );
+  assert.deepEqual(diagnostics, []);
+  assert.deepEqual(anchors[0].excludes, [
+    { repoKey: 'brain', glob: '07-rules.md' },
+    { glob: 'tmp/**' },
+    { repoKey: 'api', glob: 'README.md' },
+  ]);
 });
 
 test('prose lines without an anchor comment are ignored', () => {

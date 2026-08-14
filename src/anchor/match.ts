@@ -4,7 +4,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { lsFiles, untrackedFiles } from '../lib/git.js';
-import { filterFiles } from '../lib/glob.js';
+import { excludeGlobs, filterFiles } from '../lib/glob.js';
 import { compileAnchorRegex } from '../lib/regex.js';
 import { sqlStatements } from './normalize.js';
 import type { Anchor } from '../types.js';
@@ -74,9 +74,21 @@ export interface LegScan {
   matches: Match[];
 }
 
-/** Evaluate one leg's glob + regex against one repo checkout. */
-export async function scanLeg(anchor: Anchor, scanner: RepoScanner): Promise<LegScan> {
-  const globFiles = filterFiles(await scanner.files(), anchor.include, anchor.excludes);
+/**
+ * Evaluate one leg's glob + regex against one repo checkout. `keys` is every
+ * registry key naming that checkout: a repo-qualified exclusion bites only
+ * when it names this one.
+ */
+export async function scanLeg(
+  anchor: Anchor,
+  scanner: RepoScanner,
+  keys: Iterable<string>,
+): Promise<LegScan> {
+  const globFiles = filterFiles(
+    await scanner.files(),
+    anchor.include,
+    excludeGlobs(anchor.excludes, keys),
+  );
   const re = compileAnchorRegex(anchor.regexSource, anchor.regexFlags);
   const matches: Match[] = [];
   for (const f of globFiles) {
@@ -90,10 +102,14 @@ export async function scanLeg(anchor: Anchor, scanner: RepoScanner): Promise<Leg
  * Whole-repo search (moved detection): every tracked text file except the
  * leg's !excludes — rewriting the glob to an excluded file would loop forever.
  */
-export async function scanWholeRepo(anchor: Anchor, scanner: RepoScanner): Promise<Match[]> {
+export async function scanWholeRepo(
+  anchor: Anchor,
+  scanner: RepoScanner,
+  keys: Iterable<string>,
+): Promise<Match[]> {
   const re = compileAnchorRegex(anchor.regexSource, anchor.regexFlags);
   const out: Match[] = [];
-  for (const f of filterFiles(await scanner.files(), '**', anchor.excludes)) {
+  for (const f of filterFiles(await scanner.files(), '**', excludeGlobs(anchor.excludes, keys))) {
     const text = await scanner.read(f);
     if (text !== null) out.push(...matchesInFile(f, text, re));
   }

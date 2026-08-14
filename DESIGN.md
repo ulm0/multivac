@@ -374,7 +374,7 @@ Anchors live **inline in the markdown**, as HTML comments: invisible when
 rendered, greppable, and with no parallel file to drift. The form is
 explicit, one leg per line:
 
-    <!-- @anchor <CLAIM-ID> <repo>:<glob> [!<glob> …] /<regex>/[flags] [mode] -->
+    <!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> …] /<regex>/[flags] [mode] -->
 
 - **The claim ID is in the comment, never inferred.** A follows-the-row
   proximity convention collapses for prose claims and survives no reformat;
@@ -393,6 +393,21 @@ explicit, one leg per line:
   set is what gets matched — and what counts toward zero-file (vacuous)
   detection. Measured demand: "everywhere except X" needed fragile
   complementary-glob workarounds in 3+ of the reference 82.
+- **An exclusion may name its repo: `!<repo>:<glob>`.** A bare exclusion is
+  repo-relative, so under `*` it exempts that path in *every* repo — and
+  there was no way to say "everywhere, except this one page in the brain",
+  which is exactly the shape of an ecosystem-wide tombstone that must not
+  flag the page carrying it:
+
+      <!-- @anchor INV-77 *:**.md !brain:07-rules.md /PIN/ absent -->
+
+  A `07-rules.md` in any other repo is still checked. The qualifier resolves
+  by checkout, not by spelling: two keys naming one tree (`brain: .`) are one
+  target, and either key names it. An exclusion naming an undeclared repo is
+  refused when the anchor is parsed, with a message that names the key —
+  a typo must not become a silent no-op. A qualifier in a single-repo leg is
+  legal and redundant, and exclusions still count toward vacuity: a leg whose
+  exclusions remove every candidate file is vacuous, not passing.
 - **One canonical regex dialect: POSIX ERE** with `[[:space:]]`-style
   classes — what macOS `git grep` actually executes, the lowest common
   engine. Enforced at anchor-write time: `\s` and `\b` are **rejected with a

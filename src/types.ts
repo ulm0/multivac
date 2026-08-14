@@ -54,6 +54,17 @@ export interface Config {
 }
 
 /**
+ * One `!` exclusion of an anchor leg. `repoKey` unset is the bare form:
+ * repo-relative, biting in every repo the leg evaluates. Set, it names the
+ * one declared repo the glob bites in — the only way to exempt a path in
+ * one repo without exempting its namesake in the others.
+ */
+export interface Exclusion {
+  repoKey?: string;
+  glob: string;
+}
+
+/**
  * One anchor leg, parsed from
  * <!-- @anchor <CLAIM-ID> <repo-key>:<glob> [!<glob> ...] /<regex>/[flags] [mode] -->
  */
@@ -62,7 +73,7 @@ export interface Anchor {
   /** Registry key, or "*" for every declared repo plus the brain. */
   repoKey: string;
   include: string;
-  excludes: string[];
+  excludes: Exclusion[];
   /** POSIX-ERE-with-classes source, uncompiled. */
   regexSource: string;
   /** Only "i" or "". */

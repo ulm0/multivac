@@ -15,7 +15,7 @@ One leg per line, an HTML comment directly under the claim's row in
 drift:
 
 ```txt
-<!-- @anchor <CLAIM-ID> <repo-key>:<glob> [!<glob> ...] /<regex>/[flags] [mode] -->
+<!-- @anchor <CLAIM-ID> <repo-key>:<glob> [![<repo-key>:]<glob> ...] /<regex>/[flags] [mode] -->
 ```
 
 - **CLAIM-ID** is explicit, never inferred from proximity. It is the join
@@ -29,6 +29,18 @@ drift:
   `src/lib/git.ts`, so write `src/**/*.ts`.
 - **`!<glob>`** excludes, applied after the include. The surviving file set
   is what gets matched — and what counts toward vacuity.
+- **`!<repo-key>:<glob>`** excludes *in that repo only*. A bare exclusion is
+  repo-relative and bites in every repo the leg evaluates, so under `*` it
+  exempts the path's namesake everywhere; qualify it to exempt one repo:
+
+  ```txt
+  <!-- @anchor INV-77 *:**.md !brain:07-rules.md /PIN/ absent -->
+  ```
+
+  "no PIN in any markdown, anywhere — except the page in the brain that
+  carries the tombstone". A `07-rules.md` in another repo is still checked.
+  An exclusion naming an undeclared repo is a parse error naming the key;
+  qualifying an exclusion in a single-repo leg is legal and redundant.
 - **Flags**: `i` only.
 - **mode**: `present` (default), `absent`, `unique`, `count=N`.
 
