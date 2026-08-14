@@ -1,23 +1,19 @@
 ---
 slug: every-harness-has-an-entry
-status: open
+status: archived
 repos:
-  self:
-    status: branched
+  brain:
+    status: landed
 landing_order:
-  - - self
+  - - brain
 invariants:
-  touches: []
-  adds:
+  touches:
     - MV-28
+  adds: []
   retires: []
 claims:
   - id: MV-28
-    statement: "Every harness multivac integrates with is a registry entry in
-      src/adapters/registry.ts: `doors` and `doctor` dispatch on the entry's
-      `kind`, never on its name, a `native` entry projects nothing beyond the
-      canonical AGENTS.md, and an `unsupported` entry is refused with the reason
-      recorded in the data."
+    statement: "Every harness multivac integrates with is a registry entry in src/adapters/registry.ts: `doors` and `doctor` dispatch on the entry's `kind`, never on its name, a `native` entry projects nothing beyond the canonical AGENTS.md, and an `unsupported` entry is refused with the reason recorded in the data."
 ---
 
 # Every harness has an entry

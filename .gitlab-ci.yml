@@ -7,7 +7,7 @@ test:
   image: node:24
   before_script:
     - corepack enable
-    - corepack prepare pnpm@10.20.0 --activate
+    - corepack prepare --activate  # the version is package.json's packageManager, not a second pin
   script:
     - pnpm install --frozen-lockfile
     - pnpm test
@@ -26,7 +26,7 @@ selfverify:
   image: node:24
   before_script:
     - corepack enable
-    - corepack prepare pnpm@10.20.0 --activate
+    - corepack prepare --activate  # the version is package.json's packageManager, not a second pin
   script:
     - pnpm install --frozen-lockfile
     - pnpm run build
