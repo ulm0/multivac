@@ -1,9 +1,9 @@
 ---
 slug: the-ramp-is-part-of-the-road
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
