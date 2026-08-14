@@ -116,9 +116,13 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
       if (untracked) return leg('vacuous', untracked);
       if (pendingSlug !== undefined) return leg('broken');
       // Self-heal: search the whole repo(s) for the one place it moved to.
+      // Never into `.multivac/`: the statement column and the anchor line
+      // quote the very pattern the leg looks for, so a claim whose code is
+      // gone would "move" onto its own law row and read green forever.
       const candidates: TaggedMatch[] = [];
       for (const t of targets) {
         for (const m of await scanWholeRepo(a, t.scanner)) {
+          if (m.file === '.multivac' || m.file.startsWith('.multivac/')) continue;
           candidates.push({ key: t.key, ...m });
         }
       }
