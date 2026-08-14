@@ -6,9 +6,16 @@
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
-import { CHANGES_DIR, LAW_PATH, RITUAL_PATH, layoutError, legacyLayout } from '../lib/config.js';
+import {
+  BRAIN_PATHS,
+  CHANGES_DIR,
+  LAW_PATH,
+  RITUAL_PATH,
+  layoutError,
+  legacyLayout,
+} from '../lib/config.js';
 import { RITUAL_TEMPLATE } from '../lib/ritual.js';
-import { lsFiles, run as git } from '../lib/git.js';
+import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { banner } from '../lib/banner.js';
 import { applyManagedBlock } from '../doors/block.js';
@@ -186,6 +193,64 @@ async function migrateLegacy(dir: string, report: Report): Promise<void> {
   }
 }
 
+/** First line of the block init appends to a swallowing .gitignore. */
+export const GITIGNORE_MARKER =
+  '# multivac: keep the brain visible to git — added by `multivac init`';
+
+/**
+ * A repo-level ignore can swallow the brain — saleor's `.gitignore` opens
+ * with `.*`, so everything init writes is invisible to git while every
+ * command stays green, and a stranger commits, pushes, and ships nothing
+ * (measurement 2, blocker 1). init asks `git check-ignore` about every path
+ * it writes and, on a hit, appends explicit negations to the repo's
+ * .gitignore under a marker comment.
+ *
+ * Append, not refuse, because the negation order is easy to get wrong by
+ * hand (a directory must be un-ignored before its contents can be), the
+ * block is scoped to paths init owns, and a root-.gitignore negation
+ * outranks .git/info/exclude and core.excludesFile — every source git
+ * consults for these paths. A negation inside .multivac/.gitignore cannot
+ * work: the ignore lives in the parent. Idempotent: lines already present
+ * are never appended again, and a clean repo is never touched.
+ */
+async function ensureVisibleToGit(dir: string, report: Report): Promise<void> {
+  const ignored = await ignoredPaths(dir, BRAIN_PATHS);
+  if (ignored.length === 0) return;
+  // `!.multivac/` first: git will not re-include files under a directory
+  // that is itself still excluded.
+  const negations: string[] = [];
+  if (ignored.some((p) => p.startsWith('.multivac/'))) {
+    negations.push('!.multivac/', '!.multivac/**');
+  }
+  if (ignored.includes('AGENTS.md')) negations.push('!AGENTS.md');
+  const giPath = join(dir, '.gitignore');
+  const text = await readFile(giPath, 'utf8').catch(() => '');
+  const have = new Set(text.split('\n'));
+  const add = negations.filter((l) => !have.has(l));
+  report(
+    `init: this repo's .gitignore would ignore ${ignored.join(', ')} — ` +
+      'an invisible brain commits nothing',
+  );
+  if (add.length > 0) {
+    const block = [
+      ...(have.has(GITIGNORE_MARKER) ? [] : [GITIGNORE_MARKER]),
+      ...add,
+    ].join('\n');
+    const sep = text === '' || text.endsWith('\n') ? '' : '\n';
+    await writeFile(giPath, `${text}${sep}${block}\n`);
+    report(`init: appended to .gitignore: ${add.join('  ')}`);
+  }
+  const still = await ignoredPaths(dir, BRAIN_PATHS);
+  if (still.length > 0) {
+    warn(
+      `init: still ignored after the negations: ${still.join(', ')} — ` +
+        'a deeper .gitignore is excluding them; remove that rule by hand',
+    );
+  } else {
+    report('init: re-checked — every brain path is visible to git');
+  }
+}
+
 async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   const f = parseFlags(argv);
   // --quiet: the whole report goes, banner included. Refusals stay on stderr.
@@ -217,6 +282,9 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     warn(`init: ${stale}`);
     return 1;
   }
+
+  // The brain must be visible to git before anything is written into it.
+  await ensureVisibleToGit(dir, report);
 
   // 2. machinery: config.yml (flags land here), gitignored cache/ + worktrees/
   // (change apply puts one checkout per change there — never committed).
@@ -258,9 +326,32 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   await mkdir(join(dir, CHANGES_DIR), { recursive: true });
   await writeIfMissing(join(dir, CHANGES_DIR, '.gitkeep'), '');
 
-  // 4. enforcement floor: versioned hooks + core.hooksPath.
-  await installHooks(dir);
-  report('init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit');
+  // 4. enforcement floor: versioned hooks + core.hooksPath — but never over
+  // the repo's own gates. The strategy used is part of the report.
+  const hooks = await installHooks(dir);
+  switch (hooks.strategy) {
+    case 'fresh':
+      report('init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit');
+      break;
+    case 'chained':
+      report(
+        'init: hooks in .multivac/hooks (core.hooksPath) — chained: ' +
+          `${hooks.chained.join(', ') || hooks.managers.join(', ')} runs first, its exit code wins, then verify`,
+      );
+      break;
+    case 'alongside':
+      report(
+        `init: hooks installed alongside into ${hooks.dir} ` +
+          `(this repo's own hook dir${hooks.managers.length > 0 ? `: ${hooks.managers.join(', ')}` : ''}) — core.hooksPath not touched`,
+      );
+      for (const w of hooks.wired) report(`init: ${w} already runs multivac — left alone`);
+      break;
+  }
+  // Refusals are loud even under --quiet: a gate that did not install is not
+  // a detail.
+  for (const r of hooks.refused) {
+    warn(`init: ${r.path} exists and does not run multivac — NOT touched; ${r.fix}`);
+  }
 
   report('init: done — load the multivac skill to fill the brain (see AGENTS.md)');
   return 0;

@@ -105,3 +105,23 @@ export async function lsTreeGitlink(
   const m = out.match(/^160000 commit ([0-9a-f]{40})\t/m);
   return m ? m[1] : null;
 }
+
+/**
+ * The subset of `paths` git would ignore in `repo`. The paths need not exist:
+ * check-ignore answers for what a write there WOULD do — which is the whole
+ * point, init asks before writing. Exit 1 (nothing ignored) and exit 128
+ * (not a repo) both come back as "nothing ignored".
+ */
+export async function ignoredPaths(
+  repo: string,
+  paths: string[],
+): Promise<string[]> {
+  try {
+    // No -z: check-ignore refuses it without --stdin. The paths asked about
+    // are multivac's own constants — no newlines to be confused by.
+    const out = await run(repo, ['check-ignore', '--', ...paths]);
+    return out.split('\n').filter(Boolean);
+  } catch {
+    return [];
+  }
+}

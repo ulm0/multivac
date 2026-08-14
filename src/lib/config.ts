@@ -14,6 +14,22 @@ const MODES: Mode[] = ['present', 'absent', 'unique', 'count'];
 export const CONFIG_PATH = '.multivac/config.yml';
 export const LAW_PATH = '.multivac/invariants.md';
 export const CHANGES_DIR = '.multivac/changes';
+/** The team's half of the closing ceremony — prose multivac prints, never parses. */
+export const RITUAL_PATH = '.multivac/ritual.md';
+/**
+ * Every tracked file `init` writes — the check-ignore targets. A repo-level
+ * ignore (saleor's `.gitignore` starts with `.*`) can swallow the whole brain
+ * while every command stays green; init and doctor both check this list.
+ */
+export const BRAIN_PATHS = [
+  'AGENTS.md',
+  CONFIG_PATH,
+  LAW_PATH,
+  RITUAL_PATH,
+  `${CHANGES_DIR}/.gitkeep`,
+  '.multivac/hooks/pre-commit',
+  '.multivac/hooks/pre-push',
+];
 /** Where the law and the changes used to live, before they moved. */
 export const LEGACY: Array<[legacy: string, now: string]> = [
   ['invariants.md', LAW_PATH],
@@ -127,9 +143,6 @@ export async function layoutError(brainDir: string): Promise<string | null> {
     'run `multivac init .` there to move it (git mv, history preserved)'
   );
 }
-
-/** The team's half of the closing ceremony — prose multivac prints, never parses. */
-export const RITUAL_PATH = '.multivac/ritual.md';
 
 function fail(msg: string): never {
   throw new ConfigError(`${CONFIG_PATH}: ${msg}`);

@@ -90,6 +90,31 @@ AGENTS.md                    the door — managed block only, never clobbered
 plus `git init` when the directory is not already a repo root, and
 `core.hooksPath` pointed at `.multivac/hooks`.
 
+Two things `init` checks before writing, because a green init that shipped
+nothing is the failure mode it exists to prevent:
+
+- **`git check-ignore` on every path it writes.** A repo-level ignore that
+  would swallow one (a `.gitignore` opening with `.*` swallows all of
+  `.multivac/`) gets explicit negations appended under a marker comment —
+  idempotently, printed line by line, then re-checked:
+
+  ```txt
+  init: this repo's .gitignore would ignore .multivac/config.yml, … — an invisible brain commits nothing
+  init: appended to .gitignore: !.multivac/  !.multivac/**
+  init: re-checked — every brain path is visible to git
+  ```
+
+- **Existing hooks.** A repo that already runs `.git/hooks/<name>`, a foreign
+  `core.hooksPath`, `.husky/`, `lefthook.yml` or `.pre-commit-config.yaml`
+  never gets silently disarmed: init chains the existing gate (it runs first,
+  its exit code wins), or installs alongside into the repo's own hook dir,
+  or refuses with the exact line to add — and says which strategy it used.
+  See [Hooks](../hooks/).
+
+  ```txt
+  init: hooks in .multivac/hooks (core.hooksPath) — chained: .git/hooks/pre-commit runs first, its exit code wins, then verify
+  ```
+
 Without adapter flags, `init` probes for what is already on disk and writes
 **commented proposals**, never enabled keys:
 
@@ -301,8 +326,8 @@ untracked  nothing build-critical untracked
 | `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness |
 | `repos` | how many are present, and the clone command for each that is not |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is |
-| `hooks` | `core.hooksPath`, both shims, and whether anything can actually run them |
-| `untracked` | untracked, non-ignored files that look build-critical |
+| `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
+| `untracked` | brain paths a `.gitignore` swallows (WARNING — the law cannot ship), then untracked, non-ignored files that look build-critical |
 
 **Installed is not enforcing.** The shims exit 0 when nothing on the machine
 can run multivac, so `doctor` says which runner it found — or that there is
@@ -319,6 +344,13 @@ them:
 
 ```txt
 untracked  WARNING 2 build-critical files untracked — git add or ignore: tsconfig.json (brain, root config), src/loyalty.ts (api, anchor glob)
+```
+
+Worse than untracked is **ignored**: a brain path a `.gitignore` swallows can
+never ship, while `git add` stays silent. That is a WARNING with the fix:
+
+```txt
+untracked  WARNING 6 brain paths IGNORED by .gitignore — .multivac/config.yml, … — the law cannot ship; fix: run `multivac init .` (appends !.multivac/ negations to .gitignore) · nothing build-critical untracked
 ```
 
 Exit 0 in every degraded state above. The **only** exit 1 is a config that

@@ -42,6 +42,13 @@ the directory is not already a repo. `core.hooksPath` is pointed at
 `.multivac/hooks/`, so the hooks are versioned and travel with the clone —
 no install step to forget.
 
+On a repo that already has opinions, `init` checks before it writes: a
+`.gitignore` that would swallow the brain gets explicit negations appended
+(and the report says so), and an existing hook set-up — `.git/hooks/`,
+husky, lefthook, the pre-commit framework — is chained or installed
+alongside, never silently replaced. See
+[Hooks](../../reference/hooks/) for the strategies.
+
 Re-running `init` is safe: an existing `.multivac/config.yml` is kept, an
 existing `AGENTS.md` is never clobbered — multivac only rewrites its managed
 block, between `<!-- multivac:begin -->` and `<!-- multivac:end -->`. The

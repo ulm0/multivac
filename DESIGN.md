@@ -312,6 +312,23 @@ init` points `core.hooksPath` at a versioned directory —
 `.multivac/hooks/` — so the hook travels with the clone and there is no
 install step to forget.
 
+But a repo multivac did not write often has gates of its own, and taking
+`core.hooksPath` over them silently disarms the project's real enforcement
+(measurement 2: saleor's pre-commit framework — ruff, mypy, semgrep —
+stopped running and nothing said so). So `init` detects
+`.git/hooks/<name>`, a foreign `core.hooksPath`, `.husky/`, `lefthook.yml`
+and `.pre-commit-config.yaml` before touching anything, picks one of three
+strategies, and prints which one it used. **Fresh**: nothing pre-exists —
+shims in `.multivac/hooks/`, hooksPath ours. **Chained**: a `.git/hooks`
+hook (or a manager that installs one) pre-exists — same shims, but each one
+runs the repo's own hook first and preserves its exit code; the chain is
+resolved at run time, so a manager that installs after init is chained too.
+**Alongside**: `core.hooksPath` already points elsewhere, or `.husky/` will
+claim it on install — never repoint; the shim goes INTO that directory where
+the hook name is free, and a taken name that does not run multivac is a
+refusal carrying the exact line to add. `doctor` reports the coexistence
+state either way.
+
 A versioned hook still needs something to run. The shim resolves a runnable
 multivac in a fixed order — `mvac` on PATH, then `npx --no-install multivac`
 when the package sits in the repo's `node_modules`, then the repo-local build
@@ -927,10 +944,18 @@ repos:
    move onto an existing path. Files that only share those names are never
    touched; two copies that both read as multivac's law are refused.
 3. Runs **`git init`** when the directory is not already a git repo (the
-   model is git-native; see "Where it runs").
+   model is git-native; see "Where it runs"), then runs **`git check-ignore`
+   on every path it is about to write**. A repo-level ignore that would
+   swallow one (saleor's `.gitignore` opens with `.*`) gets explicit
+   negations appended under a marker comment — idempotently, printed line by
+   line, re-checked — because a brain git cannot see commits nothing while
+   every command stays green. `doctor` reports a still-ignored brain path as
+   a WARNING with the fix.
 4. Points **`core.hooksPath`** at `.multivac/hooks/` and writes the
    `pre-commit` / `pre-push` scripts there, so the hooks travel with the
-   clone and there is no install step to forget.
+   clone and there is no install step to forget — unless the repo already
+   has a hook set-up, in which case init chains it or installs alongside,
+   and never repoints (see "Enforcement").
 
 "One root file and not one more" is the whole scaffolding budget: no template
 gallery, no empty sections, no per-agent folders. What lands under
