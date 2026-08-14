@@ -1,0 +1,23 @@
+/* The site wears the mark's palette: amber on warm neutral.
+   Hextra derives links, accents, focus rings and the active nav item from
+   --primary-*, so setting the hue here carries the panel's lit lamp through
+   the whole site instead of the theme's default blue. */
+
+:root {
+  /* #d97706 — the lit lamp, light mode */
+  --primary-hue: 32deg;
+  --primary-saturation: 95%;
+  --primary-lightness: 44%;
+}
+
+.dark {
+  /* #f59e0b — CRT phosphor: brighter, so it holds on a dark ground */
+  --primary-hue: 38deg;
+  --primary-saturation: 92%;
+  --primary-lightness: 50%;
+}
+
+/* The selection matches the lamp rather than the browser default. */
+::selection {
+  background-color: hsl(var(--primary-hue) var(--primary-saturation) var(--primary-lightness) / 0.28);
+}
