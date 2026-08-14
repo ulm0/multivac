@@ -1,9 +1,9 @@
 ---
 slug: the-ritual-has-a-home
-status: open
+status: archived
 repos:
   self:
-    status: branched
+    status: landed
 landing_order:
   - - self
 invariants:
