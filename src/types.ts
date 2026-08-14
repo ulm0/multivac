@@ -1,7 +1,10 @@
 // Shared domain types. Every module codes against these; keep them boring.
 
-/** Anchor evaluation modes. `count` carries its N in Anchor.count. */
-export type Mode = 'present' | 'absent' | 'unique' | 'count';
+/**
+ * Anchor evaluation modes. `count` carries its N in Anchor.count; `each`
+ * carries its polarity in Anchor.negated (`each!` = every file has no match).
+ */
+export type Mode = 'present' | 'absent' | 'unique' | 'count' | 'each';
 
 /**
  * Per-leg verify states. `pending` is a claim an open change declares before
@@ -37,7 +40,7 @@ export interface Config {
   sddAuto: boolean;
   grapher?: string;
   authorities: string[];
-  /** Modes that gate (exit 1). Default [absent, count]; must include absent. */
+  /** Modes that gate (exit 1). Default [absent, count, each]; must include absent. */
   blocking: Mode[];
   /**
    * What a pin behind its channel does to verify. Default 'report';
@@ -81,6 +84,8 @@ export interface Anchor {
   mode: Mode;
   /** Set iff mode === 'count'. */
   count?: number;
+  /** Set iff mode === 'each': true = `each!`, every file must contain NO match. */
+  negated?: boolean;
   /** Brain file the anchor comment lives in. */
   file: string;
   /** 1-based line of the comment. */

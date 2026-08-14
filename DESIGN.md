@@ -457,7 +457,7 @@ in append-only history; the last leg kills the upsert bypass.
 No database, no proprietary format. If the tool disappears, the brain still
 works.
 
-### Four modes, one mechanism
+### Five modes, one mechanism
 
 | mode | requires | what it's for |
 | --- | --- | --- |
@@ -465,9 +465,25 @@ works.
 | `absent` | no match | **the tombstone** |
 | `unique` | exactly one | single source of a value |
 | `count=N` | exactly N | **the ratchet** |
+| `each` / `each!` | every matched file contains a match / none | **the universal** |
 
 `count=N` legs are also what `verify` calls **derived numbers**: a number
 the brain states and the code must still yield — INV-01's `count=1` above.
+
+`each` is the universal quantifier Measurement 2 proved missing: `count=N`
+is a deletion ratchet — it counts across all files together, so it catches
+removal, never omission-on-addition, and a `privileged: true` rogue
+container injected into a default k8s manifest left fifteen anchors green at
+exit 0. `each` quantifies **per file**: every file the glob matches (after
+exclusions) must contain a match — `each!`, must contain none — a glob
+matching zero files is a blocking failure (a universal over nothing proves
+nothing), and the failing files are named in the report, first few + count.
+Of Measurement 2's seven unanchorable claims the four universal-shaped ones
+now anchor; the three **cross-file relation** claims (vendored proto == root
+proto, engines floor == CI matrix, image name == skaffold artifact) still do
+not, on purpose — a relation between two files' values is a different
+primitive, not a quantifier, and a claim that needs it stays honestly
+unanchored.
 
 Two matching rules are normative, measured not theorized (Measurement 1,
 defects 1–2):
@@ -509,6 +525,7 @@ Modes differ not only in how they match but in **what their failure means**:
 | --- | --- | --- |
 | `absent` | near impossible | **blocks** |
 | `count` | low | **blocks** |
+| `each` / `each!` | low — a named file either satisfies the predicate or not | **blocks** |
 | `present` | **high** — the rule is true, the code moved | reports and self-heals |
 | `unique` | medium | reports |
 
@@ -530,9 +547,10 @@ reporting. Four states, not two:
   move — it is `broken`, with the candidates listed.
 - **broken** — the leg's requirement fails in place.
 - **vacuous** — the glob, after `!` exclusions, matches **zero tracked
-  files**. For `absent`/`count` this is a **failure**, blocking: a directory
-  rename silently greens every tombstone otherwise (verified live in
-  Measurement 1). For `present`/`unique` it reports as broken.
+  files**. For `absent`/`count`/`each` this is a **failure**, blocking: a
+  directory rename silently greens every tombstone otherwise (verified live
+  in Measurement 1), and a universal quantified over nothing proves nothing.
+  For `present`/`unique` it reports as broken.
   Zero tracked files, but an **untracked** file on disk the same globs match,
   is a different sentence: `file exists but is untracked — git add <path>`.
   The glob is right; git cannot see the file. Self-heal stands down there.
@@ -553,7 +571,7 @@ One exit matrix, no second answer:
 
 | result | default | `--strict` |
 | --- | --- | --- |
-| broken or vacuous leg in a blocking mode (`absent`, `count`) | **exit 1** | exit 1 |
+| broken or vacuous leg in a blocking mode (`absent`, `count`, `each`) | **exit 1** | exit 1 |
 | broken `present` / `unique` | reported, exit 0 | exit 1 |
 | moved (self-healed) | exit 0 | exit 0 |
 | pending (claim of an open change) | exit 0 | exit 0 |
@@ -944,7 +962,7 @@ doors:   [agents, claude]
 sdd:     opsx
 grapher: graphify
 authorities: [published, specified, open, technical]   # the project's, not mine
-blocking:    [absent, count]
+blocking:    [absent, count, each]
 repos:
   backend: ../acme-backend    # bare string = shorthand for { path: … }
 ```
@@ -1303,10 +1321,10 @@ Grammar defects, measured not theorized — each is now a design requirement:
 
 Market datum: a hand-rolled shell checker in one of the reference repos
 independently invented `absent` and `present` — but never `count`. The
-ratchet is the non-obvious contribution. Candidate fifth mode with one
-measured use case: config-pairing assertions ("every declared service block
-carries its required auth key") — trying it by hand surfaced two undeclared
-entries.
+ratchet is the non-obvious contribution. The candidate fifth mode named here
+— config-pairing assertions ("every declared service block carries its
+required auth key") — shipped after Measurement 2 proved the demand by
+injection: it is `each`/`each!`, the per-file universal above.
 
 Limits: single ecosystem, anchors written by capable agents rather than
 average users, no longitudinal misfire data.

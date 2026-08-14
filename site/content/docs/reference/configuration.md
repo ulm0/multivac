@@ -28,7 +28,7 @@ doors:   [agents, claude, cursor]
 sdd:     opsx
 grapher: graphify
 authorities: [published, specified, open]
-blocking: [absent, count]
+blocking: [absent, count, each]
 staleness: block
 strict_pre_push: true
 channel: origin/main
@@ -151,16 +151,17 @@ your agent; do not expect it to gate anything today.
 
 | | |
 | --- | --- |
-| type | list of anchor modes — from `present`, `absent`, `unique`, `count` |
-| default | `[absent, count]` |
-| example | `blocking: [absent, count, unique]` |
+| type | list of anchor modes — from `present`, `absent`, `unique`, `count`, `each` |
+| default | `[absent, count, each]` |
+| example | `blocking: [absent, count, each, unique]` |
 
 Which anchor modes make a broken leg exit 1 under the **default** policy.
 Everything else is reported and exits 0 unless you pass `--strict`.
 
-**Without it:** tombstones (`absent`) and counted claims (`count`) gate;
-presence and uniqueness report. That asymmetry is the point — a rename should
-not kill your commit, but calling a dead endpoint should.
+**Without it:** tombstones (`absent`), counted claims (`count`) and
+universals (`each`/`each!`) gate; presence and uniqueness report. That
+asymmetry is the point — a rename should not kill your commit, but calling a
+dead endpoint should.
 
 You may widen the set. You may not narrow it below the tombstone:
 

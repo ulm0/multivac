@@ -259,7 +259,7 @@ summary says who is holding it — exit 0 is the grace, silence is not:
 
 | result | default | `--strict` |
 | --- | --- | --- |
-| broken or vacuous leg in a blocking mode (`absent`, `count`) | **1** | **1** |
+| broken or vacuous leg in a blocking mode (`absent`, `count`, `each`) | **1** | **1** |
 | broken `present` / `unique` | reported, **0** | **1** |
 | `moved` — self-healed | **0** | **0** |
 | `unevaluated` — repo not on disk | **0** | **0** |
@@ -271,8 +271,8 @@ summary says who is holding it — exit 0 is the grace, silence is not:
 | stale pin, `staleness: block` | **1** | **1** |
 | config invalid or missing | **2** | **2** |
 
-The blocking set is the `blocking:` key, default `[absent, count]`. Widening
-it is allowed; dropping `absent` is refused.
+The blocking set is the `blocking:` key, default `[absent, count, each]`.
+Widening it is allowed; dropping `absent` is refused.
 
 ### Self-healing
 
@@ -669,7 +669,8 @@ nothing. Full walkthrough: [Running changes](../../guide/running-changes).
 The on-ramp. `mvac help anchor` prints the anchor grammar on one screen — the
 line format, the POSIX-ERE-only dialect with the `\s`/`\d`/`\w`/`\b`
 replacements, per-line matching (per-statement for `.sql`), `count=N` as a
-deletion ratchet across the whole glob, the one-include-glob rule (braces for
+deletion ratchet across the whole glob, `each`/`each!` as the per-file
+universal that names its failing files, the one-include-glob rule (braces for
 alternatives), repo-qualified exclusions, and where anchors may live. `mvac
 help <command>` prints that command's usage; bare `mvac help` lists topics.
 

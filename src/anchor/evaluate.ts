@@ -90,10 +90,12 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
   const label = (m: TaggedMatch): string =>
     `${star ? `${m.key}:` : ''}${m.file}:${m.line}`;
   let globFileCount = 0;
+  const globFiles: { key: string; file: string }[] = [];
   const matches: TaggedMatch[] = [];
   for (const t of targets) {
     const scan = await scanLeg(a, t.scanner, t.keys);
     globFileCount += scan.globFiles.length;
+    for (const f of scan.globFiles) globFiles.push({ key: t.key, file: f });
     for (const m of scan.matches) matches.push({ key: t.key, ...m });
   }
   const n = matches.length;
@@ -197,6 +199,41 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
       return leg(
         'broken',
         `count=${a.count} pinned, found ${n} (${list || 'none'}) — revert the new occurrence, or ratchet to count=${n} in ${a.file}:${a.line}`,
+      );
+    }
+    case 'each': {
+      // The universal quantifier: every file the glob matches satisfies the
+      // predicate (contains a match; each! = contains none). Its whole value
+      // over absent/count is per-file: the failing file is NAMED, and a new
+      // file that omits the pattern breaks it — count=N never sees omission.
+      const word = a.negated ? 'each!' : 'each';
+      if (globFileCount === 0) {
+        return leg(
+          'vacuous',
+          untracked ??
+            `glob matched no tracked files — ${word} over nothing proves nothing; a rename greens the claim silently; fix the glob`,
+        );
+      }
+      // First match per file: for each! the violation is shown at file:line.
+      const firstBy = new Map<string, TaggedMatch>();
+      for (const m of matches) {
+        const k = `${m.key}\0${m.file}`;
+        if (!firstBy.has(k)) firstBy.set(k, m);
+      }
+      const failing = a.negated
+        ? [...firstBy.values()].map(label)
+        : globFiles
+            .filter((f) => !firstBy.has(`${f.key}\0${f.file}`))
+            .map((f) => `${star ? `${f.key}:` : ''}${f.file}`);
+      if (failing.length === 0) return leg('ok');
+      const shown =
+        failing.slice(0, 3).join(', ') +
+        (failing.length > 3 ? ` +${failing.length - 3} more` : '');
+      return leg(
+        'broken',
+        a.negated
+          ? `each!: forbidden pattern in ${failing.length} of ${globFileCount} files (${shown}) — delete it, or exclude the file with !<glob>`
+          : `each: ${failing.length} of ${globFileCount} files lack the pattern (${shown}) — add it there, or exclude the file with !<glob>`,
       );
     }
   }

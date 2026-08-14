@@ -63,7 +63,7 @@ rendered, greppable, no parallel file to drift. One leg per line:
   pass. Every engine (git grep, ripgrep, built-in fallback) implements the
   same accepted subset, so a passing anchor passes on every machine.
 
-## Four modes, one mechanism
+## Five modes, one mechanism
 
 | mode | requires | what it's for |
 | --- | --- | --- |
@@ -71,11 +71,23 @@ rendered, greppable, no parallel file to drift. One leg per line:
 | `absent` | no match | **the tombstone** |
 | `unique` | exactly one | single source of a value |
 | `count=N` | exactly N | **the ratchet** |
+| `each` / `each!` | every matched file contains a match / none | **the universal** |
 
 `count=N` legs are also **derived numbers**: a number the brain states and
 the code must still yield. Over append-only history, `count=N` is the
 documented idiom for "never again" claims — the count pins today's total and
 any new occurrence breaks it.
+
+`count=N` is a **deletion ratchet, never a universal**: it counts across all
+files together, so it catches removal, not a new file that omits the
+pattern — measurement 2 proved a privileged rogue container invisible to
+fifteen green count/absent anchors. "For every Deployment / container /
+published package, P" is `each`: every file the glob matches must contain a
+match (`each!`: must contain none), a glob matching zero files fails, and
+the failing files are named in the report. What no mode says — deliberately —
+is a cross-file **relation** (vendored copy == root copy, env var ==
+containerPort): that is a different primitive, and such claims stay
+honestly unanchored.
 
 The dead-terms dictionary is not a separate feature: a dead term is an
 `absent` anchor on the retired claim's row, and it can cross repos:
@@ -132,6 +144,7 @@ Modes differ not only in how they match but in what their failure means:
 | --- | --- | --- |
 | `absent` | near impossible | **blocks** |
 | `count` | low | **blocks** |
+| `each` / `each!` | low — a named file either satisfies the predicate or not | **blocks** |
 | `present` | high — the rule is true, the code moved | reports and self-heals |
 | `unique` | medium | reports |
 
@@ -153,15 +166,15 @@ before reporting. Four states, not two:
   move — it is `broken`, with the candidates listed.
 - **broken** — the leg's requirement fails in place.
 - **vacuous** — the glob, after `!` exclusions, matches zero tracked files.
-  For `absent`/`count` this is a blocking failure: a directory rename would
-  silently green every tombstone otherwise. For `present`/`unique` it
-  reports as broken.
+  For `absent`/`count`/`each` this is a blocking failure: a directory rename
+  would silently green every tombstone otherwise, and a universal quantified
+  over nothing proves nothing. For `present`/`unique` it reports as broken.
 
 One exit matrix, no second answer:
 
 | result | default | `--strict` |
 | --- | --- | --- |
-| broken or vacuous leg in a blocking mode (`absent`, `count`) | **exit 1** | exit 1 |
+| broken or vacuous leg in a blocking mode (`absent`, `count`, `each`) | **exit 1** | exit 1 |
 | broken `present` / `unique` | reported, exit 0 | exit 1 |
 | moved (self-healed) | exit 0 | exit 0 |
 

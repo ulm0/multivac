@@ -65,7 +65,7 @@ test('zero reference-ecosystem content anywhere in the pack', () => {
 // a skill teaching \s or an unparseable line would teach users to write
 // anchors verify rejects.
 const ANCHOR_LINE =
-  /<!-- @anchor (\S+) (\S+):(\S+)((?: !\S+)*) \/(.+)\/(i?)(?: (present|absent|unique|count=\d+))? -->/;
+  /<!-- @anchor (\S+) (\S+):(\S+)((?: !\S+)*) \/(.+)\/(i?)(?: (present|absent|unique|count=\d+|each!?))? -->/;
 
 test('every example anchor line parses and compiles in the tool dialect', () => {
   let found = 0;

@@ -1,5 +1,5 @@
 // multivac verify — anchors + tombstones + derived numbers. Deterministic,
-// offline, sub-second. Exit matrix: blocking modes (absent/count) gate
+// offline, sub-second. Exit matrix: blocking modes (absent/count/each) gate
 // always; present/unique gate only under --strict; moved self-heals, exit 0.
 
 import { existsSync, readdirSync } from 'node:fs';

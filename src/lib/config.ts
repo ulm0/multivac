@@ -8,7 +8,7 @@ import type { Config, Mode, RepoEntry } from '../types.js';
 
 export class ConfigError extends Error {}
 
-const MODES: Mode[] = ['present', 'absent', 'unique', 'count'];
+const MODES: Mode[] = ['present', 'absent', 'unique', 'count', 'each'];
 // Everything multivac creates lives here. AGENTS.md at the root is the one
 // exception: harnesses read it there.
 export const CONFIG_PATH = '.multivac/config.yml';
@@ -211,7 +211,7 @@ export async function loadConfig(brainDir: string): Promise<Config> {
   }
   const o = doc as Record<string, unknown>;
 
-  const blockingRaw = o.blocking ?? ['absent', 'count'];
+  const blockingRaw = o.blocking ?? ['absent', 'count', 'each'];
   const blocking = stringList(blockingRaw, 'blocking') as Mode[];
   for (const m of blocking) {
     if (!MODES.includes(m)) {
