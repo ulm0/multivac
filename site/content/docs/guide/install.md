@@ -55,9 +55,11 @@ is also what CI does.
 
 `multivac` and `mvac` are the same file. The docs use them interchangeably:
 `multivac` in prose where it reads better, `mvac` in shell blocks where it is
-shorter. **The hooks call `mvac`** — the shims multivac installs run
-`command -v mvac`, so if you only expose `multivac`, the hooks find nothing
-and silently exit 0. Expose both, or at least `mvac`.
+shorter. **The hooks look for `mvac` first** — the shims try `mvac` on
+`PATH`, then `npx --no-install multivac`, then a repo-local `dist/cli.js`
+with its `node_modules` beside it. Expose `mvac` and the first rung hits; with
+none of the three the shim warns on stderr and exits 0, verifying nothing.
+See [Hooks](../../reference/hooks).
 
 ## Check it
 
@@ -71,7 +73,7 @@ $ mvac --help
 multivac <command> [args]
 
 commands:
-  init       scaffold the brain: content at root, machinery in .multivac/
+  init       scaffold the brain: everything multivac owns under .multivac/
   seed       deterministic boundary inventory -> .multivac/seed-report.md
   verify     check anchors against the declared repos (deterministic, offline)
   doors      project doors + install git hooks into the brain and declared repos

@@ -61,8 +61,9 @@ appointed representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the maintainers by **opening a confidential issue** in this
-project: https://gitlab.com/ulm0/multivac/-/issues/new — check
-**"This issue is confidential"** so that only project members can read it.
+project: https://gitlab.com/ulm0/multivac/-/issues/new — select the
+**Turn on confidentiality** checkbox before you create it, so the issue is
+visible only to project members with at least the Planner or Reporter role.
 
 All complaints will be reviewed and investigated promptly and fairly. All
 community leaders are obligated to respect the privacy and security of the

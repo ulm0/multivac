@@ -75,8 +75,9 @@ This brain is empty on purpose. Load the multivac skill and fill it:
 - from scratch: run the interview
 
 The law lives in `.multivac/invariants.md` (anchored claims); every decision enters
-as a `multivac change`. Run `multivac verify` before acting on anything
-you read here.
+as a `multivac change`. The ritual — the closing ceremony no tool can
+check — is `.multivac/ritual.md`, printed by `change close`. Run
+`multivac verify` before acting on anything you read here.
 <!-- multivac:end -->
 ```
 

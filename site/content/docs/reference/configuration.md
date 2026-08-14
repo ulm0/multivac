@@ -287,11 +287,15 @@ report `unevaluated` rather than red:
 ```
 
 **Without it:** nothing to verify against except the `brain` handle itself.
-`seed`, `doors` and `doctor` all say the same thing:
+`doctor` says so:
 
 ```txt
 repos      none declared — add repos: to .multivac/config.yml
 ```
+
+`seed` writes the same finding into its report — *No repos declared — add
+them under `repos:` in `.multivac/config.yml`* — and `doors` just writes the
+brain's own door and stops.
 
 `*` is reserved outright — it already means "every repo" in an anchor leg:
 
