@@ -128,6 +128,9 @@ export async function layoutError(brainDir: string): Promise<string | null> {
   );
 }
 
+/** The team's half of the closing ceremony — prose multivac prints, never parses. */
+export const RITUAL_PATH = '.multivac/ritual.md';
+
 function fail(msg: string): never {
   throw new ConfigError(`${CONFIG_PATH}: ${msg}`);
 }

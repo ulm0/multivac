@@ -3,10 +3,10 @@ title: Documentation
 ---
 
 **multivac** (CLI alias `mvac`) is a brain-driven development tool: one brain
-repo — claims, law, ritual — from which an entire ecosystem of code repos is
-developed. You enter the brain, and the change flows out across whatever repos
-the feature touches. The core is deterministic: no API key, no network, no
-model call in the verification path.
+repo — claims, law, and [ritual](concepts/the-change#the-ritual) — from which
+an entire ecosystem of code repos is developed. You enter the brain, and the
+change flows out across whatever repos the feature touches. The core is
+deterministic: no API key, no network, no model call in the verification path.
 
 The tool is not a documentation generator. If you develop *from* the brain, a
 lying brain doesn't produce ugly docs — it produces confidently wrong code

@@ -41,6 +41,7 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     '',
     '- Law lives in `.multivac/invariants.md`. Cite rows by ID; a rule quoted without its ID does not bind.',
     '- Every ecosystem decision enters as a change: see `.multivac/changes/` and run `multivac change`.',
+    '- The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.',
     '- Check the law against the code before acting: `multivac verify`.',
   ];
   if (activeInvariants === 0) {

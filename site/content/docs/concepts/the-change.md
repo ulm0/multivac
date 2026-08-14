@@ -60,9 +60,40 @@ claims** and refuses to archive until:
 - every "amends INV-xx" ended consistent — row and code agree,
 - no blocking leg broke anywhere the change touched.
 
-The ritual stops being discipline and becomes mechanism. Nothing new is
-invented: the change declares before what today gets checked after, when
-anyone remembers.
+Updating the documentation stops being discipline and becomes mechanism.
+Nothing new is invented: the change declares before what today gets checked
+after, when anyone remembers.
+
+## The ritual
+
+Closing a change is a **ceremony**, and only half of it is mechanical.
+multivac executes that half — the landing order held, every declared claim
+resolves, no invariant was relaxed in code instead of in the law. The other
+half is the team's: who reviews what, who gets told, what ships before what
+when the reason is not technical. No tool can invent those, and none can
+check them.
+
+So the team writes them, one line each, in `.multivac/ritual.md` next to the
+law — and `close` prints them verbatim once the gate has passed and the
+change is archived:
+
+```txt
+$ mvac change close points-expire
+INV-02: ok
+archived -> .multivac/changes/archive/points-expire.md
+
+ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
+  - [ ] tell support before the flag flips
+  - [ ] the public site ships before the backend
+```
+
+**Printed, not verified.** Nothing gates on the ritual, nothing parses it; an
+empty or absent ritual prints nothing at all. `init` scaffolds the file with
+a single comment saying what belongs there, and the brain door names it.
+
+It gets its own file rather than a section of the law because the law is
+parsed — `verify` reads its anchors, `plan` reads its state cells — and the
+ritual is prose the tool only ever prints.
 
 ## The subcommands
 

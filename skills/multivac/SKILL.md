@@ -55,6 +55,10 @@ rhythm is always `mvac change new → plan → apply → land → close`
 7. **`moved` is normal, not an alarm.** When verify rewrites a glob in
    place, review the diff like any other edit and let it ride the same
    branch.
+8. **Walk the ritual `close` prints.** `.multivac/ritual.md` is the team's
+   half of the closing ceremony — reviews, announcements, what ships before
+   what. multivac prints it and checks none of it; take each line to the
+   human before calling the change done.
 
 ## When you need the manual
 

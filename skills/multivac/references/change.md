@@ -11,7 +11,7 @@ mvac change new "points expire"
 mvac change plan     # which repos, in what order, which invariants it touches
 mvac change apply    # a worktree per repo, branched from origin/main
 mvac change land     # MRs respecting the declared order
-mvac change close    # updates the brain and verifies the declared claims
+mvac change close    # verifies the declared claims, archives, prints the ritual
 ```
 
 ## new — declare before you touch anything
@@ -82,6 +82,15 @@ On success the brain is updated (rows enacted by the human, journal entry,
 change file archived — never deleted), the change's worktrees are removed,
 and a reserved ID it never used goes back to the pool. If close fails, the change is not
 done: fix the code or fix the declaration, honestly.
+
+Then close prints **the ritual** — `.multivac/ritual.md`, the half of the
+closing ceremony no tool can check: who reviews what, who gets told, what
+ships before what when the reason is not technical. multivac only prints it;
+walking it is your job. Read the lines to the human and confirm each one
+before you call the change done — and when the change taught the team a step
+missing from that file, propose the line. An empty or absent ritual prints
+nothing, which is not permission to skip a ceremony nobody has written down
+yet: ask, then write it.
 
 Decisions made mid-change become claims at close: propose the row, the
 human enacts. This is the organic birth path — the main one at steady

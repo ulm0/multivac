@@ -62,7 +62,8 @@ executed from the brain, which updates the brain when it closes.
 The brain is not a place — it is a protocol, because it travels:
 
 - **Enter the brain repo** → the brain door says how to work on the whole
-  ecosystem: where every repo lives, the law, the ritual, landing order.
+  ecosystem: where every repo lives, the law, the ritual (defined below),
+  landing order.
 - **Enter any code repo** → the brain is mounted there (today, in the
   reference ecosystem: a git submodule), and that repo's door says: consult
   the brain before any decision — and, crucially, **the feature you're
@@ -135,13 +136,34 @@ apart, both mechanical:
 
 If the change declares up front the claims it will make true, `multivac change
 close` doesn't ask whether someone updated the docs: **it checks that what the
-change promised is now true**. The ritual stops being discipline and becomes
-mechanism — which is the reference brain's explicitly confessed hole: *"it is
-discipline and nothing verifies it"*, paid twice in its own history — once
-with six stale pages, once with two stale door files.
+change promised is now true**. Updating the documentation stops being
+discipline and becomes mechanism — which is the reference brain's explicitly
+confessed hole: *"it is discipline and nothing verifies it"*, paid twice in
+its own history — once with six stale pages, once with two stale door files.
 
 It falls out of the model for free: nothing new to invent, just declare before
 what today gets checked after (when anyone remembers).
+
+### The ritual: the half of the ceremony no tool can check
+
+Closing a change is a **ceremony**, and only half of it is mechanical.
+multivac executes that half: the landing order held, every declared claim
+resolves, no invariant was relaxed in code instead of in the law. The other
+half belongs to the team — who reviews what, who gets told, what ships before
+what when the reason is not technical. No tool can invent those, and none can
+check them.
+
+So the team writes them, in **`.multivac/ritual.md`**, beside the config, and
+`multivac change close` prints them verbatim at the end of a successful
+close: a checklist in front of the agent and the user at the moment it
+matters. **Printed, not verified.** Nothing gates on it, nothing parses it;
+an empty or absent ritual prints nothing at all. `init` scaffolds the file
+with one comment saying what belongs there, and the brain door names it.
+
+Its own file rather than a section of the law, because the law is *parsed* —
+`verify` reads its anchor lines, `change plan` reads its state cells — and
+the ritual is prose the tool only ever prints. Free-form lines inside a
+parsed table is how a parser learns to lie.
 
 ### Greenfield falls out of the same object
 
@@ -199,7 +221,9 @@ commodity — but four things no generator infers from code:
   for it.
 - **A single source, said out loud.** A wiki and a docs mirror were retired
   the same day, on purpose.
-- **The ritual** that ties documentation updates to the close of every change.
+- **The ritual**: the closing ceremony a team writes for itself — who reviews,
+  who is told, what ships before what. multivac executes its mechanical half
+  and prints the rest (see *The ritual* above).
 
 Hence the two hard limits of starting point 2:
 
@@ -739,7 +763,7 @@ ago"). Fetching happens only in explicit operations (`repos sync`,
 There are **two kinds of door**, and they are not the same file renamed:
 
 - **Brain door** — how to work on the ecosystem from here: where every repo
-  lives, the ritual, the law, the landing order.
+  lives, the law, the ritual (`.multivac/ritual.md`), the landing order.
 - **Consumer door** — what is law in this repo, where the brain lives, and
   that **the change may cross repos**: an agent standing in one surface must
   know the feature may span others, and where to find out which.
@@ -880,8 +904,10 @@ repos:
    — only the managed block is written.
 2. Writes **everything else under `.multivac/`**: `config.yml` (where the
    flags land), `invariants.md` (the law table with its format and zero
-   rows), `changes/`, `hooks/`, and a gitignored `cache/`. A brain still
-   holding **its own** `invariants.md` or `changes/` at the root is
+   rows), `ritual.md` (empty but for one comment saying what belongs there),
+   `changes/` with a `.gitkeep` so the directory the lifecycle writes into
+   survives the first clone, `hooks/`, and a gitignored `cache/`. A brain
+   still holding **its own** `invariants.md` or `changes/` at the root is
    **migrated** here first — every path announced, `git mv` where it can, no
    move onto an existing path. Files that only share those names are never
    touched; two copies that both read as multivac's law are refused.

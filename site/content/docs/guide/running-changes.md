@@ -194,12 +194,21 @@ archived -> .multivac/changes/archive/points-expire.md
 archived — commit this: git -C ~/eco/brain add -A .multivac/changes && git commit -m "Archive the points-expire change"
 api: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/api)
 web: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/web)
+
+ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
+  - [ ] tell support before the flag flips
+  - [ ] the public site ships before the backend
 ```
 
 The change file is archived, never deleted; its `status` flips to
 `archived`. The worktrees go with it — one still holding uncommitted work is
 reported, never forced. If a declared claim's anchors don't hold, close fails: fix the
 code or fix the declaration, honestly.
+
+The tail is the [ritual](../../concepts/the-change#the-ritual): the half of
+the closing ceremony no tool can check, written by the team in
+`.multivac/ritual.md` and printed here verbatim — never verified, never
+gating. An empty or absent ritual prints nothing.
 
 Decisions made mid-change become claims at close: propose the row, the
 human enacts. This is the organic birth path — the main one at steady
