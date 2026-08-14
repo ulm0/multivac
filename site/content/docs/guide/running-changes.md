@@ -1,6 +1,6 @@
 ---
 title: Running changes
-weight: 4
+weight: 5
 ---
 
 A change is a file in the brain — `.multivac/changes/<slug>.md` — that five
@@ -96,7 +96,7 @@ claims:
 ```
 
 If an SDD adapter is declared, `new` also runs its propose step —
-see [Adapters](../adapters). `--no-sdd` skips it once.
+see [Graphers and SDD](../../reference/graphers-and-sdd). `--no-sdd` skips it once.
 
 ## plan — resolve the declaration against reality
 
@@ -144,6 +144,10 @@ Where git cannot make a worktree, apply branches the repo in place, as it
 always did — but refuses if that tree carries another change's uncommitted
 work, naming the files and the `git stash push` that frees it. It never
 switches a dirty tree onto your branch.
+
+The change's own declaration file rides across the switch. Anything else
+uncommitted that the switch would overwrite stops `apply` by name, with the
+command that parks it — never a raw git error, never a silent loss.
 
 ## land — the order is law
 

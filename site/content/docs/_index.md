@@ -3,7 +3,7 @@ title: Documentation
 ---
 
 **multivac** (CLI alias `mvac`) is a brain-driven development tool: one brain
-repo — claims, law, and [ritual](concepts/the-change#the-ritual) — from which
+repo — claims, law, and [ritual](concepts/philosophy#the-ritual) — from which
 an entire ecosystem of code repos is developed. You enter the brain, and the
 change flows out across whatever repos the feature touches. The core is
 deterministic: no API key, no network, no model call in the verification path.
@@ -22,17 +22,33 @@ across N repos. Verification is the precondition; the product is the change.
 4. **Distribute** — how the brain reaches consumer repos, pinned, with
    staleness visible instead of silent.
 
-## How to read these docs
+## Three sections
 
-[Concepts](concepts) explains the model, in dependency order:
+{{< cards >}}
+  {{< card link="concepts" title="Concepts" subtitle="The model: why it exists, claims and anchors, the cross-repo change, distribution." >}}
+  {{< card link="guide" title="Guide" subtitle="The path: install, init, fill the brain, write anchors, run a change." >}}
+  {{< card link="reference" title="Reference" subtitle="The surface: every command and flag, every config key, every integration." >}}
+{{< /cards >}}
 
-1. [Brain-driven development](concepts/brain-driven-development) — the
+## Where to start
+
+- **New here?** [Philosophy](concepts/philosophy) — the problem this exists to
+  solve, in one page.
+- **Want it running?** [Install](guide/install), then
+  [Getting started](guide/getting-started).
+- **Looking up a flag or a key?** [Commands](reference/commands) and
+  [Configuration](reference/configuration).
+- **Wiring an agent?** [Agent integrations](reference/integrations) and
+  [Hooks](reference/hooks).
+
+[Concepts](concepts) is written in dependency order:
+
+1. [Philosophy](concepts/philosophy) — why a paraphrase ages silently and a
+   citation does not; who proposes, who enacts.
+2. [Brain-driven development](concepts/brain-driven-development) — the
    practice: the brain repo, its three layers, and how enforcement runs.
-2. [Claims and anchors](concepts/claims-and-anchors) — the unit of truth and
+3. [Claims and anchors](concepts/claims-and-anchors) — the unit of truth and
    the grammar that verifies it.
-3. [The change](concepts/the-change) — the cross-repo change lifecycle.
-4. [Invariants](concepts/invariants) — how law is born, amended, and retired.
-5. [Distribution](concepts/distribution) — mounts, pins, doors, and skills.
-
-Command-level behavior is authoritative in the CLI itself: `multivac
-<command>` prints usage for every subcommand.
+4. [The change](concepts/the-change) — the cross-repo change lifecycle.
+5. [Invariants](concepts/invariants) — how law is born, amended, and retired.
+6. [Distribution](concepts/distribution) — mounts, pins, doors, and skills.

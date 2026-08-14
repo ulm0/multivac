@@ -1,6 +1,6 @@
 ---
 title: Brain-driven development
-weight: 1
+weight: 2
 ---
 
 The practice: **one brain repo from which the whole ecosystem is developed**.
