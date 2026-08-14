@@ -1,9 +1,9 @@
 ---
 slug: seed-finds-the-contracts
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
