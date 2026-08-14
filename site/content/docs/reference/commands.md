@@ -10,7 +10,7 @@ $ mvac --help
 multivac <command> [args]
 
 commands:
-  init       scaffold the brain: content at root, machinery in .multivac/
+  init       scaffold the brain: everything multivac owns under .multivac/
   seed       deterministic boundary inventory -> .multivac/seed-report.md
   verify     check anchors against the declared repos (deterministic, offline)
   doors      project doors + install git hooks into the brain and declared repos

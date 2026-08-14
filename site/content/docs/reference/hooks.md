@@ -37,9 +37,21 @@ Two files, both this shim:
 ```sh
 #!/bin/sh
 # multivac hook shim — managed by `multivac doors`; regenerate, do not edit.
-# Missing mvac never blocks a commit: enforcement degrades, it does not lock out.
-command -v mvac >/dev/null 2>&1 || exit 0
-exec mvac verify
+# Runner order: mvac on PATH, npx --no-install, repo-local build. No runnable
+# multivac never blocks a commit: it warns loudly and exits 0.
+case $0 in */*) hookdir=${0%/*} ;; *) hookdir=. ;; esac
+root=$(CDPATH= cd -- "$hookdir/../.." && pwd) || exit 0
+if command -v mvac >/dev/null 2>&1; then
+  exec mvac verify
+fi
+if [ -f "$root/node_modules/multivac/package.json" ] && command -v npx >/dev/null 2>&1; then
+  exec npx --no-install multivac verify
+fi
+if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && command -v node >/dev/null 2>&1; then
+  exec node "$root/dist/cli.js" verify
+fi
+echo "multivac: hooks INACTIVE — no runnable multivac, nothing was verified. Fix: install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)" >&2
+exit 0
 ```
 
 | hook | runs | when `strict_pre_push: true` |
@@ -62,30 +74,32 @@ file: it travels with the clone, and the only per-machine state is the one
 `core.hooksPath` line, which `doctor` checks.
 
 ```txt
-hooks      core.hooksPath ok · pre-commit ok · pre-push ok
+hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac)
 ```
 
 ```txt
-hooks      core.hooksPath unset → git config core.hooksPath .multivac/hooks · pre-commit ok · pre-push ok
+hooks      core.hooksPath unset → git config core.hooksPath .multivac/hooks · pre-commit installed · pre-push installed · active (node dist/cli.js)
 ```
 
 ```txt
-hooks      core.hooksPath is .githooks, expected .multivac/hooks → git config core.hooksPath .multivac/hooks · pre-commit missing → run `multivac init .` to rewrite the shims · pre-push ok
+hooks      core.hooksPath is .githooks, expected .multivac/hooks → git config core.hooksPath .multivac/hooks · pre-commit missing → run `multivac init .` to rewrite the shims · pre-push installed · INACTIVE — no runnable multivac, the shims verify nothing → install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)
 ```
 
-### `command -v mvac || exit 0` is the point
+### Installed is not enforcing
 
-The first real line of the shim is a bail-out. A machine without `mvac` on
-`PATH` commits normally — no error, no prompt, no half-broken repo for the
-one teammate who has not built the tool yet.
+The shim never blocks a commit for want of a runner. It tries three, in
+order — `mvac` on `PATH`, `npx --no-install multivac` when the package is in
+`node_modules`, and a repo-local `dist/cli.js` that has `node_modules` beside
+it — and with none of them it prints one warning to stderr and exits 0.
 
 That is deliberate and it is the difference between a guard people keep and a
 guard people delete. Enforcement **degrades**; it does not lock out. The cost
-is that an uninstalled machine gets no checking at all, which is what CI is
-for.
+is that a machine with no runner gets no checking at all, which is what CI is
+for — and why `doctor` names the runner it found, or says `INACTIVE`.
 
-The shim calls `mvac`, not `multivac`. If you expose only the long name, the
-hooks find nothing and exit 0 silently — see [Install](../../guide/install).
+Repo-local counts only when it can actually run: a `dist/` with no
+`node_modules` beside it is not a runner, because node exits 1 on its first
+bare import and that exit would block the commit.
 
 ## Harness hooks — the early ceiling
 
