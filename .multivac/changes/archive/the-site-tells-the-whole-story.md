@@ -1,9 +1,9 @@
 ---
 slug: the-site-tells-the-whole-story
-status: open
+status: archived
 repos:
   self:
-    status: branched
+    status: landed
 landing_order:
   - - self
 invariants:
