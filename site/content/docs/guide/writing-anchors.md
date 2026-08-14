@@ -43,6 +43,12 @@ drift:
   qualifying an exclusion in a single-repo leg is legal and redundant.
 - **Flags**: `i` only.
 - **mode**: `present` (default), `absent`, `unique`, `count=N`.
+- **One include glob per leg.** Alternate paths with braces —
+  `api:{src,lib}/**/*.ts` — never with a second glob; only exclusions repeat.
+- The whole grammar is one screen away: `mvac help anchor`. Before pinning a
+  `count=N`, dry-run the leg with `mvac count '<repo>:<glob> /<regex>/'` —
+  it prints the per-file breakdown through verify's own matcher, so the
+  ratchet is right the first time.
 
 A claim may carry several legs; legs AND together. On failure the claim
 inherits the worst failing leg's severity, and verify reports per leg.

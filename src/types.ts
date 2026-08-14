@@ -122,5 +122,7 @@ export interface CommandContext {
 export interface Command {
   name: string;
   help: string;
+  /** Extra usage lines for `--help` / `multivac help <name>`; optional. */
+  usage?: string[];
   run(argv: string[], ctx: CommandContext): Promise<number>;
 }

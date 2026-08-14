@@ -145,7 +145,7 @@ checks them on every commit.
 <!-- @anchor MV-30 brain:site/hugo.yaml /unsafe: true/ unique -->
 <!-- @anchor MV-30 brain:site/content/_index.md /hextra\/feature-grid/ count=2 -->
 | MV-31 | The reference section documents the whole surface: one heading per shipped command, one per configuration key the loader reads, and one per harness entry in the registry — including the entries marked unsupported. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
-<!-- @anchor MV-31 brain:site/content/docs/reference/commands.md /^## `(init|seed|verify|doors|doctor|repos|change)/ count=7 -->
+<!-- @anchor MV-31 brain:site/content/docs/reference/commands.md /^## `(init|seed|verify|count|doors|doctor|repos|change|help)/ count=9 -->
 <!-- @anchor MV-31 brain:site/content/docs/reference/configuration.md /^### `(doors|sdd|sdd_auto|grapher|authorities|blocking|staleness|strict_pre_push|channel|mount|repos)`$/ count=11 -->
 <!-- @anchor MV-31 brain:site/content/docs/reference/integrations.md /^## `(agents|claude|cursor|opencode|codex|windsurf|gemini|copilot|aider)`/ count=9 -->
 <!-- @anchor MV-31 brain:site/content/docs/concepts/philosophy.md /A paraphrase ages silently/ unique -->
@@ -195,3 +195,23 @@ checks them on every commit.
 <!-- @anchor MV-37 brain:test/init/coexist.test.ts /the repo gate runs first and its exit code wins/ -->
 <!-- @anchor MV-37 brain:test/init/coexist.test.ts /refusal names the exact step, file untouched/ -->
 <!-- @anchor MV-37 brain:DESIGN.md /never repoint/ -->
+| MV-39 | `multivac help anchor` teaches the whole grammar from the CLI in one screen: the anchor line, POSIX ERE only with the shorthand replacements named, per-line matching except `.sql` (per normalized statement), `count=N` counted across every file the glob matches (a deletion ratchet, never a universal), exactly one include glob (braces for alternatives), repo-qualified exclusions, and where anchors may live. | specified | active | 2026-08-14 | [changes/the-ramp-is-part-of-the-road.md](changes/the-ramp-is-part-of-the-road.md) |
+<!-- @anchor MV-39 brain:src/commands/help.ts /POSIX ERE only/ -->
+<!-- @anchor MV-39 brain:src/commands/help.ts /deletion ratchet, never a universal/ -->
+<!-- @anchor MV-39 brain:src/commands/help.ts /ONE include glob/ -->
+<!-- @anchor MV-39 brain:test/cli/help.test.ts /one screen/ -->
+| MV-40 | `multivac count '<repo>:<glob> /re/'` is a dry-run that prints the per-file breakdown and the total through the same parse and scan path verify uses — never a reimplementation — so a `count=N` ratchet is right the first time. It writes nothing and exits 0 when the spec evaluates. | specified | active | 2026-08-14 | [changes/the-ramp-is-part-of-the-road.md](changes/the-ramp-is-part-of-the-road.md) |
+<!-- @anchor MV-40 brain:src/commands/count.ts /scanLeg/ -->
+<!-- @anchor MV-40 brain:src/commands/count.ts /parseAnchors/ -->
+<!-- @anchor MV-40 brain:src/commands/count.ts /never a reimplementation/ -->
+<!-- @anchor MV-40 brain:test/cli/count.test.ts /the total is the ratchet verify pins/ -->
+| MV-41 | `--help`/`-h` on any subcommand is recognized by the dispatcher before the command runs: usage on stdout, exit 0, no side effect on the tree. | specified | active | 2026-08-14 | [changes/the-ramp-is-part-of-the-road.md](changes/the-ramp-is-part-of-the-road.md) |
+<!-- @anchor MV-41 brain:src/cli.ts /before any side effect/ -->
+<!-- @anchor MV-41 brain:test/cli/help.test.ts /tree untouched/ -->
+<!-- @anchor MV-41 brain:test/cli/help.test.ts /recognized before any side effect/ -->
+| MV-42 | verify is readable at the summary: parse diagnostics print above it, the unanchored claim ids are named (never only counted), and a law row in state `drift` records a real, not-yet-fixable finding — its legs report but never gate, and the summary names the drifting ids. Every other row keeps the exit matrix unchanged. | specified | active | 2026-08-14 | [changes/the-ramp-is-part-of-the-road.md](changes/the-ramp-is-part-of-the-road.md) |
+<!-- @anchor MV-42 brain:src/commands/verify.ts /=== 'drift'/ -->
+<!-- @anchor MV-42 brain:src/commands/verify.ts /unanchored: / -->
+<!-- @anchor MV-42 brain:src/commands/verify.ts /ABOVE the summary/ -->
+<!-- @anchor MV-42 brain:test/verify/verify.test.ts /a drift row never gates/ -->
+<!-- @anchor MV-42 brain:site/content/docs/reference/commands.md /drift/ -->
