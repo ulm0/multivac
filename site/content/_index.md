@@ -31,7 +31,7 @@ layout: hextra-home
 {{< hextra/feature-grid >}}
   {{< hextra/feature-card
     title="Claims, not documents"
-    subtitle="The unit is the claim: statement, authority, and a content-based anchor — `present`, `absent`, `unique`, `count` — written inline in the markdown. A paraphrase ages silently; a citation can be checked."
+    subtitle="The unit is the claim: statement, authority, and a content-based anchor — `present`, `absent`, `unique`, `count`, `each` — written inline in the markdown. A paraphrase ages silently; a citation can be checked."
     link="docs/concepts/claims-and-anchors"
   >}}
   {{< hextra/feature-card
