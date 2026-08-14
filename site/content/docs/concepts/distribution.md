@@ -47,7 +47,7 @@ never in `verify` or hooks.
 Two kinds of door, not the same file renamed:
 
 - **Brain door** — how to work on the ecosystem from here: where every repo
-  lives, the ritual, the law, the landing order.
+  lives, the law, [the ritual](../the-change#the-ritual), the landing order.
 - **Consumer door** — what is law in this repo, where the brain lives, and
   that the change may cross repos.
 

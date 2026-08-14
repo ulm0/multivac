@@ -7,9 +7,10 @@ import { existsSync } from 'node:fs';
 import { copyFile, mkdir, readFile, rm, rmdir, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
-import { CHANGES_DIR, CONFIG_PATH, LAW_PATH, loadConfig } from '../lib/config.js';
+import { CHANGES_DIR, CONFIG_PATH, LAW_PATH, RITUAL_PATH, loadConfig } from '../lib/config.js';
 import { lsFiles, run as gitRun } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
+import { ritualChecklist } from '../lib/ritual.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { sddSpec } from '../adapters/registry.js';
@@ -654,6 +655,14 @@ async function cmdClose(
   if (cfg.grapher) {
     say(`graph: refresh with \`${cfg.grapher} update .\` in the changed repos`);
   }
+  // The rest of the ceremony is the team's: printed at the moment it matters,
+  // never verified, never gating. Nothing written = nothing printed.
+  const ritual = await ritualChecklist(brain);
+  if (ritual.length > 0) {
+    say('');
+    say(`ritual (${RITUAL_PATH}) — multivac cannot check these; walk them with the user:`);
+    for (const line of ritual) say(`  ${line}`);
+  }
   return 0;
 }
 
@@ -675,7 +684,7 @@ function usage(): void {
   say('  plan <slug>            resolve repos, landing graph, reserve declared ids, claims');
   say('  apply <slug>           worktree per repo (greenfield repos get created)');
   say('  land <slug>            landing-order report; --landed <repo> records a merge');
-  say('  close <slug>           verify claims, archive the change');
+  say(`  close <slug>           verify claims, archive the change, print ${RITUAL_PATH}`);
   say('flags: --no-sdd (skip SDD steps), --landed <repo> (land only)');
 }
 

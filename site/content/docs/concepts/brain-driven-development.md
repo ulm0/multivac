@@ -4,7 +4,8 @@ weight: 1
 ---
 
 The practice: **one brain repo from which the whole ecosystem is developed**.
-The brain is a knowledge base — claims, law, ritual — and the code repos are
+The brain is a knowledge base — claims, law, and the
+[ritual](../the-change#the-ritual) — and the code repos are
 surfaces the change passes through. The practice was operated by hand for
 months on a real production ecosystem — five repos, a ~5,400-line brain —
 before multivac made it mechanism instead of discipline.
@@ -14,7 +15,8 @@ before multivac made it mechanism instead of discipline.
 The brain is not a place — it is a protocol, because it travels:
 
 - **Enter the brain repo** → the brain door says how to work on the whole
-  ecosystem: where every repo lives, the law, the ritual, landing order.
+  ecosystem: where every repo lives, the law, the ritual
+  (`.multivac/ritual.md`), landing order.
 - **Enter any code repo** → the brain is mounted there, and that repo's door
   says: consult the brain before any decision — and the feature you're
   building may not end in this repo. An agent standing in one surface knows

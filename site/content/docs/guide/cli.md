@@ -201,7 +201,7 @@ multivac change <sub> <slug> [args]
   plan <slug>            resolve repos, landing graph, invariants, claims
   apply <slug>           branch per repo (greenfield repos get created)
   land <slug>            landing-order report; --landed <repo> records a merge
-  close <slug>           verify claims, archive the change
+  close <slug>           verify claims, archive the change, print .multivac/ritual.md
 flags: --no-sdd (skip SDD steps), --landed <repo> (land only)
 ```
 

@@ -1,9 +1,10 @@
 # multivac
 
 **Brain-driven development**: one brain repo — a knowledge base of claims,
-law, and ritual — from which an entire ecosystem of code repos is developed.
-You enter only the brain, and the change flows out across whatever repos the
-feature touches. The practice was proven by hand for months on a real
+law, and ritual (the closing ceremony of a change, written in
+`.multivac/ritual.md`) — from which an entire ecosystem of code repos is
+developed. You enter only the brain, and the change flows out across whatever
+repos the feature touches. The practice was proven by hand for months on a real
 production ecosystem of five repos and a ~5,400-line brain; multivac is the
 tool that makes it mechanism instead of discipline.
 
@@ -11,8 +12,10 @@ The tool (CLI alias `mvac`, named after Asimov's world-computer) verifies the
 brain's claims against the code with content-based anchors — present, absent,
 unique, count — plans and lands cross-repo changes with declared landing
 order, projects a single canonical agent door (`AGENTS.md`) to every harness,
-and keeps the brain's distribution pinned but fresh. Deterministic core, no
-API key required; git is the enforcement floor.
+and keeps the brain's distribution pinned but fresh. What it cannot verify it
+surfaces: closing a change prints the team's ritual — who reviews, who is
+told, what ships before what — as a checklist, never as a gate. Deterministic
+core, no API key required; git is the enforcement floor.
 
 **Status: early build, pre-release.** The day-one capability is implemented
 and tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the

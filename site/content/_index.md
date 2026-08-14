@@ -8,7 +8,7 @@ Your agent verifies its own context before acting
 {{< /hextra/hero-headline >}}
 
 {{< hextra/hero-subtitle >}}
-Brain-driven development: one brain repo — claims, law, ritual — from which an entire ecosystem of code repos is developed.
+Brain-driven development: one brain repo — claims, law, and the ritual that closes a change — from which an entire ecosystem of code repos is developed.
 {{< /hextra/hero-subtitle >}}
 
 {{< hextra/hero-button text="Get the concept" link="docs/concepts" >}} {{< hextra/hero-button text="GitLab" link="https://gitlab.com/ulm0/multivac" >}}
@@ -27,7 +27,7 @@ Named for Asimov's world-computer — the brain everyone consults, which in "The
   >}}
   {{< hextra/feature-card
     title="The ecosystem change"
-    subtitle="`change new → plan → apply → land → close`: a branch per repo, merge requests in declared landing order, and close verifies the claims the change promised."
+    subtitle="`change new → plan → apply → land → close`: a branch per repo, merge requests in declared landing order, and close verifies the claims the change promised — then prints the ritual it cannot verify."
   >}}
   {{< hextra/feature-card
     title="Doors for every harness"

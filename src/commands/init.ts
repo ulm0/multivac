@@ -6,7 +6,8 @@
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
-import { CHANGES_DIR, LAW_PATH, layoutError, legacyLayout } from '../lib/config.js';
+import { CHANGES_DIR, LAW_PATH, RITUAL_PATH, layoutError, legacyLayout } from '../lib/config.js';
+import { RITUAL_TEMPLATE } from '../lib/ritual.js';
 import { lsFiles, run as git } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
@@ -30,8 +31,9 @@ This brain is empty on purpose. Load the multivac skill and fill it:
 - from scratch: run the interview
 
 The law lives in \`${LAW_PATH}\` (anchored claims); every decision enters
-as a \`multivac change\`. Run \`multivac verify\` before acting on anything
-you read here.`;
+as a \`multivac change\`. The ritual — the closing ceremony no tool can
+check — is \`${RITUAL_PATH}\`, printed by \`change close\`. Run
+\`multivac verify\` before acting on anything you read here.`;
 
 interface Flags {
   dir?: string;
@@ -230,6 +232,9 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   }
   if (await writeIfMissing(join(dir, LAW_PATH), INVARIANTS_HEADER)) {
     say(`init: wrote ${LAW_PATH} — the law table, zero rows`);
+  }
+  if (await writeIfMissing(join(dir, RITUAL_PATH), RITUAL_TEMPLATE)) {
+    say(`init: wrote ${RITUAL_PATH} — empty; what you write there, \`change close\` prints`);
   }
   await mkdir(join(dir, CHANGES_DIR), { recursive: true });
   await writeIfMissing(join(dir, CHANGES_DIR, '.gitkeep'), '');
