@@ -25,15 +25,13 @@ menu:
     - name: Docs
       pageRef: /docs
       weight: 1
-    - name: Search
-      weight: 2
-      params:
-        type: search
     - name: GitLab
       url: https://gitlab.com/ulm0/multivac
+      weight: 2
+    - name: Search
       weight: 3
       params:
-        icon: gitlab
+        type: search
 
 params:
   navbar:
