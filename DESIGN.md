@@ -863,10 +863,13 @@ After `init` the brain is empty on purpose. The door's managed block says
 so — this brain is empty; load the multivac skill to fill it — and the
 skill branches on the one question that matters:
 
-- **Existing ecosystem** → the deterministic `seed` inventories the
-  boundaries; the agent drafts the map and the `proposed` law rows; the
-  human validates and enacts in blast-radius batches (accept / correct /
-  discard); `doors` projects the result into every consumer repo.
+- **Existing ecosystem** → the deterministic `seed` inventories where the
+  architecture lives and ends with the open questions no cold reader can
+  answer (debt or intent, law or taste, which authority wins); the
+  interview puts them to a maintainer; the agent drafts the map and the
+  `proposed` law rows; the human validates and enacts in blast-radius
+  batches (accept / correct / discard); `doors` projects the result into
+  every consumer repo. Flow: seed → questions → interview → law.
 - **From scratch** → the interview protocol draws the law out of the
   person's head; the first `change` creates the repos — greenfield `apply`,
   first commit, consumer door already mounted.
@@ -887,9 +890,17 @@ multivac repos    # sync — clone declared-but-missing repos (--shallow for ver
 multivac change   # new / plan / apply / land / close — the ecosystem change
 ```
 
-`seed` reads the ecosystem's boundaries — migrations, schemas, config keys,
-route tables, GRANTs — and writes into the brain: **`proposed` rows in the
-law table** plus map stubs. Nothing it writes is law until validated. The
+`seed` reads where the ecosystem's architecture lives — policy gates
+(semgrep, pre-commit, eslint/biome/ruff, CODEOWNERS: the project's law
+already in machine form), the workspace/build graph, deploy manifests,
+decisions/intent (ADRs, AGENTS.md — prior art, named as such), models,
+migrations, schemas, runtime config, route tables — and writes the
+categorized inventory to `.multivac/seed-report.md`, fixtures and vendored
+noise excluded, every category capped. The report ends with the three open
+questions no cold reader can answer — debt or intent, law or taste, which
+authority wins — instantiated against what it found; the interview puts
+them to a maintainer, and only then does the agent draft **`proposed` rows
+in the law table**. Nothing seed writes is law until validated. The
 validation flow is **accept / correct / discard**, in batches ordered by
 blast radius (see Risks); whatever stays unvalidated remains marked
 `proposed`, never blocking.

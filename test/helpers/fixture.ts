@@ -28,7 +28,9 @@ export function gitInit(dir: string): void {
   git(dir, 'init', '-q', '-b', 'main');
 }
 
-function initRepo(dir: string, files: Record<string, string>): void {
+/** Init a git repo at `dir` with `files` committed. Exported for tests that
+ * need trees shaped like real subjects (see test/seed). */
+export function initRepo(dir: string, files: Record<string, string>): void {
   gitInit(dir);
   git(dir, 'config', 'user.email', 'test@acme.example');
   git(dir, 'config', 'user.name', 'Acme Test');

@@ -137,13 +137,24 @@ init: .multivac/config.yml kept — edit it directly, then `multivac doors`
 ```txt
 $ mvac seed
 seed: wrote .multivac/seed-report.md — 1 repo(s) inventoried, 1 skipped
-seed: next — read the report and draft proposed claims (see the multivac skill)
+seed: next — take the open questions to a maintainer, then draft proposed claims (see the multivac skill)
 ```
 
-The deterministic half of session zero: a boundary inventory of every
-declared, present repo written to `.multivac/seed-report.md`. No LLM, no
-interpretation. Repos not on disk are listed under a `skipped` section with
-the sync command; `seed` never clones.
+The deterministic half of session zero: an inventory of where each declared,
+present repo's architecture lives, written to `.multivac/seed-report.md`.
+Categories are pattern data, not code — policy gates (semgrep, pre-commit,
+eslint/biome/ruff, CODEOWNERS), workspace / build graph (pnpm-workspace,
+turbo, go.work, `.sln`/`.csproj`), deploy manifests (kubernetes, helm,
+kustomize, skaffold), decisions / intent (ADRs, AGENTS.md, CONTRIBUTING),
+models / schema, migrations, runtime config and the rest. Test fixtures,
+`examples/` and vendored trees are excluded; each category lists at most 25
+files plus a count. No LLM, no interpretation. Repos not on disk are listed
+under a `skipped` section with the sync command; `seed` never clones.
+
+The report ends with three **open questions** — debt or intent, law or
+taste, which authority wins — instantiated against the gates, prose and
+deploy stacks it found. They are the interview's input: a maintainer answers
+them before any proposed row becomes law.
 
 Nothing it writes is law — the report says so in its own header. Your agent
 reads it and drafts `proposed` rows. See
