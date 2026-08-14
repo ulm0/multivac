@@ -1,9 +1,9 @@
 ---
 slug: init-cannot-lie
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -14,19 +14,9 @@ invariants:
   retires: []
 claims:
   - id: MV-36
-    statement: init runs git check-ignore on every path it writes; when a
-      repo-level ignore would swallow one, init appends explicit negation
-      lines to the repo's .gitignore under a marker comment, idempotently,
-      and prints what it appended; doctor reports any git-ignored brain path
-      as a WARNING naming the fix.
+    statement: init runs git check-ignore on every path it writes; when a repo-level ignore would swallow one, init appends explicit negation lines to the repo's .gitignore under a marker comment, idempotently, and prints what it appended; doctor reports any git-ignored brain path as a WARNING naming the fix.
   - id: MV-37
-    statement: init never silently disarms an existing hook set-up — before
-      touching core.hooksPath it detects .git/hooks/<name>, a foreign
-      core.hooksPath, .husky/, lefthook.yml and .pre-commit-config.yaml; the
-      shim chains a pre-existing .git/hooks hook first and preserves its exit
-      code; a foreign hooksPath is never repointed — the shim is installed
-      alongside, or init refuses naming the exact manual step; init prints
-      the strategy used and doctor reports the coexistence state.
+    statement: init never silently disarms an existing hook set-up — before touching core.hooksPath it detects .git/hooks/<name>, a foreign core.hooksPath, .husky/, lefthook.yml and .pre-commit-config.yaml; the shim chains a pre-existing .git/hooks hook first and preserves its exit code; a foreign hooksPath is never repointed — the shim is installed alongside, or init refuses naming the exact manual step; init prints the strategy used and doctor reports the coexistence state.
 ---
 
 # init cannot lie: gitignored brains and disarmed hooks
