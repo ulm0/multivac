@@ -1,12 +1,14 @@
-// multivac init — scaffold the brain: content at root, machinery in .multivac/.
+// multivac init — scaffold the brain: everything multivac owns under
+// .multivac/, AGENTS.md at the root (the one file harnesses read there).
 // Enumerated side effects only (design §CLI). Idempotent: re-running updates
 // managed blocks, never duplicates or destroys user content.
 
-import { access, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
+import { CHANGES_DIR, LAW_PATH, layoutError, legacyLayout } from '../lib/config.js';
 import { lsFiles, run as git } from '../lib/git.js';
-import { say } from '../lib/out.js';
+import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { installHooks } from '../hooks/install.js';
 import { detectAdapters, type Detected } from '../adapters/detect.js';
@@ -27,7 +29,7 @@ This brain is empty on purpose. Load the multivac skill and fill it:
 - existing ecosystem: \`multivac seed\`, then validate the proposed rows
 - from scratch: run the interview
 
-The law lives in \`invariants.md\` (anchored claims); every decision enters
+The law lives in \`${LAW_PATH}\` (anchored claims); every decision enters
 as a \`multivac change\`. Run \`multivac verify\` before acting on anything
 you read here.`;
 
@@ -142,6 +144,38 @@ async function isRepoRoot(dir: string): Promise<boolean> {
   }
 }
 
+/**
+ * Brains written before the move keep the law and the changes at the root.
+ * init is the migration, and `legacyLayout` decides what it may touch: only
+ * multivac's own files, in a directory that is already a brain — never a
+ * same-named file the user wrote (see `looksLikeOurs`). It says every path
+ * before it moves any of them, `git mv`s where the file is tracked so history
+ * follows it, plain-renames otherwise, and never moves onto a path that
+ * exists: an occupied target is a refusal, not an overwrite.
+ */
+async function migrateLegacy(dir: string): Promise<void> {
+  const { moves, ambiguous } = await legacyLayout(dir);
+  // Half a migration is worse than none: with any pair unresolvable, the
+  // refusal below is the whole answer and nothing moves.
+  if (ambiguous || moves.length === 0) return;
+  say('init: this brain still keeps the pre-.multivac layout — moving, in order:');
+  for (const [legacy, now] of moves) say(`init:   ${legacy} -> ${now}`);
+  for (const [legacy, now] of moves) {
+    const from = join(dir, legacy);
+    const to = join(dir, now);
+    if (await exists(to)) {
+      warn(`init: ${now} appeared — leaving ${legacy} where it is, nothing overwritten`);
+      continue;
+    }
+    const moved = await git(dir, ['mv', legacy, now]).then(
+      () => true,
+      () => false,
+    );
+    if (!moved) await rename(from, to);
+    say(`init: moved ${legacy} -> ${now}${moved ? ' (git mv, history preserved)' : ''}`);
+  }
+}
+
 async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   const f = parseFlags(argv);
   const dir = resolve(ctx.cwd, f.dir ?? '.');
@@ -151,6 +185,16 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   if (!(await isRepoRoot(dir))) {
     await git(dir, ['init', '-q']);
     say('init: git init — the brain is git-native');
+  }
+
+  // 0. an older brain gets moved, not clobbered — before anything is scaffolded,
+  // or the scaffolding itself would create the second layout.
+  await mkdir(join(dir, '.multivac'), { recursive: true });
+  await migrateLegacy(dir);
+  const stale = await layoutError(dir);
+  if (stale) {
+    warn(`init: ${stale}`);
+    return 1;
   }
 
   // 2. machinery: config.yml (flags land here), gitignored cache/.
@@ -170,7 +214,8 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     );
   }
 
-  // 1. content at root: AGENTS.md (managed block only), invariants.md, changes/.
+  // 1. the door — the one file that stays at the root, because that is where
+  // harnesses look for it. Managed block only; user content untouched.
   const doorPath = join(dir, 'AGENTS.md');
   const existing = await readFile(doorPath, 'utf8').catch(() => null);
   const next = applyManagedBlock(existing, DOOR_BODY);
@@ -182,11 +227,11 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
         : 'init: updated the managed block in AGENTS.md — your content untouched',
     );
   }
-  if (await writeIfMissing(join(dir, 'invariants.md'), INVARIANTS_HEADER)) {
-    say('init: wrote invariants.md — the law table, zero rows');
+  if (await writeIfMissing(join(dir, LAW_PATH), INVARIANTS_HEADER)) {
+    say(`init: wrote ${LAW_PATH} — the law table, zero rows`);
   }
-  await mkdir(join(dir, 'changes'), { recursive: true });
-  await writeIfMissing(join(dir, 'changes', '.gitkeep'), '');
+  await mkdir(join(dir, CHANGES_DIR), { recursive: true });
+  await writeIfMissing(join(dir, CHANGES_DIR, '.gitkeep'), '');
 
   // 4. enforcement floor: versioned hooks + core.hooksPath.
   await installHooks(dir);
@@ -198,6 +243,6 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
 
 export const init: Command = {
   name: 'init',
-  help: 'scaffold the brain: content at root, machinery in .multivac/',
+  help: 'scaffold the brain: everything multivac owns under .multivac/',
   run: runInit,
 };

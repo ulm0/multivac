@@ -78,7 +78,7 @@ export function makeScratchEcosystem(tmpdir: string): ScratchEcosystem {
   initRepo(brain, {
     '.multivac/config.yml': CONFIG_YML,
     'AGENTS.md': '# acme brain\n\nStart here.\n',
-    'invariants.md': INVARIANTS_MD,
+    '.multivac/invariants.md': INVARIANTS_MD,
   });
 
   initRepo(api, {

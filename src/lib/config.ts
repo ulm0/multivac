@@ -1,6 +1,6 @@
 // Load and validate .multivac/config.yml. Every error says how to fix it.
 
-import { readFile } from 'node:fs/promises';
+import { access, lstat, readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
@@ -9,7 +9,124 @@ import type { Config, Mode, RepoEntry } from '../types.js';
 export class ConfigError extends Error {}
 
 const MODES: Mode[] = ['present', 'absent', 'unique', 'count'];
+// Everything multivac creates lives here. AGENTS.md at the root is the one
+// exception: harnesses read it there.
 export const CONFIG_PATH = '.multivac/config.yml';
+export const LAW_PATH = '.multivac/invariants.md';
+export const CHANGES_DIR = '.multivac/changes';
+/** Where the law and the changes used to live, before they moved. */
+export const LEGACY: Array<[legacy: string, now: string]> = [
+  ['invariants.md', LAW_PATH],
+  ['changes', CHANGES_DIR],
+];
+
+const exists = (p: string): Promise<boolean> => access(p).then(() => true, () => false);
+
+/** The law table's header row — the schema multivac writes and reads. */
+const LAW_HEADER = /^\|\s*ID\s*\|\s*statement\s*\|\s*authority\s*\|\s*state\s*\|\s*date\s*\|\s*source\s*\|/m;
+
+/** A change file is YAML frontmatter carrying a slug and a lifecycle status. */
+function isChangeFile(text: string): boolean {
+  const m = /^---\n([\s\S]*?)\n---\n/.exec(text);
+  if (!m) return false;
+  let fm: unknown;
+  try {
+    fm = parse(m[1]);
+  } catch {
+    return false;
+  }
+  const o = fm as { slug?: unknown; status?: unknown } | null;
+  if (o === null || typeof o !== 'object') return false;
+  return typeof o.slug === 'string' && (o.status === 'open' || o.status === 'archived');
+}
+
+/**
+ * Is the thing at `abs` content multivac wrote, or content that merely shares
+ * a name with it? `invariants.md` and `changes/` are ordinary names — plenty
+ * of repos keep their own — so the name proves nothing and only the content
+ * does: the law table's six-column header, or a directory holding at least one
+ * parseable change file (its `archive/` counts; a closed brain has them all
+ * there). Anything else is somebody else's file and multivac never touches it.
+ *
+ * A symlink is never ours: multivac writes real files. Moving one would carry
+ * the link and leave its relative target dangling, so the answer is always no
+ * and the author's indirection stays where they put it.
+ */
+async function looksLikeOurs(abs: string, kind: 'law' | 'changes'): Promise<boolean> {
+  if (await lstat(abs).then((s) => s.isSymbolicLink(), () => false)) return false;
+  if (kind === 'law') {
+    const text = await readFile(abs, 'utf8').catch(() => null);
+    // Fenced blocks are quotation, not schema: a doc that shows the law header
+    // as an example is still the author's doc.
+    return text !== null && LAW_HEADER.test(text.replace(/^```[\s\S]*?^```/gm, ''));
+  }
+  for (const dir of [abs, join(abs, 'archive')]) {
+    const names = await readdir(dir).catch(() => [] as string[]);
+    for (const name of names) {
+      if (!name.endsWith('.md')) continue;
+      const text = await readFile(join(dir, name), 'utf8').catch(() => null);
+      if (text !== null && isChangeFile(text)) return true;
+    }
+  }
+  return false;
+}
+
+export interface LegacyLayout {
+  /** Root paths multivac owns that still have to move, in migration order. */
+  moves: Array<[legacy: string, now: string]>;
+  /** Set when both copies are multivac's: the tool cannot pick, the author must. */
+  ambiguous: string | null;
+}
+
+/**
+ * What of the pre-.multivac layout is still at the root of this brain.
+ *
+ * Two guards, because the alternative is moving a stranger's files. Nothing
+ * counts outside a brain — `.multivac/config.yml` is the marker, and it
+ * predates the move, so every brain written before it has one — and nothing
+ * counts unless its content is multivac's own (`looksLikeOurs`). A repo that
+ * keeps its own `invariants.md` next to multivac's is a legitimate steady
+ * state, not a defect: it reports nothing at all.
+ */
+export async function legacyLayout(brainDir: string): Promise<LegacyLayout> {
+  const out: LegacyLayout = { moves: [], ambiguous: null };
+  if (!(await exists(join(brainDir, CONFIG_PATH)))) return out;
+  for (const [legacy, now] of LEGACY) {
+    const from = join(brainDir, legacy);
+    if (!(await exists(from))) continue;
+    const kind = legacy === 'changes' ? 'changes' : 'law';
+    if (!(await looksLikeOurs(from, kind))) continue; // theirs — say nothing, move nothing
+    if (!(await exists(join(brainDir, now)))) {
+      out.moves.push([legacy, now]);
+      continue;
+    }
+    if (await looksLikeOurs(join(brainDir, now), kind)) {
+      out.ambiguous ??=
+        `${brainDir}: both ${legacy} and ${now} read as multivac's own — ` +
+        `multivac uses ${now} and ignores ${legacy}; merge anything you still ` +
+        `want out of ${legacy} into ${now} and delete ${legacy}, or rename ` +
+        `${legacy} if it is yours to keep`;
+    }
+  }
+  return out;
+}
+
+/**
+ * The pre-.multivac layout kept the law and the changes at the repo root.
+ * Reading the brain there would find zero claims and pass silently, so every
+ * command refuses instead — naming the command that migrates.
+ */
+export async function layoutError(brainDir: string): Promise<string | null> {
+  const { moves, ambiguous } = await legacyLayout(brainDir);
+  if (ambiguous) return ambiguous;
+  if (moves.length === 0) return null;
+  const names = moves.map(([legacy]) => legacy).join(' and ');
+  return (
+    `${brainDir} still keeps ${names} at the root — everything multivac owns ` +
+    `now lives under .multivac/ (${moves.map(([, now]) => now).join(', ')}); ` +
+    'run `multivac init .` there to move it (git mv, history preserved)'
+  );
+}
 
 function fail(msg: string): never {
   throw new ConfigError(`${CONFIG_PATH}: ${msg}`);
@@ -55,6 +172,8 @@ function repoEntry(key: string, v: unknown): RepoEntry {
 
 /** Load config from `<brainDir>/.multivac/config.yml`, defaults applied. */
 export async function loadConfig(brainDir: string): Promise<Config> {
+  const stale = await layoutError(brainDir);
+  if (stale) throw new ConfigError(stale);
   const file = join(brainDir, CONFIG_PATH);
   let raw: string;
   try {

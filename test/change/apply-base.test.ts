@@ -77,16 +77,16 @@ test('origin/main ahead of local main: apply bases on the remote ref', async () 
 
 test('the uncommitted declaration file is carried onto the branch', async () => {
   const { brain } = brainWithStaleRemote();
-  // origin/main has no changes/ at all: a plain switch would abort on it.
+  // origin/main has no .multivac/changes/ at all: a plain switch would abort on it.
   await declare(brain, 'carry-me');
-  const decl = join(brain, 'changes/carry-me.md');
+  const decl = join(brain, '.multivac/changes/carry-me.md');
   const before = readFileSync(decl, 'utf8');
-  assert.match(git(brain, 'status', '--porcelain', '-uall'), /\?\? changes\/carry-me\.md/);
+  assert.match(git(brain, 'status', '--porcelain', '-uall'), /\?\? \.multivac\/changes\/carry-me\.md/);
 
   const { code, out } = await capture(() => change.run(['apply', 'carry-me'], { cwd: brain }));
   assert.equal(code, 0);
   assert.doesNotMatch(out, /would be overwritten/);
-  assert.match(out, /carried onto the branch: changes\/carry-me\.md/);
+  assert.match(out, /carried onto the branch: \.multivac\/changes\/carry-me\.md/);
   assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'carry-me');
   assert.ok(existsSync(decl));
   // same declaration, only the status bumped by apply itself
@@ -118,7 +118,7 @@ test('other uncommitted work is refused by name with the command, not a raw git 
   assert.match(msg, /multivac change apply blocked/);
   // nothing lost: the dirty file and the declaration are still there
   assert.equal(readFileSync(join(brain, 'notes.md'), 'utf8'), '# dirty\n');
-  assert.ok(existsSync(join(brain, 'changes/blocked.md')));
+  assert.ok(existsSync(join(brain, '.multivac/changes/blocked.md')));
   assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
 });
 

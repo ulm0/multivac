@@ -3,7 +3,7 @@
 import type { Config } from '../types.js';
 
 /**
- * Count non-retired data rows in the invariants.md law table.
+ * Count non-retired data rows in the law table.
  * Zero means session zero: the door must say the brain is empty.
  */
 export function countActiveInvariants(md: string): number {
@@ -39,8 +39,8 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
       (brainIsCode ? ' It is also the code it governs — anchors target `brain:<glob>`.' : ''),
     ...(repoLines.length > 0 ? ['', 'Repos in this ecosystem:', ...repoLines] : []),
     '',
-    '- Law lives in `invariants.md`. Cite rows by ID; a rule quoted without its ID does not bind.',
-    '- Every ecosystem decision enters as a change: see `changes/` and run `multivac change`.',
+    '- Law lives in `.multivac/invariants.md`. Cite rows by ID; a rule quoted without its ID does not bind.',
+    '- Every ecosystem decision enters as a change: see `.multivac/changes/` and run `multivac change`.',
     '- Check the law against the code before acting: `multivac verify`.',
   ];
   if (activeInvariants === 0) {

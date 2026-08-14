@@ -1,6 +1,6 @@
 # The ecosystem change
 
-A change is a file in the brain — `changes/<slug>.md` — that the five
+A change is a file in the brain — `.multivac/changes/<slug>.md` — that the five
 subcommands read and write, across days and machines. It is not done when
 it merges; it is done when its anchors resolve.
 

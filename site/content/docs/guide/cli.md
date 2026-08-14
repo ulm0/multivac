@@ -10,7 +10,7 @@ $ mvac --help
 multivac <command> [args]
 
 commands:
-  init       scaffold the brain: content at root, machinery in .multivac/
+  init       scaffold the brain: everything multivac owns under .multivac/
   seed       deterministic boundary inventory -> .multivac/seed-report.md
   verify     check anchors against the declared repos (deterministic, offline)
   doors      project doors + install git hooks into the brain and declared repos
@@ -26,13 +26,24 @@ not multivac's.
 
 ## `init [dir] [--agent a,b] [--sdd name] [--grapher name]`
 
-Scaffolds the brain. Side effects, completely: writes `AGENTS.md` (the
-door, managed block only — never clobbers yours) and `invariants.md` (the
-law table, zero rows) at the root, plus `changes/` with a
-`.gitkeep` so the lifecycle's directory survives a clone; writes the machinery
-under `.multivac/` (`config.yml`, `hooks/`, gitignored `cache/`); runs
+Scaffolds the brain. Side effects, completely: writes `AGENTS.md` at the
+root (the door, managed block only — never clobbers yours); writes
+everything else under `.multivac/` (`config.yml`, `invariants.md` with the
+law table and zero rows, `changes/`, `hooks/`, gitignored `cache/`); runs
 `git init` when the directory is not a repo; points `core.hooksPath` at
 `.multivac/hooks/` and writes the `pre-commit`/`pre-push` shims there.
+
+A brain from before the move — multivac's own `invariants.md` or `changes/`
+still at the root — is migrated here: `init` lists every path first, then
+moves each with `git mv` where the file is tracked, so history follows it, and
+never onto a path that already exists.
+
+Your own files are safe. A root `invariants.md` or `changes/` that is yours —
+anything that does not read as multivac's law table or change files — is never
+moved and never mentioned, in a brain or in an ordinary repo. Only two copies
+that both read as multivac's law are refused, and the message names the one
+multivac uses: merge the root copy into `.multivac/` and delete it, or rename
+it if it is yours to keep, then re-run.
 
 - `--agent a,b` — door targets beyond canonical `AGENTS.md`
   (e.g. `--agent claude,cursor`). Default is `agents` alone — no
@@ -60,7 +71,7 @@ Deterministic boundary inventory of every declared repo into
 
 ## `verify [dir] [--strict] [--check]`
 
-Checks every anchor in `invariants.md` against the declared repos.
+Checks every anchor in `.multivac/invariants.md` against the declared repos.
 Deterministic, offline, sub-second by design (`git ls-files` + ripgrep,
 cache keyed by commit sha). `dir` defaults to the current directory and
 must contain `.multivac/config.yml`.
@@ -71,7 +82,7 @@ $ mvac verify
 
   ok          2
   unevaluated   1
-  unevaluated INV-04 [absent] invariants.md:12 · repo not on disk — run `multivac repos sync` to clone it
+  unevaluated INV-04 [absent] .multivac/invariants.md:12 · repo not on disk — run `multivac repos sync` to clone it
 
 0 blocking broken · exit 0
 ```
@@ -91,9 +102,9 @@ The message is the product, not the exit code — each failing leg says what
 is wrong and what to do:
 
 ```txt
-broken    INV-01 [absent] invariants.md:7 · forbidden pattern at db/migrations/002_oops.sql:1 — delete it, or retire/amend the claim first
-vacuous   INV-01 [absent] invariants.md:7 · glob matched no tracked files — a rename greens this tombstone silently; fix the glob
-moved     INV-01 [present] invariants.md:6 · glob rewritten to sql/migrations/001_accounts.sql — review the diff
+broken    INV-01 [absent] .multivac/invariants.md:7 · forbidden pattern at db/migrations/002_oops.sql:1 — delete it, or retire/amend the claim first
+vacuous   INV-01 [absent] .multivac/invariants.md:7 · glob matched no tracked files — a rename greens this tombstone silently; fix the glob
+moved     INV-01 [present] .multivac/invariants.md:6 · glob rewritten to sql/migrations/001_accounts.sql — review the diff
 ```
 
 The exit matrix — one answer, no second opinion:
@@ -185,7 +196,7 @@ no silent retry.
 ```txt
 $ mvac change
 multivac change <sub> <slug> [args]
-  new "<title>"          scaffold changes/<slug>.md, slug from title (+ SDD propose)
+  new "<title>"          scaffold .multivac/changes/<slug>.md, slug from title (+ SDD propose)
   new <slug> "<title>"   same, with an explicit slug
   plan <slug>            resolve repos, landing graph, invariants, claims
   apply <slug>           branch per repo (greenfield repos get created)

@@ -36,7 +36,7 @@ function brain(): string {
   const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-polish-')));
   writeFileSync(join(eco.brain, '.multivac/config.yml'), 'doors: [agents]\nrepos:\n  brain: .\n');
   writeFileSync(
-    join(eco.brain, 'invariants.md'),
+    join(eco.brain, '.multivac/invariants.md'),
     [
       '# Invariants',
       '',
@@ -66,7 +66,7 @@ test('plan checks adds against the law table, not only touches/retires', async (
   const { code, out } = await capture(() => change.run(['plan', 'adds-check'], { cwd: b }));
   assert.equal(code, 0);
   // the row exists: it is not new, whatever the change file says
-  assert.match(out, /invariant ACME-1: already in invariants\.md \(active\) — not new/);
+  assert.match(out, /invariant ACME-1: already in \.multivac\/invariants\.md \(active\) — not new/);
   assert.doesNotMatch(out, /invariant ACME-1: new/);
   // the row that really is missing keeps the old line
   assert.match(out, /invariant ACME-9: new — add its row before close/);

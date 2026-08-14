@@ -42,7 +42,7 @@ A change declares, before anything is touched:
 
 ## The change file
 
-A change is a **file in the brain**: `changes/<slug>.md`, carrying the four
+A change is a **file in the brain**: `.multivac/changes/<slug>.md`, carrying the four
 declared fields plus per-repo status
 (`planned / branched / committed / MR / landed`). That file is the state the
 five subcommands read and write, across days and machines. On close it is

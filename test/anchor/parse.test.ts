@@ -80,16 +80,17 @@ test('prose lines without an anchor comment are ignored', () => {
   assert.deepEqual(diagnostics, []);
 });
 
-test('collectBrainAnchors reads root *.md and changes/*.md only', async () => {
+test('collectBrainAnchors reads root *.md, the law and .multivac/changes/*.md', async () => {
   const brain = mkdtempSync(join(tmpdir(), 'mvac-parse-'));
+  mkdirSync(join(brain, '.multivac'));
   writeFileSync(
-    join(brain, 'invariants.md'),
+    join(brain, '.multivac/invariants.md'),
     '<!-- @anchor INV-1 api:src/** /a/ -->\n',
   );
   writeFileSync(join(brain, 'notes.md'), '<!-- @anchor INV-2 api:src/** /b/ absent -->\n');
-  mkdirSync(join(brain, 'changes'));
+  mkdirSync(join(brain, '.multivac/changes'), { recursive: true });
   writeFileSync(
-    join(brain, 'changes', '0001-thing.md'),
+    join(brain, '.multivac/changes', '0001-thing.md'),
     '<!-- @anchor CHG-1 web:src/** /c/ -->\n',
   );
   mkdirSync(join(brain, 'deep'));
@@ -99,8 +100,8 @@ test('collectBrainAnchors reads root *.md and changes/*.md only', async () => {
   assert.deepEqual(
     anchors.map((a) => [a.claimId, a.file]).sort(),
     [
-      ['CHG-1', join('changes', '0001-thing.md')],
-      ['INV-1', 'invariants.md'],
+      ['CHG-1', join('.multivac/changes', '0001-thing.md')],
+      ['INV-1', join('.multivac', 'invariants.md')],
       ['INV-2', 'notes.md'],
     ],
   );
@@ -108,8 +109,9 @@ test('collectBrainAnchors reads root *.md and changes/*.md only', async () => {
 
 test('readClaimRows parses the law table, skipping header and separator', async () => {
   const brain = mkdtempSync(join(tmpdir(), 'mvac-rows-'));
+  mkdirSync(join(brain, '.multivac'));
   writeFileSync(
-    join(brain, 'invariants.md'),
+    join(brain, '.multivac/invariants.md'),
     [
       '# Invariants',
       '',

@@ -5,7 +5,7 @@
 import { lstat, readFile, readlink, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import type { Command, Config } from '../types.js';
-import { CONFIG_PATH, ConfigError, loadConfig } from '../lib/config.js';
+import { CONFIG_PATH, ConfigError, layoutError, loadConfig } from '../lib/config.js';
 import * as git from '../lib/git.js';
 import { say } from '../lib/out.js';
 import {
@@ -340,6 +340,8 @@ async function untrackedLine(brain: string, cfg: Config): Promise<string> {
 export async function doctorReport(
   brainDir: string,
 ): Promise<{ lines: string[]; exit: number }> {
+  const stale = await layoutError(brainDir);
+  if (stale) return { lines: [label('layout') + stale], exit: 1 };
   let cfg: Config;
   try {
     cfg = await loadConfig(brainDir);

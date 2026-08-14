@@ -11,7 +11,7 @@ actually in doubt.
 ## Grammar
 
 One leg per line, an HTML comment directly under the claim's row in
-`invariants.md` — invisible when rendered, greppable, no parallel file to
+`.multivac/invariants.md` — invisible when rendered, greppable, no parallel file to
 drift:
 
 ```txt
@@ -46,7 +46,7 @@ $ mvac verify
 3 claims · 2 anchored (67%)
 
   ok          2
-  parse     invariants.md:12 — \s is not POSIX ERE — use [[:space:]]
+  parse     .multivac/invariants.md:12 — \s is not POSIX ERE — use [[:space:]]
 
 0 blocking broken · exit 1 · 1 anchor parse errors
 ```
@@ -76,14 +76,14 @@ Translate:
   silently green a tombstone — and broken for `present`/`unique`:
 
   ```txt
-  vacuous   INV-01 [absent] invariants.md:7 · glob matched no tracked files — a rename greens this tombstone silently; fix the glob
+  vacuous   INV-01 [absent] .multivac/invariants.md:7 · glob matched no tracked files — a rename greens this tombstone silently; fix the glob
   ```
 
 - **`moved` self-heals.** A `present` leg with exactly one match outside
   its glob gets its glob rewritten in place, exit 0:
 
   ```txt
-  moved     INV-01 [present] invariants.md:6 · glob rewritten to sql/migrations/001_accounts.sql — review the diff
+  moved     INV-01 [present] .multivac/invariants.md:6 · glob rewritten to sql/migrations/001_accounts.sql — review the diff
   ```
 
   Review the diff like any other edit and let it ride the same branch.

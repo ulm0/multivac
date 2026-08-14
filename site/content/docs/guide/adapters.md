@@ -71,7 +71,7 @@ degrades, never blocks:
 
 ```txt
 $ mvac change new "sdd probe"
-created changes/sdd-probe.md — declare repos, landing_order, invariants, claims
+created .multivac/changes/sdd-probe.md — declare repos, landing_order, invariants, claims
 sdd opsx: propose failed (Command failed: openspec propose sdd-probe) — run it by hand
 ```
 

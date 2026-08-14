@@ -56,7 +56,7 @@ test('new with title only derives the slug (design canonical form)', async () =>
   assert.equal(await change.run(['new', 'Tier limits apply!'], ctx), 0);
   const { change: c } = await loadChange(eco.brain, 'tier-limits-apply');
   assert.equal(c.status, 'open');
-  assert.ok(existsSync(join(eco.brain, 'changes/tier-limits-apply.md')));
+  assert.ok(existsSync(join(eco.brain, '.multivac/changes/tier-limits-apply.md')));
 });
 
 test('declare repos + landing order + claims, then plan', async () => {
@@ -111,10 +111,10 @@ test('land enforces the landing order: out-of-order --landed refused', async () 
 
 test('close with declared claims is blocked while claims cannot be proven green', async () => {
   // all repos landed, but CLM-1 has no anchor in the brain, so verify's
-  // evaluate returns no claim for it -> close refused, file stays in changes/
+  // evaluate returns no claim for it -> close refused, the file stays put
   assert.equal(await change.run(['close', 'points-expire'], ctx), 1);
-  assert.ok(existsSync(join(eco.brain, 'changes/points-expire.md')));
-  assert.ok(!existsSync(join(eco.brain, 'changes/archive/points-expire.md')));
+  assert.ok(existsSync(join(eco.brain, '.multivac/changes/points-expire.md')));
+  assert.ok(!existsSync(join(eco.brain, '.multivac/changes/archive/points-expire.md')));
 });
 
 test('plan clones a declared-missing repo with a url (explicit path)', async () => {
@@ -130,8 +130,8 @@ test('plan clones a declared-missing repo with a url (explicit path)', async () 
 test('close with no claims archives the change', async () => {
   assert.equal(await change.run(['land', 'clone-check', '--landed', 'mirror'], ctx), 0);
   assert.equal(await change.run(['close', 'clone-check'], ctx), 0);
-  assert.ok(!existsSync(join(eco.brain, 'changes/clone-check.md')));
-  const archived = readFileSync(join(eco.brain, 'changes/archive/clone-check.md'), 'utf8');
+  assert.ok(!existsSync(join(eco.brain, '.multivac/changes/clone-check.md')));
+  const archived = readFileSync(join(eco.brain, '.multivac/changes/archive/clone-check.md'), 'utf8');
   assert.match(archived, /status: archived/);
 });
 
