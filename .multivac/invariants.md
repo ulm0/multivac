@@ -181,3 +181,17 @@ checks them on every commit.
 <!-- @anchor MV-35 brain:test/anchor/parse.test.ts /an exclusion may name its repo/ -->
 <!-- @anchor MV-35 brain:test/verify/verify.test.ts /a qualified exclusion exempts one repo/ -->
 <!-- @anchor MV-35 brain:DESIGN.md /An exclusion may name its repo/ -->
+| MV-36 | `init` runs `git check-ignore` on every path it writes. When a repo-level ignore would swallow one, init appends explicit negation lines (`!.multivac/`, `!.multivac/**`, `!AGENTS.md` as needed) to the repo's `.gitignore` under a marker comment — idempotently, printing what it appended — and re-checks. `doctor` reports any still-ignored brain path as a WARNING naming the fix. An invisible brain that reports success is the defect. | specified | active | 2026-08-14 | [changes/archive/init-cannot-lie.md](changes/archive/init-cannot-lie.md) |
+<!-- @anchor MV-36 brain:src/commands/init.ts /ensureVisibleToGit/ -->
+<!-- @anchor MV-36 brain:src/lib/git.ts /check-ignore/ -->
+<!-- @anchor MV-36 brain:src/commands/doctor.ts /IGNORED by \.gitignore/ -->
+<!-- @anchor MV-36 brain:test/init/coexist.test.ts /saleor shape: a .* gitignore gets marked negations/ -->
+<!-- @anchor MV-36 brain:test/init/coexist.test.ts /an ignored brain path is a WARNING/ -->
+<!-- @anchor MV-36 brain:DESIGN.md /check-ignore/ -->
+| MV-37 | `init` never silently disarms an existing hook set-up. Before touching `core.hooksPath` it detects `.git/hooks/<name>`, a foreign `core.hooksPath`, `.husky/`, `lefthook.yml` and `.pre-commit-config.yaml`; the shim chains a pre-existing `.git/hooks` hook first and preserves its exit code; a foreign hooksPath is never repointed — the shim installs alongside where the name is free, and a taken name is a refusal carrying the exact line to add. `init` prints the strategy used; `doctor` reports the coexistence state. | specified | active | 2026-08-14 | [changes/archive/init-cannot-lie.md](changes/archive/init-cannot-lie.md) |
+<!-- @anchor MV-37 brain:src/hooks/install.ts /installAlongside/ -->
+<!-- @anchor MV-37 brain:src/hooks/install.ts /exit code wins/ -->
+<!-- @anchor MV-37 brain:src/commands/doctor.ts /never repoints/ -->
+<!-- @anchor MV-37 brain:test/init/coexist.test.ts /the repo gate runs first and its exit code wins/ -->
+<!-- @anchor MV-37 brain:test/init/coexist.test.ts /refusal names the exact step, file untouched/ -->
+<!-- @anchor MV-37 brain:DESIGN.md /never repoint/ -->

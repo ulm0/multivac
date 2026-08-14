@@ -132,7 +132,17 @@ async function projectInto(
     if (t.skill) installSkill(dir, t.skill, notices);
     if (t.hookConfig) await installHookConfig(dir, t.hookConfig.path, notices);
   }
-  await installHooks(dir, { strictPrePush: config.strictPrePush });
+  const hooks = await installHooks(dir, { strictPrePush: config.strictPrePush });
+  if (hooks.strategy === 'chained') {
+    notices.push(
+      `hooks chained — ${hooks.chained.join(', ') || hooks.managers.join(', ')} runs first, then verify`,
+    );
+  } else if (hooks.strategy === 'alongside') {
+    notices.push(`hooks installed alongside into ${hooks.dir} — core.hooksPath not touched`);
+  }
+  for (const r of hooks.refused) {
+    notices.push(`${r.path} exists and does not run multivac — NOT touched; ${r.fix}`);
+  }
   return notices;
 }
 

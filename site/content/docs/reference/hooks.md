@@ -37,10 +37,15 @@ Two files, both this shim:
 ```sh
 #!/bin/sh
 # multivac hook shim — managed by `multivac doors`; regenerate, do not edit.
+# Chains the repo's own .git/hooks hook first; its exit code wins.
 # Runner order: mvac on PATH, npx --no-install, repo-local build. No runnable
 # multivac never blocks a commit: it warns loudly and exits 0.
 case $0 in */*) hookdir=${0%/*} ;; *) hookdir=. ;; esac
 root=$(CDPATH= cd -- "$hookdir/../.." && pwd) || exit 0
+prev=$(git rev-parse --git-dir 2>/dev/null)/hooks/pre-commit
+if [ -x "$prev" ]; then
+  "$prev" "$@" || exit $?
+fi
 if command -v mvac >/dev/null 2>&1; then
   exec mvac verify
 fi
@@ -53,6 +58,13 @@ fi
 echo "multivac: hooks INACTIVE — no runnable multivac, nothing was verified. Fix: install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)" >&2
 exit 0
 ```
+
+The `prev` block is the chain: a repo that already had a `.git/hooks/pre-commit`
+— a pre-commit framework install, a lefthook install, a hand-written gate —
+keeps it. The pre-existing hook runs **first**, and when it fails, its exit
+code is the hook's exit code; verify never runs. The chain resolves at run
+time, so a manager that installs into `.git/hooks/` *after* multivac is
+picked up without re-running `init`.
 
 | hook | runs | when `strict_pre_push: true` |
 | --- | --- | --- |
@@ -82,7 +94,36 @@ hooks      core.hooksPath unset → git config core.hooksPath .multivac/hooks ·
 ```
 
 ```txt
-hooks      core.hooksPath is .githooks, expected .multivac/hooks → git config core.hooksPath .multivac/hooks · pre-commit missing → run `multivac init .` to rewrite the shims · pre-push installed · INACTIVE — no runnable multivac, the shims verify nothing → install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)
+hooks      core.hooksPath ok · pre-commit installed · pre-commit chains .git/hooks/pre-commit (runs first, its exit code wins) · pre-push installed · active (mvac)
+```
+
+### A repo that already has hooks
+
+Taking `core.hooksPath` over a project's existing gate would silently disarm
+it — the failure measurement 2 caught on saleor, where the pre-commit
+framework (ruff, mypy, semgrep) stopped running and nothing said so. So
+before touching anything, `init` detects `.git/hooks/<name>`, a foreign
+`core.hooksPath`, `.husky/`, `lefthook.yml` and `.pre-commit-config.yaml`,
+picks one of three strategies, and says which one it used:
+
+| shape found | strategy | what happens |
+| --- | --- | --- |
+| nothing | **fresh** | shims in `.multivac/hooks/`, `core.hooksPath` set to it |
+| `.git/hooks/<name>`, `.pre-commit-config.yaml`, `lefthook.yml` | **chained** | same shims; each runs the repo's own `.git/hooks` hook first, its exit code wins |
+| `core.hooksPath` set elsewhere, or `.husky/` | **alongside** | never repoint — the shim is written INTO that directory where the name is free |
+
+Where a foreign hook name is taken and does not run multivac, `init` refuses
+that hook and prints the exact line to add:
+
+```txt
+init: .githooks/pre-commit exists and does not run multivac — NOT touched; append this line to .githooks/pre-commit: mvac verify || exit 1
+```
+
+`doctor` reports the coexistence state — and never advises repointing a
+hooksPath the repo owns:
+
+```txt
+hooks      core.hooksPath is .githooks (this repo's own gate — multivac installs alongside, never repoints) · WARNING .githooks/pre-commit does not run multivac → append: mvac verify || exit 1 · pre-push runs multivac (.githooks/pre-push)
 ```
 
 ### Installed is not enforcing

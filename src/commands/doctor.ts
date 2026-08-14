@@ -5,7 +5,13 @@
 import { lstat, readFile, readlink, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import type { Command, Config } from '../types.js';
-import { CONFIG_PATH, ConfigError, layoutError, loadConfig } from '../lib/config.js';
+import {
+  BRAIN_PATHS,
+  CONFIG_PATH,
+  ConfigError,
+  layoutError,
+  loadConfig,
+} from '../lib/config.js';
 import * as git from '../lib/git.js';
 import { say } from '../lib/out.js';
 import {
@@ -20,7 +26,13 @@ import {
   binaryPresent,
   pathExists,
 } from '../adapters/detect.js';
-import { HOOKS_DIR, INACTIVE_FIX, findRunner } from '../hooks/install.js';
+import {
+  HOOKS_DIR,
+  INACTIVE_FIX,
+  MANUAL_CHAIN_LINE,
+  chainedHooks,
+  findRunner,
+} from '../hooks/install.js';
 import { collectBrainAnchors } from '../anchor/parse.js';
 import { excludeGlobs, makeMatcher } from '../lib/glob.js';
 
@@ -239,16 +251,59 @@ async function pinsLine(brain: string, cfg: Config): Promise<string> {
   return parts.join(' · ');
 }
 
+/** Coexistence with a foreign hook dir: multivac wired, refused, or absent. */
+async function alongsideParts(brain: string, dir: string): Promise<string[]> {
+  const parts: string[] = [];
+  let installed = true;
+  for (const shim of ['pre-commit', 'pre-push']) {
+    const text = await readFile(join(brain, dir, shim), 'utf8').catch(() => null);
+    if (text === null) {
+      installed = false;
+      parts.push(`${shim} missing in ${dir} → run \`multivac init .\` to install alongside`);
+    } else if (/\bmvac\b|multivac/.test(text)) {
+      parts.push(`${shim} runs multivac (${dir}/${shim})`);
+    } else {
+      installed = false;
+      parts.push(
+        `WARNING ${dir}/${shim} does not run multivac → append: ${MANUAL_CHAIN_LINE}`,
+      );
+    }
+  }
+  const runner = await findRunner(brain);
+  if (installed) {
+    parts.push(
+      runner
+        ? `active (${runner})`
+        : `INACTIVE — no runnable multivac, the shims verify nothing → ${INACTIVE_FIX}`,
+    );
+  }
+  return parts;
+}
+
 async function hooksLine(brain: string): Promise<string> {
   const hp = await git.run(brain, ['config', 'core.hooksPath']).catch(() => null);
+  // A hooksPath the repo set itself is its own gate: multivac coexists there,
+  // it never repoints — advising `git config core.hooksPath` here would be
+  // advising the user to disarm their own enforcement.
+  if (hp !== null && hp !== HOOKS_DIR) {
+    return [
+      `core.hooksPath is ${hp} (this repo's own gate — multivac installs alongside, never repoints)`,
+      ...(await alongsideParts(brain, hp)),
+    ].join(' · ');
+  }
+  if (hp === null && (await pathExists(join(brain, '.husky')))) {
+    return [
+      'core.hooksPath unset, .husky/ present (husky claims it on install — multivac installs alongside, never repoints)',
+      ...(await alongsideParts(brain, '.husky')),
+    ].join(' · ');
+  }
   const parts: string[] = [
     hp === HOOKS_DIR
       ? 'core.hooksPath ok'
-      : hp
-        ? `core.hooksPath is ${hp}, expected ${HOOKS_DIR} → git config core.hooksPath ${HOOKS_DIR}`
-        : `core.hooksPath unset → git config core.hooksPath ${HOOKS_DIR}`,
+      : `core.hooksPath unset → git config core.hooksPath ${HOOKS_DIR}`,
   ];
   let installed = true;
+  const chained = await chainedHooks(brain);
   for (const shim of ['pre-commit', 'pre-push']) {
     const present = await pathExists(join(brain, HOOKS_DIR, shim));
     installed &&= present;
@@ -257,6 +312,10 @@ async function hooksLine(brain: string): Promise<string> {
         ? `${shim} installed`
         : `${shim} missing → run \`multivac init .\` to rewrite the shims`,
     );
+    // The repo's own .git/hooks hook still runs: the shim chains it first.
+    if (present && chained.includes(`.git/hooks/${shim}`)) {
+      parts.push(`${shim} chains .git/hooks/${shim} (runs first, its exit code wins)`);
+    }
   }
   // Installed is not enforcing: the shim exits 0 when nothing can run it.
   const runner = await findRunner(brain);
@@ -304,8 +363,20 @@ function buildCritical(
  * everything reading the tree through `git ls-files` — verify included — so a
  * repo can build here and fail on a fresh checkout. Name the untracked,
  * non-ignored files that look build-critical. Warning only: doctor diagnoses.
+ *
+ * Worse than untracked is *ignored*: a `.gitignore` that swallows a brain
+ * path (saleor's opens with `.*`) means the law can never ship, while
+ * `git add` stays silent and every command stays green. That is a WARNING
+ * with the fix, ahead of the untracked report.
  */
 async function untrackedLine(brain: string, cfg: Config): Promise<string> {
+  const ignored = await git.ignoredPaths(brain, BRAIN_PATHS).catch(() => []);
+  const ignoredWarning =
+    ignored.length === 0
+      ? null
+      : `WARNING ${ignored.length} brain path${ignored.length === 1 ? '' : 's'} ` +
+        `IGNORED by .gitignore — ${ignored.join(', ')} — the law cannot ship; ` +
+        'fix: run `multivac init .` (appends !.multivac/ negations to .gitignore)';
   const anchors = await collectBrainAnchors(brain).then(
     (r) => r.anchors,
     () => [],
@@ -333,14 +404,13 @@ async function untrackedLine(brain: string, cfg: Config): Promise<string> {
       if (why) flagged.push(`${f} (${s.name}, ${why})`);
     }
   }
-  if (flagged.length === 0) return 'nothing build-critical untracked';
-  const shown = flagged.slice(0, 8);
-  const more = flagged.length - shown.length;
-  return (
-    `WARNING ${flagged.length} build-critical file${flagged.length === 1 ? '' : 's'} ` +
-    `untracked — git add or ignore: ${shown.join(', ')}` +
-    (more ? ` · +${more} more` : '')
-  );
+  const untracked =
+    flagged.length === 0
+      ? 'nothing build-critical untracked'
+      : `WARNING ${flagged.length} build-critical file${flagged.length === 1 ? '' : 's'} ` +
+        `untracked — git add or ignore: ${flagged.slice(0, 8).join(', ')}` +
+        (flagged.length > 8 ? ` · +${flagged.length - 8} more` : '');
+  return ignoredWarning === null ? untracked : `${ignoredWarning} · ${untracked}`;
 }
 
 /** Build the full report. Exit 1 only when the config itself is invalid. */
