@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Hand-rolled dispatch over the Command[] registry. No framework, on purpose.
 
-import { readFileSync } from 'node:fs';
-import { commands } from './commands/index.js';
+import { realpathSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { commands, usageFor } from './commands/index.js';
 import { warn, say } from './lib/out.js';
 
 function version(): string {
@@ -24,8 +25,8 @@ function usage(): void {
   }
 }
 
-async function main(): Promise<number> {
-  const argv = process.argv.slice(2);
+/** Exported for tests: the whole dispatch, no process globals. */
+export async function main(argv: string[], cwd: string): Promise<number> {
   const first = argv[0];
   if (first === undefined || first === '--help' || first === '-h') {
     usage();
@@ -40,15 +41,32 @@ async function main(): Promise<number> {
     warn(`unknown command "${first}" — run \`multivac --help\` for the list`);
     return 2;
   }
-  return cmd.run(argv.slice(1), { cwd: process.cwd() });
+  // --help is answered here, before any side effect: asking a command for
+  // help must never run it (measurement 2: `seed --help` executed seed).
+  const rest = argv.slice(1);
+  if (rest.includes('--help') || rest.includes('-h')) {
+    for (const line of usageFor(cmd)) say(line);
+    return 0;
+  }
+  return cmd.run(rest, { cwd });
 }
 
-main().then(
-  (code) => {
-    process.exitCode = code;
-  },
-  (e: unknown) => {
-    warn((e as Error).message ?? String(e));
-    process.exitCode = 1;
-  },
-);
+// Run only as an entry point (bin/direct node), never on import from a test.
+const entry = process.argv[1];
+let isEntry = false;
+try {
+  isEntry = entry !== undefined && realpathSync(entry) === fileURLToPath(import.meta.url);
+} catch {
+  isEntry = false;
+}
+if (isEntry) {
+  main(process.argv.slice(2), process.cwd()).then(
+    (code) => {
+      process.exitCode = code;
+    },
+    (e: unknown) => {
+      warn((e as Error).message ?? String(e));
+      process.exitCode = 1;
+    },
+  );
+}

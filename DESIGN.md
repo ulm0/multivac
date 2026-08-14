@@ -542,6 +542,13 @@ reporting. Four states, not two:
   strict included), and self-heal never chases them. A closed or archived
   change confers nothing, and `change close` still demands a genuine `ok`.
 
+A law row may also be marked `drift` in its state column: a **real,
+not-yet-fixable finding on the record**. Its legs evaluate and report — the
+summary names the drifting ids — but never gate, in any mode, strict
+included. Recording a true finding must not make the repo un-committable
+through the pre-commit hook (measurement 2, finding 12); the way out is
+fixing the code or retiring the row, never silence.
+
 One exit matrix, no second answer:
 
 | result | default | `--strict` |
@@ -550,6 +557,7 @@ One exit matrix, no second answer:
 | broken `present` / `unique` | reported, exit 0 | exit 1 |
 | moved (self-healed) | exit 0 | exit 0 |
 | pending (claim of an open change) | exit 0 | exit 0 |
+| leg of a `drift` law row (recorded finding) | exit 0 | exit 0 |
 
 Who invokes what: git hooks (`pre-commit`, `pre-push`) and harness hooks run
 the **default** policy — only blocking modes gate, so a mid-refactor commit
@@ -879,6 +887,8 @@ every repo, every subsequent decision entering as a `change`.
 ```
 multivac init .   --agent claude,cursor --sdd opsx --grapher graphify
 multivac verify   # anchors + tombstones + derived numbers. No LLM, no network, deterministic
+multivac count    # dry-run one anchor leg: match count + per-file breakdown, verify's own matcher
+multivac help     # help anchor — the grammar on one screen; help <command> — usage
 multivac seed     # reads boundaries, proposes law rows + map stubs (LLM-optional)
 multivac anchor   # optional helper that proposes anchors (LLM-optional)
 multivac doors    # projects AGENTS.md to the declared targets

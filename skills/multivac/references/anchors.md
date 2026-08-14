@@ -28,6 +28,11 @@ One leg per line, an HTML comment directly under the claim's row:
   error naming it; a qualifier in a single-repo leg is legal and redundant.
 - **Flags**: `i` only.
 - **mode**: `present` (default), `absent`, `unique`, `count=N`.
+- **One include glob per leg** — alternate paths with braces
+  (`api:{src,lib}/**/*.ts`); only exclusions repeat.
+- `mvac help anchor` prints this grammar on one screen; `mvac count
+  '<repo>:<glob> /<regex>/'` dry-runs a leg (per-file breakdown, verify's
+  own matcher) so a `count=N` ratchet is right the first time.
 
 ## Dialect: POSIX ERE, enforced
 
