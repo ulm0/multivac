@@ -10,6 +10,7 @@ import { CHANGES_DIR, LAW_PATH, RITUAL_PATH, layoutError, legacyLayout } from '.
 import { RITUAL_TEMPLATE } from '../lib/ritual.js';
 import { lsFiles, run as git } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
+import { banner } from '../lib/banner.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { installHooks } from '../hooks/install.js';
 import { detectAdapters, type Detected } from '../adapters/detect.js';
@@ -40,10 +41,14 @@ interface Flags {
   agents: string[];
   sdd?: string;
   grapher?: string;
+  quiet: boolean;
 }
 
+/** Where init's report goes. `--quiet` swaps it for a sink that drops it. */
+type Report = (line: string) => void;
+
 function parseFlags(argv: string[]): Flags {
-  const f: Flags = { agents: [] };
+  const f: Flags = { agents: [], quiet: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const eq = a.indexOf('=');
@@ -65,10 +70,13 @@ function parseFlags(argv: string[]): Flags {
       case '--grapher':
         f.grapher = val();
         break;
+      case '--quiet':
+        f.quiet = true;
+        break;
       default:
         if (a.startsWith('-')) {
           throw new Error(
-            `init: unknown flag ${a} — known: --agent <a,b>, --sdd <name>, --grapher <name>`,
+            `init: unknown flag ${a} — known: --agent <a,b>, --sdd <name>, --grapher <name>, --quiet`,
           );
         }
         f.dir = a;
@@ -155,13 +163,13 @@ async function isRepoRoot(dir: string): Promise<boolean> {
  * follows it, plain-renames otherwise, and never moves onto a path that
  * exists: an occupied target is a refusal, not an overwrite.
  */
-async function migrateLegacy(dir: string): Promise<void> {
+async function migrateLegacy(dir: string, report: Report): Promise<void> {
   const { moves, ambiguous } = await legacyLayout(dir);
   // Half a migration is worse than none: with any pair unresolvable, the
   // refusal below is the whole answer and nothing moves.
   if (ambiguous || moves.length === 0) return;
-  say('init: this brain still keeps the pre-.multivac layout — moving, in order:');
-  for (const [legacy, now] of moves) say(`init:   ${legacy} -> ${now}`);
+  report('init: this brain still keeps the pre-.multivac layout — moving, in order:');
+  for (const [legacy, now] of moves) report(`init:   ${legacy} -> ${now}`);
   for (const [legacy, now] of moves) {
     const from = join(dir, legacy);
     const to = join(dir, now);
@@ -174,25 +182,36 @@ async function migrateLegacy(dir: string): Promise<void> {
       () => false,
     );
     if (!moved) await rename(from, to);
-    say(`init: moved ${legacy} -> ${now}${moved ? ' (git mv, history preserved)' : ''}`);
+    report(`init: moved ${legacy} -> ${now}${moved ? ' (git mv, history preserved)' : ''}`);
   }
 }
 
 async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   const f = parseFlags(argv);
+  // --quiet: the whole report goes, banner included. Refusals stay on stderr.
+  const report: Report = f.quiet ? () => {} : say;
   const dir = resolve(ctx.cwd, f.dir ?? '.');
   await mkdir(dir, { recursive: true });
+
+  // The mark, once, where a human is watching: `init` is the only command that
+  // prints it. NO_COLOR drops the colour and keeps the drawing.
+  const mark = banner({
+    quiet: f.quiet,
+    tty: process.stdout.isTTY === true,
+    color: process.env.NO_COLOR === undefined,
+  });
+  if (mark !== null) say(mark);
 
   // 3. git init when the directory is not already a git repo.
   if (!(await isRepoRoot(dir))) {
     await git(dir, ['init', '-q']);
-    say('init: git init — the brain is git-native');
+    report('init: git init — the brain is git-native');
   }
 
   // 0. an older brain gets moved, not clobbered — before anything is scaffolded,
   // or the scaffolding itself would create the second layout.
   await mkdir(join(dir, '.multivac'), { recursive: true });
-  await migrateLegacy(dir);
+  await migrateLegacy(dir, report);
   const stale = await layoutError(dir);
   if (stale) {
     warn(`init: ${stale}`);
@@ -205,12 +224,12 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   await writeIfMissing(join(dir, '.multivac', '.gitignore'), 'cache/\nworktrees/\n');
   const cfgPath = join(dir, '.multivac', 'config.yml');
   if (await exists(cfgPath)) {
-    say('init: .multivac/config.yml kept — edit it directly, then `multivac doors`');
+    report('init: .multivac/config.yml kept — edit it directly, then `multivac doors`');
   } else {
     // Tracked source already here = the brain is its own code repo.
     const brainIsCode = (await lsFiles(dir).catch(() => [])).length > 0;
     await writeFile(cfgPath, renderConfig(f, await detectAdapters(dir), brainIsCode));
-    say(
+    report(
       brainIsCode
         ? 'init: wrote .multivac/config.yml — brain==code (repos: brain: .); add sibling repos there'
         : 'init: wrote .multivac/config.yml — declare your repos under repos:',
@@ -224,26 +243,26 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   const next = applyManagedBlock(existing, DOOR_BODY);
   if (next !== existing) {
     await writeFile(doorPath, next);
-    say(
+    report(
       existing === null
         ? 'init: wrote AGENTS.md — the door; your agent reads it first'
         : 'init: updated the managed block in AGENTS.md — your content untouched',
     );
   }
   if (await writeIfMissing(join(dir, LAW_PATH), INVARIANTS_HEADER)) {
-    say(`init: wrote ${LAW_PATH} — the law table, zero rows`);
+    report(`init: wrote ${LAW_PATH} — the law table, zero rows`);
   }
   if (await writeIfMissing(join(dir, RITUAL_PATH), RITUAL_TEMPLATE)) {
-    say(`init: wrote ${RITUAL_PATH} — empty; what you write there, \`change close\` prints`);
+    report(`init: wrote ${RITUAL_PATH} — empty; what you write there, \`change close\` prints`);
   }
   await mkdir(join(dir, CHANGES_DIR), { recursive: true });
   await writeIfMissing(join(dir, CHANGES_DIR, '.gitkeep'), '');
 
   // 4. enforcement floor: versioned hooks + core.hooksPath.
   await installHooks(dir);
-  say('init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit');
+  report('init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit');
 
-  say('init: done — load the multivac skill to fill the brain (see AGENTS.md)');
+  report('init: done — load the multivac skill to fill the brain (see AGENTS.md)');
   return 0;
 }
 

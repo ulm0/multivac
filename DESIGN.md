@@ -1099,6 +1099,35 @@ The adoption wedge, in one sentence: **your agent verifies its own context
 before acting.** Zero methodology, zero migration, zero API key — and what it
 verifies is documentation that lies about the code you already have.
 
+## The mark
+
+**The console panel.** A rounded frame of lamps: **lit** is a verified claim,
+**unlit** is one nothing anchors yet, and the single **amber** lamp is the
+claim in flight. The product's whole model in one drawing — a status board you
+read at a glance, which is what a brain is for.
+
+It ships three ways, all under `site/static/`: `mark.svg` (six lamps,
+`currentColor`, so a page's own ink drives it), `favicon.svg` (four lamps,
+heavier stroke, its own `prefers-color-scheme` block because a favicon inherits
+nothing), and `lockup.svg` (mark, wordmark, tagline). Hextra takes the favicon
+by name and the navbar logo from `params.navbar.logo`; the navbar renders one
+`<img>` per theme, and an `<img>` is an isolated document where `currentColor`
+falls back to black, so the dark slot carries `mark-dark.svg` — the same
+drawing with its ink pinned.
+
+In the terminal the panel is drawn in box characters by **`init`, and by no
+other command**. `verify`, `doctor`, `doors` and `change` run inside git hooks
+and in CI, where a banner is noise and `verify` has a sub-second budget to
+spend on anchors. `--quiet` drops it with the rest of init's report, a pipe
+drops it, and `NO_COLOR` keeps the drawing while dropping the colour — the
+lamps fall back to `#` lit, `.` unlit, `*` in flight, because without ANSI the
+amber lamp would be indistinguishable from a lit one.
+
+**The lamp pattern is fixed.** `init` runs before there is anything to verify:
+no law, no anchors, no claims. A banner that pretended to report the state of
+the brain would be precisely the kind of lie this tool exists to prevent. It is
+the logo, not a report.
+
 ## Build plan
 
 1. **`multivac verify` first** — first in dependency order, not the whole

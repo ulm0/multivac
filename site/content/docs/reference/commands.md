@@ -28,12 +28,17 @@ API key, and `verify`, `doctor` and `doors` never touch the network. `seed`
 and the interview only draft what a human then enacts; the drafting agent is
 yours, not multivac's.
 
-## `init [dir] [--agent a,b] [--sdd name] [--grapher name]`
+## `init [dir] [--agent a,b] [--sdd name] [--grapher name] [--quiet]`
 
 Scaffolds the brain in `dir` (default `.`).
 
 ```txt
 $ mvac init . --agent claude,cursor --grapher graphify
+  ╭───────────────╮
+  │  ●   ●   ○    │   multivac
+  │  ○   ◍   ●    │   brain-driven development
+  ╰───────────────╯
+
 init: git init — the brain is git-native
 init: wrote .multivac/config.yml — declare your repos under repos:
 init: wrote AGENTS.md — the door; your agent reads it first
@@ -48,12 +53,21 @@ init: done — load the multivac skill to fill the brain (see AGENTS.md)
 | `--agent a,b` | comma-separated registry names | appended to `doors:` in the config (`agents` is always included) |
 | `--sdd name` | `opsx` \| `speckit` | written as `sdd:` in the config |
 | `--grapher name` | any tool name | written as `grapher:` in the config |
+| `--quiet` | — | no report, no banner; refusals still go to stderr |
+
+The banner is the mark: lit lamps are verified claims, unlit ones unanchored,
+the amber one the claim in flight. The pattern is a fixed drawing, never a
+reading — `init` runs before there is anything to verify. `init` is the only
+command that prints it; `verify`, `doctor`, `doors` and `change` run inside
+hooks and in CI, where it would be noise. It is skipped when stdout is not a
+terminal, and `NO_COLOR` keeps the drawing while dropping the colour (`#` lit,
+`.` unlit, `*` in flight).
 
 Both `--flag value` and `--flag=value` work. A flag with no value, or an
 unknown flag, is refused:
 
 ```txt
-init: unknown flag --agents — known: --agent <a,b>, --sdd <name>, --grapher <name>
+init: unknown flag --agents — known: --agent <a,b>, --sdd <name>, --grapher <name>, --quiet
 ```
 
 **Flags configure; they do not perform.** `--agent claude` writes `claude`
