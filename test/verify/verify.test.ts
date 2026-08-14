@@ -137,6 +137,32 @@ test('moved never rewrites the glob to an excluded file', async () => {
   assert.match(readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8'), /api:README\.md /);
 });
 
+test('moved never rewrites the glob into .multivac: the law is not its own evidence', async () => {
+  const e = eco();
+  // brain==code, and the statement column quotes the pattern the leg looks
+  // for. Delete the code and the only remaining match in the repo is the law
+  // row itself: healing onto it would make the claim true by quoting itself.
+  writeFileSync(join(e.brain, '.multivac/config.yml'), 'doors: [agents]\nrepos:\n  brain: .\n');
+  mkdirSync(join(e.brain, 'src'), { recursive: true });
+  commitFile(e.brain, 'src/pay.ts', 'export const pay = () => charge();\n');
+  setLaw(
+    e.brain,
+    '| INV-06C | every payment goes through charge() | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-06C brain:src/pay.ts /charge\\(\\)/ -->',
+  );
+  assert.equal(await runVerify(e.brain, '--strict'), 0);
+
+  commitFile(e.brain, 'src/pay.ts', 'export const pay = () => billCardDirectly();\n');
+  const { code, out } = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(code, 1);
+  assert.match(out, /broken/);
+  assert.doesNotMatch(out, /moved/);
+  assert.match(
+    readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8'),
+    /brain:src\/pay\.ts /,
+  );
+});
+
 test('exit matrix: broken present reports at exit 0, gates under --strict', async () => {
   const e = eco();
   setLaw(
