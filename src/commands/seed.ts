@@ -1,6 +1,7 @@
 // multivac seed — the DETERMINISTIC half: inventory each declared+present
 // repo's boundaries into .multivac/seed-report.md. No LLM, no interpretation;
-// the agent reads the report and drafts proposed claims (see the skill).
+// the agent reads the report, takes the open questions to a human, and drafts
+// proposed claims (see the skill). Flow: seed → questions → interview → law.
 
 import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -11,6 +12,61 @@ import { say } from '../lib/out.js';
 import { classify } from '../seed/inventory.js';
 
 export const REPORT_PATH = '.multivac/seed-report.md';
+
+/** Per-category listing cap: 96% of saleor's report was migration filenames. */
+const CAP = 25;
+
+/** How many found files an open question names before trailing off. */
+const NAME_CAP = 10;
+
+const nameSome = (files: string[]): string =>
+  files.slice(0, NAME_CAP).join(', ') + (files.length > NAME_CAP ? ', …' : '');
+
+/** Which deploy stacks the inventory saw — each one is a candidate authority. */
+function deployStacks(deploy: string[], terraform: string[], docker: string[]): string[] {
+  const stacks: [string, boolean][] = [
+    ['helm', deploy.some((f) => f.includes('Chart.yaml') || f.includes('helm'))],
+    ['kustomize', deploy.some((f) => f.includes('kustomization.yaml'))],
+    ['skaffold', deploy.some((f) => f.includes('skaffold.yaml'))],
+    ['raw manifests', deploy.some((f) => /(^|\/)(kubernetes-manifests|k8s|deployment)\//.test(f))],
+    ['terraform', terraform.length > 0],
+    ['compose', docker.some((f) => f.includes('compose'))],
+  ];
+  return stacks.filter(([, hit]) => hit).map(([name]) => name);
+}
+
+/**
+ * The three questions every cold adopter of a foreign ecosystem hit
+ * (measurement 2 §2), instantiated against what seed found. Seed cannot
+ * answer them; guessed answers become wrong law. They are the interview's
+ * input.
+ */
+function openQuestions(gates: string[], prose: string[], stacks: string[]): string[] {
+  const lines = [
+    '',
+    '## open questions — the interview needs these answered',
+    '',
+    'Seed names files; it cannot answer what they mean. Every rule drafted',
+    'without these answers is a guess, and a wrong guess becomes wrong law.',
+    'Put them to a maintainer (interview protocol: the multivac skill,',
+    '`references/interview.md`) before enacting anything:',
+    '',
+    '1. **Debt or intent?** Where the code violates a rule written below,',
+    '   is the violation debt to be fixed or a sign the written rule is dead?',
+    '   Grep HEAD for each candidate rule before filing it.' +
+      (gates.length > 0 ? ` Rules in machine form found here: ${nameSome(gates)}.` : ''),
+    '2. **Law or taste?** Which written rules are enforced law (violations',
+    '   get blocked) and which are taste? Only a maintainer can say.' +
+      (prose.length > 0
+        ? ` Prose that already states rules — prior art, read it first: ${nameSome(prose)}.`
+        : ''),
+    '3. **Which authority wins?** When two sources disagree, the law table',
+    '   must name the winner before the disagreement is found the hard way.' +
+      (stacks.length > 1 ? ` This ecosystem deploys via ${stacks.join(', ')} in parallel.` : '') +
+      (gates.length > 0 && prose.length > 0 ? ' Machine gates and prose docs both exist here.' : ''),
+  ];
+  return lines;
+}
 
 async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
   const dirArg = argv.find((a) => !a.startsWith('-'));
@@ -25,6 +81,11 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
   ];
   const skipped: string[] = [];
   let present = 0;
+  const gates: string[] = [];
+  const prose: string[] = [];
+  const deploy: string[] = [];
+  const terraform: string[] = [];
+  const docker: string[] = [];
 
   const keys = Object.keys(cfg.repos);
   if (keys.length === 0) {
@@ -47,18 +108,30 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
       lines.push('', 'No boundary files found.');
       continue;
     }
+    const prefix = keys.length > 1 ? `${key}:` : '';
+    gates.push(...(buckets.get('policy gates') ?? []).map((f) => prefix + f));
+    prose.push(...(buckets.get('decisions / intent') ?? []).map((f) => prefix + f));
+    deploy.push(...(buckets.get('deploy manifests') ?? []));
+    terraform.push(...(buckets.get('terraform') ?? []));
+    docker.push(...(buckets.get('docker') ?? []));
     for (const [category, list] of buckets) {
       lines.push('', `### ${category} (${list.length})`, '');
-      for (const f of list) lines.push(`- ${f}`);
+      for (const f of list.slice(0, CAP)) lines.push(`- ${f}`);
+      if (list.length > CAP) lines.push(`- … and ${list.length - CAP} more`);
     }
   }
 
   if (skipped.length > 0) lines.push('', '## skipped', '', ...skipped);
+  if (present > 0) {
+    lines.push(...openQuestions(gates, prose, deployStacks(deploy, terraform, docker)));
+  }
   lines.push(
     '',
     '## next',
     '',
-    'The agent reads these files and drafts proposed claims — see the multivac skill.',
+    'seed → questions → interview → law. Read the inventory by category, take',
+    'the open questions to a maintainer, then draft proposed claims — see the',
+    'multivac skill (`references/discovery.md`).',
   );
 
   await writeFile(join(brainDir, REPORT_PATH), lines.join('\n') + '\n');
@@ -66,7 +139,7 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
     `seed: wrote ${REPORT_PATH} — ${present} repo(s) inventoried` +
       (skipped.length > 0 ? `, ${skipped.length} skipped` : ''),
   );
-  say('seed: next — read the report and draft proposed claims (see the multivac skill)');
+  say('seed: next — take the open questions to a maintainer, then draft proposed claims (see the multivac skill)');
   return 0;
 }
 

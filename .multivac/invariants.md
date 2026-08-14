@@ -195,6 +195,15 @@ checks them on every commit.
 <!-- @anchor MV-37 brain:test/init/coexist.test.ts /the repo gate runs first and its exit code wins/ -->
 <!-- @anchor MV-37 brain:test/init/coexist.test.ts /refusal names the exact step, file untouched/ -->
 <!-- @anchor MV-37 brain:DESIGN.md /never repoint/ -->
+| MV-38 | Seed knows where architecture lives, as registry data: policy gates, workspace/build graph, deploy manifests, runtime config, models/schema and decisions/intent are pattern entries in the category registry; fixture, example and vendored trees are excluded; and the report ends with the three open questions every cold adopter hit — debt or intent, law or taste, which authority wins — instantiated against what seed found and handed to the interview. | specified | active | 2026-08-14 | [changes/archive/seed-finds-the-contracts.md](changes/archive/seed-finds-the-contracts.md) |
+<!-- @anchor MV-38 brain:src/seed/inventory.ts /'policy gates'/ -->
+<!-- @anchor MV-38 brain:src/seed/inventory.ts /pnpm-workspace\.yaml/ -->
+<!-- @anchor MV-38 brain:src/seed/inventory.ts /kustomization\.yaml/ -->
+<!-- @anchor MV-38 brain:src/seed/inventory.ts /export const EXCLUDES/ -->
+<!-- @anchor MV-38 brain:src/commands/seed.ts /open questions/ -->
+<!-- @anchor MV-38 brain:src/commands/seed.ts /Debt or intent/ -->
+<!-- @anchor MV-38 brain:skills/multivac/references/discovery.md /questions/ -->
+<!-- @anchor MV-38 brain:test/seed/seed.test.ts /deploys via helm, kustomize, skaffold/ -->
 | MV-39 | `multivac help anchor` teaches the whole grammar from the CLI in one screen: the anchor line, POSIX ERE only with the shorthand replacements named, per-line matching except `.sql` (per normalized statement), `count=N` counted across every file the glob matches (a deletion ratchet, never a universal), exactly one include glob (braces for alternatives), repo-qualified exclusions, and where anchors may live. | specified | active | 2026-08-14 | [changes/the-ramp-is-part-of-the-road.md](changes/the-ramp-is-part-of-the-road.md) |
 <!-- @anchor MV-39 brain:src/commands/help.ts /POSIX ERE only/ -->
 <!-- @anchor MV-39 brain:src/commands/help.ts /deletion ratchet, never a universal/ -->
