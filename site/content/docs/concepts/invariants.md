@@ -1,6 +1,6 @@
 ---
 title: Invariants
-weight: 4
+weight: 5
 ---
 
 The law is a table of claims with a lifecycle:

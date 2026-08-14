@@ -137,6 +137,19 @@ checks them on every commit.
 <!-- @anchor MV-28 brain:src/commands/doctor.ts /t.kind === 'native'/ -->
 <!-- @anchor MV-28 brain:src/adapters/registry.ts /kind: 'unsupported'/ -->
 <!-- @anchor MV-28 brain:test/doors/registry.test.ts /at least one honest gap/ -->
+| MV-29 | The site names no flag the binary does not accept. `doors` takes no flags at all — `--no-symlink` was documentation-only and never parsed — so the string appears nowhere in the site or the source. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+<!-- @anchor MV-29 brain:site/content/** /no-symlink/ absent -->
+<!-- @anchor MV-29 brain:src/** /no-symlink/ absent -->
+<!-- @anchor MV-29 brain:src/commands/doors.ts /async function run\(_argv: string\[\]/ unique -->
+| MV-30 | Hextra's layout shortcodes emit wrapper HTML, so the site sets `markup.goldmark.renderer.unsafe: true`; without it the hero and the feature grid are stripped to bare text and the landing renders unstyled. | specified | active | 2026-08-13 | [hugo.yaml](../site/hugo.yaml) |
+<!-- @anchor MV-30 brain:site/hugo.yaml /unsafe: true/ unique -->
+<!-- @anchor MV-30 brain:site/content/_index.md /hextra\/feature-grid/ count=2 -->
+| MV-31 | The reference section documents the whole surface: one heading per shipped command, one per configuration key the loader reads, and one per harness entry in the registry — including the entries marked unsupported. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+<!-- @anchor MV-31 brain:site/content/docs/reference/commands.md /^## `(init|seed|verify|doors|doctor|repos|change)/ count=7 -->
+<!-- @anchor MV-31 brain:site/content/docs/reference/configuration.md /^### `(doors|sdd|sdd_auto|grapher|authorities|blocking|staleness|strict_pre_push|channel|mount|repos)`$/ count=11 -->
+<!-- @anchor MV-31 brain:site/content/docs/reference/integrations.md /^## `(agents|claude|cursor|opencode|codex|windsurf|gemini|copilot|aider)`/ count=9 -->
+<!-- @anchor MV-31 brain:site/content/docs/concepts/philosophy.md /A paraphrase ages silently/ unique -->
+<!-- @anchor MV-31 brain:site/content/docs/reference/hooks.md /universal floor/ -->
 | MV-32 | Everything multivac creates lives under `.multivac/` — the law, the changes and the machinery; `AGENTS.md` at the repo root is the only exception. `init` migrates a brain that still keeps them at the root, announcing every path before it moves it and using `git mv` so history follows, and it refuses rather than overwrite an occupied target. It never moves a file multivac did not write: a root `invariants.md` or `changes/` counts as multivac's only in a directory that already has `.multivac/config.yml` AND whose file parses as multivac's own law table or change file. Only two files that both parse as multivac's law are ambiguous, and that error names the one that wins; `doctor` reports the legacy layout with the command that fixes it and moves nothing itself. | specified | active | 2026-08-14 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-32 brain:src/lib/config.ts /LAW_PATH = '.multivac\/invariants.md'/ -->
 <!-- @anchor MV-32 brain:src/lib/config.ts /CHANGES_DIR = '.multivac\/changes'/ -->

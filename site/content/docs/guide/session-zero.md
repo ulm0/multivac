@@ -1,6 +1,6 @@
 ---
 title: Session zero
-weight: 2
+weight: 3
 ---
 
 After `init` the brain is empty on purpose. The door says so and points at

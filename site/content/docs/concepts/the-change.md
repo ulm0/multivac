@@ -1,6 +1,6 @@
 ---
 title: The change
-weight: 3
+weight: 4
 ---
 
 The ecosystem change: planned in the brain, executed across every repo the
@@ -81,6 +81,7 @@ change is archived:
 $ mvac change close points-expire
 INV-02: ok
 archived -> .multivac/changes/archive/points-expire.md
+archived — commit this: git -C ~/eco/brain add -A .multivac/changes && git commit -m "Archive the points-expire change"
 
 ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
   - [ ] tell support before the flag flips

@@ -1,6 +1,6 @@
 ---
 title: Distribution
-weight: 5
+weight: 6
 ---
 
 The brain lists repos; repos point at the brain. One brain = one ecosystem.
@@ -54,10 +54,16 @@ Two kinds of door, not the same file renamed:
 `multivac doors` generates both, under one rule: one canonical door,
 `AGENTS.md`, projected to the rest —
 
-- **symlink** when the format is identical (`CLAUDE.md`);
-- **three-line stub** when it isn't (Cursor wants `.cursor/rules/*.mdc` with
+- **symlink** when the format is identical (`CLAUDE.md`, `GEMINI.md`);
+- **stub** when it isn't (Cursor wants `.cursor/rules/*.mdc` with
   frontmatter; a symlink can't add frontmatter);
-- `--no-symlink` for Windows.
+- **nothing at all** when the harness already reads `AGENTS.md` — a second
+  file would be a paraphrase, which is the thing this tool exists to avoid.
+
+Where a symlink is not permitted — Windows without developer mode — `doors`
+says so and names the fallback instead of writing a broken link. Every
+target and its projection:
+[Agent integrations](../../reference/integrations).
 
 Still a single source; only the projection varies. The default is no
 projection at all: `AGENTS.md` alone, already read by most harnesses —

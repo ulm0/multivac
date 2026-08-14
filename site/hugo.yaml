@@ -8,6 +8,18 @@ module:
 
 enableInlineShortcodes: true
 
+markup:
+  # Hextra's layout shortcodes — hero, feature grid, cards — emit their own
+  # wrapper HTML. Goldmark strips raw HTML unless this is on, which leaves the
+  # landing as unstyled paragraphs.
+  goldmark:
+    renderer:
+      unsafe: true
+  # Hextra ships the highlight CSS; noClasses: true would inline Chroma's own
+  # colors instead and ignore the dark theme.
+  highlight:
+    noClasses: false
+
 menu:
   main:
     - name: Docs

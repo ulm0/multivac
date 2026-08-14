@@ -68,8 +68,8 @@ async function doorState(brain: string, name: string): Promise<string> {
       ? `${name}: ${t.door} ok (symlink)`
       : `${name}: ${t.door} stale — symlink points at ${target}, expected ${canonical} → run \`multivac doors\``;
   }
-  // canonical, stub, or a regular-file projection (--no-symlink): the tool's
-  // content must live in the managed block.
+  // canonical, native, or stub: the tool's content must live in the managed
+  // block. A symlink target found as a regular file lands here too.
   const text = await readFile(p, 'utf8').catch(() => '');
   if (!text.includes(BEGIN)) {
     return `${name}: ${t.door} missing managed block → run \`multivac doors\``;

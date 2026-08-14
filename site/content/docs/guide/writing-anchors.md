@@ -1,6 +1,6 @@
 ---
 title: Writing anchors
-weight: 3
+weight: 4
 ---
 
 An anchor is a content-based claim about the code: "in that repo, in those

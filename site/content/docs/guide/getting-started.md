@@ -1,23 +1,10 @@
 ---
 title: Getting started
-weight: 1
+weight: 2
 ---
 
-## Install
-
-Not yet published to npm. Build from source:
-
-```sh
-git clone https://gitlab.com/ulm0/multivac
-cd multivac
-npm install
-npm run build
-npm link        # puts both `multivac` and `mvac` on PATH
-```
-
-Requires Node >= 24. `multivac` and `mvac` are the same binary; the docs use
-either interchangeably. Once published, `npx multivac` will work without the
-clone.
+This page assumes the binary is on your `PATH`. If it is not,
+[Install](../install) is three commands.
 
 ## `mvac init .`
 
@@ -30,6 +17,7 @@ init: git init — the brain is git-native
 init: wrote .multivac/config.yml — declare your repos under repos:
 init: wrote AGENTS.md — the door; your agent reads it first
 init: wrote .multivac/invariants.md — the law table, zero rows
+init: wrote .multivac/ritual.md — empty; what you write there, `change close` prints
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
 init: done — load the multivac skill to fill the brain (see AGENTS.md)
 ```
@@ -41,9 +29,10 @@ AGENTS.md                    the door — first thing any agent reads
 .multivac/invariants.md      the law table, zero rows
 .multivac/changes/           one file per ecosystem change (empty)
 .multivac/config.yml         the registry: repos, doors, adapters
+.multivac/ritual.md          the closing ceremony, empty but for one comment
 .multivac/hooks/pre-commit   runs `mvac verify` on every commit
 .multivac/hooks/pre-push     same, on push
-.multivac/.gitignore         ignores .multivac/cache/
+.multivac/.gitignore         ignores .multivac/cache/ and .multivac/worktrees/
 ```
 
 `AGENTS.md` is the one file multivac writes at the root, because that is

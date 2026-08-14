@@ -3,44 +3,83 @@ title: multivac
 layout: hextra-home
 ---
 
+{{< hextra/hero-badge link="docs/guide/install" >}}
+  <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
+  <span>Early build · build from source</span>
+  {{< icon name="arrow-circle-right" attributes="height=14" >}}
+{{< /hextra/hero-badge >}}
+
+<div class="hx:mt-6 hx:mb-6">
 {{< hextra/hero-headline >}}
-Your agent verifies its own context before acting
+  Your agent verifies its context&nbsp;<br class="hx:sm:block hx:hidden" />before it acts on it
 {{< /hextra/hero-headline >}}
+</div>
 
+<div class="hx:mb-12">
 {{< hextra/hero-subtitle >}}
-Brain-driven development: one brain repo — claims, law, and the ritual that closes a change — from which an entire ecosystem of code repos is developed.
+  One brain repo — claims, law, ritual — from which an entire&nbsp;<br class="hx:sm:block hx:hidden" />ecosystem of code repos is developed. No model in the verification path.
 {{< /hextra/hero-subtitle >}}
+</div>
 
-{{< hextra/hero-button text="Get the concept" link="docs/concepts" >}} {{< hextra/hero-button text="GitLab" link="https://gitlab.com/ulm0/multivac" >}}
+<div class="hx:mb-6">
+{{< hextra/hero-button text="Read the philosophy" link="docs/concepts/philosophy" >}}
+{{< hextra/hero-button text="Install" link="docs/guide/install" style="background: transparent; color: inherit; box-shadow: inset 0 0 0 1px currentColor;" >}}
+</div>
 
-Named for Asimov's world-computer — the brain everyone consults, which in "The Last Question" finally answers. CLI alias: `mvac`.
+<div class="hx:mt-6"></div>
 
 {{< hextra/feature-grid >}}
   {{< hextra/feature-card
-    title="Claims with anchors"
-    subtitle="The unit is the claim, not the document: statement, authority, and a content-based anchor — `present`, `absent`, `unique`, `count` — inline in the markdown."
-    link="docs/concepts"
+    title="Claims, not documents"
+    subtitle="The unit is the claim: statement, authority, and a content-based anchor — `present`, `absent`, `unique`, `count` — written inline in the markdown. A paraphrase ages silently; a citation can be checked."
+    link="docs/concepts/claims-and-anchors"
   >}}
   {{< hextra/feature-card
     title="Deterministic verify"
-    subtitle="`mvac verify` checks every anchor against the declared repos: no LLM, no network, offline. The tombstone blocks; the presence check reports and self-heals."
+    subtitle="`mvac verify` checks every anchor against the declared repos. No LLM, no API key, no network — the same answer on your laptop, in the hook, and in CI."
+    link="docs/reference/commands"
   >}}
   {{< hextra/feature-card
-    title="The ecosystem change"
-    subtitle="`change new → plan → apply → land → close`: a branch per repo, merge requests in declared landing order, and close verifies the claims the change promised — then prints the ritual it cannot verify."
+    title="One change, N repos"
+    subtitle="`change new → plan → apply → land → close`: a branch per repo, merge requests in declared landing order, and a close that refuses until every claim the change promised resolves green."
+    link="docs/guide/running-changes"
   >}}
   {{< hextra/feature-card
-    title="Doors for every harness"
-    subtitle="One canonical `AGENTS.md`, projected to each harness as symlink or stub — plus git hooks, so everything that commits runs `verify`."
+    title="A door in every harness"
+    subtitle="One canonical `AGENTS.md`, projected per harness as symlink, stub, or nothing at all where the harness already reads it. Nine entries, each verified against its vendor's own docs."
+    link="docs/reference/integrations"
+  >}}
+  {{< hextra/feature-card
+    title="Enforcement that degrades"
+    subtitle="Git hooks are the universal floor, harness hooks the ceiling. A machine without the binary commits normally: enforcement degrades, it never locks you out."
+    link="docs/reference/hooks"
   >}}
   {{< hextra/feature-card
     title="Tombstones for the dead"
-    subtitle="A retired mechanism is declared dead where someone will look for it: `absent` anchors that block, across every repo in the ecosystem."
-  >}}
-  {{< hextra/feature-card
-    title="Adapters that automate"
-    subtitle="SDD tools and graphers as declared adapters: proposed at `change new`, graphs refreshed on edit. An absent adapter degrades the feature, never the exit code."
+    subtitle="A retired mechanism is declared dead where someone will look for it. `absent` anchors block across every repo in the ecosystem, and the config refuses to unblock them."
+    link="docs/concepts/invariants"
   >}}
 {{< /hextra/feature-grid >}}
 
-Design validated against a real production ecosystem: 95.1% of 82 real invariants anchorable. The tool is an early build, pre-release.
+<div class="hx:mt-12"></div>
+
+{{< hextra/hero-section heading="h3" >}}
+Why the name
+{{< /hextra/hero-section >}}
+
+Asimov's Multivac is the world-computer everyone consults; in *The Last
+Question* it is the one that finally answers. The joke is that this Multivac
+answers nothing on its own — it only tells you whether what you already
+believe is still true. CLI alias: `mvac`.
+
+<div class="hx:mt-12"></div>
+
+{{< hextra/hero-section heading="h3" >}}
+Where this is
+{{< /hextra/hero-section >}}
+
+An early build, pre-release, not on npm — you build it from source. It is its
+own first user: multivac's law lives in this repo and CI gates every commit
+with `mvac verify --strict`. The design was validated against a real
+production ecosystem before the code existed — 82 invariants collected by
+hand, 95.1% of them anchorable.

@@ -1,6 +1,6 @@
 ---
 title: Claims and anchors
-weight: 2
+weight: 3
 ---
 
 The unit is not the document. It is the claim:
