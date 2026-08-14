@@ -553,7 +553,7 @@ nothing. Full walkthrough: [Running changes](../../guide/running-changes).
 | code | meaning |
 | --- | --- |
 | **0** | ok — including every degraded state: unevaluated repos, absent adapters, missing repos, unsupported door targets, non-blocking broken legs |
-| **1** | a check failed or a gate refused: blocking leg broken/vacuous, anchor parse error, stale pin under `staleness: block`, `close` before every repo landed, a claim not green, a clone that failed, invalid config **in `doors`** |
+| **1** | a check failed or a gate refused: blocking leg broken/vacuous, anchor parse error, stale pin under `staleness: block`, `close` before every repo landed, a claim not green, a clone that failed, invalid config **in `doors` and `doctor`** |
 | **2** | usage or environment: no command, unknown command, unknown flag, unknown subcommand, missing or invalid `.multivac/config.yml` |
 
 ```txt

@@ -293,13 +293,19 @@ report `unevaluated` rather than red:
 repos      none declared — add repos: to .multivac/config.yml
 ```
 
-`brain` and `*` are reserved. A declared `brain` would let a consumer-scoped
-`verify` evaluate the brain's own anchors against a consumer checkout, and
-`*` already means "every repo" in an anchor leg:
+`*` is reserved outright — it already means "every repo" in an anchor leg:
 
 ```txt
-.multivac/config.yml: repos.brain is a reserved key — rename the repo
-.multivac/config.yml: repos."*" is a reserved key — rename the repo
+.multivac/config.yml: repos."*" is a reserved key — "*" means every repo in anchor legs; rename the repo
+```
+
+`brain` has exactly one legal meaning: `brain: .`, the brain==code
+declaration `init` writes when the brain is its own code repo. Pointed
+anywhere else it would let a consumer-scoped `verify` evaluate the brain's
+own anchors against a consumer checkout, so it is refused:
+
+```txt
+.multivac/config.yml: repos.brain must be the brain itself (path .) — it is "../elsewhere"; rename the repo
 ```
 
 An entry with neither `path` nor `url` cannot be located:
@@ -312,7 +318,9 @@ An entry with neither `path` nor `url` cannot be located:
 
 A config that does not load is an environment error, not a failed check.
 Every command that reads it exits **2** and prints one line naming the key
-and the repair — `doors` is the exception and exits 1.
+and the repair. `doors` and `doctor` are the two exceptions and exit 1: for
+those an unloadable config is the diagnosis they were asked for, not an
+environment they failed to read.
 
 ```txt
 $ mvac verify
