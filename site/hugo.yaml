@@ -38,7 +38,16 @@ menu:
 params:
   navbar:
     displayTitle: true
-    displayLogo: false
+    displayLogo: true
+    # The mark is the console panel — lit lamps verified, unlit unanchored,
+    # amber in flight. Hextra renders one <img> per theme, and an <img> is an
+    # isolated document where currentColor falls back to black, so the dark
+    # slot carries the same drawing with its ink pinned.
+    logo:
+      path: mark.svg
+      dark: mark-dark.svg
+      width: 23
+      height: 20
 
   theme:
     default: dark

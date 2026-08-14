@@ -160,3 +160,12 @@ checks them on every commit.
 <!-- @anchor MV-32 brain:src/** /join\(brain(Dir)?, 'invariants.md'\)/ absent -->
 <!-- @anchor MV-32 brain:test/init/init.test.ts /never migrates files multivac did not write/ -->
 <!-- @anchor MV-32 brain:test/init/init.test.ts /byte for byte/ -->
+| MV-33 | The identity is the console panel: the mark ships under `site/static/` and is wired as the favicon and as the navbar logo (with a dark slot, because an `<img>` cannot inherit `currentColor`), and the terminal banner is reachable from `init` alone — `src/lib/banner.ts` is imported by `init` and by nothing else, so `verify`, `doctor`, `doors` and `change` cannot print it. It is suppressed by `--quiet` and when stdout is not a TTY; `NO_COLOR` drops the colour and keeps the drawing. The lamp pattern is a fixed drawing, never a live reading — `init` runs before there is anything to verify. | specified | active | 2026-08-14 | [DESIGN.md](../DESIGN.md) |
+<!-- @anchor MV-33 brain:site/static/{mark,mark-dark,favicon,lockup}.svg /<svg/ count=4 -->
+<!-- @anchor MV-33 brain:site/hugo.yaml /path: mark.svg/ unique -->
+<!-- @anchor MV-33 brain:site/hugo.yaml /dark: mark-dark.svg/ unique -->
+<!-- @anchor MV-33 brain:src/lib/banner.ts /pattern is FIXED, not a live reading/ -->
+<!-- @anchor MV-33 brain:src/commands/init.ts /banner\(\{/ unique -->
+<!-- @anchor MV-33 brain:src/** !src/lib/banner.ts !src/commands/init.ts /banner/ absent -->
+<!-- @anchor MV-33 brain:test/init/banner.test.ts /never emitted by any other command/ -->
+<!-- @anchor MV-33 brain:test/init/banner.test.ts /NO_COLOR drops the colour, not the banner/ -->
