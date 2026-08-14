@@ -1,6 +1,6 @@
 // Load and validate .multivac/config.yml. Every error says how to fix it.
 
-import { access, readdir, readFile } from 'node:fs/promises';
+import { access, lstat, readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
@@ -47,11 +47,18 @@ function isChangeFile(text: string): boolean {
  * does: the law table's six-column header, or a directory holding at least one
  * parseable change file (its `archive/` counts; a closed brain has them all
  * there). Anything else is somebody else's file and multivac never touches it.
+ *
+ * A symlink is never ours: multivac writes real files. Moving one would carry
+ * the link and leave its relative target dangling, so the answer is always no
+ * and the author's indirection stays where they put it.
  */
 async function looksLikeOurs(abs: string, kind: 'law' | 'changes'): Promise<boolean> {
+  if (await lstat(abs).then((s) => s.isSymbolicLink(), () => false)) return false;
   if (kind === 'law') {
     const text = await readFile(abs, 'utf8').catch(() => null);
-    return text !== null && LAW_HEADER.test(text);
+    // Fenced blocks are quotation, not schema: a doc that shows the law header
+    // as an example is still the author's doc.
+    return text !== null && LAW_HEADER.test(text.replace(/^```[\s\S]*?^```/gm, ''));
   }
   for (const dir of [abs, join(abs, 'archive')]) {
     const names = await readdir(dir).catch(() => [] as string[]);

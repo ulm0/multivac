@@ -6,8 +6,10 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  readlinkSync,
   renameSync,
   statSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -154,6 +156,36 @@ test('init never migrates files multivac did not write', async () => {
   assert.equal(await layoutError(dir), null);
   assert.equal((await doctorReport(dir)).exit, 0);
   assert.equal(await init.run([], { cwd: dir }), 0, 'still a steady state on re-run');
+});
+
+test('a doc that only quotes the law header is not the law', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  writeFileSync(join(dir, '.multivac/config.yml'), 'doors: [agents]\n');
+  // Their design note explains multivac's schema inside a fence. Still theirs.
+  const theirNote = `# How the law table looks\n\n\`\`\`\n${LAW_TABLE}\`\`\`\n\nOur notes.\n`;
+  writeFileSync(join(dir, 'invariants.md'), theirNote);
+
+  assert.equal(await layoutError(dir), null);
+  assert.equal(await init.run([], { cwd: dir }), 0);
+  assert.equal(readFileSync(join(dir, 'invariants.md'), 'utf8'), theirNote);
+});
+
+test('a symlink at changes/ is never migrated', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  writeFileSync(join(dir, '.multivac/config.yml'), 'doors: [agents]\n');
+  // Their changes/ is a link into the repo: moving it would dangle the target.
+  mkdirSync(join(dir, 'docs/real-changes'), { recursive: true });
+  writeFileSync(join(dir, 'docs/real-changes/old.md'), CHANGE_FILE);
+  symlinkSync('docs/real-changes', join(dir, 'changes'));
+
+  assert.equal(await layoutError(dir), null);
+  assert.equal(await init.run([], { cwd: dir }), 0);
+  assert.equal(readlinkSync(join(dir, 'changes')), 'docs/real-changes');
+  assert.equal(readFileSync(join(dir, 'docs/real-changes/old.md'), 'utf8'), CHANGE_FILE);
 });
 
 test('only two files that both read as multivac law are ambiguous', async () => {
