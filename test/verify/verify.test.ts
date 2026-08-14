@@ -621,3 +621,76 @@ test('nothing pending: the summary says nothing about pendency', async () => {
   assert.equal(r.code, 0);
   assert.doesNotMatch(r.out, /held pending/);
 });
+
+// --- repo-qualified exclusions ---
+
+/** README.md in all three repos; PIN only in the two code repos. */
+function readmesWithPin(e: ScratchEcosystem): void {
+  commitFile(e.brain, 'README.md', '# acme brain\n');
+  commitFile(e.repos.api, 'README.md', '# acme-api\n\nPIN 1234\n');
+  commitFile(e.repos.web, 'README.md', '# acme-web\n\nPIN 5678\n');
+}
+
+test('a qualified exclusion exempts one repo, never its namesake elsewhere', async () => {
+  const e = eco();
+  readmesWithPin(e);
+  // The whole ecosystem is checked; api's README is exempt by name — web's
+  // README, same basename, is not.
+  setLaw(
+    e.brain,
+    '| INV-70 | no PIN in the docs | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-70 *:README.md !api:README.md /PIN/ absent -->',
+  );
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1);
+  assert.match(r.out, /web:README\.md:3/);
+  assert.doesNotMatch(r.out, /api:README\.md:/);
+
+  // Exempt both, and the leg is green — the brain's README still gets read,
+  // so this is ok, not vacuous.
+  setLaw(
+    e.brain,
+    '| INV-70 | no PIN in the docs | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-70 *:README.md !api:README.md !web:README.md /PIN/ absent -->',
+  );
+  assert.equal(await runVerify(e.brain, '--strict'), 0);
+});
+
+test('a bare exclusion still bites in every repo — and empties the leg', async () => {
+  const e = eco();
+  readmesWithPin(e);
+  setLaw(
+    e.brain,
+    '| INV-71 | no PIN in the docs | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-71 *:README.md !README.md /PIN/ absent -->',
+  );
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1);
+  // Exclusions count toward vacuity: nothing left to check is not a pass.
+  assert.match(r.out, /vacuous/);
+});
+
+test('an exclusion naming an undeclared repo is refused, naming the key', async () => {
+  const e = eco();
+  readmesWithPin(e);
+  setLaw(
+    e.brain,
+    '| INV-72 | no PIN in the docs | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-72 *:README.md !frontend:README.md /PIN/ absent -->',
+  );
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1);
+  assert.match(r.out, /unknown repo key "frontend"/);
+  assert.match(r.out, /anchor parse errors/);
+});
+
+test('a qualified exclusion in a single-repo leg is legal and redundant', async () => {
+  const e = eco();
+  readmesWithPin(e);
+  setLaw(
+    e.brain,
+    '| INV-73 | no PIN outside the readme | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-73 api:** !api:README.md /PIN/ absent -->',
+  );
+  assert.equal(await runVerify(e.brain, '--strict'), 0);
+});

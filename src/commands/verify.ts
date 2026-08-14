@@ -271,20 +271,30 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
   const rows = await readClaimRows(brainDir);
   const states = new Map(rows.map((r) => [r.id, r.state]));
 
-  // Unknown repo keys are diagnostics, not silent skips.
+  // Unknown repo keys are diagnostics, not silent skips — the leg's own scope
+  // and every repo-qualified exclusion alike: a typo in `!brain:page.md`
+  // exempts nothing, and silence would read as a passing anchor.
   const knownKey = (k: string): boolean => k === '*' || k === 'brain' || k in cfg.repos;
-  const semantic: ParseDiagnostic[] = anchors
-    .filter((a) => !knownKey(a.repoKey))
-    .map((a) => ({
-      file: a.file,
-      line: a.line,
-      message: `unknown repo key "${a.repoKey}" — declare it under repos: in .multivac/config.yml`,
-    }));
+  const semantic: ParseDiagnostic[] = [];
+  const refused = new Set<Anchor>();
+  for (const a of anchors) {
+    const unknown = [
+      ...new Set([a.repoKey, ...a.excludes.map((e) => e.repoKey)]),
+    ].filter((k): k is string => k !== undefined && !knownKey(k));
+    for (const k of unknown) {
+      semantic.push({
+        file: a.file,
+        line: a.line,
+        message: `unknown repo key "${k}" — declare it under repos: in .multivac/config.yml`,
+      });
+    }
+    if (unknown.length > 0) refused.add(a);
+  }
   const allDiags = [...diagnostics, ...semantic];
 
   // Lifecycle: retired rows evaluate only their authored tombstone legs.
   const evalAnchors = anchors.filter(
-    (a) => knownKey(a.repoKey) && (states.get(a.claimId) !== 'retired' || a.mode === 'absent'),
+    (a) => !refused.has(a) && (states.get(a.claimId) !== 'retired' || a.mode === 'absent'),
   );
 
   // Scoped: only the consumer checkout is a target — `*` legs see it alone.

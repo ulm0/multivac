@@ -40,11 +40,13 @@ Anchor grammar, one leg per line, in an HTML comment under the row
 (full manual: `anchors.md`):
 
 ```
-<!-- @anchor <CLAIM-ID> <repo-key>:<glob> [!<glob> ...] /<regex>/[flags] [mode] -->
+<!-- @anchor <CLAIM-ID> <repo-key>:<glob> [![<repo-key>:]<glob> ...] /<regex>/[flags] [mode] -->
 ```
 
 - `repo-key` is the registry key from `.multivac/config.yml`; `*` means
   every declared repo plus the brain.
+- An exclusion is repo-relative and bites everywhere the leg evaluates;
+  `!<repo-key>:<glob>` bites in that one repo only.
 - Dialect is POSIX ERE with `[[:space:]]`-style classes. `\s` `\b` `\d`
   `\w` are rejected at parse time.
 - Modes: `present` (default), `absent`, `unique`, `count=N`.

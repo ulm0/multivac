@@ -10,7 +10,7 @@ in doubt.
 One leg per line, an HTML comment directly under the claim's row:
 
 ```
-<!-- @anchor <CLAIM-ID> <repo-key>:<glob> [!<glob> ...] /<regex>/[flags] [mode] -->
+<!-- @anchor <CLAIM-ID> <repo-key>:<glob> [![<repo-key>:]<glob> ...] /<regex>/[flags] [mode] -->
 ```
 
 - **CLAIM-ID** is explicit, never inferred from proximity. It is the join
@@ -20,6 +20,12 @@ One leg per line, an HTML comment directly under the claim's row:
   brain itself.
 - **`!<glob>`** excludes, applied after the include. The surviving file set
   is what gets matched — and what counts toward vacuity.
+- **`!<repo-key>:<glob>`** excludes in that repo only. Bare exclusions are
+  repo-relative and bite in every repo the leg evaluates, so under `*` they
+  exempt the path's namesake everywhere. Qualify to exempt one repo —
+  `*:**.md !brain:07-rules.md /PIN/ absent` is "nowhere, except the page in
+  the brain that carries the tombstone". An undeclared repo key is a parse
+  error naming it; a qualifier in a single-repo leg is legal and redundant.
 - **Flags**: `i` only.
 - **mode**: `present` (default), `absent`, `unique`, `count=N`.
 

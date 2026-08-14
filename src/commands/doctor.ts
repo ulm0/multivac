@@ -22,7 +22,7 @@ import {
 } from '../adapters/detect.js';
 import { HOOKS_DIR, INACTIVE_FIX, findRunner } from '../hooks/install.js';
 import { collectBrainAnchors } from '../anchor/parse.js';
-import { makeMatcher } from '../lib/glob.js';
+import { excludeGlobs, makeMatcher } from '../lib/glob.js';
 
 const BEGIN = '<!-- multivac:begin -->';
 const label = (s: string): string => s.padEnd(11);
@@ -327,7 +327,7 @@ async function untrackedLine(brain: string, cfg: Config): Promise<string> {
     const scripts = await scriptText(s.dir);
     const matchers = anchors
       .filter((a) => s.keys.includes(a.repoKey))
-      .map((a) => makeMatcher(a.include, a.excludes));
+      .map((a) => makeMatcher(a.include, excludeGlobs(a.excludes, s.keys)));
     for (const f of files) {
       const why = buildCritical(f, scripts, (x) => matchers.some((m) => m(x)));
       if (why) flagged.push(`${f} (${s.name}, ${why})`);

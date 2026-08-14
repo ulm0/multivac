@@ -33,7 +33,7 @@ Anchors live inline in the markdown as HTML comments: invisible when
 rendered, greppable, no parallel file to drift. One leg per line:
 
 ```
-<!-- @anchor <CLAIM-ID> <repo>:<glob> [!<glob> …] /<regex>/[flags] [mode] -->
+<!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> …] /<regex>/[flags] [mode] -->
 ```
 
 - **The claim ID is explicit, never inferred** from proximity. It is the join
@@ -46,6 +46,14 @@ rendered, greppable, no parallel file to drift. One leg per line:
   dotfiles match. Not shell globbing, not a regex.
 - **`!<glob>` excludes**, applied after the include. The surviving file set
   is what gets matched — and what counts toward vacuity.
+- **`!<repo>:<glob>` excludes in that repo only.** A bare exclusion is
+  repo-relative and bites in every repo the leg evaluates — under `*` that
+  exempts the path's namesake everywhere, which is rarely what a tombstone
+  means. `*:**.md !brain:07-rules.md /PIN/ absent` says "nowhere, except the
+  page in the brain that carries the tombstone"; the same filename in another
+  repo is still checked. An exclusion naming an undeclared repo is a parse
+  error naming the key; qualifying one in a single-repo leg is legal and
+  redundant.
 - **Flags**: `i` only.
 - **One canonical regex dialect: POSIX ERE**, the lowest common engine —
   what macOS `git grep` actually executes. `\s`, `\b`, `\d`, `\w` are

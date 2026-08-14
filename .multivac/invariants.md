@@ -174,3 +174,10 @@ checks them on every commit.
 <!-- @anchor MV-34 brain:CODE_OF_CONDUCT.md /confidential issue/ present -->
 <!-- @anchor MV-34 brain:.gitlab/merge_request_templates/*.md /Claims made true/ present -->
 <!-- @anchor MV-34 brain:.gitlab/issue_templates/*.md /multivac doctor/ present -->
+| MV-35 | An anchor exclusion may name the repo it applies to — `!<repo>:<glob>` — and then bites only in that declared repo; the bare `!<glob>` keeps its meaning, repo-relative in every repo the leg evaluates. An exclusion naming an undeclared repo is a parse-stage diagnostic that names the key, never a silent no-op; a qualifier in a single-repo leg is legal and redundant. Exclusions still count toward vacuity: a leg whose exclusions remove every candidate file is vacuous. | specified | active | 2026-08-14 | [DESIGN.md](../DESIGN.md) |
+<!-- @anchor MV-35 brain:src/anchor/parse.ts /is not !<repo>:<glob>/ -->
+<!-- @anchor MV-35 brain:src/lib/glob.ts /export function excludeGlobs/ -->
+<!-- @anchor MV-35 brain:src/commands/verify.ts /excludes\.map/ -->
+<!-- @anchor MV-35 brain:test/anchor/parse.test.ts /an exclusion may name its repo/ -->
+<!-- @anchor MV-35 brain:test/verify/verify.test.ts /a qualified exclusion exempts one repo/ -->
+<!-- @anchor MV-35 brain:DESIGN.md /An exclusion may name its repo/ -->
