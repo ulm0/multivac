@@ -169,3 +169,8 @@ checks them on every commit.
 <!-- @anchor MV-33 brain:src/** !src/lib/banner.ts !src/commands/init.ts /banner/ absent -->
 <!-- @anchor MV-33 brain:test/init/banner.test.ts /never emitted by any other command/ -->
 <!-- @anchor MV-33 brain:test/init/banner.test.ts /NO_COLOR drops the colour, not the banner/ -->
+| MV-34 | Governance lives in the repo, not in someone's head: `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md` at the root, and GitLab's merge request and issue templates under `.gitlab/`, where GitLab reads them. | specified | active | 2026-08-14 | [CONTRIBUTING.md](../CONTRIBUTING.md) |
+<!-- @anchor MV-34 brain:CONTRIBUTING.md /## The loop/ present -->
+<!-- @anchor MV-34 brain:CODE_OF_CONDUCT.md /confidential issue/ present -->
+<!-- @anchor MV-34 brain:.gitlab/merge_request_templates/*.md /Claims made true/ present -->
+<!-- @anchor MV-34 brain:.gitlab/issue_templates/*.md /multivac doctor/ present -->
