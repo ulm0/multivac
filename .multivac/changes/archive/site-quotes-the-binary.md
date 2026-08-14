@@ -1,9 +1,9 @@
 ---
 slug: site-quotes-the-binary
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
