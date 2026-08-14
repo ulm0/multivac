@@ -98,7 +98,7 @@ repos:
     assert.equal(exit, 0);
     const sdd = line(lines, 'sdd');
     assert.match(sdd, /opsx: artifact missing/);
-    assert.match(sdd, /binary missing → npm i -g @openspec\/cli/);
+    assert.match(sdd, /binary missing → npm i -g @fission-ai\/openspec/);
     assert.match(sdd, /feature off until installed — not an error/);
   } finally {
     process.env.PATH = old;

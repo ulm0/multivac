@@ -4,7 +4,7 @@
 import { access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { delimiter, join } from 'node:path';
-import type { AdapterSpec } from './registry.js';
+import { doorTargets, type AdapterSpec } from './registry.js';
 
 export interface AdapterStatus {
   name: string;
@@ -81,8 +81,12 @@ export async function detectAdapters(dir: string): Promise<Detected> {
   if (await has('openspec')) d.sdd = 'opsx';
   else if (await has('.specify')) d.sdd = 'speckit';
   if (await has('graphify-out')) d.grapher = 'graphify';
-  if (await has('CLAUDE.md')) d.doors.push('claude');
-  if (await has('.cursor')) d.doors.push('cursor');
+  else if (await has('.codegraph')) d.grapher = 'codegraph';
+  // Door proposals come from the registry's own `detect` paths — a new
+  // harness is an entry there, never a branch here.
+  for (const [name, t] of Object.entries(doorTargets)) {
+    if (t.detect && (await has(t.detect))) d.doors.push(name);
+  }
   return d;
 }
 
