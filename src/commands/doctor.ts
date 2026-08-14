@@ -51,10 +51,14 @@ async function doorState(brain: string, name: string): Promise<string> {
   if (!t) {
     return `${name}: unknown target — known: ${Object.keys(doorTargets).join(', ')}; fix doors: in ${CONFIG_PATH}`;
   }
+  // A harness that reads AGENTS.md itself needs no projection: its state is
+  // the canonical door's state, and `init` is what writes that.
+  if (t.kind === 'unsupported') return `${name}: no door — ${t.reason}`;
+  const readsCanonical = t.kind === 'canonical' || t.kind === 'native';
   const p = join(brain, t.door);
   const st = await lstat(p).catch(() => null);
   if (!st) {
-    const fix = t.kind === 'canonical' ? 'multivac init .' : 'multivac doors';
+    const fix = readsCanonical ? 'multivac init .' : 'multivac doors';
     return `${name}: ${t.door} missing → run \`${fix}\``;
   }
   if (t.kind === 'symlink' && st.isSymbolicLink()) {
@@ -70,7 +74,7 @@ async function doorState(brain: string, name: string): Promise<string> {
   if (!text.includes(BEGIN)) {
     return `${name}: ${t.door} missing managed block → run \`multivac doors\``;
   }
-  return `${name}: ${t.door} ok`;
+  return `${name}: ${t.door} ok${t.kind === 'native' ? ' (read natively)' : ''}`;
 }
 
 async function sddLines(brain: string, cfg: Config): Promise<string[]> {
@@ -139,9 +143,12 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
     const art = await artifactPresent(spec, s.dir);
     let msg = `${s.name} @ ${s.scope}: `;
     if (!art) {
+      // Nothing on disk yet: the command that BUILDS the graph, which is not
+      // always the one that refreshes it.
+      const create = spec.create ?? spec.refresh;
       msg += bin
-        ? `artifact missing → run \`${spec.refresh}\` there`
-        : `artifact missing · binary missing → ${spec.installHint}, then \`${spec.refresh}\``;
+        ? `artifact missing → run \`${create}\` there`
+        : `artifact missing · binary missing → ${spec.installHint}, then \`${create}\``;
     } else if (!bin) {
       msg += `artifact ok · binary missing → ${spec.installHint} (graph cannot refresh)`;
     } else if (await graphStale(s.dir, spec)) {

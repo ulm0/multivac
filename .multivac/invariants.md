@@ -131,6 +131,12 @@ checks them on every commit.
 <!-- @anchor MV-27 brain:src/commands/change.ts /ritualChecklist\(brain\)/ -->
 <!-- @anchor MV-27 brain:src/commands/init.ts /RITUAL_TEMPLATE/ -->
 <!-- @anchor MV-27 brain:test/change/ritual.test.ts /prints nothing/ -->
+| MV-28 | Every harness multivac integrates with is a registry entry in `src/adapters/registry.ts`: `doors` and `doctor` dispatch on the entry's `kind`, never on its name, a `native` entry projects nothing beyond the canonical `AGENTS.md`, and an `unsupported` entry is refused with the reason recorded in the data. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+<!-- @anchor MV-28 brain:src/commands/doors.ts /target === '[a-z]+'/ absent -->
+<!-- @anchor MV-28 brain:src/commands/doors.ts /t.kind === 'unsupported'/ unique -->
+<!-- @anchor MV-28 brain:src/commands/doctor.ts /t.kind === 'native'/ -->
+<!-- @anchor MV-28 brain:src/adapters/registry.ts /kind: 'unsupported'/ -->
+<!-- @anchor MV-28 brain:test/doors/registry.test.ts /at least one honest gap/ -->
 | MV-32 | Everything multivac creates lives under `.multivac/` — the law, the changes and the machinery; `AGENTS.md` at the repo root is the only exception. `init` migrates a brain that still keeps them at the root, announcing every path before it moves it and using `git mv` so history follows, and it refuses rather than overwrite an occupied target. It never moves a file multivac did not write: a root `invariants.md` or `changes/` counts as multivac's only in a directory that already has `.multivac/config.yml` AND whose file parses as multivac's own law table or change file. Only two files that both parse as multivac's law are ambiguous, and that error names the one that wins; `doctor` reports the legacy layout with the command that fixes it and moves nothing itself. | specified | active | 2026-08-14 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-32 brain:src/lib/config.ts /LAW_PATH = '.multivac\/invariants.md'/ -->
 <!-- @anchor MV-32 brain:src/lib/config.ts /CHANGES_DIR = '.multivac\/changes'/ -->

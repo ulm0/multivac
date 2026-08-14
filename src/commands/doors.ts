@@ -43,43 +43,45 @@ function packageRoot(): string | null {
   }
 }
 
-/** CLAUDE.md -> AGENTS.md symlink. Returns a notice line, or null when done. */
-function linkClaudeMd(dir: string): string | null {
-  const link = join(dir, 'CLAUDE.md');
+/** <door> -> AGENTS.md symlink. Returns a notice line, or null when done. */
+function linkDoor(dir: string, door: string): string | null {
+  const link = join(dir, door);
   try {
     const st = lstatSync(link, { throwIfNoEntry: false });
     if (st?.isSymbolicLink()) {
       if (readlinkSync(link) === 'AGENTS.md') return null; // already ours
-      return 'CLAUDE.md is a symlink elsewhere — repoint it at AGENTS.md or remove it';
+      return `${door} is a symlink elsewhere — repoint it at AGENTS.md or remove it`;
     }
     if (st) {
-      return 'CLAUDE.md exists as a regular file — merge it into AGENTS.md and remove it to get the symlink';
+      return `${door} exists as a regular file — merge it into AGENTS.md and remove it to get the symlink`;
     }
     symlinkSync('AGENTS.md', link);
     return null;
   } catch {
-    return 'symlink not permitted on this platform — read AGENTS.md directly or enable developer mode';
+    return `symlink not permitted on this platform — read AGENTS.md directly, or enable developer mode to get ${door}`;
   }
 }
 
-/** claude target: symlink + packaged skill + settings.json hook entries. */
-async function projectClaude(dir: string, notices: string[]): Promise<void> {
-  const linkNotice = linkClaudeMd(dir);
-  if (linkNotice) notices.push(linkNotice);
-
+/** Copy the packaged skill to where the target's `skill` path says it lives. */
+function installSkill(dir: string, skill: string, notices: string[]): void {
   const root = packageRoot();
   const skillSrc = root ? join(root, 'skills', 'multivac') : null;
   if (skillSrc && existsSync(skillSrc)) {
-    cpSync(skillSrc, join(dir, '.claude', 'skills', 'multivac'), {
-      recursive: true,
-    });
+    cpSync(skillSrc, join(dir, dirname(skill)), { recursive: true });
   } else {
     notices.push(
       'packaged skill skills/multivac missing — reinstall multivac to get it',
     );
   }
+}
 
-  const settingsFile = join(dir, '.claude', 'settings.json');
+/** Merge multivac's session-start entry into the harness hook config. */
+async function installHookConfig(
+  dir: string,
+  path: string,
+  notices: string[],
+): Promise<void> {
+  const settingsFile = join(dir, path);
   try {
     const merged = mergeClaudeSettings(await readOrNull(settingsFile));
     await mkdir(dirname(settingsFile), { recursive: true });
@@ -98,27 +100,37 @@ async function projectInto(
   const notices: string[] = [];
   const doorFile = join(dir, 'AGENTS.md');
   await writeFile(doorFile, applyManagedBlock(await readOrNull(doorFile), body));
+  // Dispatch on the registry entry's kind, never on its name: a new harness
+  // is an entry in src/adapters/registry.ts and nothing else.
   for (const target of config.doors) {
-    if (target === 'agents') continue; // the canonical file, already written
-    if (target === 'claude') {
-      await projectClaude(dir, notices);
+    const t = doorTargets[target];
+    if (!t) {
+      notices.push(
+        `unknown door target "${target}" — known: ${KNOWN_TARGETS.join(', ')}`,
+      );
       continue;
     }
-    const t = doorTargets[target];
-    if (t?.kind === 'stub-with-frontmatter') {
-      // Tool-owned stub file: frontmatter first, then the managed block.
+    if (t.kind === 'unsupported') {
+      notices.push(`${target}: no door written — ${t.reason}`);
+      continue;
+    }
+    // canonical and native both read AGENTS.md, already written above.
+    if (t.kind === 'symlink') {
+      const linkNotice = linkDoor(dir, t.door);
+      if (linkNotice) notices.push(linkNotice);
+    } else if (t.kind === 'stub') {
+      // Tool-owned stub file: frontmatter where the format needs one, then
+      // the managed block.
       const file = join(dir, t.door);
       await mkdir(dirname(file), { recursive: true });
       const stub = applyManagedBlock(
         null,
         'Read `AGENTS.md` at the repo root — the multivac door: what is law here, where the brain lives. Run `multivac verify` before you commit.',
       );
-      await writeFile(file, `${t.frontmatter}\n\n${stub}`);
-      continue;
+      await writeFile(file, t.frontmatter ? `${t.frontmatter}\n\n${stub}` : stub);
     }
-    notices.push(
-      `unknown door target "${target}" — known: ${KNOWN_TARGETS.join(', ')}`,
-    );
+    if (t.skill) installSkill(dir, t.skill, notices);
+    if (t.hookConfig) await installHookConfig(dir, t.hookConfig.path, notices);
   }
   await installHooks(dir, { strictPrePush: config.strictPrePush });
   return notices;
