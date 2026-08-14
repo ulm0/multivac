@@ -33,11 +33,17 @@ law table and zero rows, `changes/`, `hooks/`, gitignored `cache/`); runs
 `git init` when the directory is not a repo; points `core.hooksPath` at
 `.multivac/hooks/` and writes the `pre-commit`/`pre-push` shims there.
 
-A brain from before the move — `invariants.md` or `changes/` still at the
-root — is migrated here, with `git mv` where the file is tracked, so history
-follows it; `init` says what it moved. A brain holding both layouts is
-refused: merge the root copy into `.multivac/` (or rename it, if it is your
-own content) and re-run.
+A brain from before the move — multivac's own `invariants.md` or `changes/`
+still at the root — is migrated here: `init` lists every path first, then
+moves each with `git mv` where the file is tracked, so history follows it, and
+never onto a path that already exists.
+
+Your own files are safe. A root `invariants.md` or `changes/` that is yours —
+anything that does not read as multivac's law table or change files — is never
+moved and never mentioned, in a brain or in an ordinary repo. Only two copies
+that both read as multivac's law are refused, and the message names the one
+multivac uses: merge the root copy into `.multivac/` and delete it, or rename
+it if it is yours to keep, then re-run.
 
 - `--agent a,b` — door targets beyond canonical `AGENTS.md`
   (e.g. `--agent claude,cursor`). Default is `agents` alone — no

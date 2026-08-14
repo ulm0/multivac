@@ -87,7 +87,7 @@ test('change: brain is a lifecycle repo key, declared or not', async () => {
   const brain = brainIsCode();
   const ctx = { cwd: brain };
   assert.equal(await change.run(['new', 'law-row', 'Law row'], ctx), 0);
-  const file = join(brain, 'changes/law-row.md');
+  const file = join(brain, '.multivac/changes/law-row.md');
   writeFileSync(
     file,
     readFileSync(file, 'utf8').replace(
@@ -119,7 +119,7 @@ test('change: brain is a lifecycle repo key, declared or not', async () => {
 test('verify: a brain==code entry scans the brain once, not twice', async () => {
   const brain = brainIsCode();
   writeFileSync(
-    join(brain, 'invariants.md'),
+    join(brain, '.multivac/invariants.md'),
     [
       '| ID | statement | authority | state | date | source |',
       '| --- | --- | --- | --- | --- | --- |',
@@ -168,7 +168,7 @@ test('a symlinked alias is the same tree: brain==code, and scanned once', async 
     'doors: [agents]\nrepos:\n  brain: .\n  alias: ../brain-link\n',
   );
   writeFileSync(
-    join(brain, 'invariants.md'),
+    join(brain, '.multivac/invariants.md'),
     [
       '| ID | statement | authority | state | date | source |',
       '| --- | --- | --- | --- | --- | --- |',

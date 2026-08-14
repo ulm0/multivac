@@ -207,7 +207,7 @@ test('doctor: untracked build-critical files are a warning, scratch notes are no
 test('doctor: package.json scripts and anchor globs make a file build-critical', async () => {
   const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-untracked2-')));
   writeFileSync(
-    join(eco.brain, 'invariants.md'),
+    join(eco.brain, '.multivac/invariants.md'),
     `# Invariants
 
 | ID | statement | authority | state | date | source |

@@ -343,7 +343,7 @@ function writeChange(
   claimIds: string[],
   opts: { status?: 'open' | 'archived'; dir?: string } = {},
 ): void {
-  const dir = join(brain, 'changes', opts.dir ?? '');
+  const dir = join(brain, '.multivac/changes', opts.dir ?? '');
   mkdirSync(dir, { recursive: true });
   writeFileSync(
     join(dir, `${slug}.md`),
@@ -383,7 +383,7 @@ test('untracked file: the hint is `git add`, not "fix the glob"', async () => {
   assert.match(out, /file exists but is untracked — `git add src\/pricing\.ts`/);
   assert.doesNotMatch(out, /fix the glob/);
   // and the correct glob is never self-healed away
-  assert.match(readFileSync(join(e.brain, 'invariants.md'), 'utf8'), /api:src\/pricing\.ts /);
+  assert.match(readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8'), /api:src\/pricing\.ts /);
 });
 
 test('untracked file: blocking modes say it too (absent tombstone)', async () => {
@@ -428,7 +428,7 @@ test('pendency is not self-heal: a pending claim never rewrites its glob', async
   assert.equal(code, 0);
   assert.match(out, /pending/);
   assert.doesNotMatch(out, /moved/);
-  assert.match(readFileSync(join(e.brain, 'invariants.md'), 'utf8'), /api:src\/app\/\*\.ts/);
+  assert.match(readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8'), /api:src\/app\/\*\.ts/);
 });
 
 test('a closed change confers nothing: archived and non-open claims still gate', async () => {

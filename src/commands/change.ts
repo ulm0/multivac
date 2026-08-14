@@ -355,7 +355,7 @@ async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number
     const st = states.get(id);
     say(
       st
-        ? `invariant ${id}: already in invariants.md (${st}) — not new; move it to touches, or pick a free id`
+        ? `invariant ${id}: already in ${LAW_PATH} (${st}) — not new; move it to touches, or pick a free id`
         : `invariant ${id}: new — add its row before close`,
     );
   }

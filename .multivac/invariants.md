@@ -75,12 +75,12 @@ checks them on every commit.
 <!-- @anchor MV-16 brain:src/lib/git.ts /--others/ -->
 <!-- @anchor MV-16 brain:src/anchor/evaluate.ts /file exists but is untracked/ -->
 <!-- @anchor MV-16 brain:test/verify/verify.test.ts /not "fix the glob"/ -->
-| MV-17 | A claim listed by an open `changes/<slug>.md` is pending: its failing legs report as pending naming that change, never block (not even under `--strict`, not even in a blocking mode), and are never chased by self-heal. A closed or archived change confers nothing. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+| MV-17 | A claim listed by an open `.multivac/changes/<slug>.md` is pending: its failing legs report as pending naming that change, never block (not even under `--strict`, not even in a blocking mode), and are never chased by self-heal. A closed or archived change confers nothing. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-17 brain:src/commands/verify.ts /openChangeClaims/ -->
 <!-- @anchor MV-17 brain:src/anchor/evaluate.ts /pendingBy/ -->
 <!-- @anchor MV-17 brain:test/verify/verify.test.ts /confers nothing/ -->
 | MV-18 | The lifecycle reports what it knows: `plan` checks `invariants.adds` against the law table the way it checks touches and retires; `land` records `--landed` against local evidence — the change branch contained in the default branch — and says "recording without evidence" when it has none; `close` ends by naming the commit that stores the archive. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
-<!-- @anchor MV-18 brain:src/commands/change.ts /already in invariants\.md/ -->
+<!-- @anchor MV-18 brain:src/commands/change.ts /already in \$\{LAW_PATH\}/ -->
 <!-- @anchor MV-18 brain:src/commands/change.ts /recording without evidence/ -->
 <!-- @anchor MV-18 brain:src/commands/change.ts /archived — commit this/ -->
 <!-- @anchor MV-18 brain:test/change/lifecycle-polish.test.ts /recording without evidence/ -->

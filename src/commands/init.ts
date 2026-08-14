@@ -6,7 +6,7 @@
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
-import { CHANGES_DIR, LAW_PATH, LEGACY, layoutError } from '../lib/config.js';
+import { CHANGES_DIR, LAW_PATH, layoutError, legacyLayout } from '../lib/config.js';
 import { lsFiles, run as git } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
@@ -146,15 +146,27 @@ async function isRepoRoot(dir: string): Promise<boolean> {
 
 /**
  * Brains written before the move keep the law and the changes at the root.
- * init is the migration: `git mv` where the file is tracked, so history
- * follows it; a plain rename otherwise. A brain holding both layouts is left
- * alone — only its author knows which copy is the law.
+ * init is the migration, and `legacyLayout` decides what it may touch: only
+ * multivac's own files, in a directory that is already a brain — never a
+ * same-named file the user wrote (see `looksLikeOurs`). It says every path
+ * before it moves any of them, `git mv`s where the file is tracked so history
+ * follows it, plain-renames otherwise, and never moves onto a path that
+ * exists: an occupied target is a refusal, not an overwrite.
  */
 async function migrateLegacy(dir: string): Promise<void> {
-  for (const [legacy, now] of LEGACY) {
+  const { moves, ambiguous } = await legacyLayout(dir);
+  // Half a migration is worse than none: with any pair unresolvable, the
+  // refusal below is the whole answer and nothing moves.
+  if (ambiguous || moves.length === 0) return;
+  say('init: this brain still keeps the pre-.multivac layout — moving, in order:');
+  for (const [legacy, now] of moves) say(`init:   ${legacy} -> ${now}`);
+  for (const [legacy, now] of moves) {
     const from = join(dir, legacy);
     const to = join(dir, now);
-    if (!(await exists(from)) || (await exists(to))) continue;
+    if (await exists(to)) {
+      warn(`init: ${now} appeared — leaving ${legacy} where it is, nothing overwritten`);
+      continue;
+    }
     const moved = await git(dir, ['mv', legacy, now]).then(
       () => true,
       () => false,

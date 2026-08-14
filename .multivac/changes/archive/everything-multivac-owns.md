@@ -9,15 +9,21 @@ landing_order:
 invariants:
   touches: []
   adds:
-    - MV-12
+    - MV-32
   retires: []
 claims:
-  - id: MV-12
+  - id: MV-32
     statement: Everything multivac creates lives under .multivac/ — the law, the
       changes and the machinery; AGENTS.md at the repo root is the only
-      exception. A brain still holding the law or changes/ at its root is
-      migrated by init and named by doctor; a brain holding both layouts is an
-      error.
+      exception. init migrates a brain that still keeps them at the root,
+      announcing every path before it moves it and using git mv so history
+      follows, and it refuses rather than overwrite an occupied target. It
+      never moves a file multivac did not write: a root invariants.md or
+      changes/ counts as multivac's only in a directory that already has
+      .multivac/config.yml AND whose file parses as multivac's own law table
+      or change file. Only two files that both parse as multivac's law are
+      ambiguous, and that error names the one that wins; doctor reports the
+      legacy layout with the command that fixes it and moves nothing itself.
 ---
 
 # Everything multivac owns lives in .multivac/
@@ -40,11 +46,16 @@ harnesses read it there.
 
 Migration, because an existing brain must not break: the layout check runs
 where every command already loads the brain (`loadConfig`). The old layout is
-refused with the one command that fixes it — `multivac init .`, which moves
-both with `git mv` so history follows — and a brain carrying both layouts is
-refused with the merge-or-rename instruction. `doctor` prints that line
-instead of a stack trace.
+refused with the one command that fixes it — `multivac init .`, which lists
+every path before moving it and uses `git mv` so history follows. `doctor`
+prints that line instead of a stack trace, and moves nothing itself.
 
-Anchors keep resolving against the repo tree, so a leg may point at the law's
-own path: MV-12 anchors `brain:.multivac/invariants.md`, which is the proof
-that the move did not break anchor path resolution.
+The trap the prover found: `invariants.md` and `changes/` are ordinary names.
+A first version keyed the migration on the name alone, so `mvac init .` in an
+ordinary repo that kept its own `changes/` `git mv`d the user's directory into
+`.multivac/`. Two conditions now gate every move — the directory is already a
+brain (`.multivac/config.yml`), *and* the content reads as multivac's own (the
+six-column law header, or a parseable change file) — and anything that fails
+either is left alone in silence. That is also why a brain whose author keeps
+their own root `invariants.md` is a healthy steady state and not an error:
+only two files that both read as multivac's law are ambiguous.

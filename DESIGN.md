@@ -572,11 +572,27 @@ files through the user's repo and made every path a judgement call. It is
 all live in one directory the user can ignore.
 
 A brain written before the move keeps the law and `changes/` at the root.
-`multivac init` migrates it (`git mv` where the file is tracked, so history
-follows), `doctor` names that command, and every other command refuses to read
-a half-moved brain — reading it as-is would find zero claims and pass. A brain
-holding **both** layouts is an error: which file is the law is not the tool's
-guess to make.
+`multivac init` migrates it: it prints every path it is about to move before
+it moves any of them, uses `git mv` where the file is tracked so history
+follows, and never moves onto a path that already exists. `doctor` names that
+command and moves nothing itself; every other command refuses to read a
+half-moved brain — reading it as-is would find zero claims and pass.
+
+**The migration never touches a file multivac did not write.** `invariants.md`
+and `changes/` are ordinary names and plenty of repos keep their own, so the
+name proves nothing and only two things together do: the directory is already
+a brain (`.multivac/config.yml` — it predates the move, so every brain has
+one) **and** the content reads as multivac's own — the law table's six-column
+header, or a `changes/` holding at least one parseable change file. An
+ordinary repo that happens to have either is left completely alone, silently:
+`init` scaffolds `.multivac/` beside their files and says nothing about them.
+
+That also settles the steady state. A brain whose author keeps their own
+`invariants.md` at the root next to `.multivac/invariants.md` is not an error
+and never reports as one. Only two files that **both** read as multivac's law
+are ambiguous, and that error names the one multivac uses and the one it
+ignores, with the merge-or-rename fix. Ambiguity moves nothing at all: half a
+migration is worse than none.
 
 ```yaml
 # .multivac/config.yml
@@ -839,9 +855,10 @@ repos:
 2. Writes **everything else under `.multivac/`**: `config.yml` (where the
    flags land), `invariants.md` (the law table with its format and zero
    rows), `changes/`, `hooks/`, and a gitignored `cache/`. A brain still
-   holding `invariants.md` or `changes/` at its root is **migrated** here
-   first, with `git mv` where it can, and says so; a brain holding both
-   layouts is refused.
+   holding **its own** `invariants.md` or `changes/` at the root is
+   **migrated** here first — every path announced, `git mv` where it can, no
+   move onto an existing path. Files that only share those names are never
+   touched; two copies that both read as multivac's law are refused.
 3. Runs **`git init`** when the directory is not already a git repo (the
    model is git-native; see "Where it runs").
 4. Points **`core.hooksPath`** at `.multivac/hooks/` and writes the

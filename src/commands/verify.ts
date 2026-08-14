@@ -48,7 +48,7 @@ const paint = (state: LegState, s: string): string =>
 /**
  * claim id -> slug of the open change declaring it. Declare-first is the
  * lifecycle's flow, so those claims are pending, not regressions. Only
- * `changes/<slug>.md` counts: `changes/archive/` is closed and confers
+ * `.multivac/changes/<slug>.md` counts: its `archive/` is closed and confers
  * nothing. A change file that will not parse is `change`'s diagnostic to
  * raise, never a reason for verify to say anything.
  */
