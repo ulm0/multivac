@@ -13,7 +13,7 @@ export function usageFor(c: Command): string[] {
 // anchor, nothing else; the long form lives in the site and the skill.
 const ANCHOR_HELP = `the anchor grammar — one leg per line, an HTML comment in a brain .md file:
 
-  <!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> ...] /<regex>/[i] [present|absent|unique|count=N] -->
+  <!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> ...] /<regex>/[i] [present|absent|unique|count=N|each|each!] -->
 
 regex   POSIX ERE only, flag "i" only. PCRE shorthands are rejected — translate:
           \\s -> [[:space:]]   \\d -> [[:digit:]]   \\w -> [[:alnum:]_]
@@ -28,11 +28,13 @@ globs   picomatch over repo-relative paths: ** crosses directories, {a,b}
         are the way to alternate paths. !<glob> excludes in every repo the leg
         sees; !<repo>:<glob> excludes in that declared repo only.
 
-modes   present (default) · absent · unique · count=N
-        absent and count block by default; present and unique gate only under
-        --strict. count=N counts matches across ALL files the glob matches —
-        a deletion ratchet, never a universal: it catches removal, not a new
-        file that omits the pattern.
+modes   present (default) · absent · unique · count=N · each · each!
+        absent, count and each block by default; present and unique gate only
+        under --strict. count=N counts matches across ALL files the glob
+        matches — a deletion ratchet, never a universal: it catches removal,
+        not a new file that omits the pattern. each is the universal: EVERY
+        matched file must contain a match (each!: must contain none) — the
+        failing files are named, and a glob matching zero files fails.
 
 where   anchors live in the brain: any root *.md, .multivac/*.md
         (invariants.md), .multivac/changes/*.md. Lines inside \`\`\` fences or

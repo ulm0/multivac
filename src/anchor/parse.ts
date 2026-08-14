@@ -19,7 +19,7 @@ export interface ParseResult {
 }
 
 const GRAMMAR =
-  '<!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> ...] /<regex>/[i] [present|absent|unique|count=N] -->';
+  '<!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> ...] /<regex>/[i] [present|absent|unique|count=N|each|each!] -->';
 
 /** The glob dialect, named wherever a glob is rejected — it is not shell. */
 const GLOB_DIALECT =
@@ -124,15 +124,22 @@ export function parseAnchors(text: string, file: string): ParseResult {
     }
     let mode: Mode = 'present';
     let count: number | undefined;
+    let negated: boolean | undefined;
     if (modeTok !== undefined) {
       const cnt = modeTok.match(/^count=(\d+)$/);
       if (cnt) {
         mode = 'count';
         count = Number(cnt[1]);
+      } else if (modeTok === 'each' || modeTok === 'each!') {
+        // The universal quantifier. `!` negates the predicate — the same
+        // sigil that negates a glob in exclusions — one token, so the mode
+        // slot stays a single word and the rejects stay loud.
+        mode = 'each';
+        negated = modeTok === 'each!';
       } else if (modeTok === 'present' || modeTok === 'absent' || modeTok === 'unique') {
         mode = modeTok;
       } else {
-        bad(`unknown mode "${modeTok}" — use present, absent, unique or count=N`);
+        bad(`unknown mode "${modeTok}" — use present, absent, unique, count=N, each or each!`);
         continue;
       }
     }
@@ -145,6 +152,7 @@ export function parseAnchors(text: string, file: string): ParseResult {
       regexFlags,
       mode,
       count,
+      negated,
       file,
       line,
     });

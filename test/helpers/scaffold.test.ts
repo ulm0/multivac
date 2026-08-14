@@ -35,7 +35,7 @@ test('config loads with defaults and bare-string repo shorthand', async () => {
   const cfg = await loadConfig(eco.brain);
   assert.equal(cfg.sddAuto, true);
   assert.equal(cfg.mount, '.brain');
-  assert.deepEqual(cfg.blocking, ['absent', 'count']);
+  assert.deepEqual(cfg.blocking, ['absent', 'count', 'each']);
   assert.deepEqual(cfg.repos.api, { path: '../acme-api' });
   assert.equal(cfg.repos.web?.path, '../acme-web');
 });

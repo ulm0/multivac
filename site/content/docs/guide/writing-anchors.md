@@ -42,7 +42,8 @@ drift:
   An exclusion naming an undeclared repo is a parse error naming the key;
   qualifying an exclusion in a single-repo leg is legal and redundant.
 - **Flags**: `i` only.
-- **mode**: `present` (default), `absent`, `unique`, `count=N`.
+- **mode**: `present` (default), `absent`, `unique`, `count=N`, `each`,
+  `each!`.
 - **One include glob per leg.** Alternate paths with braces —
   `api:{src,lib}/**/*.ts` — never with a second glob; only exclusions repeat.
 - The whole grammar is one screen away: `mvac help anchor`. Before pinning a
@@ -89,9 +90,16 @@ Translate:
   "was built this way", never "still is"; `unique`/`count` conflate history
   with HEAD. Over migrations either target the latest definition of the
   object, or use `count=N` as the ratchet.
+- **`count=N` is a deletion ratchet, never a universal.** It counts matches
+  across ALL files the glob matches: it catches removal, not a new file
+  that omits the pattern. Measurement 2 proved it by injection — a
+  `privileged: true` rogue container added to a default k8s manifest left
+  fifteen anchors green at exit 0. "For every file, P" is `each`; "for no
+  file, P" is `each!` — quantified per file, failing files named.
 - **Vacuous globs fail loudly.** A glob matching zero tracked files is a
-  blocking failure for `absent`/`count` — a directory rename must not
-  silently green a tombstone — and broken for `present`/`unique`:
+  blocking failure for `absent`/`count`/`each` — a directory rename must not
+  silently green a tombstone, and a universal over nothing proves nothing —
+  and broken for `present`/`unique`:
 
   ```txt
   vacuous   INV-01 [absent] .multivac/invariants.md:7 · glob matched no tracked files — a rename greens this tombstone silently; fix the glob
@@ -123,11 +131,38 @@ only when there is none, and expect churn.
 | a dead mechanism stays dead — the tombstone | `absent` |
 | a single source of a value | `unique` |
 | "never again" over append-only history; a sanctioned exception stays the only one | `count=N` |
+| every matched file satisfies the rule ("every manifest declares limits") | `each` |
+| no matched file carries the pattern, and the offender is named per file | `each!` |
 
-`absent` and `count` block; `present` and `unique` report. Put the teeth in
-the blocking modes and let `present` document the enactment. Without that
-asymmetry every refactor turns the check red and someone disables the tool
-in week three — lint-family tools die of noise, not of bugs.
+`absent`, `count` and `each` block; `present` and `unique` report. Put the
+teeth in the blocking modes and let `present` document the enactment. Without
+that asymmetry every refactor turns the check red and someone disables the
+tool in week three — lint-family tools die of noise, not of bugs.
+
+### The universal: `each` and `each!`
+
+`each` holds iff **every** file the glob matches (after exclusions) contains
+at least one match; `each!` iff every such file contains none. A violation is
+a hard failure and the failing files are **named**, first few + count:
+
+```txt
+broken    INV-90 [each] .multivac/invariants.md:9 · each: 1 of 4 files lack the pattern (k8s/rogue.yaml) — add it there, or exclude the file with !<glob>
+```
+
+Exempt a sanctioned file with an exclusion (`!api:k8s/debug.yaml`). Inside
+matched `.sql` files the per-statement normalization applies as everywhere
+else. Plain `absent` also says "nowhere in the glob"; reach for `each!` when
+the report must name the offending file and an empty glob must fail. What
+`each` cannot say — deliberately — is a **cross-file relation** ("the
+vendored copy equals the root copy", "the env var matches the
+containerPort"). That is a different primitive, not a quantifier; leave such
+claims unanchored rather than fake them.
+
+```markdown
+| INV-90 | Every deployment is confined: limits declared, never privileged. | published | active | 2026-08-14 | map |
+<!-- @anchor INV-90 api:k8s/*.yaml /limits:/ each -->
+<!-- @anchor INV-90 api:k8s/*.yaml /privileged:[[:space:]]*true/ each! -->
+```
 
 ## The legs pattern
 

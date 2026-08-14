@@ -224,3 +224,11 @@ checks them on every commit.
 <!-- @anchor MV-42 brain:src/commands/verify.ts /ABOVE the summary/ -->
 <!-- @anchor MV-42 brain:test/verify/verify.test.ts /a drift row never gates/ -->
 <!-- @anchor MV-42 brain:site/content/docs/reference/commands.md /drift/ -->
+| MV-43 | `each` is the universal quantifier: a leg in mode `each` holds iff every file its glob matches (after exclusions) contains at least one match, and `each!` iff every such file contains none. A glob matching zero tracked files is a blocking failure (a universal over nothing proves nothing), the failing files are named in the report (first few + count), `.sql` files match per normalized statement as everywhere else, and both forms gate by default alongside `absent` and `count` — `count=N` stays a deletion ratchet and the docs say which measured claims still need the cross-file relation that deliberately does not exist. | specified | active | 2026-08-14 | [changes/each-file-answers.md](changes/each-file-answers.md) |
+<!-- @anchor MV-43 brain:src/anchor/parse.ts /modeTok === 'each!'/ -->
+<!-- @anchor MV-43 brain:src/anchor/evaluate.ts /case 'each':/ -->
+<!-- @anchor MV-43 brain:src/anchor/evaluate.ts /over nothing proves nothing/ -->
+<!-- @anchor MV-43 brain:src/lib/config.ts /'absent', 'count', 'each'/ -->
+<!-- @anchor MV-43 brain:src/commands/help.ts /each is the universal/ -->
+<!-- @anchor MV-43 brain:test/verify/each.test.ts /rogue container/ -->
+<!-- @anchor MV-43 brain:site/content/docs/guide/writing-anchors.md /cross-file relation/ -->

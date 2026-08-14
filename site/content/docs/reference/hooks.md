@@ -190,14 +190,15 @@ Every rung runs the same `verify`, so the policy is the same everywhere:
 | --- | --- | --- |
 | broken/vacuous `absent` — a tombstone | **blocks** | blocks |
 | broken/vacuous `count` | **blocks** | blocks |
+| broken/vacuous `each` / `each!` — a universal | **blocks** | blocks |
 | broken `present` / `unique` | informs, exit 0 | **blocks** |
 | `moved` — self-healed rename | informs, exit 0 | informs, exit 0 |
 | `unevaluated` — repo not on disk | informs, exit 0 | informs, exit 0 |
 | a row in the `proposed` state | informs, exit 0 | informs, exit 0 |
 | anchor parse error | **blocks** | blocks |
 
-The blocking set is the `blocking:` key, default `[absent, count]`. You can
-widen it; you cannot drop `absent`. See
+The blocking set is the `blocking:` key, default `[absent, count, each]`. You
+can widen it; you cannot drop `absent`. See
 [Configuration](../configuration#blocking).
 
 The asymmetry is the whole design. A mid-refactor commit that moved a file
@@ -210,7 +211,7 @@ notices by hand.
 
 ```yaml
 # .multivac/config.yml
-blocking: [absent, count]   # the default: tombstones gate, renames do not
+blocking: [absent, count, each]   # the default: tombstones and universals gate, renames do not
 strict_pre_push: true       # pushes gate like CI, commits stay permissive
 ```
 

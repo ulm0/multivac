@@ -38,6 +38,35 @@ test('parses the full grammar: legs, excludes, flags, modes', () => {
   assert.equal(e.mode, 'unique');
 });
 
+test('each and each! parse: one mode, the ! carries the polarity', () => {
+  const { anchors, diagnostics } = parseAnchors(
+    [
+      '<!-- @anchor INV-1 api:k8s/*.yaml /limits:/ each -->',
+      '<!-- @anchor INV-1 api:k8s/*.yaml /privileged:[[:space:]]*true/ each! -->',
+    ].join('\n'),
+    'f.md',
+  );
+  assert.deepEqual(diagnostics, []);
+  assert.equal(anchors.length, 2);
+  assert.equal(anchors[0].mode, 'each');
+  assert.equal(anchors[0].negated, false);
+  assert.equal(anchors[1].mode, 'each');
+  assert.equal(anchors[1].negated, true);
+});
+
+test('near-each spellings are loud rejects naming the real modes', () => {
+  for (const tok of ['each=2', 'every', '!each', 'each!!']) {
+    const { anchors, diagnostics } = parseAnchors(
+      `<!-- @anchor INV-1 api:k8s/*.yaml /x/ ${tok} -->`,
+      'f.md',
+    );
+    assert.equal(anchors.length, 0, tok);
+    assert.equal(diagnostics.length, 1, tok);
+    assert.match(diagnostics[0].message, /unknown mode/, tok);
+    assert.match(diagnostics[0].message, /each or each!/, tok);
+  }
+});
+
 test('PCRE shorthand is a diagnostic with a translation hint, never a skip', () => {
   const { anchors, diagnostics } = parseAnchors(
     'x\n<!-- @anchor INV-1 api:db/** /\\snope/ absent -->\n',
