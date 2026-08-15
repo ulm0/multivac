@@ -54,11 +54,36 @@ test('two applies in one checkout: two live worktrees, edits invisible to each o
   assert.equal(gitOut(wt('beta', 'api'), 'status', '--porcelain'), '');
 });
 
-test('close removes the worktree it created', async () => {
+test('close removes the worktree, and its printed commands touch only the closing slug', async () => {
   assert.equal(await change.run(['land', 'beta', '--landed', 'api'], ctx), 0);
-  assert.equal(await change.run(['close', 'beta'], ctx), 0);
+  const lines: string[] = [];
+  const orig = console.log;
+  console.log = (l: string) => lines.push(String(l));
+  let code: number;
+  try {
+    code = await change.run(['close', 'beta'], ctx);
+  } finally {
+    console.log = orig;
+  }
+  assert.equal(code, 0);
   assert.ok(!existsSync(wt('beta', 'api')));
   assert.ok(existsSync(wt('alpha', 'api')), 'the other change keeps its worktree');
+  // scoped: beta's paths named one by one — alpha, open in the same checkout,
+  // is never swept into beta's commit by an `add -A`
+  const out = lines.join('\n');
+  assert.match(
+    out,
+    /add -- \.multivac\/changes\/archive\/beta\.md \.multivac\/changes\/beta\.md \.multivac\/invariants\.md/,
+  );
+  assert.doesNotMatch(out, /add -A/);
+  assert.doesNotMatch(out, /alpha/);
+  // no origin remote in the fixture: the direct commit is the landing, and
+  // close says so instead of pretending there is an MR to open
+  assert.match(out, /no origin remote — the direct commit is the landing/);
+  // follow the printed command, the way the author would
+  execFileSync('git', ['-C', eco.brain, 'add', '--',
+    '.multivac/changes/archive/beta.md', '.multivac/changes/beta.md', '.multivac/invariants.md']);
+  execFileSync('git', ['-C', eco.brain, 'commit', '-q', '-m', 'Archive the beta change']);
 });
 
 test('no worktree available: a tree holding another change\'s work is refused, not switched', async () => {
@@ -84,7 +109,7 @@ test('no worktree available: a tree holding another change\'s work is refused, n
   assert.equal(gitOut(eco.repos.web, 'rev-parse', '--abbrev-ref', 'HEAD'), 'gamma');
 });
 
-test('new allocates distinct ids under a genuine race', async () => {
+test('new allocates distinct ids under a genuine race, both rows committed', async () => {
   const before = (await readLaw(eco.brain))!;
   const expected = nextFreeId(before.rows);
   const [a, b] = await Promise.all([
@@ -99,14 +124,44 @@ test('new allocates distinct ids under a genuine race', async () => {
   assert.equal(two.length, 1);
   assert.notEqual(one[0], two[0], 'two concurrent `new` runs must not claim the same id');
   assert.ok([one[0], two[0]].includes(expected));
-  // both reservations are in the law table, proposed, naming their change
-  const law = readFileSync(join(eco.brain, '.multivac/invariants.md'), 'utf8');
+  // both rows committed: the ledger keeps itself — the shared tree is clean
+  // at the bookkeeping paths, and HEAD's table carries both reservations
+  assert.equal(
+    gitOut(eco.brain, 'status', '--porcelain', '--',
+      '.multivac/invariants.md', '.multivac/changes/race-one.md', '.multivac/changes/race-two.md'),
+    '',
+    'new leaves no bookkeeping floating in the shared checkout',
+  );
+  const law = gitOut(eco.brain, 'show', 'HEAD:.multivac/invariants.md');
+  const subjects = gitOut(eco.brain, 'log', '--format=%s', '-4');
   for (const [id, slug] of [[one[0], 'race-one'], [two[0], 'race-two']] as const) {
     const row = law.split('\n').find((l) => l.trim().startsWith(`| ${id} |`));
-    assert.ok(row, `${id} has a row`);
+    assert.ok(row, `${id} has a committed row`);
     assert.match(row, /\| proposed \|/);
     assert.match(row, new RegExp(`changes/${slug}\\.md`));
+    assert.match(subjects, new RegExp(`change open: ${slug} — reserves ${id}`));
+    assert.notEqual(gitOut(eco.brain, 'show', `HEAD:.multivac/changes/${slug}.md`), '');
   }
+});
+
+test('new refuses a tree that is dirty at the bookkeeping paths, naming the command', async () => {
+  writeFileSync(join(eco.brain, '.multivac/invariants.md'),
+    readFileSync(join(eco.brain, '.multivac/invariants.md'), 'utf8') + '\n<!-- floating edit -->\n');
+  const lines: string[] = [];
+  const orig = console.error;
+  console.error = (l: string) => lines.push(String(l));
+  let code: number;
+  try {
+    code = await change.run(['new', 'blocked-open', 'Blocked'], ctx);
+  } finally {
+    console.error = orig;
+  }
+  assert.equal(code, 1);
+  const msg = lines.join('\n');
+  assert.match(msg, /bookkeeping paths carry uncommitted edits: \.multivac\/invariants\.md/);
+  assert.match(msg, /git -C .* add -- \.multivac\/invariants\.md && git commit/);
+  assert.ok(!existsSync(join(eco.brain, '.multivac/changes/blocked-open.md')), 'nothing scaffolded');
+  execFileSync('git', ['-C', eco.brain, 'checkout', '--', '.multivac/invariants.md']);
 });
 
 test('a declared id another change reserved fails plan, loudly', async () => {
@@ -142,6 +197,10 @@ test('close keeps a reservation whose rule has been stated', async () => {
   assert.equal(await change.run(['close', 'kept-one'], ctx), 0);
   const law = readFileSync(lawPath, 'utf8');
   assert.ok(law.includes(`| ${id} |`), 'a stated rule survives close, anchored or not');
+  // run the commit close printed: the next new refuses a tree dirty at the
+  // bookkeeping paths — close→new serializes through this commit by design.
+  execFileSync('git', ['-C', eco.brain, 'add', '-A'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', eco.brain, 'commit', '-q', '-m', 'Archive the kept-one change'], { stdio: 'ignore' });
 });
 
 test('close keeps a reservation anchored in the change file it archives', async () => {

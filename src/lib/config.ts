@@ -8,6 +8,18 @@ import type { Config, Mode, RepoEntry } from '../types.js';
 
 export class ConfigError extends Error {}
 
+// THE source of truth for the anchor mode vocabulary. Code derives from it or
+// from `Mode` in src/types.ts, but prose quotes the list by hand. Adding a
+// mode, walk this checklist — every quoter, then `pnpm test` + `verify --strict`:
+//   src/types.ts (Mode union)      src/anchor/parse.ts (GRAMMAR + mode reject)
+//   src/commands/help.ts           src/commands/count.ts (usage + summary)
+//   DESIGN.md                      site/content/_index.md
+//   site/content/docs/guide/writing-anchors.md
+//   site/content/docs/concepts/claims-and-anchors.md
+//   site/content/docs/reference/commands.md
+//   site/content/docs/reference/configuration.md
+//   site/content/docs/reference/hooks.md
+//   skills/multivac/references/anchors.md
 const MODES: Mode[] = ['present', 'absent', 'unique', 'count', 'each'];
 // Everything multivac creates lives here. AGENTS.md at the root is the one
 // exception: harnesses read it there.

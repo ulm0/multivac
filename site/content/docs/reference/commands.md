@@ -353,6 +353,13 @@ a PCRE shorthand, or an unknown repo key is a usage answer, exit 2. Quote the
 spec — it is one argument. `*` as the repo key counts across every declared
 repo plus the brain, each file prefixed with its repo key.
 
+With a trailing `each` or `each!` the leg is the per-file universal, and the
+breakdown changes to match: **every** file the glob matches is listed —
+including the zero-match files the universal would fail on — and the summary
+names the failing side (`3 of 5 tracked files match — each would fail on 2
+files (the ones without a match)`; for `each!`, the ones **with** a match).
+There is no ratchet line: `each` has no count to pin.
+
 ## `doors`
 
 Takes **no flags.** Anything after `doors` is ignored.
@@ -462,7 +469,7 @@ unknown subcommand "pull" — usage: multivac repos [sync [--shallow]]
 ```txt
 $ mvac change
 multivac change <sub> <slug> [args]
-  new "<title>"          scaffold .multivac/changes/<slug>.md + reserve the next invariant id
+  new "<title>"          scaffold .multivac/changes/<slug>.md + reserve the next invariant id (one commit)
   new <slug> "<title>"   same, with an explicit slug
   plan <slug>            resolve repos, landing graph, reserve declared ids, claims
   apply <slug>           worktree per repo (greenfield repos get created)
@@ -484,8 +491,13 @@ derives `points-expire`.
 
 ```txt
 $ mvac change new "points expire"
+committed: change open: points-expire — reserves INV-02
 created .multivac/changes/points-expire.md — declare repos, landing_order, invariants, claims
 reserved INV-02 — proposed row in .multivac/invariants.md, declared in invariants.adds; drop it from both if this change adds no law
+three edits before plan:
+  1. repos: { api: { status: planned } }        # status: planned|branched|committed|mr|landed
+  2. landing_order: [[api]]                     # stages; earlier stages land first
+  3. claims: [{ id: INV-02, statement: "..." }]  # what close verifies
 ```
 
 Refuses to overwrite an existing change file (exit 1). It also takes the next
@@ -495,6 +507,18 @@ never gates `verify`, and `close` releases the reservation if the change never
 used it — used meaning the rule was stated in place of the scaffolded RESERVED
 text, or an anchor names the ID. Then runs the SDD `propose` step, if one is
 declared and `sdd_auto` is on.
+
+The scaffolded declaration and the reserved row land as **one commit on the
+current branch** (message `change open: <slug> — reserves <ID>`): the shared
+tree stays clean, pulls are never blocked on lifecycle edits, and a concurrent
+`new` reads the committed table. A tree already dirty at the two bookkeeping
+paths is refused with the exact command that unblocks it:
+
+```txt
+cannot open points-expire — bookkeeping paths carry uncommitted edits: .multivac/invariants.md
+  commit them first: git -C /home/you/brain add -- .multivac/invariants.md && git commit
+  then re-run: multivac change new points-expire "points expire"
+```
 
 ### `plan`
 
@@ -522,6 +546,7 @@ missing.
 
 ```txt
 $ mvac change apply points-expire
+committed: change apply: points-expire — status branched
 api: branched points-expire from main 58383ca — local main is ahead of origin/main
 api: worktree /home/you/brain/.multivac/worktrees/points-expire/api
 payments: created /home/you/payments — git init, door written, first commit
@@ -562,8 +587,10 @@ place instead:
 api: no worktree available — branching in place
 ```
 
-The change's own declaration file rides into whichever checkout apply hands
-back — `apply` wrote it, so it is never a reason to abort. Anything **else**
+The change's bookkeeping — the declaration file, the reserved row, the status
+bump — is **committed before any branch is made** (`committed: change apply:
+<slug> — status branched`), so every checkout apply hands back inherits it
+from the base; nothing rides across a switch uncommitted. Anything **else**
 uncommitted in a tree apply would switch is refused by name, with the command
 that parks it:
 
@@ -648,7 +675,7 @@ printed verbatim.
 $ mvac change close points-expire
 INV-07: ok
 archived -> .multivac/changes/archive/points-expire.md
-archived — commit this: git -C /home/you/brain add -A .multivac/changes && git commit -m "Archive the points-expire change"
+archived — commit this: git -C /home/you/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/api)
 payments: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/payments)
 graph: refresh with `graphify update .` in the changed repos
@@ -657,6 +684,26 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] tell support before the flag flips
   - [ ] the public site ships before the backend
 ```
+
+The printed commit is **scoped to the closing change's paths** — the archived
+file, the old change path, and the law table when a reservation was released —
+never `add -A`, which in a shared checkout would sweep another change's files
+into this archive commit. Where the commit lands depends on where the brain is
+standing, and the wording says which case you are in:
+
+- on a working branch: `archived — commit this on <branch> (it lands through
+  that branch's MR): git -C <brain> add -- <paths> && git commit -m "..."`
+- on the trunk of a brain **with** a remote, nothing lands directly — the
+  recipe is branch + MR:
+
+  ```txt
+  archived — commit this on a branch; nothing lands on main directly:
+    git -C /home/you/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
+    then open MR close-points-expire -> main
+  ```
+
+- a solo brain with **no** origin remote is told the direct commit IS the
+  landing (the sample above) — there is no MR to open.
 
 The archive is a rename in the working tree like any other edit, so `close`
 names the commit that stores it rather than leaving it to be noticed later.

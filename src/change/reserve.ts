@@ -76,11 +76,16 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
 /**
  * Exclusive across processes: O_EXCL create is the one primitive that is.
  * Without it two runs read the same table and pick the same ID — the exact
- * collision this exists to stop.
+ * collision this exists to stop. Exported so `change new` can reserve AND
+ * commit under one lock: two racing `new` runs would otherwise collide on
+ * git's own index.lock.
  */
-async function withLock<T>(brain: string, fn: () => Promise<T>): Promise<T> {
+export async function withLawLock<T>(brain: string, fn: () => Promise<T>): Promise<T> {
   const lock = `${lawPath(brain)}.lock`;
-  for (let i = 0; i < 50; i++) {
+  // The critical section now includes the bookkeeping commit — git
+  // subprocesses under load can hold the lock well past a second, so the
+  // waiter gets ten before it accuses anyone of being stuck.
+  for (let i = 0; i < 500; i++) {
     try {
       await writeFile(lock, `${process.pid}\n`, { flag: 'wx' });
     } catch (e) {
@@ -140,32 +145,39 @@ export async function reserveId(
   slug: string,
   want?: string,
 ): Promise<Reservation> {
-  return withLock(brain, async () => {
-    const law = await readLaw(brain);
-    if (!law) {
+  return withLawLock(brain, () => reserveIdLocked(brain, slug, want));
+}
+
+/** The body of `reserveId`, for callers already holding the law lock. */
+export async function reserveIdLocked(
+  brain: string,
+  slug: string,
+  want?: string,
+): Promise<Reservation> {
+  const law = await readLaw(brain);
+  if (!law) {
+    throw new ChangeError(
+      `no ${LAW_PATH} in ${brain} — the brain has no law table to allocate from; run \`multivac init\``,
+    );
+  }
+  const id = want ?? nextFreeId(law.rows);
+  const existing = law.rows.find((r) => r.id === id);
+  if (existing) {
+    if (!owns(existing, slug) && existing.state === 'proposed') {
       throw new ChangeError(
-        `no ${LAW_PATH} in ${brain} — the brain has no law table to allocate from; run \`multivac init\``,
+        `invariant ${id} is reserved by another change (${
+          existing.source || 'unnamed'
+        }) — declare ${nextFreeId(law.rows)} instead, in ${changeRel(slug)} and in its anchors`,
       );
     }
-    const id = want ?? nextFreeId(law.rows);
-    const existing = law.rows.find((r) => r.id === id);
-    if (existing) {
-      if (!owns(existing, slug) && existing.state === 'proposed') {
-        throw new ChangeError(
-          `invariant ${id} is reserved by another change (${
-            existing.source || 'unnamed'
-          }) — declare ${nextFreeId(law.rows)} instead, in ${changeRel(slug)} and in its anchors`,
-        );
-      }
-      return { id, written: false, state: existing.state };
-    }
-    const date = new Date().toISOString().slice(0, 10);
-    const row =
-      `| ${id} | RESERVED by change ${slug} — state the rule here before close. ` +
-      `| open | proposed | ${date} | [${lawRelChange(slug)}](${lawRelChange(slug)}) |`;
-    await writeLaw(brain, insertRow(law.text, row));
-    return { id, written: true };
-  });
+    return { id, written: false, state: existing.state };
+  }
+  const date = new Date().toISOString().slice(0, 10);
+  const row =
+    `| ${id} | RESERVED by change ${slug} — state the rule here before close. ` +
+    `| open | proposed | ${date} | [${lawRelChange(slug)}](${lawRelChange(slug)}) |`;
+  await writeLaw(brain, insertRow(law.text, row));
+  return { id, written: true };
 }
 
 /**
@@ -180,7 +192,7 @@ export async function releaseUnused(
   slug: string,
   anchored: Set<string>,
 ): Promise<string[]> {
-  return withLock(brain, async () => {
+  return withLawLock(brain, async () => {
     const law = await readLaw(brain);
     if (!law) return [];
     const dead = new Set(

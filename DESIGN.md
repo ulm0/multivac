@@ -104,7 +104,7 @@ five subcommands read and write, across days and machines. `change close`
 re-runs `verify` **scoped to the declared claims**; on success the file is
 archived, not deleted.
 
-### Two changes at once do not collide (MV-25, MV-26)
+### Two changes at once do not collide (MV-25, MV-26, MV-46)
 
 The premise is agents working an ecosystem, often several at the same time, and
 two of them in one checkout used to overwrite each other. Two rules keep them
@@ -117,8 +117,8 @@ apart, both mechanical:
   cannot make one, apply says so and falls back to the same in-place switch it
   has always used, which **refuses** a tree whose uncommitted work the switch
   would overwrite (MV-13) instead of carrying it onto the wrong branch. The
-  change's own declaration file is the exception: apply wrote it, so apply
-  carries it — into the worktree, or across the switch.
+  change's bookkeeping is committed before the branch exists, so every checkout
+  inherits it from the base — nothing rides across uncommitted.
 - **A reserved ID per change.** Invariant IDs are allocated by the tool, not by
   hand: `change new` takes the next free ID from the law table and writes it
   back immediately as a `proposed` row naming the change; `plan` reserves the
@@ -128,8 +128,18 @@ apart, both mechanical:
   The read-append-write runs under an exclusive `.multivac/invariants.md.lock`
   (`wx` — atomic across processes); an unused reservation — still carrying the
   scaffolded RESERVED statement and anchored nowhere — is released at close.
-  Its ceiling: reservations are visible to whoever shares the brain checkout,
-  which is where `new` and `plan` run — not across unmerged branches.
+  The row and the scaffolded declaration land as one commit on the current
+  branch (`change open: <slug> — reserves <ID>`), so the shared tree stays
+  clean and a concurrent `new` reads the committed table. Its ceiling:
+  reservations are visible where their commit is — not across unmerged
+  branches.
+- **The ledger keeps itself (MV-46).** Nothing the lifecycle writes floats
+  uncommitted in the shared checkout: `new` refuses a tree dirty at the
+  bookkeeping paths (with the exact command), `apply` commits the status bump
+  before branching, and every command `close` prints is scoped to the closing
+  slug's paths. On a trunk with a remote, close prints the branch+MR variant —
+  nothing lands on the trunk directly; only a solo brain with no origin is
+  told the direct commit IS the landing, because there is no MR to open.
 
 ### The fourth field closes the loop
 

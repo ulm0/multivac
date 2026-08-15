@@ -1,11 +1,11 @@
 // `change apply` in a brain that has never been pushed: the base is the newer
 // of local main and origin/main (printed, with why), and the change's own
-// declaration file rides onto the branch instead of aborting the switch.
+// bookkeeping — committed by `new` and by apply's status-bump commit — is
+// inherited from the base by every checkout apply hands back.
 //
 // Since MV-25 the branch lands in a per-change worktree, so the shared tree
-// stays where it was. The base, the wording and the carry are unchanged; the
-// in-place switch — and its refusal — is the fallback, forced here the way an
-// old git would force it.
+// stays where it was. The in-place switch — and its refusal — is the
+// fallback, forced here the way an old git would force it.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -71,60 +71,79 @@ async function declare(brain: string, slug: string): Promise<void> {
 }
 
 test('local main ahead of origin/main: apply bases on local, and says why', async () => {
-  const { brain, ahead } = brainWithStaleRemote();
+  const { brain } = brainWithStaleRemote();
   await declare(brain, 'base-check');
   const { code, out } = await capture(() => change.run(['apply', 'base-check'], { cwd: brain }));
   assert.equal(code, 0);
   assert.match(out, /branched base-check from main [0-9a-f]{7} — local main is ahead of origin\/main/);
-  assert.equal(git(brain, 'rev-parse', 'base-check^{commit}'), ahead);
+  // the base is main's tip AFTER the bookkeeping commits — they come along
+  assert.equal(git(brain, 'rev-parse', 'base-check^{commit}'), git(brain, 'rev-parse', 'main'));
 });
 
 test('origin/main ahead of local main: apply bases on the remote ref', async () => {
-  const { brain, behind, ahead } = brainWithStaleRemote();
-  git(brain, 'update-ref', 'refs/remotes/origin/main', ahead);
-  git(brain, 'reset', '--hard', '-q', behind);
-  await declare(brain, 'remote-newer');
-  const { code, out } = await capture(() => change.run(['apply', 'remote-newer'], { cwd: brain }));
+  // In a code repo: the brain's own bookkeeping commits always put its local
+  // main ahead, but a declared repo can well be behind its remote.
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-base-')));
+  const api = eco.repos.api;
+  writeFileSync(join(api, 'notes.md'), '# later\n');
+  git(api, 'add', '-A');
+  git(api, 'commit', '-q', '-m', 'remote-only commit');
+  const ahead = git(api, 'rev-parse', 'HEAD');
+  git(api, 'update-ref', 'refs/remotes/origin/main', ahead);
+  git(api, 'reset', '--hard', '-q', 'HEAD~1');
+
+  const ctx = { cwd: eco.brain };
+  assert.equal(await change.run(['new', 'remote-newer', 'Remote newer'], ctx), 0);
+  const parsed = await loadChange(eco.brain, 'remote-newer');
+  parsed.change.repos = { api: { status: 'planned' } };
+  parsed.change.landing_order = [['api']];
+  await saveChange(eco.brain, parsed);
+
+  const { code, out } = await capture(() => change.run(['apply', 'remote-newer'], ctx));
   assert.equal(code, 0);
   assert.match(out, /from origin\/main [0-9a-f]{7} — origin\/main is ahead of local main/);
-  assert.equal(git(brain, 'rev-parse', 'remote-newer^{commit}'), ahead);
+  assert.equal(git(api, 'rev-parse', 'remote-newer^{commit}'), ahead);
 });
 
-test('the uncommitted declaration file is carried onto the branch', async () => {
+test('the worktree inherits the committed declaration, reservation and post-bump status', async () => {
   const { brain } = brainWithStaleRemote();
-  // origin/main has no .multivac/changes/ at all: a plain switch would abort on it.
-  await declare(brain, 'carry-me');
-  const decl = join(brain, '.multivac/changes/carry-me.md');
-  const before = readFileSync(decl, 'utf8');
-  assert.match(git(brain, 'status', '--porcelain', '-uall'), /\?\? \.multivac\/changes\/carry-me\.md/);
+  // origin/main has no .multivac/changes/ at all; the bookkeeping is
+  // committed on local main, so the branch base carries it anyway.
+  await declare(brain, 'inherit-me');
+  const id = (await loadChange(brain, 'inherit-me')).change.invariants.adds[0];
 
-  const { code, out } = await capture(() => change.run(['apply', 'carry-me'], { cwd: brain }));
+  const { code, out } = await capture(() => change.run(['apply', 'inherit-me'], { cwd: brain }));
   assert.equal(code, 0);
-  assert.doesNotMatch(out, /would be overwritten/);
-  assert.match(out, /carried onto the branch: \.multivac\/changes\/carry-me\.md/);
-  assert.equal(git(wt(brain, 'carry-me'), 'rev-parse', '--abbrev-ref', 'HEAD'), 'carry-me');
-  assert.ok(existsSync(join(wt(brain, 'carry-me'), '.multivac/changes/carry-me.md')));
-  // the shared tree never moved, and still holds the declaration apply wrote
+  assert.match(out, /committed: change apply: inherit-me — status branched/);
+  assert.doesNotMatch(out, /carried onto the branch/);
+  const w = wt(brain, 'inherit-me');
+  assert.equal(git(w, 'rev-parse', '--abbrev-ref', 'HEAD'), 'inherit-me');
+  // the declaration is in the worktree as a COMMITTED file, post-bump
+  assert.equal(git(w, 'status', '--porcelain', '--', '.multivac'), '');
+  assert.match(readFileSync(join(w, '.multivac/changes/inherit-me.md'), 'utf8'), /status: branched/);
+  // the reserved row reached the worktree too
+  assert.match(readFileSync(join(w, '.multivac/invariants.md'), 'utf8'), new RegExp(`\\| ${id} \\|`));
+  // the shared tree never moved and is clean at the bookkeeping paths
   assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'main');
-  assert.ok(existsSync(decl));
-  // same declaration, only the status bumped by apply itself
-  assert.equal(before.replace('status: planned', 'status: branched'), readFileSync(decl, 'utf8'));
+  assert.equal(
+    git(brain, 'status', '--porcelain', '--', '.multivac/changes', '.multivac/invariants.md'),
+    '',
+  );
 });
 
-test('the same carry happens when the fallback switches in place', async () => {
+test('the in-place fallback inherits the committed bookkeeping the same way', async () => {
   const { brain } = brainWithStaleRemote();
-  await declare(brain, 'carry-in-place');
-  blockWorktree(brain, 'carry-in-place');
-  const decl = join(brain, '.multivac/changes/carry-in-place.md');
+  await declare(brain, 'in-place');
+  blockWorktree(brain, 'in-place');
+  const decl = join(brain, '.multivac/changes/in-place.md');
 
-  const { code, out } = await capture(() =>
-    change.run(['apply', 'carry-in-place'], { cwd: brain }),
-  );
+  const { code, out } = await capture(() => change.run(['apply', 'in-place'], { cwd: brain }));
   assert.equal(code, 0);
   assert.match(out, /no worktree available — branching in place/);
-  assert.match(out, /carried onto the branch: \.multivac\/changes\/carry-in-place\.md/);
-  assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'carry-in-place');
-  assert.ok(existsSync(decl));
+  assert.doesNotMatch(out, /carried onto the branch/);
+  assert.equal(git(brain, 'rev-parse', '--abbrev-ref', 'HEAD'), 'in-place');
+  assert.match(readFileSync(decl, 'utf8'), /status: branched/);
+  assert.equal(git(brain, 'status', '--porcelain', '--', '.multivac/changes'), '');
 });
 
 test('other uncommitted work is refused by name with the command, not a raw git error', async () => {
@@ -212,11 +231,11 @@ test('no default branch at all: the fallback names the branch it is building on'
   git(brain, 'update-ref', '-d', 'refs/remotes/origin/main');
   git(brain, 'branch', '-m', 'main', 'trunk');
   git(brain, 'config', 'init.defaultBranch', 'trunk');
-  const trunk = git(brain, 'rev-parse', 'trunk');
   await declare(brain, 'no-trunk');
   const found = await capture(() => change.run(['apply', 'no-trunk'], { cwd: brain }));
   assert.match(found.out, /branched no-trunk from trunk [0-9a-f]{7}/);
-  assert.equal(git(brain, 'rev-parse', 'no-trunk^{commit}'), trunk);
+  // trunk's tip moved under the bookkeeping commits; the branch sits on it
+  assert.equal(git(brain, 'rev-parse', 'no-trunk^{commit}'), git(brain, 'rev-parse', 'trunk'));
 
   // Now hide every hint: nothing offline can say which branch is the trunk,
   // so HEAD is all there is — and the message says whose commits come along.
