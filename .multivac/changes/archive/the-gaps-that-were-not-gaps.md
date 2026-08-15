@@ -1,9 +1,9 @@
 ---
 slug: the-gaps-that-were-not-gaps
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -16,7 +16,7 @@ claims:
   - id: MV-59
     statement: "The registry states what the vendor documents and marks UNVERIFIED only what it does not. An entry whose install line, artifact, refresh or create command is published by the project carries it verbatim, with the primary source in `source`; UNVERIFIED is the answer to a real gap, never a default for a field nobody looked up, because an entry that hides a published fact sends the reader to guess the very name the fix exists to stop guessing (PyPI `axon` is not `axoniq`, the way npm `graphify` is not `graphifyy`). An artifact path multivac chose rather than the vendor is not only named as multivac's choice: the refresh command shipped beside it must write that path as-is in a repo that has never run the tool."
   - id: MV-50
-    statement: "A failing grapher refresh hands back the tool's OWN words. `refreshGraph`'s warning quotes the first lines of the tool's stderr, not node's `Command failed` line — which only repeats the command the same warning already prints and buries the cause the tool wrote down."
+    statement: A failing grapher refresh hands back the tool's OWN words. `refreshGraph`'s warning quotes the first lines of the tool's stderr, not node's `Command failed` line — which only repeats the command the same warning already prints and buries the cause the tool wrote down.
 ---
 
 # The gaps that were not gaps
