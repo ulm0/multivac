@@ -59,9 +59,24 @@ test('sync clones missing repos with url, skips the rest, reports failures', asy
     /nourl: missing and no url — add url: under repos\.nourl/,
   );
 
-  // second run: nothing to clone, lib now present, exit still 1 only for bad
+  // second run: nothing to clone, lib now present — and FETCHED. verify judges
+  // siblings at a local remote-tracking ref, so a sync that only cloned left
+  // "the ecosystem as published" reading a day-old snapshot.
+  execFileSync('git', ['-C', src, 'commit', '-q', '--allow-empty', '-m', 'moved on'], {
+    stdio: 'ignore',
+  });
+  execFileSync('git', ['-C', remote, 'fetch', '-q', src, 'HEAD:refs/heads/main'], {
+    stdio: 'ignore',
+  });
   const again = await reposSync(brain, false);
-  assert.match(again.lines.join('\n'), /lib: present at \.\.\/acme-lib/);
+  assert.match(again.lines.join('\n'), /lib: present at \.\.\/acme-lib — fetched/);
+  const head = execFileSync('git', ['-C', remote, 'rev-parse', 'main'], { encoding: 'utf8' }).trim();
+  const tracked = execFileSync(
+    'git',
+    ['-C', join(tmp, 'acme-lib'), 'rev-parse', 'refs/remotes/origin/main'],
+    { encoding: 'utf8' },
+  ).trim();
+  assert.equal(tracked, head, 'origin/main was refreshed by sync');
 
   const list = await reposList(brain);
   assert.match(list.join('\n'), /lib\s+present/);

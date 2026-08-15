@@ -585,6 +585,18 @@ Three properties keep it from becoming a second kind of lie:
   degrading silently is the defect.
 - **`--worktree` forces the old whole-ecosystem working-tree read**, for
   someone who genuinely wants to know the local state across repos.
+- **"As published" carries its age.** A channel ref is a *local*
+  remote-tracking snapshot and `verify` never touches the network, so the
+  `read` line says when that ref was last fetched. Without it the second lie
+  simply moves: a fix already on `main` reads as a red, and the operator
+  concludes the gate is broken again. `repos sync` fetches every present repo
+  — that is the command every staleness line names, and the only thing that
+  makes "as published" true.
+- **The brain says when it is behind its own channel.** It is the one repo read
+  as a working tree, so it is the one repo the channel read cannot keep honest:
+  an out-of-date law table judging a current ecosystem looks exactly like a red
+  ecosystem. *Behind*, never merely *different* — a feature branch is off its
+  channel by construction, and a line that fires every run stops being read.
 
 The sibling defect, same root: a repo parked off its channel used to be an
 invisible premise. Now `verify` names it on the `read` line and `doctor`
@@ -811,7 +823,7 @@ The line is implicit vs explicit:
 | --- | --- | --- |
 | `verify` / hooks | **never** | sub-second budget, may be offline; a hook that hits the network gets uninstalled. Degrades: unevaluated, not red |
 | `change plan/apply` on a declared, absent repo | **yes, automatic** | the user explicitly asked for an operation that needs the repo — same contract as `git submodule update` |
-| `repos sync` | all missing | the explicit machine-setup command (`--shallow` for verify-only machines; `change` needs full clones to branch) |
+| `repos sync` | all missing — **and fetches every present one** | the explicit machine-setup command (`--shallow` for verify-only machines; `change` needs full clones to branch). Since MV-53 the brain judges each sibling at a *local* remote-tracking ref, so this is the one command that makes "as published" true; a clone that fails gates, a fetch that fails only reports |
 | `doctor` | no — reports and points at `repos sync` | diagnosis doesn't mutate |
 | `doors` | no — absent repos skipped, reported | writes the **working trees** of declared repos, never commits on its own |
 

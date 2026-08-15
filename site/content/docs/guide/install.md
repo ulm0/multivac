@@ -79,7 +79,7 @@ commands:
   count      dry-run an anchor leg: match count + per-file breakdown, verify's own matcher
   doors      project doors + install git hooks into the brain and declared repos
   doctor     what is declared, what was found, what is degraded, how to fix it
-  repos      list declared repos; `repos sync [--shallow]` clones the missing ones
+  repos      list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest
   change     new/plan/apply/land/close — the ecosystem change lifecycle
   help       help <topic|command> — `help anchor` prints the anchor grammar on one screen
 ```

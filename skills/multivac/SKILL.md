@@ -47,6 +47,12 @@ rhythm is always `mvac change new → plan → apply → land → close`
    purpose: local state across every repo. If a `read` line says a channel
    ref could not be resolved and it FELL BACK to a working tree, that repo's
    verdict is about somebody's local branch — fetch before you believe it.
+   Each channel `read` line also carries the ref's **age**: verify never
+   fetches, so an old `origin/main` means a fix already merged upstream is
+   simply not in the bytes that were judged — `mvac repos sync` refreshes
+   every repo. And if the brain's own line says it is *behind its own
+   channel*, an out-of-date law table is judging a current ecosystem: pull the
+   brain before you believe any red.
 3. **Cite claims by ID.** Write "per INV-12", never a restatement. A
    paraphrase ages silently; an ID can be verified. This applies to doors,
    specs, change files, commit messages — everywhere law is referenced.
