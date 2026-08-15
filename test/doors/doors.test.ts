@@ -195,14 +195,29 @@ test('brain door carries the SDD flow when one is declared', () => {
     repos: {},
   };
   const door = renderBrainDoor(cfg, 1);
-  assert.match(door, /Features gate through the `opsx` SDD/);
+  assert.match(door, /Features gate through the `opsx` SDD, in that tool's OWN flow/);
+  // Every step: what to run, and what will PROVE it ran.
   assert.match(door, /`change new` → run \/opsx:propose <slug> in your agent/);
+  assert.match(door, /proof: openspec\/changes\/<slug>\/proposal\.md — `change plan` refuses/);
   assert.match(door, /`change apply` → run \/opsx:apply <slug> in your agent/);
-  assert.match(door, /`change close` → run \/opsx:archive <slug> in your agent/);
+  assert.match(door, /ungateable: apply leaves no artifact of its own/);
+  // The archive-equivalent is printed a step BEFORE the gate that needs it.
+  assert.match(door, /`change land` → run \/opsx:archive <slug> in your agent/);
+  assert.match(door, /`change close` refuses without it/);
+  // OpenSpec has no project-level document; that gap is stated, not invented.
+  assert.match(door, /this tool has no project-level document/);
   // sdd_auto off: the flow still binds, the door says to run it unprompted
   assert.match(renderBrainDoor({ ...cfg, sddAuto: false }, 1), /run each step yourself/);
-  // speckit has no archive step — the gap is stated, never invented
-  assert.match(renderBrainDoor({ ...cfg, sdd: 'speckit' }, 1), /no agent-run archive step/);
+
+  // spec-kit: a longer flow, and a constitution the agent must create if absent
+  const speckit = renderBrainDoor({ ...cfg, sdd: 'speckit' }, 1);
+  assert.match(speckit, /project law `\.specify\/memory\/constitution\.md`/);
+  assert.match(speckit, /run \/speckit\.constitution in your agent/);
+  assert.match(speckit, /CREATE IT IF ABSENT/);
+  assert.match(speckit, /revisit: once at start, then on every principle change/);
+  assert.match(speckit, /`change plan` → run \/speckit\.tasks in your agent/);
+  // no close step at all: spec-kit has no archive equivalent to print
+  assert.doesNotMatch(speckit, /`change close` →/);
   // no sdd declared: no flow lines at all
   assert.doesNotMatch(renderBrainDoor({ ...cfg, sdd: undefined }, 1), /SDD/);
 });

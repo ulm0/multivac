@@ -289,20 +289,20 @@ checks them on every commit.
 <!-- @anchor MV-50 brain:test/change/grapher-refresh.test.ts /never a failed close/ -->
 <!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /no refresh on the git hook/ -->
 <!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /never stages or commits the refreshed artifact/ -->
-| MV-51 | SDD steps instruct the agent, never shell out: the registry's SDD adapter specs carry `agentSteps` — per-step chat instructions verified against each tool's own docs (the `/opsx:` commands for opsx; `/speckit.specify` then `/speckit.plan`+`/speckit.tasks`+`/speckit.implement` for speckit, which has no archive equivalent — the gap is stated, never invented). `change new`/`apply`/`close` print the declared SDD's instruction for that step, `<slug>` interpolated, only when `sdd_auto` is on and `--no-sdd` was not passed; the lifecycle never invokes a fake `<binary> <step>` subcommand. The brain door carries the flow so the agent knows it at session start, and doctor reports whether `sdd_auto` is on plus what the agent is expected to run. | specified | active | 2026-08-15 | [changes/archive/the-sdd-tells-the-agent.md](changes/archive/the-sdd-tells-the-agent.md) |
-<!-- @anchor MV-51 brain:src/adapters/registry.ts /agentSteps\?: \{ propose\?/ -->
+| MV-51 | SDD steps instruct the agent, never shell out: the registry's SDD adapter specs carry the tool's own steps — chat instructions verified against each tool's own docs (the `/opsx:` commands for opsx; `/speckit.*` for speckit, which has no archive equivalent — the gap is stated, never invented). The lifecycle prints the steps bound to its own point, `<slug>` interpolated, only when `sdd_auto` is on and `--no-sdd` was not passed; it never invokes a fake `<binary> <step>` subcommand, and the ONE subprocess it may spawn is the tool's own validator, run for its verdict (MV-56). The brain door carries the flow so the agent knows it at session start, and doctor reports whether `sdd_auto` is on plus what the agent is expected to run. | specified | active | 2026-08-15 | [changes/archive/the-sdd-tells-the-agent.md](changes/archive/the-sdd-tells-the-agent.md) |
+<!-- @anchor MV-51 brain:src/adapters/registry.ts /These are chat commands, not terminal subcommands/ -->
 <!-- @anchor MV-51 brain:src/adapters/registry.ts /spec-kit has no archive step/ -->
 <!-- @anchor MV-51 brain:src/commands/change.ts /INSTRUCT the agent, never shell out/ -->
-<!-- @anchor MV-51 brain:src/commands/change.ts /instruction\.replaceAll\('<slug>', slug\)/ -->
+<!-- @anchor MV-51 brain:src/adapters/sdd.ts /export const withSlug/ -->
+<!-- @anchor MV-51 brain:src/adapters/sdd.ts /A step is never faked by shelling out/ -->
 <!-- @anchor MV-51 brain:src/commands/change.ts /execFileP\(bin,/ absent -->
 <!-- @anchor MV-51 brain:src/commands/change.ts /\$\{step\} done/ absent -->
 <!-- @anchor MV-51 brain:src/doors/brain.ts /Features gate through the/ -->
-<!-- @anchor MV-51 brain:src/commands/doctor.ts /agent steps — / -->
-<!-- @anchor MV-51 brain:test/change/sdd-instructs.test.ts /print the opsx instructions, slug interpolated/ -->
-<!-- @anchor MV-51 brain:test/change/sdd-instructs.test.ts /--no-sdd suppresses the instruction/ -->
-<!-- @anchor MV-51 brain:skills/multivac/references/change.md /The SDD flow — the lifecycle instructs, YOU run/ -->
-<!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /The steps instruct the agent/ -->
-<!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /no agent-run archive step/ -->
+<!-- @anchor MV-51 brain:src/commands/doctor.ts /flow — \$\{l\}/ -->
+<!-- @anchor MV-51 brain:test/change/sdd-gates.test.ts /new prints propose/ -->
+<!-- @anchor MV-51 brain:skills/multivac/references/change.md /The SDD flow — the lifecycle instructs, YOU run, the gate checks/ -->
+<!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /chat commands the agent runs/ -->
+<!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /has no agent-run close step/ -->
 | MV-52 | The graph refresh follows the agent, not the commit: `doors` installs it as a post-edit hook in every declared target whose registry entry carries `hookConfig.postEdit`, and only when a grapher is declared AND its binary is present — one more entry in the same managed `.claude/settings.json` merge that preserves foreign keys, removed again when the grapher goes away. The entry is fire-and-forget (backgrounded, stdio discarded, `exit 0` whatever the tool did) and coalesced behind an atomic lock directory under `.multivac/cache/`, so a per-edit harness cannot thrash a large repo. The git hook shims contain no grapher call at all, the refresh module never spawns git, and doctor names the live path — post-edit hook where the harness has one, `change close` as the net, git hooks never. | specified | active | 2026-08-15 | [changes/archive/the-graph-follows-the-agent.md](changes/archive/the-graph-follows-the-agent.md) |
 <!-- @anchor MV-52 brain:src/hooks/install.ts /graph|refresh/ absent -->
 <!-- @anchor MV-52 brain:src/doors/settings.ts /export function refreshHookCmd/ -->
@@ -350,7 +350,46 @@ checks them on every commit.
 <!-- @anchor MV-54 brain:test/verify/scope.test.ts /the brain behind its OWN channel says so/ -->
 <!-- @anchor MV-54 brain:DESIGN.md /"As published" carries its age/ -->
 <!-- @anchor MV-54 brain:site/content/docs/reference/commands.md /The fetch is what keeps `verify` honest/ -->
-| MV-55 | RESERVED by change the-sdd-gates-its-own-flow — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
-| MV-56 | RESERVED by change the-sdd-gates-its-own-flow — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
-| MV-57 | RESERVED by change the-sdd-gates-its-own-flow — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
+| MV-55 | An SDD adapter carries the tool's OWN flow, never a fixed triple: `projectSteps` (project-level documents, each with when to revisit) plus an ordered `steps` array of arbitrary length, every step bound to a lifecycle point (`new`/`plan`/`apply`/`land`/`close`) rather than to a propose/apply/archive name. The lifecycle prints the steps of its own point, in order, `<slug>` interpolated; the brain door and `doctor` project the same flow. OpenSpec declares no project-level document — the honest gap is stated, not invented — while spec-kit's constitution is declared with its amendment rule. | specified | active | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
+<!-- @anchor MV-55 brain:src/adapters/registry.ts /steps\?: SddStep\[\]/ -->
+<!-- @anchor MV-55 brain:src/adapters/registry.ts /projectSteps\?: SddProjectStep\[\]/ -->
+<!-- @anchor MV-55 brain:src/adapters/registry.ts /export type LifecyclePoint/ -->
+<!-- @anchor MV-55 brain:src/adapters/registry.ts /OpenSpec has NO project-level document/ -->
+<!-- @anchor MV-55 brain:src/adapters/registry.ts /run \/speckit\.constitution in your agent/ -->
+<!-- @anchor MV-55 brain:src/adapters/sdd.ts /export const stepsAt/ -->
+<!-- @anchor MV-55 brain:src/doors/brain.ts /in that tool's OWN flow/ -->
+<!-- @anchor MV-55 brain:src/commands/doctor.ts /flow — \$\{l\}/ -->
+<!-- @anchor MV-55 brain:test/doors/registry.test.ts /The flow is ORDERED/ -->
+<!-- @anchor MV-55 brain:test/change/sdd-gates.test.ts /its own longer flow drives the lifecycle/ -->
+<!-- @anchor MV-55 brain:DESIGN.md /in the SDD's own shape/ -->
+<!-- @anchor MV-55 brain:site/content/docs/reference/graphers-and-sdd.md /Each tool's own flow, not a fixed triple/ -->
+| MV-56 | Every SDD step declares the artifact that proves it ran, `<slug>` interpolated: `change plan` refuses while the propose-equivalent artifact is missing, `change apply` while the plan/tasks artifact is, `change close` while the archive-equivalent has not happened. Each refusal names the exact agent command to run and the artifact path it looked for. A step the tool cannot leave an artifact for is declared `ungateable` with its reason and is never gated — the message says so instead of faking it, and a lifecycle point no step gates says the gate does not exist for this tool. Where the tool ships its own validator its verdict is REUSED (`openspec validate --json`), never reimplemented, and the lifecycle shells out for validation only, never to fake an agent-run step. `sdd_auto: false` and `--no-sdd` turn every gate off. | specified | active | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
+<!-- @anchor MV-56 brain:src/adapters/sdd.ts /export async function sddGate/ -->
+<!-- @anchor MV-56 brain:src/adapters/sdd.ts /refused — \$\{want\} is missing/ -->
+<!-- @anchor MV-56 brain:src/adapters/sdd.ts /then re-run: multivac change \$\{gate\} \$\{slug\}/ -->
+<!-- @anchor MV-56 brain:src/adapters/sdd.ts /is not gated — this tool declares no step whose artifact could prove it/ -->
+<!-- @anchor MV-56 brain:src/adapters/sdd.ts /ungateable: \$\{step\.ungateable/ -->
+<!-- @anchor MV-56 brain:src/adapters/sdd.ts /Reuse the tool's own verdict/ -->
+<!-- @anchor MV-56 brain:src/commands/change.ts /gateSdd\(brain, cfg, 'plan', slug, noSdd\)/ -->
+<!-- @anchor MV-56 brain:src/commands/change.ts /gateSdd\(brain, cfg, 'apply', slug, noSdd\)/ -->
+<!-- @anchor MV-56 brain:src/commands/change.ts /gateSdd\(brain, cfg, 'close', slug, noSdd\)/ -->
+<!-- @anchor MV-56 brain:src/adapters/detect.ts /export async function artifactHit/ -->
+<!-- @anchor MV-56 brain:test/change/sdd-gates.test.ts /plan REFUSES until proposal\.md exists/ -->
+<!-- @anchor MV-56 brain:test/change/sdd-gates.test.ts /the tool's own validator is the verdict, not a reimplementation/ -->
+<!-- @anchor MV-56 brain:test/change/sdd-gates.test.ts /close is not gated — the missing archive step is stated, not faked/ -->
+<!-- @anchor MV-56 brain:test/change/sdd-gates.test.ts /--no-sdd turns off the steps AND the gates/ -->
+<!-- @anchor MV-56 brain:test/doors/registry.test.ts /declare an artifact OR an ungateable reason/ -->
+<!-- @anchor MV-56 brain:DESIGN.md /The steps are gated on what the tool really produces/ -->
+<!-- @anchor MV-56 brain:site/content/docs/reference/graphers-and-sdd.md /The gate: what the tool really produces/ -->
+| MV-57 | The project-level document is reported, never gated: `doctor` names it present or missing with the exact agent command that creates it, refuses to call a tool-scaffolded template "present" while its `placeholder` pattern still matches, and calls it STALE when the law's newest row is newer than the file — a product whose law moved while its constitution did not. It stays a report because a constitution's content cannot be machine-judged, and the brain door tells the agent to create it if absent so `init` and `doors` carry the instruction. | specified | active | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
+<!-- @anchor MV-57 brain:src/commands/doctor.ts /Reported, never gated/ -->
+<!-- @anchor MV-57 brain:src/commands/doctor.ts /project law — \$\{found/ -->
+<!-- @anchor MV-57 brain:src/commands/doctor.ts /STALE: the law moved while this did not/ -->
+<!-- @anchor MV-57 brain:src/commands/doctor.ts /is still the unfilled template shipped by the tool/ -->
+<!-- @anchor MV-57 brain:src/adapters/registry.ts /placeholder\?: string/ -->
+<!-- @anchor MV-57 brain:src/commands/doctor.ts /project law — revisit: \$\{p\.revisit\}/ -->
+<!-- @anchor MV-57 brain:src/doors/brain.ts /CREATE IT IF ABSENT/ -->
+<!-- @anchor MV-57 brain:test/doctor/doctor.test.ts /reported present, missing and stale — never gated/ -->
+<!-- @anchor MV-57 brain:skills/multivac/references/change.md /reports the document missing, still-a-template, present, or/ -->
+<!-- @anchor MV-57 brain:site/content/docs/reference/graphers-and-sdd.md /The project-level document/ -->
 

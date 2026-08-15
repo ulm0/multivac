@@ -1,5 +1,7 @@
 // multivac change — new / plan / apply / land / close. The mechanics are
-// deterministic; SDD steps are instructions printed for the agent to run.
+// deterministic; SDD steps are instructions printed for the agent to run, and
+// plan/apply/close refuse to move on without the artifact that proves the
+// earlier step really ran (src/adapters/sdd.ts).
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -7,13 +9,14 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
-import { CHANGES_DIR, CONFIG_PATH, LAW_PATH, RITUAL_PATH, loadConfig } from '../lib/config.js';
+import { CHANGES_DIR, LAW_PATH, RITUAL_PATH, loadConfig } from '../lib/config.js';
 import { lsFiles, run as gitRun } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { ritualChecklist } from '../lib/ritual.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
-import { sddNames, sddSpec } from '../adapters/registry.js';
+import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
+import { sddGate, sddInstructions } from '../adapters/sdd.js';
 import { refreshGraph } from '../adapters/refresh.js';
 import { evaluate } from './verify.js';
 import {
@@ -70,30 +73,34 @@ async function commitBookkeeping(
 
 
 /**
- * One SDD workflow step: INSTRUCT the agent, never shell out. propose/apply/
- * archive are chat commands the agent runs (for OpenSpec they are the /opsx:
- * commands, not `openspec` subcommands — invoking the binary with a step name
- * would silently skip). The registry's `agentSteps` carries the exact wording
- * per tool; a step with no agent-run equivalent says so honestly.
+ * The steps this lifecycle point owns: INSTRUCT the agent, never shell out.
+ * They are chat commands (for OpenSpec the `/opsx:` ones, not `openspec`
+ * subcommands — invoking the binary with a step name would silently skip), and
+ * the registry carries each tool's OWN ordered flow, not a fixed triple.
+ * Each printed line also names what will PROVE the step ran, or says plainly
+ * that nothing can.
  */
-function runSdd(
+function runSdd(cfg: Config, at: LifecyclePoint, slug: string, noSdd: boolean): void {
+  for (const line of sddInstructions(cfg, at, slug, noSdd)) say(line);
+}
+
+/**
+ * The other half: refuse to move on while the artifact that proves an earlier
+ * step is missing. Printing an instruction nobody checks is the discipline
+ * this tool exists to end — so `plan`, `apply` and `close` each look for what
+ * the tool really produces, and name the command and the path when it is not
+ * there. Returns true when the lifecycle may continue.
+ */
+async function gateSdd(
+  brain: string,
   cfg: Config,
-  step: 'propose' | 'apply' | 'archive',
+  gate: GatePoint,
   slug: string,
   noSdd: boolean,
-): void {
-  if (!cfg.sdd || !cfg.sddAuto || noSdd) return;
-  const spec = sddSpec(cfg.sdd);
-  if (!spec) {
-    say(`sdd ${cfg.sdd}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`);
-    return;
-  }
-  const instruction = spec.agentSteps?.[step];
-  if (!instruction) {
-    say(`sdd ${cfg.sdd}: ${step} — this tool has no agent-run ${step} step; nothing to run`);
-    return;
-  }
-  say(`sdd ${cfg.sdd}: ${instruction.replaceAll('<slug>', slug)}`);
+): Promise<boolean> {
+  const { ok, lines } = await sddGate(brain, cfg, gate, slug, noSdd);
+  for (const l of lines) (ok ? say : warn)(l);
+  return ok;
 }
 
 function repoEntryOf(cfg: Config, key: string): Config['repos'][string] {
@@ -471,11 +478,18 @@ async function cmdNew(
   say(`  1. repos: { api: { status: planned } }        # status: ${REPO_STATUSES.join('|')}`);
   say('  2. landing_order: [[api]]                     # stages; earlier stages land first');
   say(`  3. claims: [{ id: ${reserved?.id ?? '<ID>'}, statement: "..." }]  # what close verifies`);
-  runSdd(cfg, 'propose', slug, noSdd);
+  runSdd(cfg, 'new', slug, noSdd);
   return 0;
 }
 
-async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number> {
+async function cmdPlan(
+  brain: string,
+  cfg: Config,
+  slug: string,
+  noSdd: boolean,
+): Promise<number> {
+  // The propose-equivalent must have LANDED before there is anything to plan.
+  if (!(await gateSdd(brain, cfg, 'plan', slug, noSdd))) return 1;
   const { change } = await loadChange(brain, slug);
   const keys = Object.keys(change.repos);
   if (keys.length === 0) {
@@ -535,6 +549,7 @@ async function cmdPlan(brain: string, cfg: Config, slug: string): Promise<number
       say(`claim ${c.id}: no anchor — add <!-- @anchor ${c.id} <repo>:<glob> /<regex>/ --> before close`);
     }
   }
+  runSdd(cfg, 'plan', slug, noSdd);
   return rc;
 }
 
@@ -544,6 +559,10 @@ async function cmdApply(
   slug: string,
   noSdd: boolean,
 ): Promise<number> {
+  // Nothing branches before the plan/tasks the agent is about to implement
+  // actually exist. Refused BEFORE the status bump: a refused apply must leave
+  // the change exactly where it found it.
+  if (!(await gateSdd(brain, cfg, 'apply', slug, noSdd))) return 1;
   const parsed = await loadChange(brain, slug);
   const keys = Object.keys(parsed.change.repos);
   if (keys.length === 0) {
@@ -592,6 +611,7 @@ async function cmdLand(
   cfg: Config,
   slug: string,
   landed: string | undefined,
+  noSdd: boolean,
 ): Promise<number> {
   const parsed = await loadChange(brain, slug);
   const { change } = parsed;
@@ -657,6 +677,9 @@ async function cmdLand(
     if (s.state === 'blocked') say('  waiting on an earlier stage — do not push yet');
   }
   if (plan.every((s) => s.state === 'landed')) {
+    // The archive-equivalent belongs here, not at close: close REFUSES without
+    // it, so the instruction has to come one step earlier than its own gate.
+    runSdd(cfg, 'land', slug, noSdd);
     say(`all stages landed — run \`multivac change close ${slug}\``);
   }
   return 0;
@@ -668,6 +691,8 @@ async function cmdClose(
   slug: string,
   noSdd: boolean,
 ): Promise<number> {
+  // The archive-equivalent has to have HAPPENED — not been printed at.
+  if (!(await gateSdd(brain, cfg, 'close', slug, noSdd))) return 1;
   const parsed = await loadChange(brain, slug);
   const unlanded = Object.entries(parsed.change.repos).filter(([, r]) => r.status !== 'landed');
   if (unlanded.length > 0) {
@@ -693,7 +718,7 @@ async function cmdClose(
   // archive is committed — checking after would release rows this very close
   // just verified green.
   const anchored = await anchoredClaimIds(brain);
-  runSdd(cfg, 'archive', slug, noSdd);
+  runSdd(cfg, 'close', slug, noSdd);
   const dest = await archiveChange(brain, parsed);
   say(`archived -> ${relative(brain, dest)}`);
   // A reservation the change never used goes back to the pool; the worktrees
@@ -774,7 +799,7 @@ function usage(): void {
   say('  apply <slug>           worktree per repo (greenfield repos get created)');
   say('  land <slug>            landing-order report; --landed <repo> records a merge');
   say(`  close <slug>           verify claims, archive the change, print ${RITUAL_PATH}`);
-  say('flags: --no-sdd (skip SDD steps), --landed <repo> (land only)');
+  say('flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only)');
 }
 
 export const change: Command = {
@@ -818,11 +843,11 @@ export const change: Command = {
         case 'new':
           return await cmdNew(brain, cfg, slug, title, noSdd);
         case 'plan':
-          return await cmdPlan(brain, cfg, slug);
+          return await cmdPlan(brain, cfg, slug, noSdd);
         case 'apply':
           return await cmdApply(brain, cfg, slug, noSdd);
         case 'land':
-          return await cmdLand(brain, cfg, slug, landed);
+          return await cmdLand(brain, cfg, slug, landed, noSdd);
         default:
           return await cmdClose(brain, cfg, slug, noSdd);
       }

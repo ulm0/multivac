@@ -46,6 +46,69 @@ export interface DoorTarget {
   detect?: string;
 }
 
+/**
+ * Where a step sits in multivac's lifecycle. Not a step NAME — the tools do
+ * not agree on names, and a fixed propose/apply/archive triple is one tool's
+ * shape imposed on the rest. A step declares the point that PRINTS it (`at`)
+ * and, when the tool leaves proof behind, the point that REFUSES without that
+ * proof (`gate`). `gate` always comes strictly after `at`.
+ */
+export type LifecyclePoint = 'new' | 'plan' | 'apply' | 'land' | 'close';
+
+/** The lifecycle commands that refuse on a missing artifact. */
+export type GatePoint = Extract<LifecyclePoint, 'plan' | 'apply' | 'close'>;
+
+/** One step of a tool's OWN per-change flow. Ordered; arbitrary length. */
+export interface SddStep {
+  /** What the AGENT runs, in the tool's own words. `<slug>` is interpolated. */
+  run: string;
+  /** Lifecycle point that prints it. */
+  at: LifecyclePoint;
+  /**
+   * Repo-relative path that PROVES this step ran. `<slug>` is interpolated;
+   * one `*` segment is matched by readdir, for tools that name the feature
+   * directory themselves. Absent ⇒ the step is ungateable and `ungateable`
+   * says why.
+   */
+  artifact?: string;
+  /** Lifecycle command that refuses while `artifact` is missing. */
+  gate?: GatePoint;
+  /**
+   * Why this step can never be proven from the filesystem. Required whenever
+   * `artifact` is absent: an ungateable step is STATED, never faked green.
+   */
+  ungateable?: string;
+  /**
+   * The tool's OWN validator for this artifact, `<slug>` interpolated. Run for
+   * its verdict only — never to fake an agent-run step — and only when its
+   * binary is present. Reusing the tool's verdict beats reimplementing rules
+   * that would drift away from it.
+   */
+  validate?: string;
+}
+
+/**
+ * A project-level document: written once, then AMENDED as the product moves.
+ * Not per-change — `doctor` reports it, `init`/`doors` tell the agent to
+ * create it if absent, and nothing ever gates on it: a constitution's content
+ * cannot be machine-judged.
+ */
+export interface SddProjectStep {
+  /** What the AGENT runs to create or amend it. */
+  run: string;
+  /** Repo-relative path of the document. */
+  artifact: string;
+  /** When to revisit it, in the tool's own terms. */
+  revisit: string;
+  /**
+   * ERE matching a placeholder that only the SHIPPED TEMPLATE still carries.
+   * Some tools scaffold the file unfilled, so its mere existence proves
+   * nothing — spec-kit installs `constitution.md` byte-identical to the
+   * template. A document still matching this has not been written yet.
+   */
+  placeholder?: string;
+}
+
 /** One sdd/grapher adapter: what to detect and what automation it carries. */
 export interface AdapterSpec {
   kind: 'sdd' | 'grapher';
@@ -72,13 +135,19 @@ export interface AdapterSpec {
    */
   automation: 'sdd_auto' | 'grapher-refresh';
   /**
-   * SDD only: what the AGENT runs at each lifecycle step, verified against the
-   * tool's own docs. These are chat commands, not terminal subcommands — the
-   * lifecycle prints them, it never shells them out. `<slug>` is interpolated.
-   * A missing step means the tool has no agent-run equivalent for it; the
-   * lifecycle says so honestly instead of inventing one.
+   * SDD only: the tool's OWN per-change flow, in order, verified against its
+   * own docs. These are chat commands, not terminal subcommands — the
+   * lifecycle prints them and gates on what they leave behind, it never shells
+   * them out. A lifecycle point no step declares is a point this tool has no
+   * equivalent for; the lifecycle says so honestly instead of inventing one.
    */
-  agentSteps?: { propose?: string; apply?: string; archive?: string };
+  steps?: SddStep[];
+  /**
+   * SDD only: project-level documents — the law of the project, written once
+   * and amended as it moves. Empty/absent for a tool that has none; that gap
+   * is stated, never papered over with an invented file.
+   */
+  projectSteps?: SddProjectStep[];
   /** What the tool's own docs say, where it matters. */
   note?: string;
   /** Vendor doc this entry was verified against. */
@@ -173,12 +242,41 @@ const sdd: Record<string, AdapterSpec> = {
     installHint: 'npm i -g @fission-ai/openspec',
     refresh: 'openspec update',
     automation: 'sdd_auto',
-    agentSteps: {
-      propose: 'run /opsx:propose <slug> in your agent to draft the spec change',
-      apply: 'run /opsx:apply <slug> in your agent to implement the proposed tasks',
-      archive: 'run /opsx:archive <slug> in your agent to update the specs and archive the change',
-    },
-    note: 'The terminal CLI is init/update/list/show/validate; propose, apply and archive are the /opsx: commands your agent runs in chat.',
+    // OpenSpec has NO project-level document. `openspec/config.yaml`'s
+    // `context:` is the nearest thing and it ships commented out, unvalidated
+    // and never required — declaring it as a constitution would be a lie.
+    projectSteps: [],
+    steps: [
+      {
+        at: 'new',
+        run: 'run /opsx:propose <slug> in your agent — it loops openspec\'s own artifact DAG (proposal → spec deltas → design → tasks)',
+        artifact: 'openspec/changes/<slug>/proposal.md',
+        gate: 'plan',
+      },
+      {
+        at: 'plan',
+        run: 'keep /opsx:propose <slug> going until its task list is written — openspec\'s own applyRequires is ["tasks"]',
+        artifact: 'openspec/changes/<slug>/tasks.md',
+        gate: 'apply',
+        // OpenSpec's own definition of a well-formed change: delta headers,
+        // one scenario per requirement, no conflict with the main specs.
+        // Reimplementing it here would guarantee drift.
+        validate: 'openspec validate <slug> --json --no-interactive',
+      },
+      {
+        at: 'apply',
+        run: 'run /opsx:apply <slug> in your agent to implement the tasks',
+        ungateable:
+          'apply leaves no artifact of its own — its only trace is `- [x]` in tasks.md, a character the agent types about its own work; nothing links a checkbox to a commit, a test, or a line of code',
+      },
+      {
+        at: 'land',
+        run: 'run /opsx:archive <slug> in your agent to merge the spec deltas into openspec/specs/ and archive the change',
+        artifact: 'openspec/changes/archive/*-<slug>',
+        gate: 'close',
+      },
+    ],
+    note: 'The terminal CLI is init/update/list/show/validate; propose, apply and archive are the /opsx: commands your agent runs in chat. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool\'s own escape hatches — multivac gates on what landed on disk, not on how it got there.',
     source: 'https://github.com/Fission-AI/OpenSpec',
   },
   speckit: {
@@ -188,13 +286,66 @@ const sdd: Record<string, AdapterSpec> = {
     installHint: 'uv tool install specify-cli',
     refresh: 'specify check',
     automation: 'sdd_auto',
-    agentSteps: {
-      propose: 'run /speckit.specify in your agent to write the spec for <slug>',
-      apply:
-        'run /speckit.plan, /speckit.tasks, then /speckit.implement in your agent to build <slug>',
-      // no archive: spec-kit's flow ends at implement — it has no archive step.
-    },
-    note: 'The agent flow is /speckit.specify → /speckit.plan → /speckit.tasks → /speckit.implement; spec-kit has no archive step.',
+    projectSteps: [
+      {
+        run: 'run /speckit.constitution in your agent to write the project principles — spec-kit ships .specify/memory/constitution.md as an unfilled template, so an untouched repo has no constitution, only a placeholder',
+        artifact: '.specify/memory/constitution.md',
+        // Verified against a real `specify init`: the installed file is the
+        // template, `[PROJECT_NAME]`/`[PRINCIPLE_1_NAME]` and all. Existence
+        // alone would report a constitution nobody has written.
+        placeholder: '\\[[A-Z0-9_]+\\]',
+        revisit:
+          'once at start, then on every principle change: amend it in place, bump CONSTITUTION_VERSION by semver (MAJOR removes/redefines, MINOR adds, PATCH clarifies) and prepend the Sync Impact Report. Spec-kit defines no cadence — `/speckit.plan`\'s Constitution Check and `/speckit.analyze` only surface drift, they never edit the file',
+      },
+    ],
+    steps: [
+      {
+        at: 'new',
+        run: 'run /speckit.specify in your agent to write the spec for <slug> — give it <slug> as the short name so the feature directory matches',
+        artifact: 'specs/*<slug>*/spec.md',
+        gate: 'plan',
+      },
+      {
+        at: 'new',
+        run: 'run /speckit.clarify if the spec still carries [NEEDS CLARIFICATION] markers',
+        ungateable:
+          'optional, and its `## Clarifications` session is written by the agent — an agent answering itself produces a byte-identical file, so the section proves text was added, never that a human answered',
+      },
+      {
+        at: 'plan',
+        run: 'run /speckit.plan in your agent to design <slug> (Constitution Check, research, data model, contracts)',
+        artifact: 'specs/*<slug>*/plan.md',
+        gate: 'apply',
+      },
+      {
+        at: 'plan',
+        run: 'run /speckit.tasks in your agent to break <slug> into phased tasks',
+        artifact: 'specs/*<slug>*/tasks.md',
+        gate: 'apply',
+      },
+      {
+        at: 'apply',
+        run: 'run /speckit.analyze in your agent for the cross-artifact consistency pass before implementing',
+        ungateable:
+          '/speckit.analyze is STRICTLY READ-ONLY by its own spec — it writes zero bytes, so no file on disk can prove it ran',
+      },
+      {
+        at: 'apply',
+        run: 'run /speckit.implement in your agent to build <slug>',
+        ungateable:
+          'implement\'s only claim of completion is every task marked [X] in tasks.md — the agent grading its own homework, not evidence the code exists or works',
+      },
+      {
+        at: 'apply',
+        run: 'run /speckit.converge in your agent until it reports Converged',
+        ungateable:
+          'a clean converge is forbidden to touch tasks.md — the converged outcome is invisible to the filesystem, and its absence is indistinguishable from never having run it',
+      },
+      // No `close` step and no gate: spec-kit's flow ends at converge. It has
+      // no archive equivalent, so `change close` says the gate does not exist
+      // for this tool instead of inventing one.
+    ],
+    note: 'The agent flow is /speckit.constitution once, then per feature /speckit.specify → /speckit.clarify? → /speckit.plan → /speckit.tasks → /speckit.implement → /speckit.converge; spec-kit has no archive step. On Claude the CLI installs skills, so the separator is a hyphen (/speckit-specify) — the dotted ids are what the repo documents. The feature directory is `specs/<NNN>-<short-name>/`, numbered by spec-kit itself and independent of the git branch, so the gates match the slug as a suffix. Known hole: setup-plan.sh copies plan-template.md before the agent writes anything, so plan.md existing is weaker proof than the others.',
     source: 'https://github.com/github/spec-kit',
   },
 };
