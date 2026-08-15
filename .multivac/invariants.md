@@ -235,3 +235,13 @@ checks them on every commit.
 <!-- @anchor MV-43 brain:site/content/docs/guide/writing-anchors.md /cross-file relation/ -->
 <!-- @anchor MV-43 brain:site/content/docs/reference/configuration.md /allowed: present, absent, unique, count, each/ -->
 <!-- @anchor MV-43 brain:site/content/_index.md /`present`, `absent`, `unique`, `count`, `each`/ unique -->
+| MV-44 | The hook chain arms in every order: when `.pre-commit-config.yaml` exists and `.git/hooks/<name>` does not (the fresh-clone shape — `pre-commit install` refuses while core.hooksPath is set), the shim runs `pre-commit run --hook-stage <stage>` directly and preserves its exit code; with no pre-commit binary it warns loudly on stderr and never blocks; `init` and `doctor` name each arrangement's true state, including the uninstalled binary. | specified | active | 2026-08-15 | [changes/the-chain-arms-either-way.md](changes/the-chain-arms-either-way.md) |
+<!-- @anchor MV-44 brain:src/hooks/install.ts /pre-commit run --hook-stage/ -->
+<!-- @anchor MV-44 brain:src/hooks/install.ts /preCommitGate/ -->
+<!-- @anchor MV-44 brain:src/commands/init.ts /gate will not run until it is/ -->
+<!-- @anchor MV-44 brain:src/commands/doctor.ts /preCommitGate/ -->
+<!-- @anchor MV-44 brain:test/init/coexist.test.ts /config present, hook absent, binary present/ -->
+<!-- @anchor MV-44 brain:test/init/coexist.test.ts /loud warning, never a block/ -->
+<!-- @anchor MV-44 brain:test/init/coexist.test.ts /husky arrangement has no such trap/ -->
+<!-- @anchor MV-44 brain:DESIGN.md /arms in the other order/ -->
+<!-- @anchor MV-44 brain:site/content/docs/reference/hooks.md /arms in every order/ -->

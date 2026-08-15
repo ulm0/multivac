@@ -30,8 +30,10 @@ import {
   HOOKS_DIR,
   INACTIVE_FIX,
   MANUAL_CHAIN_LINE,
+  PRECOMMIT_MISSING_FIX,
   chainedHooks,
   findRunner,
+  preCommitGate,
 } from '../hooks/install.js';
 import { collectBrainAnchors } from '../anchor/parse.js';
 import { excludeGlobs, makeMatcher } from '../lib/glob.js';
@@ -316,6 +318,20 @@ async function hooksLine(brain: string): Promise<string> {
     if (present && chained.includes(`.git/hooks/${shim}`)) {
       parts.push(`${shim} chains .git/hooks/${shim} (runs first, its exit code wins)`);
     }
+  }
+  // .pre-commit-config.yaml with no installed hook — the fresh-clone shape:
+  // `pre-commit install` refuses while core.hooksPath is set, so the shim
+  // arms the gate itself, or cannot when the binary is missing.
+  const gate = await preCommitGate(brain, chained);
+  if (gate === 'run') {
+    parts.push(
+      '.pre-commit-config.yaml with no .git/hooks/pre-commit — the shim runs `pre-commit run --hook-stage <stage>` directly (`pre-commit install` refuses while core.hooksPath is set)',
+    );
+  } else if (gate === 'no-binary') {
+    parts.push(
+      "WARNING .pre-commit-config.yaml present, no .git/hooks/pre-commit and no pre-commit binary — the project's gate cannot run → " +
+        PRECOMMIT_MISSING_FIX,
+    );
   }
   // Installed is not enforcing: the shim exits 0 when nothing can run it.
   const runner = await findRunner(brain);

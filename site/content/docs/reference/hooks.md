@@ -45,6 +45,14 @@ root=$(CDPATH= cd -- "$hookdir/../.." && pwd) || exit 0
 prev=$(git rev-parse --git-dir 2>/dev/null)/hooks/pre-commit
 if [ -x "$prev" ]; then
   "$prev" "$@" || exit $?
+elif [ -f "$root/.pre-commit-config.yaml" ]; then
+  # fresh clone: `pre-commit install` refuses while core.hooksPath is
+  # set, so run the config directly — the gate arms in every order.
+  if command -v pre-commit >/dev/null 2>&1; then
+    pre-commit run --hook-stage pre-commit || exit $?
+  else
+    echo "multivac: .pre-commit-config.yaml present but pre-commit is not installed — the project's gate did NOT run. Fix: install pre-commit (pipx install pre-commit, or brew install pre-commit)" >&2
+  fi
 fi
 if command -v mvac >/dev/null 2>&1; then
   exec mvac verify
@@ -65,6 +73,30 @@ keeps it. The pre-existing hook runs **first**, and when it fails, its exit
 code is the hook's exit code; verify never runs. The chain resolves at run
 time, so a manager that installs into `.git/hooks/` *after* multivac is
 picked up without re-running `init`.
+
+The `elif` is the other order — the common one. A fresh clone of a repo that
+uses the pre-commit framework has `.pre-commit-config.yaml` but **no**
+`.git/hooks/pre-commit` yet, and `pre-commit install` refuses to write one
+while `core.hooksPath` is set. So when the config exists and the hook does
+not, the shim runs the config directly — `pre-commit run --hook-stage
+pre-commit` (`pre-push` in the push shim) — and its exit code wins, exactly
+as if the hook were installed. The chain arms in every order. With the
+config present but no `pre-commit` binary on `PATH`, the shim warns loudly
+on stderr and never blocks — the same posture it takes for a missing
+multivac runner — and `init` and `doctor` both name the state:
+
+```txt
+hooks      core.hooksPath ok · pre-commit installed · pre-push installed · .pre-commit-config.yaml with no .git/hooks/pre-commit — the shim runs `pre-commit run --hook-stage <stage>` directly (`pre-commit install` refuses while core.hooksPath is set) · active (mvac)
+```
+
+```txt
+hooks      core.hooksPath ok · pre-commit installed · pre-push installed · WARNING .pre-commit-config.yaml present, no .git/hooks/pre-commit and no pre-commit binary — the project's gate cannot run → install pre-commit (pipx install pre-commit, or brew install pre-commit) · active (mvac)
+```
+
+Husky and lefthook do not have this trap: `.husky/` means multivac installs
+alongside and leaves `core.hooksPath` for husky's own `prepare` to claim, so
+both gates arm in either order; a `lefthook.yml` chains through
+`.git/hooks/` the moment `lefthook install` writes there.
 
 | hook | runs | when `strict_pre_push: true` |
 | --- | --- | --- |
@@ -109,7 +141,7 @@ picks one of three strategies, and says which one it used:
 | shape found | strategy | what happens |
 | --- | --- | --- |
 | nothing | **fresh** | shims in `.multivac/hooks/`, `core.hooksPath` set to it |
-| `.git/hooks/<name>`, `.pre-commit-config.yaml`, `lefthook.yml` | **chained** | same shims; each runs the repo's own `.git/hooks` hook first, its exit code wins |
+| `.git/hooks/<name>`, `.pre-commit-config.yaml`, `lefthook.yml` | **chained** | same shims; each runs the repo's own `.git/hooks` hook first, its exit code wins — and a `.pre-commit-config.yaml` with no hook installed runs via `pre-commit run` |
 | `core.hooksPath` set elsewhere, or `.husky/` | **alongside** | never repoint — the shim is written INTO that directory where the name is free |
 
 Where a foreign hook name is taken and does not run multivac, `init` refuses
