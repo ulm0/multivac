@@ -288,4 +288,5 @@ checks them on every commit.
 <!-- @anchor MV-50 brain:test/change/grapher-refresh.test.ts /never a failed close/ -->
 <!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /there is no refresh on the hook path/ -->
 <!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /never stages or commits the refreshed artifact/ -->
+| MV-51 | RESERVED by change the-sdd-tells-the-agent — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-sdd-tells-the-agent.md](changes/the-sdd-tells-the-agent.md) |
 
