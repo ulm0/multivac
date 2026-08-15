@@ -245,3 +245,9 @@ checks them on every commit.
 <!-- @anchor MV-44 brain:test/init/coexist.test.ts /husky arrangement has no such trap/ -->
 <!-- @anchor MV-44 brain:DESIGN.md /arms in the other order/ -->
 <!-- @anchor MV-44 brain:site/content/docs/reference/hooks.md /arms in every order/ -->
+| MV-45 | `change close` releases only reservations the change never used: a `proposed` row is released only when it still carries the scaffolded RESERVED statement, no anchor names its ID, and its source points at the closing change — and the anchor set is read before the archive moves the change file out of tracked sight. | specified | active | 2026-08-15 | [changes/archive/close-keeps-used-reservations.md](changes/archive/close-keeps-used-reservations.md) |
+<!-- @anchor MV-45 brain:src/change/reserve.ts /startsWith\('RESERVED by change '\)/ -->
+<!-- @anchor MV-45 brain:src/commands/change.ts /before archive moves the change file/ -->
+<!-- @anchor MV-45 brain:test/change/concurrency.test.ts /a stated rule survives close/ -->
+<!-- @anchor MV-45 brain:test/change/concurrency.test.ts /anchors are read before archive/ -->
+<!-- @anchor MV-45 brain:site/content/docs/reference/commands.md /used meaning the rule was stated/ -->

@@ -492,8 +492,9 @@ Refuses to overwrite an existing change file (exit 1). It also takes the next
 free invariant ID out of the law table and writes it straight back as a
 `proposed` row naming this change — never pick an ID by hand. A `proposed` row
 never gates `verify`, and `close` releases the reservation if the change never
-used it. Then runs the SDD `propose` step, if one is declared and `sdd_auto` is
-on.
+used it — used meaning the rule was stated in place of the scaffolded RESERVED
+text, or an anchor names the ID. Then runs the SDD `propose` step, if one is
+declared and `sdd_auto` is on.
 
 ### `plan`
 

@@ -30,7 +30,8 @@ reserved INV-02 — proposed row in .multivac/invariants.md, declared in invaria
 straight back as a `proposed` row naming this change. Never pick an ID by
 hand: two agents both picking "the next one" pick the same one, and the
 collision only surfaces at merge. A `proposed` row never gates `verify`, and
-`close` releases the reservation if the change never used it.
+`close` releases the reservation if the change never used it — a row whose
+rule you stated, or that an anchor names, stays.
 
 The scaffold:
 
