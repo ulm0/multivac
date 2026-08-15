@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gitInit, makeScratchEcosystem, type ScratchEcosystem } from '../helpers/fixture.js';
@@ -86,7 +86,32 @@ test('a * tombstone evaluates against the scoped consumer and gates it', async (
 
 test('no config and no mount stays exit 2 with the init hint', async () => {
   const e = mountedEco(...LAW); // web has no mount
-  assert.equal(await runVerify(e.repos.web), 2);
+  const { code, out } = await captured(() => runVerify(e.repos.web));
+  assert.equal(code, 2);
+  assert.match(out, /multivac init/);
+  assert.doesNotMatch(out, /is mounted but is not a multivac brain/);
+});
+
+test('a stale/empty mount is named as a bad pin, never told to run init', async () => {
+  const e = mountedEco(...LAW);
+  // The api consumer has a .knowledge/ directory whose pin predates the brain
+  // migration: it exists but carries no .multivac/config.yml. "run init" would
+  // scaffold a second brain; verify must say update-the-pin instead.
+  mkdirSync(join(e.repos.web, '.knowledge', 'docs'), { recursive: true });
+  writeFileSync(join(e.repos.web, '.knowledge', 'README.md'), '# old mount, no .multivac\n');
+  const { code, out } = await captured(() => runVerify(e.repos.web));
+  assert.equal(code, 2);
+  assert.match(out, /\.knowledge is mounted but is not a multivac brain/);
+  assert.match(out, /git submodule update --remote \.knowledge/);
+  assert.doesNotMatch(out, /multivac init/);
+});
+
+test('a real mounted brain still resolves and scopes — not mistaken for stale', async () => {
+  const e = mountedEco(...LAW); // api mounts a real brain at .brain
+  const { code, out } = await captured(() => runVerify(e.repos.api));
+  assert.equal(code, 0);
+  assert.match(out, /scoped to repo "api"/);
+  assert.doesNotMatch(out, /is mounted but is not a multivac brain/);
 });
 
 test('unmatchable checkout asks for --repo; the flag scopes it', async () => {
