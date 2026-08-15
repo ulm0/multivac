@@ -278,16 +278,28 @@ command refuses without it:
 | `change apply` | the plan/tasks artifact exists | `openspec/changes/<slug>/tasks.md` | `specs/*<slug>*/plan.md`, `specs/*<slug>*/tasks.md` |
 | `change close` | the archive-equivalent happened | `openspec/changes/archive/*-<slug>` | *not gated — spec-kit has no archive* |
 
-The refusal names the command and the path, so the fix is on the line above
-the error:
+The refusal names the command, the path, and the repos it looked in, so the fix
+is on the line above the error:
 
 ```txt
 $ mvac change plan add-user-auth
-sdd opsx: `change plan add-user-auth` refused — openspec/changes/add-user-auth/proposal.md is missing
+sdd opsx: `change plan add-user-auth` refused — openspec/changes/add-user-auth/proposal.md is missing — looked in brain, api, web
   run /opsx:propose add-user-auth in your agent — it loops openspec's own artifact DAG (proposal → spec deltas → design → tasks)
   then re-run: multivac change plan add-user-auth
   (`--no-sdd` skips the SDD gates for one run; `sdd_auto: false` in .multivac/config.yml turns them off)
 ```
+
+The gate searches the brain and every declared repo present on disk, because
+the specs of a change often live in the code repo rather than the brain. Both
+halves of that search are said out loud: the refusal lists the repos it looked
+in, and the pass names the one it found the artifact in —
+
+```txt
+sdd opsx: api: openspec/changes/add-user-auth/proposal.md ok
+```
+
+— so in an ecosystem of six a bare relative path never leaves you guessing
+which checkout satisfied the gate.
 
 The `*` is a real segment matcher, not decoration: spec-kit numbers its own
 feature directory (`specs/003-add-user-auth/`) and OpenSpec date-stamps its
@@ -329,8 +341,11 @@ sdd speckit: `change close` is not gated — this tool declares no step whose ar
 
 Spec-kit carries a constitution — `.specify/memory/constitution.md`, written
 once and **amended** as the product moves. It ships as an unfilled template, so
-an untouched repo has a placeholder and not a constitution. The brain door
-tells the agent to create it if absent, and `doctor` reports it:
+an untouched repo has a placeholder and not a constitution. Both doors carry
+the instruction to create it if absent — `init` writes it into the door it
+scaffolds, `doors` into the brain door, because `doors` is a second command and
+a constitution the agent only hears about on the second command is one nobody
+writes — and `doctor` reports it:
 
 ```txt
 sdd        speckit project law — .specify/memory/constitution.md missing → run /speckit.constitution in your agent to write the project principles …

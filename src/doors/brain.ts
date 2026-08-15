@@ -26,6 +26,27 @@ export function countActiveInvariants(md: string): number {
   return n;
 }
 
+/**
+ * The project-level document, as door lines: the law of the project, written
+ * once and amended as the product moves. Shared with `init`, which writes the
+ * empty-brain door long before the first `doors` run — a constitution the
+ * agent is only told about on the SECOND command is a constitution nobody
+ * writes.
+ */
+export function projectLawLines(sdd: string): string[] {
+  const spec = sddSpec(sdd);
+  if (!spec) return [];
+  const lines: string[] = [];
+  for (const p of spec.projectSteps ?? []) {
+    lines.push(`  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT.`);
+    lines.push(`    revisit: ${p.revisit}`);
+  }
+  if ((spec.projectSteps ?? []).length === 0) {
+    lines.push('  - this tool has no project-level document — nothing to write once and amend');
+  }
+  return lines;
+}
+
 /** Render the brain door block body (no markers). */
 export function renderBrainDoor(config: Config, activeInvariants: number): string {
   const entries = Object.entries(config.repos);
@@ -57,13 +78,7 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     // The project-level document: the law of the project, not of one change.
     // Written once, then amended as the product moves — so the door tells the
     // agent to create it when it is not there.
-    for (const p of spec?.projectSteps ?? []) {
-      lines.push(`  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT.`);
-      lines.push(`    revisit: ${p.revisit}`);
-    }
-    if (spec && (spec.projectSteps ?? []).length === 0) {
-      lines.push('  - this tool has no project-level document — nothing to write once and amend');
-    }
+    lines.push(...projectLawLines(config.sdd));
     // The per-change flow, in the tool's own order and length. Each line ends
     // with what proves it ran, or with why nothing ever can.
     for (const s of spec?.steps ?? []) {

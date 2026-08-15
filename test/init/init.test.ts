@@ -277,6 +277,30 @@ test('init detects artifacts and proposes them as config comments', async () => 
   assert.equal(loaded.sdd, undefined);
 });
 
+test('init carries the sdd project law into the door it writes', async () => {
+  // `doors` is a second, separate command. A constitution the agent is only
+  // told about after someone remembers to run it is one nobody writes.
+  const dir = tmp();
+  await init.run(['--sdd', 'speckit'], { cwd: dir });
+  const door = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
+  assert.match(door, /project law `\.specify\/memory\/constitution\.md`/);
+  assert.match(door, /CREATE IT IF ABSENT/);
+  assert.match(door, /revisit: once at start/);
+
+  // opsx has none, and the gap is stated rather than invented.
+  const other = tmp();
+  await init.run(['--sdd', 'opsx'], { cwd: other });
+  assert.match(
+    readFileSync(join(other, 'AGENTS.md'), 'utf8'),
+    /this tool has no project-level document/,
+  );
+
+  // No sdd, no section — nothing invented for a brain that declared none.
+  const bare = tmp();
+  await init.run([], { cwd: bare });
+  assert.doesNotMatch(readFileSync(join(bare, 'AGENTS.md'), 'utf8'), /project law/);
+});
+
 test('init keeps an existing config.yml untouched', async () => {
   const dir = tmp();
   await init.run(['--sdd', 'openspec'], { cwd: dir });

@@ -44,19 +44,28 @@ export async function artifactPresent(
   return false;
 }
 
+/** One place an SDD artifact may live, named the way the operator names it. */
+export interface SddRoot {
+  /** The repo key, or `brain` for the brain itself. */
+  scope: string;
+  dir: string;
+}
+
 /**
  * Every directory an SDD tool's files may live in: the brain plus each
  * declared, present, non-brain repo. A gate that only looked in the brain
- * would refuse a change whose specs live in the code repo.
+ * would refuse a change whose specs live in the code repo — and one that
+ * searched them all silently would refuse without saying where it looked, so
+ * each root carries the name the config gave it.
  */
-export async function sddRoots(brain: string, cfg: Config): Promise<string[]> {
-  const dirs = [brain];
-  for (const e of Object.values(cfg.repos)) {
+export async function sddRoots(brain: string, cfg: Config): Promise<SddRoot[]> {
+  const roots: SddRoot[] = [{ scope: 'brain', dir: brain }];
+  for (const [key, e] of Object.entries(cfg.repos)) {
     if (e.isBrain) continue; // already the brain
     const d = resolve(brain, e.path);
-    if (await pathExists(d)) dirs.push(d);
+    if (await pathExists(d)) roots.push({ scope: key, dir: d });
   }
-  return dirs;
+  return roots;
 }
 
 /**

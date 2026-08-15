@@ -1154,7 +1154,10 @@ Three normative rules, applying to the brain and to every declared repo:
   `*` segment allowed for tools that number their own feature directory.
   `change plan` refuses without the propose-equivalent, `change apply` without
   the plan/tasks artifact, `change close` without the archive-equivalent, each
-  refusal naming the exact agent command and the path it looked for. Three
+  refusal naming the exact agent command, the path it looked for and the repos
+  it looked in — the brain and every declared repo present on disk, since a
+  change's specs often live in the code repo — while a pass names the repo the
+  artifact was found in. Three
   rules keep it honest: a step whose tool leaves nothing behind
   (`/speckit.analyze` writes zero bytes by design; a clean `/speckit.converge`
   is forbidden to touch `tasks.md`) is declared **ungateable** with its reason
@@ -1164,7 +1167,11 @@ Three normative rules, applying to the brain and to every declared repo:
   the lifecycle shells out for validation only, never to fake an agent-run
   step; and the project-level document is **reported, never gated** — `doctor`
   calls it missing, present, or STALE against the law's newest row, because a
-  constitution's content cannot be machine-judged. `sdd_auto: false` and
+  constitution's content cannot be machine-judged, and BOTH doors carry the
+  instruction to write it — `init`'s scaffolded door as well as the brain door
+  `doors` renders, since `doors` is a second command and a constitution the
+  agent hears about only on the second command is one nobody writes.
+  `sdd_auto: false` and
   `--no-sdd` turn every gate off: that is exploration mode.
 - **The graph refresh follows the agent, not the commit.** The grapher is a
   navigation aid, not enforcement: nothing lands wrong because the graph is
