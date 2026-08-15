@@ -129,6 +129,13 @@ hooks      core.hooksPath unset → git config core.hooksPath .multivac/hooks ·
 hooks      core.hooksPath ok · pre-commit installed · pre-commit chains .git/hooks/pre-commit (runs first, its exit code wins) · pre-push installed · active (mvac)
 ```
 
+Bare `doctor` reports every one of these states and exits 0 — including the
+disarmed ones (`core.hooksPath` unset, a shim missing, no runnable multivac).
+That is a report, and a human has to read it. **`doctor --strict` turns the
+floor into an assertion**: it exits 1 when the gate is not armed, so a CI step
+`mvac doctor --strict` fails the build the moment the floor is down instead of
+passing green while nothing is enforced. See [`doctor --strict`](../commands/#doctor---strict).
+
 ### A repo that already has hooks
 
 Taking `core.hooksPath` over a project's existing gate would silently disarm

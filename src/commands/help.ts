@@ -35,6 +35,7 @@ modes   present (default) · absent · unique · count=N · each · each!
         not a new file that omits the pattern. each is the universal: EVERY
         matched file must contain a match (each!: must contain none) — the
         failing files are named, and a glob matching zero files fails.
+        A property that must hold across files is each/each!, never count.
 
 where   anchors live in the brain: any root *.md, .multivac/*.md
         (invariants.md), .multivac/changes/*.md. Lines inside \`\`\` fences or

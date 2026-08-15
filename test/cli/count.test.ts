@@ -37,6 +37,22 @@ async function run(argv: string[], cwd: string): Promise<{ code: number; out: st
   }
 }
 
+test('a count summary nudges toward each — the deletion-ratchet hole is named', async () => {
+  const e = eco();
+  // a plain count leg is exactly the universal-shaped case an adopter reaches
+  // for; the summary must point at each/each! or it teaches the M2 hole.
+  const c = await run(['api:src/**/*.ts /8080/'], e.brain);
+  assert.equal(c.code, 0);
+  assert.match(c.out, /ratchet pins count=/);
+  assert.match(c.out, /for a rule that must hold in every file, use `each`/);
+  assert.match(c.out, /to forbid a pattern everywhere, `each!`/);
+  assert.match(c.out, /see `mvac help anchor`/);
+
+  // each mode already has its own guidance + zero-match files — no ratchet nudge
+  const each = await run(['api:src/**/*.ts /8080/ each'], e.brain);
+  assert.doesNotMatch(each.out, /must hold in every file, use/);
+});
+
 test('per-file breakdown and total, and the total is the ratchet verify pins', async () => {
   const e = eco();
   const spec = 'api:db/migrations/*.sql /balance/';
