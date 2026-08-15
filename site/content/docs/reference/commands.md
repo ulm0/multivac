@@ -167,7 +167,7 @@ Nothing it writes is law — the report says so in its own header. Your agent
 reads it and drafts `proposed` rows. See
 [Session zero](../../guide/session-zero).
 
-## `verify [dir] [--strict] [--check] [--repo <key>]`
+## `verify [dir] [--strict] [--check] [--worktree] [--repo <key>]`
 
 The core. Checks every anchor in the brain against the declared repos.
 Deterministic, offline, sub-second by design. `dir` defaults to `.`.
@@ -175,6 +175,9 @@ Deterministic, offline, sub-second by design. `dir` defaults to `.`.
 ```txt
 $ mvac verify
 4 claims · 4 anchored (100%)
+  read      api: origin/main @ 1a2b3c4 — the channel, as published
+  read      web: origin/main @ 9f8e7d6 — the channel, as published (this checkout is parked on wip/redesign @ 4d5e6f7, not read)
+  read      brain: working tree on main @ abc1234 — the brain's own repo, the commit this run gates
 
   ok          3
   unevaluated   1
@@ -187,7 +190,49 @@ $ mvac verify
 | --- | --- |
 | `--strict` | broken `present`/`unique` legs also exit 1. The CI policy. |
 | `--check` | never writes: a `moved` leg is reported instead of self-healed. |
+| `--worktree` | read every declared repo's **working tree** instead of its channel ref — local state across the whole ecosystem, on purpose. |
 | `--repo <key>` | scope to one declared repo. **Only meaningful from a consumer repo** — from a brain it is ignored with a warning. |
+
+### What each run reads (MV-53)
+
+**The brain verifies the ecosystem as published; a consumer verifies what it
+is about to commit.** Two contexts, two scopes:
+
+| run | what it reads | why |
+| --- | --- | --- |
+| **brain-scoped** (cwd is the brain) | each declared repo at its **channel ref** — `channel:` on the entry, else the global, else `origin/main` | the brain's law is about the state everyone shares. A teammate mid-task on a WIP branch in a sibling repo is not a violation |
+| the **brain's own repo**, in the same run | its **working tree** | this is where the author is working, and the brain's law must gate the brain's own commit |
+| **consumer-scoped** (cwd is a code repo with the brain mounted) | its **working tree** | that is the content about to be committed *there* |
+
+Before this, every repo was read as a working tree, from everywhere. A
+sibling parked on a branch turned the brain's law red for a reason that had
+nothing to do with the ecosystem — and a gate that cries wolf gets stepped
+over with `--no-verify`, which is the enforcement floor lost to a tool being
+wrong.
+
+**Every run says which bytes it read.** One `read` line per repo naming the
+ref or the branch and its short sha; a checkout parked off its channel is
+named as such, so an off-channel repo is legible rather than a silent premise
+behind a mysterious verdict.
+
+A channel ref that cannot be resolved — no remote, or never fetched — falls
+back to the working tree **and says so**. The meaning never changes in
+silence:
+
+```txt
+  read      api: working tree on main @ 1a2b3c4 — channel origin/main does not resolve here (no remote, or never fetched) — FELL BACK to the working tree
+```
+
+`--worktree` asks for the old behaviour on purpose — local state across every
+declared repo, for when that is genuinely the question:
+
+```txt
+$ mvac verify --worktree
+  read      api: working tree on wip/refactor @ 4d5e6f7 — --worktree: local state, not the channel; OFF channel origin/main @ 1a2b3c4
+```
+
+Which branch each repo is parked on, and whether that is its channel, is also
+a `doctor` line — see [`doctor`](#doctor) below.
 
 Per-leg states:
 
@@ -301,6 +346,7 @@ that repo's anchors plus `*` anchors:
 $ cd ../api && mvac verify
 scoped to repo "api" · brain at /home/you/api/.brain
 4 claims · 3 anchored (75%)
+  read      api: working tree on wip/refactor @ 4d5e6f7 — this checkout, the content about to be committed here
 
   ok          3
 
@@ -419,6 +465,7 @@ doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: .cu
 grapher    graphify @ brain: artifact missing → run `graphify update .` there
 grapher    graphify @ api: artifact missing → run `graphify update .` there
 repos      1/2 present · payments missing → `multivac repos sync` (git clone git@example.com:acme/payments.git ../payments)
+branches   api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
 pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain) · payments: not cloned
 hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac)
 untracked  nothing build-critical untracked
@@ -430,6 +477,7 @@ untracked  nothing build-critical untracked
 | `sdd` | artifact, binary, whether `sdd_auto` is on, and a second line naming what the agent is expected to run at each step — **omitted entirely when no `sdd` is declared** |
 | `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness |
 | `repos` | how many are present, and the clone command for each that is not |
+| `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
 | `untracked` | brain paths a `.gitignore` swallows (WARNING — the law cannot ship), then untracked, non-ignored files that look build-critical |
@@ -784,7 +832,7 @@ unknown command "frobnicate" — run `multivac --help` for the list
 
 ```txt
 $ mvac verify --loud
-unknown flag "--loud" — verify takes [dir], --strict, --check, --repo <key>
+unknown flag "--loud" — verify takes [dir], --strict, --check, --worktree, --repo <key>
 ```
 
 ```txt

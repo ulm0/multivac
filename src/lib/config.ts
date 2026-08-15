@@ -50,6 +50,16 @@ export const LEGACY: Array<[legacy: string, now: string]> = [
 
 const exists = (p: string): Promise<boolean> => access(p).then(() => true, () => false);
 
+/**
+ * The ecosystem's published state for one repo: `channel:` on the entry, else
+ * the global, else `origin/main`. This is the ref a brain-scoped `verify`
+ * reads — the brain's law is about what everyone shares, not about whichever
+ * branch a teammate's checkout happens to be parked on.
+ */
+export const DEFAULT_CHANNEL = 'origin/main';
+export const channelRef = (cfg: Config, entry: RepoEntry): string =>
+  entry.channel ?? cfg.channel ?? DEFAULT_CHANNEL;
+
 /** The law table's header row — the schema multivac writes and reads. */
 const LAW_HEADER = /^\|\s*ID\s*\|\s*statement\s*\|\s*authority\s*\|\s*state\s*\|\s*date\s*\|\s*source\s*\|/m;
 

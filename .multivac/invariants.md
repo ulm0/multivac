@@ -318,5 +318,24 @@ checks them on every commit.
 <!-- @anchor MV-52 brain:site/content/docs/reference/graphers-and-sdd.md /harness post-edit hook/ -->
 <!-- @anchor MV-52 brain:DESIGN.md /The graph refresh follows the agent, not the commit/ -->
 <!-- @anchor MV-52 brain:skills/multivac/references/change.md /it follows YOUR edits, not the commit/ -->
-| MV-53 | RESERVED by change each-scope-verifies-its-own — state the rule here before close. | open | proposed | 2026-08-15 | [changes/each-scope-verifies-its-own.md](changes/each-scope-verifies-its-own.md) |
+| MV-53 | Each context verifies what it is responsible for. A brain-scoped `verify` reads every declared repo at its channel ref — `channel:` on the entry, else the global, else `origin/main` — resolved in that repo and read with `git ls-tree` plus one `git cat-file --batch`, never that repo's working tree: the brain's law is about the ecosystem as published, so a sibling parked on a WIP branch is mid-task, not a violation. The brain's OWN repo is the exception and is always read as a working tree, because that is the commit the run gates. A channel ref that does not resolve falls back to the working tree and says so. A consumer-scoped run is unchanged: the working tree, the content about to be committed there. Every run prints one `read` line per repo naming the ref or the branch and its short sha, and names a checkout parked off its channel; `--worktree` forces the whole-ecosystem working-tree read; `doctor` carries a `branches` line saying where each repo is parked and whether that is its channel. | specified | active | 2026-08-15 | [changes/each-scope-verifies-its-own.md](changes/each-scope-verifies-its-own.md) |
+<!-- @anchor MV-53 brain:src/commands/verify.ts /async function resolveSources/ -->
+<!-- @anchor MV-53 brain:src/commands/verify.ts /the channel, as published/ -->
+<!-- @anchor MV-53 brain:src/commands/verify.ts /FELL BACK to the working tree/ -->
+<!-- @anchor MV-53 brain:src/commands/verify.ts /the brain's own repo, the commit this run gates/ -->
+<!-- @anchor MV-53 brain:src/commands/verify.ts /const handles: RepoHandle\[\] = sources\.map/ -->
+<!-- @anchor MV-53 brain:src/lib/config.ts /export const channelRef/ -->
+<!-- @anchor MV-53 brain:src/lib/config.ts /DEFAULT_CHANNEL = 'origin\/main'/ -->
+<!-- @anchor MV-53 brain:src/lib/git.ts /export async function lsTree/ -->
+<!-- @anchor MV-53 brain:src/lib/git.ts /export async function catFileBlobs/ -->
+<!-- @anchor MV-53 brain:src/anchor/match.ts /readonly ref\?: string/ -->
+<!-- @anchor MV-53 brain:src/commands/doctor.ts /async function branchesLine/ -->
+<!-- @anchor MV-53 brain:test/verify/scope.test.ts /a sibling parked on a WIP branch does not redden the brain/ -->
+<!-- @anchor MV-53 brain:test/verify/scope.test.ts /--worktree reproduces the old whole-ecosystem working-tree behaviour/ -->
+<!-- @anchor MV-53 brain:test/verify/scope.test.ts /an unresolvable channel falls back to the working tree and says so/ -->
+<!-- @anchor MV-53 brain:test/doctor/doctor.test.ts /doctor names the branch each repo is parked on/ -->
+<!-- @anchor MV-53 brain:DESIGN.md /Each context verifies what it is responsible for/ -->
+<!-- @anchor MV-53 brain:site/content/docs/reference/commands.md /What each run reads/ -->
+<!-- @anchor MV-53 brain:site/content/docs/reference/configuration.md /The ecosystem as published/ -->
+<!-- @anchor MV-53 brain:skills/multivac/SKILL.md /Read the .read. lines before you read the verdicts/ -->
 

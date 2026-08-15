@@ -35,27 +35,39 @@ rhythm is always `mvac change new → plan → apply → land → close`
    means the brain and the code disagree — resolve that before writing code
    on top of it. A lying brain does not produce ugly docs; it produces
    confidently wrong code across N repos.
-2. **Cite claims by ID.** Write "per INV-12", never a restatement. A
+2. **Read the `read` lines before you read the verdicts.** Each context
+   verifies what it is responsible for: from the brain, every sibling repo is
+   judged at its **channel ref** — the ecosystem as published — while the
+   brain's own repo is judged at its working tree; from a code repo with the
+   brain mounted, its own working tree, the content you are about to commit
+   there. verify prints one `read` line per repo naming the ref or branch and
+   its sha, so you never have to guess which bytes a red came from. A
+   sibling parked off its channel is named there and in `mvac doctor`'s
+   `branches` line. `mvac verify --worktree` asks the other question on
+   purpose: local state across every repo. If a `read` line says a channel
+   ref could not be resolved and it FELL BACK to a working tree, that repo's
+   verdict is about somebody's local branch — fetch before you believe it.
+3. **Cite claims by ID.** Write "per INV-12", never a restatement. A
    paraphrase ages silently; an ID can be verified. This applies to doors,
    specs, change files, commit messages — everywhere law is referenced.
-3. **Never relax an invariant in code.** The law changes first: open a
+4. **Never relax an invariant in code.** The law changes first: open a
    change that declares "amends INV-xx", update the row (dated), then change
    the code in the same change. `mvac change close` checks law and code
    ended consistent.
-4. **You propose; the human enacts.** New claims are filed as `proposed`
+5. **You propose; the human enacts.** New claims are filed as `proposed`
    rows. Only a human flips a row to `active` — an authority label like
    "published" means someone answered for it, and you cannot answer for it.
-5. **A change is done when its anchors resolve, not when it merges.**
+6. **A change is done when its anchors resolve, not when it merges.**
    Declare up front which claims the change makes true; `close` re-runs
    verify scoped to exactly those and refuses to archive until they hold.
-6. **Retiring is authored, never derived.** Mark the row `retired` (keep the
+7. **Retiring is authored, never derived.** Mark the row `retired` (keep the
    ID — never renumber, never reuse), then write NEW `absent` legs for the
    dead mechanism's identifiers. Do not flip existing legs. Procedure in
    `references/change.md`.
-7. **`moved` is normal, not an alarm.** When verify rewrites a glob in
+8. **`moved` is normal, not an alarm.** When verify rewrites a glob in
    place, review the diff like any other edit and let it ride the same
    branch.
-8. **Walk the ritual `close` prints.** `.multivac/ritual.md` is the team's
+9. **Walk the ritual `close` prints.** `.multivac/ritual.md` is the team's
    half of the closing ceremony — reviews, announcements, what ships before
    what. multivac prints it and checks none of it; take each line to the
    human before calling the change done.

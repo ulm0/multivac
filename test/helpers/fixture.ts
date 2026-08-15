@@ -28,6 +28,20 @@ export function gitInit(dir: string): void {
   git(dir, 'init', '-q', '-b', 'main');
 }
 
+/**
+ * Give `repo` an origin under `tmp` and push `main` to it, so `origin/main`
+ * resolves there. A brain-scoped verify reads that ref, so any test about
+ * published-vs-parked needs a repo that has actually been published — and
+ * the bare remote goes through here for the same reason every other repo
+ * does: the branch name is stated, never inherited from the host.
+ */
+export function publishRepo(repo: string, tmp: string, name: string): void {
+  const bare = join(tmp, `${name}.git`);
+  execFileSync('git', ['init', '-q', '--bare', '-b', 'main', bare], { stdio: 'ignore' });
+  git(repo, 'remote', 'add', 'origin', bare);
+  git(repo, 'push', '-q', 'origin', 'main');
+}
+
 /** Init a git repo at `dir` with `files` committed. Exported for tests that
  * need trees shaped like real subjects (see test/seed). */
 export function initRepo(dir: string, files: Record<string, string>): void {

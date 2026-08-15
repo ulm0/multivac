@@ -1,9 +1,10 @@
-// Evaluate one leg's matching against one repo checkout. Files come from
-// `git ls-files` only — never a tree walk — filtered by the anchor's globs.
+// Evaluate one leg's matching against one repo checkout — or against one ref
+// in it. Files come from `git ls-files` (working tree) or `git ls-tree` (ref)
+// only — never a tree walk — filtered by the anchor's globs.
 
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { lsFiles, untrackedFiles } from '../lib/git.js';
+import { catFileBlobs, lsFiles, lsTree, untrackedFiles } from '../lib/git.js';
 import { excludeGlobs, filterFiles } from '../lib/glob.js';
 import { compileAnchorRegex } from '../lib/regex.js';
 import { sqlStatements } from './normalize.js';
@@ -14,33 +15,61 @@ export interface Match {
   line: number;
 }
 
-/** Caches ls-files and file text per repo checkout for one verify run. */
+/**
+ * Caches the file list and file text of one repo for one verify run — of its
+ * working tree, or of one ref in it when `ref` is set. Which of the two is not
+ * this class's judgement: the caller resolves it and the report says it out
+ * loud, because a verdict whose bytes are a mystery is the defect itself.
+ */
 export class RepoScanner {
   private list?: Promise<string[]>;
   private others?: Promise<string[]>;
   private texts = new Map<string, Promise<string | null>>();
 
-  constructor(readonly dir: string) {}
+  constructor(
+    readonly dir: string,
+    readonly ref?: string,
+  ) {}
 
   files(): Promise<string[]> {
-    this.list ??= lsFiles(this.dir);
+    this.list ??= this.ref ? lsTree(this.dir, this.ref) : lsFiles(this.dir);
     return this.list;
   }
 
-  /** Untracked, non-ignored files. Read only when a glob comes up empty. */
+  /**
+   * Untracked, non-ignored files. Read only when a glob comes up empty, and
+   * only for a working tree: a ref has no untracked side, so the `git add`
+   * hint would be about bytes this run never looked at.
+   */
   untracked(): Promise<string[]> {
+    if (this.ref) return Promise.resolve([]);
     this.others ??= untrackedFiles(this.dir);
     return this.others;
+  }
+
+  /**
+   * Warm the text cache for `files` in one shot. Free for a working tree;
+   * for a ref it is the batch that keeps the budget — one `git cat-file`
+   * process instead of one `git show` per file.
+   */
+  async prefetch(files: string[]): Promise<void> {
+    if (!this.ref) return;
+    const want = files.filter((f) => !this.texts.has(f));
+    if (want.length === 0) return;
+    const blobs = await catFileBlobs(this.dir, this.ref, want);
+    for (const f of want) this.texts.set(f, Promise.resolve(blobs.get(f) ?? null));
   }
 
   /** File text, or null for binary (NUL in first 8KB) or unreadable files. */
   read(file: string): Promise<string | null> {
     let p = this.texts.get(file);
     if (!p) {
-      p = readFile(join(this.dir, file)).then(
-        (buf) => (buf.subarray(0, 8192).includes(0) ? null : buf.toString('utf8')),
-        () => null,
-      );
+      p = this.ref
+        ? catFileBlobs(this.dir, this.ref, [file]).then((b) => b.get(file) ?? null)
+        : readFile(join(this.dir, file)).then(
+            (buf) => (buf.subarray(0, 8192).includes(0) ? null : buf.toString('utf8')),
+            () => null,
+          );
       this.texts.set(file, p);
     }
     return p;
@@ -91,6 +120,7 @@ export async function scanLeg(
   );
   const re = compileAnchorRegex(anchor.regexSource, anchor.regexFlags);
   const matches: Match[] = [];
+  await scanner.prefetch(globFiles);
   for (const f of globFiles) {
     const text = await scanner.read(f);
     if (text !== null) matches.push(...matchesInFile(f, text, re));
@@ -109,7 +139,9 @@ export async function scanWholeRepo(
 ): Promise<Match[]> {
   const re = compileAnchorRegex(anchor.regexSource, anchor.regexFlags);
   const out: Match[] = [];
-  for (const f of filterFiles(await scanner.files(), '**', excludeGlobs(anchor.excludes, keys))) {
+  const all = filterFiles(await scanner.files(), '**', excludeGlobs(anchor.excludes, keys));
+  await scanner.prefetch(all);
+  for (const f of all) {
     const text = await scanner.read(f);
     if (text !== null) out.push(...matchesInFile(f, text, re));
   }
