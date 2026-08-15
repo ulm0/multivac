@@ -15,7 +15,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
-import { makeScratchEcosystem } from '../helpers/fixture.js';
+import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { installHooks } from '../../src/hooks/install.js';
 
@@ -279,4 +279,33 @@ test('doctor --strict exits 1 when the gate is disarmed; bare doctor stays 0', a
   rmSync(join(eco.brain, '.multivac/hooks/pre-commit'));
   assert.equal((await doctorReport(eco.brain, true)).exit, 1, 'a missing shim is disarmed');
   assert.equal((await doctorReport(eco.brain)).exit, 0, 'bare doctor never gates on it');
+});
+
+test('doctor names the branch each repo is parked on, and whether it is the channel', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-doc-'));
+  const eco = makeScratchEcosystem(tmp);
+  const g = (cwd: string, ...args: string[]): string =>
+    execFileSync('git', ['-C', cwd, ...args], { stdio: ['ignore', 'pipe', 'ignore'] })
+      .toString()
+      .trim();
+  // api published, then parked on a WIP branch; web never published at all.
+  publishRepo(eco.repos.api, tmp, 'acme-api');
+  g(eco.repos.api, 'checkout', '-q', '-b', 'wip/refactor');
+  writeFileSync(join(eco.repos.api, 'src/server.ts'), 'export const port = 9090;\n');
+  g(eco.repos.api, 'add', '-A');
+  g(eco.repos.api, 'commit', '-q', '-m', 'wip');
+
+  const { lines, exit } = await doctorReport(eco.brain);
+  assert.equal(exit, 0);
+  const branches = line(lines, 'branches');
+  // The diagnostic that explains a verify result at a glance: off channel,
+  // and which bytes verify actually reads instead.
+  assert.match(branches, /api: on wip\/refactor @ [0-9a-f]{7} — OFF channel origin\/main @ [0-9a-f]{7}/);
+  assert.match(branches, /verify reads the channel, not this tree/);
+  assert.match(branches, /web: on main @ [0-9a-f]{7} — channel origin\/main does not resolve here/);
+  assert.match(branches, /verify FALLS BACK to this working tree/);
+
+  // Back on the channel: no drama, and it says the two agree.
+  g(eco.repos.api, 'checkout', '-q', 'main');
+  assert.match(line((await doctorReport(eco.brain)).lines, 'branches'), /api: on main @ [0-9a-f]{7} = channel origin\/main/);
 });

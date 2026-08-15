@@ -15,6 +15,8 @@ import { RepoScanner, scanLeg, scanWholeRepo } from './match.js';
 export interface RepoHandle {
   key: string;
   dir: string | null;
+  /** Read this ref instead of the working tree (brain-scoped runs). */
+  ref?: string;
 }
 
 export interface EvaluateOptions {
@@ -250,11 +252,15 @@ export async function evaluateAnchors(
   opts: EvaluateOptions,
 ): Promise<ClaimResult[]> {
   const scanners = new Map<string, RepoScanner>();
-  const scanner = (dir: string): RepoScanner => {
-    let s = scanners.get(dir);
+  // Identity is the directory AND the ref read in it: the same checkout read
+  // at origin/main and read as a working tree are two different sets of bytes.
+  const at = (h: RepoHandle & { dir: string }): string => `${realPath(h.dir)}\0${h.ref ?? ''}`;
+  const scanner = (h: RepoHandle & { dir: string }): RepoScanner => {
+    const k = at(h);
+    let s = scanners.get(k);
     if (!s) {
-      s = new RepoScanner(dir);
-      scanners.set(dir, s);
+      s = new RepoScanner(h.dir, h.ref);
+      scanners.set(k, s);
     }
     return s;
   };
@@ -264,7 +270,7 @@ export async function evaluateAnchors(
   const seenDirs = new Set<string>();
   const starHandles = handles.filter((h) => {
     if (h.dir === null) return true;
-    const key = realPath(h.dir);
+    const key = at(h as RepoHandle & { dir: string });
     if (seenDirs.has(key)) return false;
     seenDirs.add(key);
     return true;
@@ -286,7 +292,7 @@ export async function evaluateAnchors(
       .map((h) => ({
         key: h.key,
         keys: aliases.get(realPath(h.dir)) ?? [h.key],
-        scanner: scanner(h.dir),
+        scanner: scanner(h),
       }));
     const result = await evalLeg(a, targets, opts);
     let claim = claims.get(a.claimId);

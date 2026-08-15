@@ -1,7 +1,7 @@
 // Read-only git helpers. execFile, never a shell. Never walk the tree:
 // file enumeration is `git ls-files`.
 
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -63,8 +63,76 @@ export async function untrackedFiles(repo: string): Promise<string[]> {
   return out.split('\0').filter(Boolean);
 }
 
+/** Tracked files at a ref, repo-relative, /-separated. The ls-files of a tree. */
+export async function lsTree(repo: string, ref: string): Promise<string[]> {
+  const out = await run(repo, ['ls-tree', '-r', '-z', '--name-only', '--full-tree', ref]);
+  return out.split('\0').filter(Boolean);
+}
+
+/**
+ * Blob text for `paths` at `ref`, in ONE `git cat-file --batch` process — the
+ * whole reason a ref-scoped scan keeps the sub-second budget: `git show` per
+ * file would spawn one process per glob hit. Missing paths, gitlinks and
+ * anything not a blob come back absent; binary (NUL in the first 8KB) comes
+ * back null, the same rule the working-tree read applies.
+ */
+export async function catFileBlobs(
+  repo: string,
+  ref: string,
+  paths: string[],
+): Promise<Map<string, string | null>> {
+  const out = new Map<string, string | null>();
+  // --batch is newline-delimited on stdin: a path containing one cannot be
+  // asked for. Vanishingly rare, and "unreadable" is the honest answer.
+  const wanted = paths.filter((p) => !p.includes('\n'));
+  if (wanted.length === 0) return out;
+  const chunks: Buffer[] = [];
+  const child = spawn('git', ['-C', repo, 'cat-file', '--batch'], {
+    env: cleanEnv(),
+    stdio: ['pipe', 'pipe', 'ignore'],
+  });
+  child.stdout.on('data', (c: Buffer) => chunks.push(c));
+  const done = new Promise<void>((ok, ko) => {
+    child.on('error', ko);
+    child.on('close', () => ok());
+  });
+  child.stdin.on('error', () => {}); // EPIPE if git died first: `close` reports
+  child.stdin.end(wanted.map((p) => `${ref}:${p}\n`).join(''));
+  await done;
+  // Responses come back in the order asked: "<oid> <type> <size>\n<bytes>\n",
+  // or "<input> missing\n" (also "ambiguous"/"dangling" — anything but a
+  // header with a size is a skip).
+  const buf = Buffer.concat(chunks);
+  let at = 0;
+  for (const p of wanted) {
+    const nl = buf.indexOf(10, at);
+    if (nl < 0) break;
+    const header = buf.subarray(at, nl).toString('utf8');
+    at = nl + 1;
+    const m = header.match(/^[0-9a-f]{40,} (\w+) (\d+)$/);
+    if (!m) continue; // missing / not an object — leave it absent
+    const size = Number(m[2]);
+    const body = buf.subarray(at, at + size);
+    at += size + 1; // git writes a trailing newline after the payload
+    if (m[1] !== 'blob') continue;
+    out.set(p, body.subarray(0, 8192).includes(0) ? null : body.toString('utf8'));
+  }
+  return out;
+}
+
 export async function headSha(repo: string): Promise<string> {
   return run(repo, ['rev-parse', 'HEAD']);
+}
+
+/** Resolved commit sha for `rev`, or null when the ref does not exist here. */
+export async function revParse(repo: string, rev: string): Promise<string | null> {
+  return run(repo, ['rev-parse', '--verify', '--quiet', `${rev}^{commit}`]).catch(() => null);
+}
+
+/** Branch HEAD is on, or null when detached (or not a repo). */
+export async function currentBranch(repo: string): Promise<string | null> {
+  const name = await run(repo, ['symbolic-ref', '--short', '--quiet', 'HEAD']).catch(() => null);
+  return name || null;
 }
 
 /** Upstream of HEAD, or null when none is configured. */

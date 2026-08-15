@@ -9,6 +9,7 @@ import {
   BRAIN_PATHS,
   CONFIG_PATH,
   ConfigError,
+  channelRef,
   layoutError,
   loadConfig,
 } from '../lib/config.js';
@@ -212,6 +213,47 @@ async function reposLine(brain: string, cfg: Config): Promise<string> {
     }
   }
   return [`${present}/${entries.length} present`, ...notes, ...missing].join(' · ');
+}
+
+/**
+ * Where each declared repo is parked, and whether that is its channel — the
+ * diagnostic that explains a `verify` result at a glance. A brain-scoped
+ * verify reads the channel, so a repo parked elsewhere is NOT what produced
+ * the verdicts; before MV-53 it was, and the red it caused looked like a lie
+ * because nothing in any report mentioned the branch.
+ */
+async function branchesLine(brain: string, cfg: Config): Promise<string> {
+  const entries = Object.entries(cfg.repos);
+  if (entries.length === 0) return `none declared — add repos: to ${CONFIG_PATH}`;
+  const parts: string[] = [];
+  for (const [key, e] of entries) {
+    const dir = e.isBrain ? brain : resolve(brain, e.path);
+    if (!(await pathExists(dir))) {
+      parts.push(`${key}: not cloned`);
+      continue;
+    }
+    const branch = (await git.currentBranch(dir)) ?? 'detached HEAD';
+    const head = await git.revParse(dir, 'HEAD');
+    const at = `${branch}${head ? ` @ ${head.slice(0, 7)}` : ''}`;
+    if (e.isBrain || key === 'brain') {
+      parts.push(`${key}: on ${at} — brain==code, verify reads this working tree`);
+      continue;
+    }
+    const channel = channelRef(cfg, e);
+    const sha = await git.revParse(dir, channel);
+    if (sha === null) {
+      parts.push(
+        `${key}: on ${at} — channel ${channel} does not resolve here; verify FALLS BACK to this working tree → git -C ${e.path} fetch`,
+      );
+    } else if (sha === head) {
+      parts.push(`${key}: on ${at} = channel ${channel}`);
+    } else {
+      parts.push(
+        `${key}: on ${at} — OFF channel ${channel} @ ${sha.slice(0, 7)}; verify reads the channel, not this tree`,
+      );
+    }
+  }
+  return parts.join(' · ');
 }
 
 async function pinsLine(brain: string, cfg: Config): Promise<string> {
@@ -493,6 +535,7 @@ export async function doctorReport(
     ...(await sddLines(brainDir, cfg)),
     ...(await grapherLines(brainDir, cfg)),
     label('repos') + (await reposLine(brainDir, cfg)),
+    label('branches') + (await branchesLine(brainDir, cfg)),
     label('pins') + (await pinsLine(brainDir, cfg)),
     label('hooks') + hooks.line,
     label('untracked') + (await untrackedLine(brainDir, cfg)),

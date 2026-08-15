@@ -223,19 +223,36 @@ next time `doors` (or `init`) rewrites the shims. See
 
 | | |
 | --- | --- |
-| type | string — a git ref resolvable **in the brain checkout** |
-| default | unset |
+| type | string — a git ref |
+| default | unset for pin staleness; **`origin/main`** for what a brain-scoped `verify` reads |
 | example | `channel: origin/main` |
 
-The ref each consumer's brain-mount pin is compared against. Per-repo
-`repos.<key>.channel` overrides it.
+**The ecosystem as published.** Per-repo `repos.<key>.channel` overrides it.
+The key answers two questions:
 
-**Without it:** `verify` skips the staleness check for that repo entirely —
-there is nothing to compare to. `doctor` falls back to the brain's
-remote-tracking branch if there is one, and otherwise says what to add:
+1. **Which bytes a brain-scoped `verify` judges** (MV-53). Every declared
+   repo is read at its channel ref — resolved *in that repo* — not at its
+   working tree, so a sibling parked on a WIP branch never reddens the
+   brain's law. The brain's own repo is the exception: always its working
+   tree, because that is the commit the run gates. Undeclared, this defaults
+   to `origin/main`; a ref that does not resolve there falls back to the
+   working tree and says so on that repo's `read` line. `--worktree` forces
+   the working-tree read across the whole ecosystem.
+2. **What each consumer's brain-mount pin is compared against**, resolved
+   **in the brain checkout**. This one has no default: undeclared, `verify`
+   skips the staleness check for that repo entirely — there is nothing to
+   compare to. `doctor` falls back to the brain's remote-tracking branch if
+   there is one, and otherwise says what to add:
 
 ```txt
 pins       api: pin 8f2a1cc — no channel ref to compare; set channel: in .multivac/config.yml
+```
+
+`doctor` also names the branch each repo is parked on and whether it is that
+repo's channel — the line that explains a `verify` result at a glance:
+
+```txt
+branches   api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree
 ```
 
 ### `mount`

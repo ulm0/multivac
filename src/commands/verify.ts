@@ -6,8 +6,14 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 import { changesDir, parseChange } from '../change/file.js';
-import { loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
-import { lastFetchAge, lsTreeGitlink, run as git } from '../lib/git.js';
+import { channelRef, loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
+import {
+  currentBranch,
+  lastFetchAge,
+  lsTreeGitlink,
+  revParse,
+  run as git,
+} from '../lib/git.js';
 import { samePath } from '../lib/paths.js';
 import { dim, green, red, say, warn, yellow } from '../lib/out.js';
 import {
@@ -154,6 +160,93 @@ export interface EvaluateOpts {
   write?: boolean;
   /** Set when verify runs from a consumer repo instead of the brain. */
   scope?: VerifyScope;
+  /** Brain-scoped only: read every sibling's working tree, the pre-MV-53 way. */
+  worktree?: boolean;
+}
+
+/** Which bytes one repo contributed to this run, and how to say it out loud. */
+export interface RepoSource {
+  key: string;
+  dir: string | null;
+  /** The ref read, or undefined when the working tree was read. */
+  ref?: string;
+  /** Report line, minus the label: "api: origin/main @ 1a2b3c4 — …". */
+  line: string;
+}
+
+const short = (sha: string): string => sha.slice(0, 7);
+
+/** Where a checkout is parked: "on main @ 1a2b3c4", detached, or empty. */
+async function worktreeAt(dir: string): Promise<{ text: string; head: string | null }> {
+  const [branch, head] = await Promise.all([currentBranch(dir), revParse(dir, 'HEAD')]);
+  const where = branch ? `on ${branch}` : head ? 'detached' : 'no commits';
+  return { text: `${where}${head ? ` @ ${short(head)}` : ''}`, head };
+}
+
+/**
+ * THE decision this change exists for: which bytes each declared repo is
+ * judged on, and the sentence that says so.
+ *
+ * The brain's law is about the ecosystem **as published**, so a sibling repo
+ * is read at its channel ref — a teammate parked on a WIP branch is mid-task,
+ * not a violation, and turning that into a red taught an agent to commit with
+ * `--no-verify`. The brain's own repo is the exception: that is where the
+ * author is working, and its law must gate its own commit. A channel ref that
+ * cannot be resolved falls back to the working tree and SAYS SO — never a
+ * silent change of meaning.
+ */
+async function resolveSources(
+  brainDir: string,
+  cfg: Config,
+  worktreeMode: boolean,
+): Promise<RepoSource[]> {
+  const out: RepoSource[] = [];
+  for (const [key, e] of Object.entries(cfg.repos)) {
+    if (key === 'brain') continue; // the implicit brain handle, added below
+    const dir = resolve(brainDir, e.path);
+    if (!existsSync(dir)) {
+      out.push({ key, dir: null, line: `${key}: not on disk — nothing read; run \`multivac repos sync\`` });
+      continue;
+    }
+    const wt = await worktreeAt(dir);
+    if (e.isBrain) {
+      out.push({
+        key,
+        dir,
+        line: `${key}: working tree ${wt.text} — brain==code, the commit this run gates`,
+      });
+      continue;
+    }
+    const channel = channelRef(cfg, e);
+    const sha = await revParse(dir, channel);
+    // Off channel is a fact about the checkout, and it is printed either way:
+    // the sibling defect this change also fixes is that a repo parked
+    // somewhere else was invisible here, so its verdict read as mysterious.
+    const off = sha !== wt.head;
+    if (worktreeMode || sha === null) {
+      const why =
+        sha === null
+          ? `channel ${channel} does not resolve here (no remote, or never fetched) — FELL BACK to the working tree`
+          : '--worktree: local state, not the channel';
+      const drift = sha !== null && off ? `; OFF channel ${channel} @ ${short(sha)}` : '';
+      out.push({ key, dir, line: `${key}: working tree ${wt.text} — ${why}${drift}` });
+      continue;
+    }
+    out.push({
+      key,
+      dir,
+      ref: channel,
+      line:
+        `${key}: ${channel} @ ${short(sha)} — the channel, as published` +
+        (off ? ` (this checkout is parked ${wt.text}, not read)` : ''),
+    });
+  }
+  out.push({
+    key: 'brain',
+    dir: brainDir,
+    line: `brain: working tree ${(await worktreeAt(brainDir)).text} — the brain's own repo, the commit this run gates`,
+  });
+  return out;
 }
 
 /**
@@ -278,6 +371,8 @@ interface Evaluated {
   gating: Set<LegResult>;
   /** claim id -> open change holding it pending. Empty in a claim-scoped run. */
   pendingBy: Map<string, string>;
+  /** What each repo contributed, ref or branch and sha. The report prints it. */
+  sources: RepoSource[];
   report: VerifyReport;
 }
 
@@ -324,19 +419,22 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
     (a) => !refused.has(a) && (states.get(a.claimId) !== 'retired' || a.mode === 'absent'),
   );
 
-  // Scoped: only the consumer checkout is a target — `*` legs see it alone.
-  const handles: RepoHandle[] = opts.scope
-    ? [{ key: opts.scope.repoKey, dir: opts.scope.dir }]
-    : Object.entries(cfg.repos)
-        // A declared `brain: .` is the implicit handle pushed below; any
-        // other brain==code key resolves to the brain dir on its own, and
-        // evaluateAnchors scans one directory once for `*` legs.
-        .filter(([key]) => key !== 'brain')
-        .map(([key, e]) => {
-          const p = resolve(brainDir, e.path);
-          return { key, dir: existsSync(p) ? p : null };
-        });
-  if (!opts.scope) handles.push({ key: 'brain', dir: brainDir });
+  // What this run reads, per repo. Consumer-scoped: the consumer checkout's
+  // working tree alone — that is the content about to be committed there, and
+  // `*` legs see it alone. Brain-scoped: each sibling at its channel ref, the
+  // brain itself at its working tree (resolveSources decides and says so).
+  const sources: RepoSource[] = opts.scope
+    ? [
+        {
+          key: opts.scope.repoKey,
+          dir: opts.scope.dir,
+          line:
+            `${opts.scope.repoKey}: working tree ${(await worktreeAt(opts.scope.dir)).text} — ` +
+            'this checkout, the content about to be committed here',
+        },
+      ]
+    : await resolveSources(brainDir, cfg, opts.worktree === true);
+  const handles: RepoHandle[] = sources.map((s) => ({ key: s.key, dir: s.dir, ref: s.ref }));
 
   // Pendency is a reporting grace, and the close gate is where it ends: a
   // claim-scoped run (change close) asks for the unmasked truth.
@@ -380,6 +478,7 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
     claims,
     gating,
     pendingBy,
+    sources,
     report: { claims, counts, blockingBroken, exitCode },
   };
 }
@@ -395,15 +494,19 @@ export async function evaluate(
 async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   let strict = false;
   let check = false;
+  let worktree = false;
   let repoFlag: string | undefined;
   let dir = '.';
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--strict') strict = true;
     else if (a === '--check') check = true;
+    else if (a === '--worktree') worktree = true;
     else if (a === '--repo') repoFlag = argv[++i];
     else if (a.startsWith('-')) {
-      warn(`unknown flag "${a}" — verify takes [dir], --strict, --check, --repo <key>`);
+      warn(
+        `unknown flag "${a}" — verify takes [dir], --strict, --check, --worktree, --repo <key>`,
+      );
       return 2;
     } else dir = a;
   }
@@ -438,9 +541,13 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
     } else if (repoFlag !== undefined) {
       warn(`--repo only scopes verify from a consumer repo — ${startDir} is a brain; flag ignored`);
     }
+    if (scope && worktree) {
+      // Nothing to force: a consumer run is already the working tree.
+      warn('--worktree only applies to a brain-scoped run — this checkout is already what is read');
+    }
     // Consumer mode never rewrites moved globs: the mount is usually a pinned
     // submodule — the heal belongs in the brain checkout.
-    ev = await evaluateCore(brainDir, { strict, write: !check && !scope, scope });
+    ev = await evaluateCore(brainDir, { strict, write: !check && !scope, scope, worktree });
   } catch (e) {
     if (e instanceof ConfigError) {
       warn(e.message);
@@ -476,6 +583,10 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
       say(`  unanchored: ${unanchored.map((r) => r.id).join(', ')}`);
     }
   }
+  // What produced these verdicts. Printed on every run, brain or consumer:
+  // an operator must never have to wonder which bytes a red came from — that
+  // silence is what made a working-tree read look like a lying tool.
+  for (const s of ev.sources) say(`  ${dim('read')}      ${s.line}`);
   say('');
   const counts = ev.report.counts;
   for (const s of STATE_ORDER) {
@@ -555,10 +666,16 @@ export const verify: Command = {
   name: 'verify',
   help: 'check anchors against the declared repos (deterministic, offline)',
   usage: [
-    'usage: multivac verify [dir] [--strict] [--check] [--repo <key>]',
+    'usage: multivac verify [dir] [--strict] [--check] [--worktree] [--repo <key>]',
     '  --strict      broken present/unique legs also exit 1 (the CI policy)',
     '  --check       never writes: a moved leg is reported, not self-healed',
+    '  --worktree    read every declared repo\'s working tree instead of its',
+    '                channel ref — local state across the ecosystem, on purpose',
     '  --repo <key>  scope to one declared repo (consumer checkouts only)',
+    'from the brain, a sibling repo is read at its channel ref (the ecosystem',
+    'as published) and the brain itself at its working tree; from a consumer',
+    'repo, its working tree — the content about to be committed there. Every',
+    'run prints a `read` line per repo naming the ref or branch and its sha.',
   ],
   run: runVerify,
 };

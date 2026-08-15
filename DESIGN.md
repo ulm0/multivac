@@ -554,6 +554,47 @@ Lint-family tools die of noise, not of bugs.
 This table is the **default** of the `blocking:` key. Config may extend it;
 loosening below `[absent]` — unblocking the tombstone — is refused.
 
+### Each context verifies what it is responsible for (MV-53)
+
+An anchor names a repo. It does not name *which bytes of it* — and for the
+first weeks the answer was always "the working tree", from everywhere. That
+is wrong in one direction and right in the other, and the wrong half cost the
+enforcement floor: a teammate left a sibling repo parked on a WIP branch, the
+brain's law went red for a reason that had nothing to do with truth, and an
+agent — reasoning correctly that the tool was crying wolf — committed with
+`--no-verify`. A gate that is wrong is worse than a gate that is absent,
+because it teaches people to route around it.
+
+> **The brain verifies the ecosystem as published; a consumer verifies what
+> it is about to commit.**
+
+| run | reads | why |
+| --- | --- | --- |
+| brain-scoped, per declared repo | that repo's **channel ref** (`channel:`, else the global, else `origin/main`), via `git ls-tree` + one `git cat-file --batch` | the brain's law is a statement about the state everyone shares. Someone mid-task elsewhere is not a violation |
+| brain-scoped, the **brain's own repo** | its **working tree** | the brain is where the author is working; its law must gate its own commit |
+| consumer-scoped (cwd is a code repo with the brain mounted) | its **working tree** | that is the content about to be committed there |
+
+Three properties keep it from becoming a second kind of lie:
+
+- **Both runs state what they read.** One `read` line per repo, naming the
+  ref or the branch and its short sha, on every run. This is the load-bearing
+  half: the old behaviour was defensible, being silent about it was not. An
+  operator must never wonder which bytes produced a verdict.
+- **An unresolvable channel ref falls back to the working tree and says so**
+  on that repo's line — no remote, never fetched, offline. Degrading is fine;
+  degrading silently is the defect.
+- **`--worktree` forces the old whole-ecosystem working-tree read**, for
+  someone who genuinely wants to know the local state across repos.
+
+The sibling defect, same root: a repo parked off its channel used to be an
+invisible premise. Now `verify` names it on the `read` line and `doctor`
+carries a `branches` line — the branch each repo sits on and whether that is
+its channel — which is the diagnostic that would have explained the red
+instantly.
+
+Cost stays inside the budget: a ref-scoped scan is one `ls-tree` plus one
+`cat-file --batch` per repo — one process, not one `git show` per file.
+
 ### Self-healing, states, exit codes
 
 When a `present` fails in its declared glob, search the whole repo before
