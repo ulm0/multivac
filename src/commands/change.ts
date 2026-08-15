@@ -424,27 +424,30 @@ async function cmdNew(
     return 1;
   }
   const rel = changeRel(slug);
-  // The open commit must hold exactly this change's bookkeeping. A dirty law
-  // table or declaration would be swept into it — refuse, with the command.
-  const dirty = (await gitRun(brain, ['status', '--porcelain', '--', LAW_PATH, rel]).catch(() => ''))
-    .split('\n')
-    .filter(Boolean)
-    .map((l) => l.slice(3).trim());
-  if (dirty.length > 0) {
-    const list = dirty.join(' ');
-    warn(
-      `cannot open ${slug} — bookkeeping paths carry uncommitted edits: ${list}\n` +
-        `  commit them first: git -C ${brain} add -- ${list} && git commit\n` +
-        `  then re-run: multivac change new ${slug} "${title}"`,
-    );
-    return 1;
-  }
   const parsed = scaffoldChange(slug, title);
   // Allocate before anyone else reads the table: IDs picked by hand collide,
-  // and the collision only shows up at merge. Reservation, scaffold and the
-  // bookkeeping commit happen under one lock — a concurrent `new` reads the
-  // committed table and reserves the next free ID for real.
+  // and the collision only shows up at merge. Dirty check, reservation,
+  // scaffold and the bookkeeping commit happen under one lock — a concurrent
+  // `new` waits it out and then reads the committed table and a clean tree,
+  // instead of mistaking the other run's mid-flight edits for dirt.
   const reserved = await withLawLock(brain, async () => {
+    // The open commit must hold exactly this change's bookkeeping. A dirty law
+    // table or declaration would be swept into it — refuse, with the command.
+    const dirty = (
+      await gitRun(brain, ['status', '--porcelain', '--', LAW_PATH, rel]).catch(() => '')
+    )
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => l.slice(3).trim());
+    if (dirty.length > 0) {
+      const list = dirty.join(' ');
+      warn(
+        `cannot open ${slug} — bookkeeping paths carry uncommitted edits: ${list}\n` +
+          `  commit them first: git -C ${brain} add -- ${list} && git commit\n` +
+          `  then re-run: multivac change new ${slug} "${title}"`,
+      );
+      return 'dirty' as const;
+    }
     const r = await reserveIdLocked(brain, slug).catch((e) => {
       warn(`${(e as Error).message}`);
       return null;
@@ -458,6 +461,7 @@ async function cmdNew(
     );
     return r;
   });
+  if (reserved === 'dirty') return 1;
   say(`created ${rel} — declare repos, landing_order, invariants, claims`);
   if (reserved) {
     say(

@@ -82,7 +82,10 @@ const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms
  */
 export async function withLawLock<T>(brain: string, fn: () => Promise<T>): Promise<T> {
   const lock = `${lawPath(brain)}.lock`;
-  for (let i = 0; i < 50; i++) {
+  // The critical section now includes the bookkeeping commit — git
+  // subprocesses under load can hold the lock well past a second, so the
+  // waiter gets ten before it accuses anyone of being stuck.
+  for (let i = 0; i < 500; i++) {
     try {
       await writeFile(lock, `${process.pid}\n`, { flag: 'wx' });
     } catch (e) {

@@ -9,7 +9,7 @@ it merges; it is done when its anchors resolve.
 ```
 mvac change new "points expire"
 mvac change plan     # which repos, in what order, which invariants it touches
-mvac change apply    # a worktree per repo, branched from origin/main
+mvac change apply    # a worktree per repo, branched from the newest default branch
 mvac change land     # MRs respecting the declared order
 mvac change close    # verifies the declared claims, archives, prints the ritual
 ```
@@ -22,7 +22,10 @@ Never pick an ID by hand: two agents both picking "the next one" pick the same
 one, and nobody finds out until the merge. Drop the reservation from
 `invariants.adds` if the change adds no law — `close` releases an unused one.
 `plan` reserves any ID you declare yourself and fails if another change holds
-it, naming the next free one.
+it, naming the next free one. The scaffold and the reserved row land as **one
+commit on the current branch** — never edit the law table by hand, and never
+leave lifecycle files uncommitted; if `new` refuses because the tree is dirty
+at the bookkeeping paths, run the command it prints.
 
 Fill the four declared fields before writing code:
 
@@ -55,8 +58,10 @@ The file also carries per-repo status
   repo missing locally gets cloned here — the one place implicit cloning
   is allowed, because you explicitly asked for an operation that needs it.
 - **apply** gives each declared repo its own **worktree** for this change —
-  `.multivac/worktrees/<slug>/<repo>`, branched from `origin/main` — and
-  prints the paths. **Work there, not in the shared checkout**: another agent
+  `.multivac/worktrees/<slug>/<repo>`, branched from the newer of the default
+  branch and its remote-tracking ref — and prints the paths. It commits the
+  status bump before branching, so every checkout inherits the change's
+  bookkeeping from the base. **Work there, not in the shared checkout**: another agent
   may be running another change in the same repo, and a shared tree moves
   under them. It re-projects doors where the canonical door changed. A repo
   that doesn't exist is created: `git init`, first commit, consumer door
@@ -81,7 +86,9 @@ archive until they hold:
 On success the brain is updated (rows enacted by the human, journal entry,
 change file archived — never deleted), the change's worktrees are removed,
 and a reserved ID it never used goes back to the pool. If close fails, the change is not
-done: fix the code or fix the declaration, honestly.
+done: fix the code or fix the declaration, honestly. The commands close prints
+are scoped to the closing slug's paths — follow the branch+MR variant when it
+is printed; nothing lands on a remote-backed trunk directly.
 
 Then close prints **the ritual** — `.multivac/ritual.md`, the half of the
 closing ceremony no tool can check: who reviews what, who gets told, what

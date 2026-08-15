@@ -44,3 +44,12 @@ The fix, at the root:
 6. The anchor-grammar shadow copy in test/skill.test.ts is replaced by the
    parser itself; the mode vocabulary gets a source-of-truth checklist in
    config.ts.
+
+Friction: after close, the tree is dirty at the archive paths until the author
+runs the printed commit; a `new` in the same brain refuses until then.
+Deliberate — the refusal is the invariant working — but it serializes
+close→new. commitBookkeeping degrades to a printed command when git identity
+is missing: the concurrency guarantee holds only where commits succeed.
+And (environment, not tool) macOS TCC revoked Documents access mid-change;
+the lifecycle survived because all bookkeeping was already committed — the
+very defect this change fixes.

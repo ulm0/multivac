@@ -52,11 +52,11 @@ checks them on every commit.
 <!-- @anchor MV-12 brain:src/commands/change.ts /reserved handle for the brain/ -->
 <!-- @anchor MV-12 brain:test/repos/brain-first-class.test.ts /brain==code/ -->
 <!-- @anchor MV-12 brain:test/repos/brain-first-class.test.ts /a symlinked alias is the same tree/ -->
-| MV-13 | `change apply` bases each branch on the newer of the default branch and its remote-tracking ref, offline, and prints the base with its sha and why. The default branch is what git already knows — `origin/HEAD`, then `init.defaultBranch`, then main, then master — and only with none of them does it fall back to HEAD, naming the checked-out branch it is building on. The change's own declaration file is carried into whichever checkout apply hands back, anything else uncommitted in a tree apply would switch is refused by name with the unblocking command, and an existing branch is reused. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+| MV-13 | `change apply` bases each branch on the newer of the default branch and its remote-tracking ref, offline, and prints the base with its sha and why. The default branch is what git already knows — `origin/HEAD`, then `init.defaultBranch`, then main, then master — and only with none of them does it fall back to HEAD, naming the checked-out branch it is building on. The change's bookkeeping is committed before any branch is made, so every checkout apply hands back inherits it from the base; anything uncommitted in a tree apply would switch is refused by name with the unblocking command, and an existing branch is reused. | specified | active | 2026-08-14 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-13 brain:src/commands/change.ts /merge-base.*--is-ancestor/ -->
 <!-- @anchor MV-13 brain:src/commands/change.ts /function baseNames/ -->
 <!-- @anchor MV-13 brain:src/commands/change.ts /branching from the checked-out/ -->
-<!-- @anchor MV-13 brain:src/commands/change.ts /carried onto the branch/ -->
+<!-- @anchor MV-13 brain:test/change/apply-base.test.ts /inherits the committed declaration/ -->
 <!-- @anchor MV-13 brain:src/commands/change.ts /uncommitted work would be overwritten/ -->
 <!-- @anchor MV-13 brain:test/change/apply-base.test.ts /local main is ahead/ -->
 <!-- @anchor MV-13 brain:test/change/apply-base.test.ts /neither main nor master/ -->
@@ -121,10 +121,12 @@ checks them on every commit.
 <!-- @anchor MV-25 brain:src/commands/change.ts /apply will not switch it/ -->
 <!-- @anchor MV-25 brain:src/commands/change.ts /function removeWorktrees/ -->
 <!-- @anchor MV-25 brain:test/change/concurrency.test.ts /both live at once/ -->
-| MV-26 | Invariant IDs are allocated by the tool, never by hand: `change new` reserves the next free ID as a `proposed` row in `.multivac/invariants.md` under an exclusive lock, and `plan` refuses a declared ID another change is holding. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+| MV-26 | Invariant IDs are allocated by the tool, never by hand: `change new` reserves the next free ID as a `proposed` row in `.multivac/invariants.md` under an exclusive lock and commits it with the scaffolded declaration in one bookkeeping commit, so a concurrent `new` reads the committed table; `plan` refuses a declared ID another change is holding. | specified | active | 2026-08-14 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-26 brain:src/change/reserve.ts /reserveId/ -->
 <!-- @anchor MV-26 brain:src/change/reserve.ts /flag: 'wx'/ -->
 <!-- @anchor MV-26 brain:test/change/concurrency.test.ts /must not claim the same id/ -->
+<!-- @anchor MV-26 brain:src/commands/change.ts /change open: / -->
+<!-- @anchor MV-26 brain:test/change/concurrency.test.ts /both rows committed/ -->
 | MV-27 | The ritual is the ecosystem's closing ceremony, written by the team in `.multivac/ritual.md`. multivac runs the verifiable half in `change close` and prints the rest verbatim as a checklist — never verified, never gating; an empty or absent ritual prints nothing. `init` scaffolds the file with one comment saying what belongs there. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-27 brain:src/lib/config.ts /RITUAL_PATH = '.multivac\/ritual.md'/ -->
 <!-- @anchor MV-27 brain:src/lib/ritual.ts /ritualChecklist/ -->
@@ -251,4 +253,10 @@ checks them on every commit.
 <!-- @anchor MV-45 brain:test/change/concurrency.test.ts /a stated rule survives close/ -->
 <!-- @anchor MV-45 brain:test/change/concurrency.test.ts /anchors are read before archive/ -->
 <!-- @anchor MV-45 brain:site/content/docs/reference/commands.md /used meaning the rule was stated/ -->
-| MV-46 | RESERVED by change the-ledger-keeps-itself — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-ledger-keeps-itself.md](changes/the-ledger-keeps-itself.md) |
+| MV-46 | The lifecycle commits its own bookkeeping, scoped to the change that wrote it: `change new` commits the declaration and the reserved row as one commit on the current branch and refuses a tree that is dirty at those paths; `apply` commits the status bump before branching so every worktree inherits the post-bump truth; every command `close` prints is scoped to the closing slug's paths and picks branch+MR wording when the brain has a remote — `add -A` appears nowhere in the lifecycle. | specified | active | 2026-08-14 | [changes/archive/the-ledger-keeps-itself.md](changes/archive/the-ledger-keeps-itself.md) |
+<!-- @anchor MV-46 brain:src/commands/change.ts /function commitBookkeeping/ -->
+<!-- @anchor MV-46 brain:src/commands/change.ts /bookkeeping paths carry uncommitted edits/ -->
+<!-- @anchor MV-46 brain:src/commands/change.ts /change apply: .* status branched/ -->
+<!-- @anchor MV-46 brain:src/commands/change.ts /add -A/ count=1 -->
+<!-- @anchor MV-46 brain:test/change/concurrency.test.ts /touch only the closing slug/ -->
+<!-- @anchor MV-46 brain:test/change/lifecycle-polish.test.ts /the branch\+MR variant/ -->

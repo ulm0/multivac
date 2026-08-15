@@ -197,6 +197,10 @@ test('close keeps a reservation whose rule has been stated', async () => {
   assert.equal(await change.run(['close', 'kept-one'], ctx), 0);
   const law = readFileSync(lawPath, 'utf8');
   assert.ok(law.includes(`| ${id} |`), 'a stated rule survives close, anchored or not');
+  // run the commit close printed: the next new refuses a tree dirty at the
+  // bookkeeping paths — close→new serializes through this commit by design.
+  execFileSync('git', ['-C', eco.brain, 'add', '-A'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', eco.brain, 'commit', '-q', '-m', 'Archive the kept-one change'], { stdio: 'ignore' });
 });
 
 test('close keeps a reservation anchored in the change file it archives', async () => {

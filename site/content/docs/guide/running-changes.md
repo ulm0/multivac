@@ -22,8 +22,13 @@ All output below is real, captured from a two-repo scratch ecosystem
 
 ```txt
 $ mvac change new "points expire"
+committed: change open: points-expire — reserves INV-02
 created .multivac/changes/points-expire.md — declare repos, landing_order, invariants, claims
 reserved INV-02 — proposed row in .multivac/invariants.md, declared in invariants.adds; drop it from both if this change adds no law
+three edits before plan:
+  1. repos: { api: { status: planned } }        # status: planned|branched|committed|mr|landed
+  2. landing_order: [[api]]                     # stages; earlier stages land first
+  3. claims: [{ id: INV-02, statement: "..." }]  # what close verifies
 ```
 
 `new` also takes the next free invariant ID out of the law table and writes it
@@ -32,6 +37,12 @@ hand: two agents both picking "the next one" pick the same one, and the
 collision only surfaces at merge. A `proposed` row never gates `verify`, and
 `close` releases the reservation if the change never used it — a row whose
 rule you stated, or that an anchor names, stays.
+
+The scaffold and the reserved row land as **one commit on the current branch**
+(`change open: <slug> — reserves <ID>`): the shared tree stays clean, and a
+concurrent `new` reads the committed table instead of a floating edit. A tree
+already dirty at the bookkeeping paths is refused with the exact command that
+unblocks it.
 
 The scaffold:
 
@@ -52,7 +63,11 @@ claims: []
 # points expire
 
 Declare repos, landing_order, invariants and claims in the frontmatter,
-then run `multivac change plan points-expire`.
+then run `multivac change plan points-expire`. For example:
+
+    # repos: { api: { status: planned } } — planned|branched|committed|mr|landed
+    # landing_order: [[api]] — stages; earlier stages land first
+    # claims: [{ id: <ID>, statement: "..." }] — what close verifies
 ```
 
 Fill the four declared fields before writing code:
@@ -121,6 +136,7 @@ explicitly asked for an operation that needs the repo.
 
 ```txt
 $ mvac change apply points-expire
+committed: change apply: points-expire — status branched
 api: branched points-expire from main cba4d83 — no origin/main known locally
 api: worktree ~/eco/brain/.multivac/worktrees/points-expire/api
 web: created ~/eco/acme-web — git init, door written, first commit
@@ -146,9 +162,12 @@ always did — but refuses if that tree carries another change's uncommitted
 work, naming the files and the `git stash push` that frees it. It never
 switches a dirty tree onto your branch.
 
-The change's own declaration file rides across the switch. Anything else
-uncommitted that the switch would overwrite stops `apply` by name, with the
-command that parks it — never a raw git error, never a silent loss.
+The change's bookkeeping is committed before any branch is made (`committed:
+change apply: <slug> — status branched`), so every checkout apply hands back
+inherits it from the base — nothing rides across a switch uncommitted.
+Anything else uncommitted that the switch would overwrite stops `apply` by
+name, with the command that parks it — never a raw git error, never a silent
+loss.
 
 ## land — the order is law
 
@@ -196,7 +215,7 @@ claims**:
 $ mvac change close points-expire
 INV-02: ok
 archived -> .multivac/changes/archive/points-expire.md
-archived — commit this: git -C ~/eco/brain add -A .multivac/changes && git commit -m "Archive the points-expire change"
+archived — commit this: git -C ~/eco/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/api)
 web: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/web)
 
@@ -204,6 +223,13 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] tell support before the flag flips
   - [ ] the public site ships before the backend
 ```
+
+The printed commit is scoped to the closing change's paths — never `add -A`,
+which in a shared checkout would sweep another change's files into the archive
+commit. The wording tracks where the brain stands: on a working branch the
+commit lands through that branch's MR; on the trunk of a brain with a remote
+the recipe is branch + MR (`nothing lands on main directly`); only a solo
+brain with no origin is told the direct commit IS the landing.
 
 The change file is archived, never deleted; its `status` flips to
 `archived`. The worktrees go with it — one still holding uncommitted work is
