@@ -393,4 +393,6 @@ checks them on every commit.
 <!-- @anchor MV-57 brain:skills/multivac/references/change.md /reports the document missing, still-a-template, present, or/ -->
 <!-- @anchor MV-57 brain:site/content/docs/reference/graphers-and-sdd.md /The project-level document/ -->
 | MV-58 | RESERVED by change the-small-lies-and-the-shared-lock — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-small-lies-and-the-shared-lock.md](changes/the-small-lies-and-the-shared-lock.md) |
+| MV-59 | RESERVED by change the-small-lies-and-the-shared-lock — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-small-lies-and-the-shared-lock.md](changes/the-small-lies-and-the-shared-lock.md) |
+| MV-60 | RESERVED by change the-small-lies-and-the-shared-lock — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-small-lies-and-the-shared-lock.md](changes/the-small-lies-and-the-shared-lock.md) |
 
