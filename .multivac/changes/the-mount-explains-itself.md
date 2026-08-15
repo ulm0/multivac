@@ -3,7 +3,7 @@ slug: the-mount-explains-itself
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
