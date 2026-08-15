@@ -116,20 +116,62 @@ grapher    codegraph @ brain: artifact missing → run `codegraph init` there
 
 ### Automatic refresh
 
-The grapher's automation contract is `grapher-refresh`: at the end of
-`change close`, multivac **runs** the refresh command — in the brain and in
-each declared+present repo the change touched, using that scope's grapher
-(`repos.<key>.grapher`, falling back to the global one) — and reports each
-scope's result:
+The graph is not a gate. Nothing lands wrong because it is stale — it is the
+agent's map, so the refresh **follows the agent, not the commit**. The
+automation contract `grapher-refresh` has exactly two paths, and git hooks are
+not one of them:
+
+| path | when | what it is |
+| --- | --- | --- |
+| **harness post-edit hook** | after every file edit in a session | the mechanism |
+| **`change close`** | once, at the end of a change | the safety net |
+| ~~git hooks~~ | never | the shims run `verify` only |
+
+**The harness post-edit hook.** `doors` writes it into the hook config of each
+declared target whose harness has such a hook — for Claude Code that is one
+more entry in the same managed `.claude/settings.json` merge that carries
+`verify`, matched on `Edit|Write|MultiEdit`:
+
+```json
+{ "matcher": "Edit|Write|MultiEdit",
+  "hooks": [{ "type": "command",
+              "command": "L=.multivac/cache/graph-refresh.lock; … mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0" }] }
+```
+
+Three properties, on purpose:
+
+- **Non-blocking.** The refresh is backgrounded with its output discarded and
+  the hook exits 0 immediately — it never adds latency to the edit loop, and a
+  grapher that fails never surfaces as a failed edit.
+- **Coalesced.** The lock directory under `.multivac/cache/` is created
+  atomically; an edit that arrives while a refresh is running skips instead of
+  thrashing a large repo. A lock left by a killed process is cleared after 30
+  minutes.
+- **Conditional.** Only with a grapher declared **and** its binary present.
+  Absent → no entry is written (and an entry from a previous run is removed);
+  `doctor` says what is missing.
+
+For a harness with no post-edit hook, nothing is installed and the graph
+refreshes at `change close` only. `doctor` names the live path:
+
+```txt
+grapher    refresh path: claude post-edit hook (installed when the binary is present) · `change close` is the net · git hooks never refresh
+```
+
+**`change close`, the net.** A change can land edits made outside the harness,
+so close still **runs** the refresh — in the brain and in each declared+present
+repo the change touched, using that scope's grapher (`repos.<key>.grapher`,
+falling back to the global one) — and reports each scope's result:
 
 ```txt
 graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
 graph graphify @ api: refreshed (`graphify update .`) — artifact left uncommitted
 ```
 
-The git hook shims run `verify` only — there is no refresh on the hook path.
-Between closes, a stale graph next to a present binary is a `doctor` warning
-carrying the manual command.
+The git hook shims run `verify` only — there is no refresh on the git hook
+path: an ergonomic convenience does not belong on a gate, and it would blow
+the hook's sub-second budget. Between refreshes, a stale graph next to a
+present binary is a `doctor` warning carrying the manual command.
 
 An absent binary degrades to a notice with the install hint; a refresh that
 exits non-zero is a warning that hands the command back — `close` never fails

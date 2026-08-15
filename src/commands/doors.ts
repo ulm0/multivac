@@ -20,7 +20,8 @@ import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings } from '../doors/settings.js';
 import { installHooks } from '../hooks/install.js';
-import { doorTargets } from '../adapters/registry.js';
+import { binaryPresent } from '../adapters/detect.js';
+import { type DoorTarget, doorTargets, grapherSpec } from '../adapters/registry.js';
 
 const KNOWN_TARGETS = Object.keys(doorTargets);
 
@@ -75,15 +76,22 @@ function installSkill(dir: string, skill: string, notices: string[]): void {
   }
 }
 
-/** Merge multivac's session-start entry into the harness hook config. */
+/** Merge multivac's harness entries — verify, and the graph refresh — into
+ *  the harness hook config. */
 async function installHookConfig(
   dir: string,
-  path: string,
+  hookConfig: NonNullable<DoorTarget['hookConfig']>,
+  refresh: string | null,
   notices: string[],
 ): Promise<void> {
-  const settingsFile = join(dir, path);
+  const settingsFile = join(dir, hookConfig.path);
   try {
-    const merged = mergeClaudeSettings(await readOrNull(settingsFile));
+    const merged = mergeClaudeSettings(await readOrNull(settingsFile), {
+      // The refresh is the agent's navigation aid, so it rides the harness's
+      // post-edit hook — only where the registry says the harness has one.
+      refresh: hookConfig.postEdit ? refresh : null,
+      matcher: hookConfig.postEdit,
+    });
     await mkdir(dirname(settingsFile), { recursive: true });
     await writeFile(settingsFile, merged);
   } catch (e) {
@@ -96,8 +104,13 @@ async function projectInto(
   dir: string,
   body: string,
   config: Config,
+  grapher?: string,
 ): Promise<string[]> {
   const notices: string[] = [];
+  // Declared AND installed, or no refresh entry at all — an absent binary
+  // would only wire a hook that cannot run; doctor already says why.
+  const spec = grapher === undefined ? null : grapherSpec(grapher);
+  const refresh = spec !== null && (await binaryPresent(spec)) ? spec.refresh : null;
   const doorFile = join(dir, 'AGENTS.md');
   await writeFile(doorFile, applyManagedBlock(await readOrNull(doorFile), body));
   // Dispatch on the registry entry's kind, never on its name: a new harness
@@ -130,7 +143,7 @@ async function projectInto(
       await writeFile(file, t.frontmatter ? `${t.frontmatter}\n\n${stub}` : stub);
     }
     if (t.skill) installSkill(dir, t.skill, notices);
-    if (t.hookConfig) await installHookConfig(dir, t.hookConfig.path, notices);
+    if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, notices);
   }
   const hooks = await installHooks(dir, { strictPrePush: config.strictPrePush });
   if (hooks.strategy === 'chained') {
@@ -166,7 +179,10 @@ async function run(_argv: string[], ctx: CommandContext): Promise<number> {
     for (const n of notices) say(`${name}: notice: ${n}`);
   };
 
-  report('brain', await projectInto(brainDir, renderBrainDoor(config, active), config));
+  report(
+    'brain',
+    await projectInto(brainDir, renderBrainDoor(config, active), config, config.grapher),
+  );
 
   const consumerBody = renderConsumerDoor(config);
   for (const [key, entry] of Object.entries(config.repos)) {
@@ -183,7 +199,9 @@ async function run(_argv: string[], ctx: CommandContext): Promise<number> {
       );
       continue;
     }
-    report(key, await projectInto(dir, consumerBody, config));
+    // Per-scope grapher, falling back to the global one — same rule as
+    // doctor and `change close`.
+    report(key, await projectInto(dir, consumerBody, config, entry.grapher ?? config.grapher));
   }
   return 0;
 }

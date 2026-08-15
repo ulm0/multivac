@@ -1,9 +1,9 @@
 ---
 slug: the-graph-follows-the-agent
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:

@@ -206,3 +206,51 @@ test('brain door carries the SDD flow when one is declared', () => {
   // no sdd declared: no flow lines at all
   assert.doesNotMatch(renderBrainDoor({ ...cfg, sdd: undefined }, 1), /SDD/);
 });
+
+// The graph refresh follows the AGENT: it rides the harness's post-edit hook,
+// never the git shim. `node` stands in for a grapher here — it is the one
+// binary certainly on PATH, so `grapher: node` is "declared and present".
+test('grapher declared + present: harness post-edit entry, git shim untouched', async () => {
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents, claude]\ngrapher: node\nrepos:\n  api: ../acme-api\n',
+  );
+  const { code } = await runDoors();
+  assert.equal(code, 0);
+
+  for (const dir of [eco.brain, eco.repos.api]) {
+    const hooks = JSON.parse(read(dir, '.claude/settings.json')).hooks as Record<
+      string,
+      { matcher?: string; hooks: { command: string }[] }[]
+    >;
+    const refresh = hooks.PostToolUse.map((e) => e.hooks[0].command).find((c) =>
+      c.includes('node update .'),
+    );
+    assert.ok(refresh, 'post-edit refresh entry written');
+    assert.match(refresh!, /graph-refresh\.lock/); // coalesced
+    assert.match(refresh!, /& exit 0$/); // backgrounded, never a failure
+    assert.equal(
+      hooks.PostToolUse.find((e) => e.hooks[0].command.includes('node update .'))!.matcher,
+      'Edit|Write|MultiEdit',
+    );
+    // the git shims stay verify-only — no grapher ever runs on the commit path
+    for (const hook of ['pre-commit', 'pre-push']) {
+      const shim = read(dir, `.multivac/hooks/${hook}`);
+      assert.doesNotMatch(shim, /node update|graph/);
+      assert.match(shim, /mvac verify/);
+    }
+  }
+});
+
+test('no grapher declared: no refresh entry at all', async () => {
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents, claude]\nrepos:\n  api: ../acme-api\n',
+  );
+  assert.equal((await runDoors()).code, 0);
+  for (const dir of [eco.brain, eco.repos.api]) {
+    const settings = read(dir, '.claude/settings.json');
+    assert.doesNotMatch(settings, /graph-refresh\.lock/);
+    assert.match(settings, /mvac verify/);
+  }
+});
