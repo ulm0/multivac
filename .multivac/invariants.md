@@ -420,4 +420,5 @@ checks them on every commit.
 <!-- @anchor MV-60 brain:src/anchor/evaluate.ts /\$\{star \? `\$\{/ absent -->
 <!-- @anchor MV-60 brain:test/verify/each.test.ts /pattern .+api:k8s/ -->
 <!-- @anchor MV-60 brain:test/verify/scope.test.ts /pattern .+api:src/ -->
+| MV-61 | RESERVED by change the-gate-names-its-room — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-gate-names-its-room.md](changes/the-gate-names-its-room.md) |
 
