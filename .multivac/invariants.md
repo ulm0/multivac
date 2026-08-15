@@ -432,5 +432,4 @@ checks them on every commit.
 <!-- @anchor MV-60 brain:src/anchor/evaluate.ts /\$\{star \? `\$\{/ absent -->
 <!-- @anchor MV-60 brain:test/verify/each.test.ts /pattern .+api:k8s/ -->
 <!-- @anchor MV-60 brain:test/verify/scope.test.ts /pattern .+api:src/ -->
-| MV-61 | RESERVED by change the-gaps-that-were-not-gaps — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-gaps-that-were-not-gaps.md](changes/the-gaps-that-were-not-gaps.md) |
 
