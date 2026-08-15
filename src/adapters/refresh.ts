@@ -91,8 +91,20 @@ export async function refreshGraph(
     await execFileP(bin, args, { cwd: dir });
     say(`${label}: refreshed (\`${spec.refresh}\`) — artifact left uncommitted`);
   } catch (e) {
+    // The TOOL'S words, not node's. `Command failed: <cmd>` only repeats the
+    // command this very line prints again two clauses later, while the cause
+    // the tool wrote to stderr — depcruise's ENOENT, a parse error, a missing
+    // config — was thrown away. Same three-line quote `toolVerdict` gives a
+    // validator (src/adapters/sdd.ts).
+    const err = e as { stderr?: string; stdout?: string; message: string };
+    const said = `${err.stderr ?? ''}${err.stdout ?? ''}`
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(' ');
     warn(
-      `${label}: refresh failed (${(e as Error).message.split('\n')[0]}) — ` +
+      `${label}: refresh failed (${said || err.message.split('\n')[0]}) — ` +
         `run \`${spec.refresh}\` there by hand`,
     );
   } finally {

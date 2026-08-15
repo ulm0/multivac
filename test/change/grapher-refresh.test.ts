@@ -189,12 +189,21 @@ test('an unverified grapher refuses at close: fields to declare, nothing run', a
 test('a grapher that exits non-zero is a warning, never a failed close', async () => {
   const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-'));
   const brain = makeBrain(tmp);
-  const bin = makeGrapherBin(tmp, '#!/bin/sh\nexit 1\n');
+  // Writes its cause where a real tool writes it — depcruise's ENOENT, a
+  // parse error — and exits 1. What comes back must be THAT, not node's
+  // `Command failed: fakegraph update .`, which repeats a command the same
+  // warning prints again two clauses later.
+  const bin = makeGrapherBin(
+    tmp,
+    '#!/bin/sh\necho >&2\necho "  ERROR: cannot write out/graph.json: ENOENT" >&2\nexit 1\n',
+  );
   await landedChange(brain, 'graph-fail');
   await withPath(bin, async () => {
     const { code, out } = await capture(() => change.run(['close', 'graph-fail'], { cwd: brain }));
     assert.equal(code, 0);
     assert.match(out, /graph fakegraph @ brain: refresh failed .*— run `fakegraph update \.` there by hand/);
+    assert.match(out, /ERROR: cannot write out\/graph\.json: ENOENT/);
+    assert.doesNotMatch(out, /Command failed/);
   });
   // the close went through: the change is archived despite the failing tool
   assert.match(

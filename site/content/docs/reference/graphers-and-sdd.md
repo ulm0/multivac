@@ -37,7 +37,7 @@ capabilities, and only the missing half turns off:
 | `codegraph` | `.codegraph` | `codegraph` | `codegraph sync` (build: `codegraph init`) |
 | `code-review-graph` | `.code-review-graph` | `code-review-graph` | `code-review-graph update` (build: `… build`) |
 | `axon` | `.axon` | `axon` | `axon analyze .` (build: the same command) |
-| `dependency-cruiser` | `dependency-cruiser-out/graph.json` | **`depcruise`** | `depcruise --output-type json --output-to …` |
+| `dependency-cruiser` | `dependency-cruiser-graph.json` | **`depcruise`** | `depcruise --output-type json --output-to …` |
 | `scip-typescript` | `index.scip` | `scip-typescript` | `scip-typescript index` (build: the same command) |
 | *any other grapher* | **unverified — you declare it** (see below) | | |
 
