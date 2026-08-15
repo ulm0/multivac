@@ -77,6 +77,22 @@ test('SQL statements count per normalized statement — where hand grep goes wro
   assert.match(out, /1 match in 1 tracked file — a ratchet pins count=1/);
 });
 
+test('each-mode: zero-match files are listed and the summary names the failures', async () => {
+  const e = eco();
+  // two tracked ts files under api/src, one matching — an each author needs
+  // the file WITHOUT the match, which the default breakdown never shows
+  commitFile(e.repos.api, 'src/other.ts', 'export const nothing = true;\n');
+  const each = await run(['api:src/**/*.ts /8080/ each'], e.brain);
+  assert.equal(each.code, 0);
+  assert.match(each.out, /src\/server\.ts {2}1/);
+  assert.match(each.out, /src\/other\.ts {2}0/, 'the zero-match file is listed');
+  assert.match(each.out, /1 of 2 tracked files match — each would fail on 1 file \(the ones without a match\)/);
+  assert.doesNotMatch(each.out, /ratchet pins/);
+
+  const negated = await run(['api:src/**/*.ts /8080/ each!'], e.brain);
+  assert.match(negated.out, /1 of 2 tracked files match — each! would fail on 1 file \(the ones with a match\)/);
+});
+
 test('a dry run answers and never writes', async () => {
   const e = eco();
   const before = execFileSync('git', ['-C', e.brain, 'status', '--porcelain']).toString();

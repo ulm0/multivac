@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { compileAnchorRegex } from '../src/lib/regex.js';
+import { parseAnchors } from '../src/anchor/parse.js';
 
 // compiled to dist-test/test/, so repo root is two levels up
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -61,25 +61,27 @@ test('zero reference-ecosystem content anywhere in the pack', () => {
 });
 
 // Real example anchors (grammar-template lines with <placeholders> excluded)
-// must parse and their regexes must compile in the tool's own dialect —
-// a skill teaching \s or an unparseable line would teach users to write
-// anchors verify rejects.
-const ANCHOR_LINE =
-  /<!-- @anchor (\S+) (\S+):(\S+)((?: !\S+)*) \/(.+)\/(i?)(?: (present|absent|unique|count=\d+|each!?))? -->/;
-
+// must parse in the tool's OWN parser — no shadow copy of the grammar here:
+// parseAnchors compiles the regex too, so a skill teaching \s or an
+// unparseable line fails through the same code path verify uses. Lines are
+// fed one at a time because the examples sit inside ``` fences, which the
+// parser rightly skips in full documents.
 test('every example anchor line parses and compiles in the tool dialect', () => {
   let found = 0;
   for (const { rel, text } of packContents) {
     for (const line of text.split('\n')) {
       if (!line.includes('@anchor') || line.includes('<CLAIM-ID>')) continue;
-      const m = ANCHOR_LINE.exec(line);
-      assert.ok(m, `${rel}: unparseable anchor example: ${line.trim()}`);
+      const { anchors, diagnostics } = parseAnchors(line.trim(), rel);
+      assert.equal(
+        diagnostics.length,
+        0,
+        `${rel}: anchor example rejected by the parser: ${line.trim()} — ${diagnostics[0]?.message}`,
+      );
+      assert.equal(anchors.length, 1, `${rel}: not an anchor line: ${line.trim()}`);
       found++;
-      const [, claimId, repoKey, , , source, flags] = m;
-      assert.match(claimId, /^[A-Z]+-\d+$/, `${rel}: odd claim id ${claimId}`);
-      assert.ok(repoKey === '*' || /^[a-z][a-z0-9_-]*$/.test(repoKey));
-      // throws RegexDialectError on \s \b \d \w, bad classes, bad flags
-      compileAnchorRegex(source, flags);
+      const a = anchors[0];
+      assert.match(a.claimId, /^[A-Z]+-\d+$/, `${rel}: odd claim id ${a.claimId}`);
+      assert.ok(a.repoKey === '*' || /^[a-z][a-z0-9_-]*$/.test(a.repoKey));
     }
   }
   assert.ok(found >= 6, `expected at least 6 example anchors, found ${found}`);

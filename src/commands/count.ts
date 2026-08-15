@@ -15,8 +15,9 @@ import { findMount } from './verify.js';
 import type { Command, CommandContext } from '../types.js';
 
 const USAGE = [
-  "usage: multivac count '<repo>:<glob> [!<glob> ...] /<regex>/[i]' [dir]",
+  "usage: multivac count '<repo>:<glob> [!<glob> ...] /<regex>/[i] [each|each!]' [dir]",
   'prints the match count and the per-file breakdown a count=N leg would see.',
+  'with each/each!, the breakdown includes the zero-match files the universal would fail on.',
   'dry-run only: writes nothing, exits 0 even at zero matches. grammar: multivac help anchor',
 ];
 
@@ -86,22 +87,37 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
 
   let total = 0;
   let files = 0;
+  let matched = 0;
+  const each = a.mode === 'each';
   const star = a.repoKey === '*';
   for (const t of targets) {
     const scan = await scanLeg(a, new RepoScanner(t.dir), [t.key]);
     files += scan.globFiles.length;
     const perFile = new Map<string, number>();
     for (const m of scan.matches) perFile.set(m.file, (perFile.get(m.file) ?? 0) + 1);
-    for (const [file, n] of perFile) {
+    matched += perFile.size;
+    // each is the per-file universal, so its author needs the zero-match
+    // files — exactly the ones the summary line cannot name for them.
+    const listed = each ? scan.globFiles : [...perFile.keys()];
+    for (const file of listed) {
+      const n = perFile.get(file) ?? 0;
       say(`  ${star ? `${t.key}:` : ''}${file}  ${n}`);
       total += n;
     }
   }
-  say(
-    files === 0
-      ? `glob matched no tracked files in ${a.repoKey} — an anchor on it would be vacuous`
-      : `${total} match${total === 1 ? '' : 'es'} in ${files} tracked file${files === 1 ? '' : 's'} — a ratchet pins count=${total}`,
-  );
+  const plural = (n: number): string => (n === 1 ? '' : 's');
+  if (files === 0) {
+    say(`glob matched no tracked files in ${a.repoKey} — an anchor on it would be vacuous`);
+  } else if (each) {
+    const failing = a.negated ? matched : files - matched;
+    say(
+      `${matched} of ${files} tracked file${plural(files)} match — ` +
+        `each${a.negated ? '!' : ''} would fail on ${failing} file${plural(failing)} ` +
+        `(${a.negated ? 'the ones with a match' : 'the ones without a match'})`,
+    );
+  } else {
+    say(`${total} match${total === 1 ? '' : 'es'} in ${files} tracked file${plural(files)} — a ratchet pins count=${total}`);
+  }
   return 0;
 }
 

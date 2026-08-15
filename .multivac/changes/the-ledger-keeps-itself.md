@@ -3,7 +3,7 @@ slug: the-ledger-keeps-itself
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:

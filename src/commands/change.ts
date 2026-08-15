@@ -4,8 +4,8 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
-import { copyFile, mkdir, readFile, rm, rmdir, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, resolve } from 'node:path';
+import { mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
+import { join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
 import { CHANGES_DIR, CONFIG_PATH, LAW_PATH, RITUAL_PATH, loadConfig } from '../lib/config.js';
 import { lsFiles, run as gitRun } from '../lib/git.js';
@@ -30,9 +30,43 @@ import {
   saveChange,
   scaffoldChange,
 } from '../change/file.js';
-import { readLaw, releaseUnused, reserveId } from '../change/reserve.js';
+import {
+  readLaw,
+  releaseUnused,
+  reserveId,
+  reserveIdLocked,
+  withLawLock,
+} from '../change/reserve.js';
 
 const execFileP = promisify(execFile);
+
+/**
+ * The ledger keeps itself: everything the lifecycle writes into the brain —
+ * the declaration file, the reserved law row, a status bump — is committed by
+ * the lifecycle, scoped to exactly those paths, on the current branch. Nothing
+ * is left floating in the shared checkout where a pull would block on it or a
+ * concurrent change would trample it. A commit that cannot happen degrades to
+ * the exact command, never a half-done state.
+ */
+async function commitBookkeeping(
+  brain: string,
+  paths: string[],
+  message: string,
+): Promise<void> {
+  const dirty = await gitRun(brain, ['status', '--porcelain', '--', ...paths]).catch(() => '');
+  if (!dirty.trim()) return;
+  try {
+    await gitRun(brain, ['add', '--', ...paths]);
+    // Pathspec'd commit: only these paths land, whatever else is staged.
+    await gitRun(brain, ['commit', '-q', '-m', message, '--', ...paths]);
+    say(`committed: ${message}`);
+  } catch (e) {
+    warn(
+      `could not commit the bookkeeping (${(e as Error).message.split('\n')[0]}) — do it yourself: ` +
+        `git -C ${brain} add -- ${paths.join(' ')} && git commit -m "${message}"`,
+    );
+  }
+}
 
 
 /** Run one SDD workflow step. Declared+absent binary = notice, never a failure. */
@@ -211,31 +245,26 @@ const blockedPaths = (message: string): string[] =>
   [...message.matchAll(/^\t(.+?)\s*$/gm)].map((m) => m[1]);
 
 /**
- * Switch `repo` onto the change branch, carrying `carry` (repo-relative paths,
- * the change's own declaration files) across the switch: git must never abort
- * on the files the lifecycle itself just wrote. Anything else that blocks the
- * switch is refused by name, with the command that unblocks it.
+ * Switch `repo` onto the change branch. The change's own bookkeeping is
+ * already committed (by `new` and by apply's status-bump commit), so the
+ * branch inherits it from the base — there is nothing to carry. Anything
+ * uncommitted that blocks the switch is refused by name, with the command
+ * that unblocks it.
  */
-async function ensureBranch(
-  repo: string,
-  slug: string,
-  key: string,
-  carry: string[],
-): Promise<void> {
+async function ensureBranch(repo: string, slug: string, key: string): Promise<void> {
   const exists = (await refSha(repo, `refs/heads/${slug}`)) !== null;
   const base = exists ? null : await branchBase(repo);
   // git carries uncommitted edits onto a branch it creates at the same commit,
   // which is how one agent's work used to follow another onto the wrong branch.
-  // Anything the lifecycle did not write itself refuses the switch, by name,
-  // before git gets a chance to be helpful. Worktrees are machinery, not work.
+  // Anything uncommitted refuses the switch, by name, before git gets a
+  // chance to be helpful. Worktrees are machinery, not work.
   if ((await currentBranch(repo)) !== slug) {
-    // -uall: an untracked directory collapses to `changes/`, which no carry
-    // path would ever match — the files have to be named one by one.
+    // -uall: an untracked directory collapses to `changes/`; name the files.
     const busy = (await gitRun(repo, ['status', '--porcelain', '-uall']))
       .split('\n')
       .filter(Boolean)
       .map((l) => l.slice(3).trim())
-      .filter((p) => !carry.includes(p) && !p.startsWith('.multivac/worktrees/'));
+      .filter((p) => !p.startsWith('.multivac/worktrees/'));
     if (busy.length > 0) {
       const list = busy.slice(0, 3).join(' ') + (busy.length > 3 ? ` +${busy.length - 3}` : '');
       throw new ChangeError(
@@ -245,13 +274,6 @@ async function ensureBranch(
           `  then re-run: multivac change apply ${slug}`,
       );
     }
-  }
-  const held = new Map<string, string>();
-  for (const rel of carry) {
-    const abs = join(repo, rel);
-    if (!existsSync(abs)) continue;
-    held.set(rel, await readFile(abs, 'utf8'));
-    await rm(abs);
   }
   try {
     await gitRun(repo, base ? ['switch', '-c', slug, base.ref] : ['switch', slug]);
@@ -263,15 +285,9 @@ async function ensureBranch(
         `  commit it, or park it: git -C ${repo} stash push -- ${list}\n` +
         `  then re-run: multivac change apply ${slug}`,
     );
-  } finally {
-    for (const [rel, text] of held) {
-      await mkdir(dirname(join(repo, rel)), { recursive: true });
-      await writeFile(join(repo, rel), text);
-    }
   }
   if (exists) say(`${key}: branch ${slug} already exists — switched to it, reusing`);
   else say(`${key}: branched ${slug} from ${base!.ref} ${base!.sha.slice(0, 7)} — ${base!.why}`);
-  if (held.size > 0) say(`${key}: carried onto the branch: ${[...held.keys()].join(' ')}`);
 }
 
 /** Machinery, so it lives under `.multivac/` — and gitignored there. */
@@ -324,23 +340,12 @@ async function ensureWorkspace(
   repo: string,
   slug: string,
   key: string,
-  carry: string[],
 ): Promise<string> {
   const wt = await ensureWorktree(brain, repo, slug, key);
   if (wt === null) {
     say(`${key}: no worktree available — branching in place`);
-    await ensureBranch(repo, slug, key, carry);
+    await ensureBranch(repo, slug, key);
     return repo;
-  }
-  // brain==code: the declaration is uncommitted in the brain tree, so the
-  // worktree would not have it. Carry it, the way the in-place switch does.
-  for (const rel of carry) {
-    const from = join(repo, rel);
-    const to = join(wt, rel);
-    if (!existsSync(from) || existsSync(to)) continue;
-    await mkdir(dirname(to), { recursive: true });
-    await copyFile(from, to);
-    say(`${key}: carried onto the branch: ${rel}`);
   }
   return wt;
 }
@@ -418,22 +423,52 @@ async function cmdNew(
     warn(`${changeRel(slug)} already exists — edit it, or pick another slug`);
     return 1;
   }
+  const rel = changeRel(slug);
+  // The open commit must hold exactly this change's bookkeeping. A dirty law
+  // table or declaration would be swept into it — refuse, with the command.
+  const dirty = (await gitRun(brain, ['status', '--porcelain', '--', LAW_PATH, rel]).catch(() => ''))
+    .split('\n')
+    .filter(Boolean)
+    .map((l) => l.slice(3).trim());
+  if (dirty.length > 0) {
+    const list = dirty.join(' ');
+    warn(
+      `cannot open ${slug} — bookkeeping paths carry uncommitted edits: ${list}\n` +
+        `  commit them first: git -C ${brain} add -- ${list} && git commit\n` +
+        `  then re-run: multivac change new ${slug} "${title}"`,
+    );
+    return 1;
+  }
   const parsed = scaffoldChange(slug, title);
   // Allocate before anyone else reads the table: IDs picked by hand collide,
-  // and the collision only shows up at merge.
-  const reserved = await reserveId(brain, slug).catch((e) => {
-    warn(`${(e as Error).message}`);
-    return null;
+  // and the collision only shows up at merge. Reservation, scaffold and the
+  // bookkeeping commit happen under one lock — a concurrent `new` reads the
+  // committed table and reserves the next free ID for real.
+  const reserved = await withLawLock(brain, async () => {
+    const r = await reserveIdLocked(brain, slug).catch((e) => {
+      warn(`${(e as Error).message}`);
+      return null;
+    });
+    if (r) parsed.change.invariants.adds = [r.id];
+    await saveChange(brain, parsed);
+    await commitBookkeeping(
+      brain,
+      [rel, LAW_PATH],
+      `change open: ${slug}${r ? ` — reserves ${r.id}` : ''}`,
+    );
+    return r;
   });
-  if (reserved) parsed.change.invariants.adds = [reserved.id];
-  await saveChange(brain, parsed);
-  say(`created ${changeRel(slug)} — declare repos, landing_order, invariants, claims`);
+  say(`created ${rel} — declare repos, landing_order, invariants, claims`);
   if (reserved) {
     say(
       `reserved ${reserved.id} — proposed row in ${LAW_PATH}, declared in invariants.adds; ` +
         'drop it from both if this change adds no law',
     );
   }
+  say('three edits before plan:');
+  say(`  1. repos: { api: { status: planned } }        # status: ${REPO_STATUSES.join('|')}`);
+  say('  2. landing_order: [[api]]                     # stages; earlier stages land first');
+  say(`  3. claims: [{ id: ${reserved?.id ?? '<ID>'}, statement: "..." }]  # what close verifies`);
   await runSdd(cfg, brain, 'propose', slug, noSdd);
   return 0;
 }
@@ -513,22 +548,35 @@ async function cmdApply(
     warn(`${changeRel(slug)} declares no repos — declare them, then re-run apply`);
     return 1;
   }
+  // Resolve every declared repo before anything moves: an undeclared key
+  // fails the whole apply, not the middle of it.
+  const entries = new Map<string, Config['repos'][string]>();
+  for (const key of keys) entries.set(key, repoEntryOf(cfg, key));
+  // The status bump is committed BEFORE any branch is made, so the branch
+  // base — the tip of the current branch — already carries the declaration,
+  // the reserved row and the post-bump status: every worktree inherits the
+  // truth instead of a stale pre-bump copy, and nothing is left floating.
+  // LAW_PATH rides along to heal a reservation whose own commit failed.
+  // ponytail: a refused branch below leaves the status one step early at
+  // `branched`; re-running apply after the fix heals it.
+  for (const key of keys) {
+    parsed.change.repos[key].status = bump(parsed.change.repos[key].status, 'branched');
+  }
+  await saveChange(brain, parsed);
+  await commitBookkeeping(
+    brain,
+    [changeRel(slug), LAW_PATH],
+    `change apply: ${slug} — status branched`,
+  );
   const workspaces: string[] = [];
   for (const key of keys) {
-    const entry = repoEntryOf(cfg, key);
+    const entry = entries.get(key)!;
     const abs = resolve(brain, entry.path);
     if (!existsSync(abs)) {
       if (entry.url) await clone(entry.url, abs, key);
       else await greenfield(abs, key, slug, cfg);
     }
-    // The declaration file and the reserved law row live in the brain and
-    // belong to this change: they ride along instead of blocking the switch
-    // that the lifecycle itself asked for.
-    const carry =
-      abs === resolve(brain) ? [relative(brain, changePath(brain, slug)), LAW_PATH] : [];
-    workspaces.push(`${key}: ${await ensureWorkspace(brain, abs, slug, key, carry)}`);
-    parsed.change.repos[key].status = bump(parsed.change.repos[key].status, 'branched');
-    await saveChange(brain, parsed);
+    workspaces.push(`${key}: ${await ensureWorkspace(brain, abs, slug, key)}`);
   }
   await runSdd(cfg, brain, 'apply', slug, noSdd);
   say(`work here — one checkout per repo, nobody else's tree moves:`);
@@ -646,15 +694,37 @@ async function cmdClose(
   await runSdd(cfg, brain, 'archive', slug, noSdd);
   const dest = await archiveChange(brain, parsed);
   say(`archived -> ${relative(brain, dest)}`);
-  // The rename is a working-tree edit like any other: say so, with the command.
-  say(
-    `archived — commit this: git -C ${brain} add -A ${CHANGES_DIR} && git commit -m "Archive the ${slug} change"`,
-  );
   // A reservation the change never used goes back to the pool; the worktrees
   // go with the change that owned them.
   const released = await releaseUnused(brain, slug, anchored);
   if (released.length > 0) {
     say(`released unused reservation${released.length > 1 ? 's' : ''}: ${released.join(', ')}`);
+  }
+  // The rename is a working-tree edit like any other: say so, with the
+  // command — scoped to THIS change's paths, never `add -A`, which in a
+  // shared checkout sweeps another change's files into the archive commit.
+  const paths = [relative(brain, dest), changeRel(slug), ...(released.length > 0 ? [LAW_PATH] : [])];
+  const list = paths.join(' ');
+  const commit = `git -C ${brain} add -- ${list} && git commit -m "Archive the ${slug} change"`;
+  // Where that commit lands depends on where the brain is standing. On a
+  // working branch it flows through that branch's MR; on the trunk of a brain
+  // with a remote nothing lands directly, so the recipe is branch + MR; only
+  // a solo brain with no remote has no MR to open — there the direct commit
+  // IS the landing.
+  const base = await branchBase(brain);
+  const trunk = base.ref.replace(/^origin\//, '');
+  const cur = await currentBranch(brain);
+  if (cur && base.ref !== 'HEAD' && cur !== trunk) {
+    say(`archived — commit this on ${cur} (it lands through that branch's MR): ${commit}`);
+  } else if (await hasOrigin(brain)) {
+    say(`archived — commit this on a branch; nothing lands on ${trunk} directly:`);
+    say(
+      `  git -C ${brain} switch -c close-${slug} && git add -- ${list} && ` +
+        `git commit -m "Archive the ${slug} change" && git push -u origin close-${slug}`,
+    );
+    say(`  then open MR close-${slug} -> ${trunk}`);
+  } else {
+    say(`archived — commit this: ${commit} (no origin remote — the direct commit is the landing)`);
   }
   await removeWorktrees(brain, cfg, Object.keys(parsed.change.repos), slug);
   if (cfg.grapher) {
@@ -684,7 +754,7 @@ const slugify = (title: string): string =>
 
 function usage(): void {
   say('multivac change <sub> <slug> [args]');
-  say(`  new "<title>"          scaffold ${CHANGES_DIR}/<slug>.md + reserve the next invariant id`);
+  say(`  new "<title>"          scaffold ${CHANGES_DIR}/<slug>.md + reserve the next invariant id (one commit)`);
   say('  new <slug> "<title>"   same, with an explicit slug');
   say('  plan <slug>            resolve repos, landing graph, reserve declared ids, claims');
   say('  apply <slug>           worktree per repo (greenfield repos get created)');
