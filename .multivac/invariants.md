@@ -251,3 +251,4 @@ checks them on every commit.
 <!-- @anchor MV-45 brain:test/change/concurrency.test.ts /a stated rule survives close/ -->
 <!-- @anchor MV-45 brain:test/change/concurrency.test.ts /anchors are read before archive/ -->
 <!-- @anchor MV-45 brain:site/content/docs/reference/commands.md /used meaning the rule was stated/ -->
+| MV-46 | RESERVED by change the-ledger-keeps-itself — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-ledger-keeps-itself.md](changes/the-ledger-keeps-itself.md) |
