@@ -1,9 +1,9 @@
 ---
 slug: the-gate-names-its-room
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
