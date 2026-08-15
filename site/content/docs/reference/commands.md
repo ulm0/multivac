@@ -318,6 +318,19 @@ $ mvac verify --repo nope
 --repo "nope" is not declared in the brain's config — declared: api, payments
 ```
 
+A mount that is present but is **not** a brain — an empty `.brain`/`.knowledge`
+whose submodule was never initialised, or a pin that predates the brain's
+`.multivac/` migration — is a stale pin, not a repo that needs `init`. `verify`
+says so, and never advises `init` (which would scaffold a second brain beside
+the mount):
+
+```txt
+$ cd ../api && mvac verify
+.knowledge is mounted but is not a multivac brain — its pin predates the brain, or points at the wrong commit. Update the submodule (git submodule update --remote .knowledge) or fix the pin.
+```
+
+Only a repo with no mount in reach at all gets the `run multivac init .` hint.
+
 ### Pin staleness
 
 If a `channel` is declared, `verify` compares each consumer's brain-mount

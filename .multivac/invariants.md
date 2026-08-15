@@ -273,5 +273,9 @@ checks them on every commit.
 <!-- @anchor MV-48 brain:test/cli/count.test.ts /count summary nudges toward each/ -->
 <!-- @anchor MV-48 brain:site/content/docs/reference/commands.md /must hold in every file/ -->
 <!-- @anchor MV-48 brain:site/content/docs/guide/writing-anchors.md /dry-run nudges you here on purpose/ -->
-| MV-49 | RESERVED by change the-mount-explains-itself — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-mount-explains-itself.md](changes/the-mount-explains-itself.md) |
+| MV-49 | `verify` from a consumer repo whose mount directory (`.brain` or `.knowledge`) is present but is not a brain — no `.multivac/config.yml`, because the submodule pin predates the brain's migration or points at the wrong commit — names the stale pin and says to update the submodule or fix the pin; it never advises `init`, which would scaffold a second brain beside the mount. `init` stays the hint only when no mount is in reach at all. The site's verify reference documents the stale-mount message. | specified | active | 2026-08-15 | [changes/the-mount-explains-itself.md](changes/the-mount-explains-itself.md) |
+<!-- @anchor MV-49 brain:src/commands/verify.ts /function findStaleMount/ -->
+<!-- @anchor MV-49 brain:src/commands/verify.ts /is mounted but is not a multivac brain/ -->
+<!-- @anchor MV-49 brain:test/verify/consumer.test.ts /named as a bad pin, never told to run init/ -->
+<!-- @anchor MV-49 brain:site/content/docs/reference/commands.md /is mounted but is not a multivac brain/ -->
 

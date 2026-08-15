@@ -2,9 +2,9 @@
 // offline, sub-second. Exit matrix: blocking modes (absent/count/each) gate
 // always; present/unique gate only under --strict; moved self-heals, exit 0.
 
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { basename, join, relative, resolve } from 'node:path';
 import { changesDir, parseChange } from '../change/file.js';
 import { loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
 import { lastFetchAge, lsTreeGitlink, run as git } from '../lib/git.js';
@@ -177,6 +177,30 @@ export function findMount(dir: string): string | null {
     .filter((e) => e.isDirectory() && isBrain(join(dir, e.name)))
     .map((e) => join(dir, e.name));
   return hits.length === 1 ? hits[0] : null;
+}
+
+/**
+ * A consumer whose mount is stale or empty: a mount-shaped subdirectory is
+ * present but is not a brain (no `.multivac/config.yml`). The submodule pin
+ * predates the brain's migration, or points at the wrong commit — so the mount
+ * has no `.multivac/` for `findMount` to recognise. "run init" is wrong and
+ * dangerous here: it would scaffold a SECOND brain beside the mount. Returns
+ * the mount dir so verify can name the pin as the fix instead.
+ * ponytail: recognised by name only — the default `.brain` and the common
+ * `.knowledge`; the brain's real mount name lives in a config we cannot read
+ * without the brain, so a mount under any other name falls through to the init
+ * hint. Rename it, or `git submodule update` it into a real brain.
+ */
+export function findStaleMount(dir: string): string | null {
+  for (const name of ['.brain', '.knowledge']) {
+    const p = join(dir, name);
+    try {
+      if (statSync(p).isDirectory() && !existsSync(join(p, CONFIG_PATH))) return p;
+    } catch {
+      // not present — try the next candidate
+    }
+  }
+  return null;
 }
 
 /** git@host:a/b.git, https://host/a/b.git, host/a/b -> "host/a/b". */
@@ -396,6 +420,20 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
         const cfg = await loadConfig(mount);
         scope = { repoKey: await resolveRepoKey(cfg, mount, startDir, repoFlag), dir: startDir };
         brainDir = mount;
+      } else {
+        // A mount directory that is not a brain is a stale/empty pin, never a
+        // repo that needs `init`: advising init here would scaffold a second
+        // brain beside the mount. Name the pin as the fix instead. Only when
+        // no mount is in reach at all does the init hint below stand.
+        const stale = findStaleMount(startDir);
+        if (stale) {
+          const rel = relative(startDir, stale) || stale;
+          throw new ConfigError(
+            `${rel} is mounted but is not a multivac brain — its pin predates the brain, ` +
+              `or points at the wrong commit. Update the submodule ` +
+              `(git submodule update --remote ${rel}) or fix the pin.`,
+          );
+        }
       }
     } else if (repoFlag !== undefined) {
       warn(`--repo only scopes verify from a consumer repo — ${startDir} is a brain; flag ignored`);
