@@ -55,9 +55,9 @@ export interface AdapterSpec {
   create?: string;
   /**
    * Automation contract: sdd_auto — workflow runs inside the change lifecycle
-   * unless sdd_auto: false / --no-sdd; grapher-refresh — artifact refreshed
-   * after any edit via the hook path, stale graph + present binary = doctor
-   * warning.
+   * unless sdd_auto: false / --no-sdd; grapher-refresh — `change close` runs
+   * the refresh in each touched scope (never committing the artifact), stale
+   * graph + present binary = doctor warning.
    */
   automation: 'sdd_auto' | 'grapher-refresh';
   /** What the tool's own docs say, where it matters. */

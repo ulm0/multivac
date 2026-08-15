@@ -116,14 +116,33 @@ grapher    codegraph @ brain: artifact missing → run `codegraph init` there
 
 ### Automatic refresh
 
-The grapher's automation contract is `grapher-refresh`: the artifact is
-refreshed after edits through the harness hook path, and a stale graph next to
-a present binary is a `doctor` warning. At the end of `change close`, the
-refresh is a printed reminder scoped to the repos the change touched:
+The grapher's automation contract is `grapher-refresh`: at the end of
+`change close`, multivac **runs** the refresh command — in the brain and in
+each declared+present repo the change touched, using that scope's grapher
+(`repos.<key>.grapher`, falling back to the global one) — and reports each
+scope's result:
 
 ```txt
-graph: refresh with `graphify update .` in the changed repos
+graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
+graph graphify @ api: refreshed (`graphify update .`) — artifact left uncommitted
 ```
+
+The git hook shims run `verify` only — there is no refresh on the hook path.
+Between closes, a stale graph next to a present binary is a `doctor` warning
+carrying the manual command.
+
+An absent binary degrades to a notice with the install hint; a refresh that
+exits non-zero is a warning that hands the command back — `close` never fails
+because a foreign tool did:
+
+```txt
+graph graphify @ brain: binary not found — refresh skipped; npm i -g graphify, then `graphify update .` there
+graph graphify @ api: refresh failed (…) — run `graphify update .` there by hand
+```
+
+multivac never stages or commits the refreshed artifact. Graph output is
+regenerated locally; commit it only in dedicated chore commits, if your
+project commits it at all.
 
 No grapher is declared by default. A newborn brain is two content files, and a
 graph of that is noise.

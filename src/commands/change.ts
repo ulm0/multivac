@@ -15,6 +15,7 @@ import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { sddSpec } from '../adapters/registry.js';
 import { binaryPresent } from '../adapters/detect.js';
+import { refreshGraph } from '../adapters/refresh.js';
 import { evaluate } from './verify.js';
 import {
   ChangeError,
@@ -731,8 +732,20 @@ async function cmdClose(
     say(`archived — commit this: ${commit} (no origin remote — the direct commit is the landing)`);
   }
   await removeWorktrees(brain, cfg, Object.keys(parsed.change.repos), slug);
-  if (cfg.grapher) {
-    say(`graph: refresh with \`${cfg.grapher} update .\` in the changed repos`);
+  // The graph refreshes itself: the declared grapher runs in the brain and in
+  // each declared+present repo this change touched — never staged, never
+  // committed; graph output lands only in dedicated chore commits.
+  const graphScopes: Array<{ scope: string; dir: string; name?: string }> = [
+    { scope: 'brain', dir: brain, name: cfg.grapher },
+  ];
+  for (const key of Object.keys(parsed.change.repos)) {
+    const entry = cfg.repos[key];
+    if (!entry || entry.isBrain) continue; // brain scope already covers it
+    const dir = resolve(brain, entry.path);
+    if (existsSync(dir)) graphScopes.push({ scope: key, dir, name: entry.grapher ?? cfg.grapher });
+  }
+  for (const s of graphScopes) {
+    if (s.name) await refreshGraph(s.name, s.dir, s.scope);
   }
   // The rest of the ceremony is the team's: printed at the moment it matters,
   // never verified, never gating. Nothing written = nothing printed.

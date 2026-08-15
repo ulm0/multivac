@@ -278,4 +278,14 @@ checks them on every commit.
 <!-- @anchor MV-49 brain:src/commands/verify.ts /is mounted but is not a multivac brain/ -->
 <!-- @anchor MV-49 brain:test/verify/consumer.test.ts /named as a bad pin, never told to run init/ -->
 <!-- @anchor MV-49 brain:site/content/docs/reference/commands.md /is mounted but is not a multivac brain/ -->
+| MV-50 | `change close` executes the declared grapher's refresh — in the brain and in each declared+present repo the change touched, per-scope grapher falling back to the global one — when the binary is on PATH; an absent binary degrades to the install notice and a failing refresh warns, never failing the close. The refresh module never invokes git, so the artifact is left uncommitted, to land only in dedicated chore commits. The hook shims run `verify` only, and the site says refresh happens at `change close` — not through the hook path. | specified | active | 2026-08-15 | [changes/archive/the-graph-refreshes-itself.md](changes/archive/the-graph-refreshes-itself.md) |
+<!-- @anchor MV-50 brain:src/commands/change.ts /await refreshGraph\(s\.name, s\.dir, s\.scope\)/ -->
+<!-- @anchor MV-50 brain:src/adapters/refresh.ts /never spawns git/ -->
+<!-- @anchor MV-50 brain:src/adapters/refresh.ts /'git'|gitRun/ absent -->
+<!-- @anchor MV-50 brain:src/adapters/refresh.ts /binary not found — refresh skipped/ -->
+<!-- @anchor MV-50 brain:src/adapters/refresh.ts /refresh failed/ -->
+<!-- @anchor MV-50 brain:test/change/grapher-refresh.test.ts /artifact changed and stays uncommitted/ -->
+<!-- @anchor MV-50 brain:test/change/grapher-refresh.test.ts /never a failed close/ -->
+<!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /there is no refresh on the hook path/ -->
+<!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /never stages or commits the refreshed artifact/ -->
 
