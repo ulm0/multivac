@@ -48,6 +48,8 @@ export interface HooksReport {
   managers: string[];
   /** Foreign hooks already running multivac — nothing to do (alongside only). */
   wired: string[];
+  /** .pre-commit-config.yaml arming state (fresh/chained only; see PreCommitGate). */
+  preCommit: PreCommitGate;
   /** Hooks that could not be installed, with the exact manual step. */
   refused: Array<{ name: HookName; path: string; fix: string }>;
 }
@@ -83,6 +85,33 @@ export const INACTIVE_FIX =
 /** The one line a taken foreign hook needs — refusal and doctor say the same. */
 export const MANUAL_CHAIN_LINE = 'mvac verify || exit 1';
 
+/** Fix for a .pre-commit-config.yaml with no pre-commit binary — one wording
+ *  for the shim, init and doctor. */
+export const PRECOMMIT_MISSING_FIX =
+  'install pre-commit (pipx install pre-commit, or brew install pre-commit)';
+
+/**
+ * The pre-commit framework's arming state — the shim's fallback logic in
+ * Node, so init and doctor report exactly what the shim will do.
+ * - null: no .pre-commit-config.yaml.
+ * - 'hook': .git/hooks/pre-commit installed — the normal run-time chain.
+ * - 'run': hook absent, binary present — the fresh-clone shape
+ *   (`pre-commit install` refuses while core.hooksPath is set), so the shim
+ *   runs `pre-commit run --hook-stage <stage>` directly.
+ * - 'no-binary': hook absent, binary missing — the project's gate cannot run.
+ */
+export type PreCommitGate = 'hook' | 'run' | 'no-binary' | null;
+
+export async function preCommitGate(
+  repo: string,
+  chained?: string[],
+): Promise<PreCommitGate> {
+  if (!(await pathExists(join(repo, '.pre-commit-config.yaml')))) return null;
+  const hooks = chained ?? (await chainedHooks(repo));
+  if (hooks.includes('.git/hooks/pre-commit')) return 'hook';
+  return (await onPath('pre-commit')) ? 'run' : 'no-binary';
+}
+
 /**
  * The shim. Two placements, one difference:
  * - in .multivac/hooks (core.hooksPath ours): `chain` names the hook, and the
@@ -110,6 +139,15 @@ function shim(args: string, chain: HookName | null): string {
           `prev=$(git rev-parse --git-dir 2>/dev/null)/hooks/${chain}`,
           'if [ -x "$prev" ]; then',
           '  "$prev" "$@" || exit $?',
+          'elif [ -f "$root/.pre-commit-config.yaml" ]; then',
+          '  # fresh clone: `pre-commit install` refuses while core.hooksPath is',
+          '  # set, so run the config directly — the gate arms in every order.',
+          '  if command -v pre-commit >/dev/null 2>&1; then',
+          `    pre-commit run --hook-stage ${chain} || exit $?`,
+          '  else',
+          '    echo "multivac: .pre-commit-config.yaml present but pre-commit is not installed —' +
+            ` the project's gate did NOT run. Fix: ${PRECOMMIT_MISSING_FIX}" >&2`,
+          '  fi',
           'fi',
         ]
       : ['root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0']),
@@ -189,6 +227,7 @@ async function installAlongside(
     chained: [],
     managers,
     wired: [],
+    preCommit: null,
     refused: [],
   };
   await mkdir(join(repo, dir), { recursive: true });
@@ -260,6 +299,7 @@ export async function installHooks(
     chained,
     managers,
     wired: [],
+    preCommit: await preCommitGate(repo, chained),
     refused: [],
   };
 }

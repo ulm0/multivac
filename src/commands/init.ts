@@ -19,7 +19,7 @@ import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { banner } from '../lib/banner.js';
 import { applyManagedBlock } from '../doors/block.js';
-import { installHooks } from '../hooks/install.js';
+import { PRECOMMIT_MISSING_FIX, installHooks } from '../hooks/install.js';
 import { detectAdapters, type Detected } from '../adapters/detect.js';
 
 export type { Detected };
@@ -333,12 +333,30 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     case 'fresh':
       report('init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit');
       break;
-    case 'chained':
+    case 'chained': {
+      // Name only what actually runs: a manager config with nothing installed
+      // in .git/hooks is not "runs first" unless the shim can arm it itself.
+      const first = [...hooks.chained];
+      if (hooks.preCommit === 'run') {
+        first.push(
+          '.pre-commit-config.yaml via `pre-commit run` (`pre-commit install` refuses while core.hooksPath is set)',
+        );
+      }
       report(
-        'init: hooks in .multivac/hooks (core.hooksPath) — chained: ' +
-          `${hooks.chained.join(', ') || hooks.managers.join(', ')} runs first, its exit code wins, then verify`,
+        first.length > 0
+          ? 'init: hooks in .multivac/hooks (core.hooksPath) — chained: ' +
+              `${first.join(', ')} runs first, its exit code wins, then verify`
+          : 'init: hooks in .multivac/hooks (core.hooksPath) — ' +
+              `${hooks.managers.join(', ')} detected; its .git/hooks hooks chain first once installed, then verify`,
       );
+      if (hooks.preCommit === 'no-binary') {
+        warn(
+          "init: .pre-commit-config.yaml present but the pre-commit binary is not installed — the project's gate will not run until it is; " +
+            PRECOMMIT_MISSING_FIX,
+        );
+      }
       break;
+    }
     case 'alongside':
       report(
         `init: hooks installed alongside into ${hooks.dir} ` +

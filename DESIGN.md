@@ -323,6 +323,13 @@ shims in `.multivac/hooks/`, hooksPath ours. **Chained**: a `.git/hooks`
 hook (or a manager that installs one) pre-exists — same shims, but each one
 runs the repo's own hook first and preserves its exit code; the chain is
 resolved at run time, so a manager that installs after init is chained too.
+The chain arms in the other order as well — the fresh-clone shape, where
+`.pre-commit-config.yaml` exists but `.git/hooks/pre-commit` does not (and
+`pre-commit install` refuses to write it while `core.hooksPath` is set): the
+shim falls back to `pre-commit run --hook-stage <stage>` directly, exit code
+preserved; with no `pre-commit` binary it warns loudly and never blocks, and
+`init` and `doctor` both name that state instead of claiming a chain that
+cannot run.
 **Alongside**: `core.hooksPath` already points elsewhere, or `.husky/` will
 claim it on install — never repoint; the shim goes INTO that directory where
 the hook name is free, and a taken name that does not run multivac is a

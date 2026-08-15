@@ -12,6 +12,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  rmSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -203,6 +204,131 @@ test('a non-executable .git/hooks file is not a chain — git would not run it e
   const r = await installHooks(dir);
   assert.deepEqual(r.chained, []);
   assert.equal(runHook(dir, '.multivac/hooks/pre-commit').status, 0);
+});
+
+/** A fake pre-commit binary that logs its argv and exits as told. */
+function stubPreCommit(dir: string, exitCode = 0): string {
+  const bin = join(dir, 'stub-bin');
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(join(bin, 'pre-commit'), `#!/bin/sh\necho "PC-GATE $*"\nexit ${exitCode}\n`);
+  chmodSync(join(bin, 'pre-commit'), 0o755);
+  return bin;
+}
+
+/** Run fn with process.env.PATH pinned — onPath() reads it directly. */
+async function withPath<T>(path: string, fn: () => Promise<T>): Promise<T> {
+  const orig = process.env.PATH;
+  process.env.PATH = path;
+  try {
+    return await fn();
+  } finally {
+    process.env.PATH = orig;
+  }
+}
+
+test('saleor fresh clone: config present, hook absent, binary present — the shim arms the gate itself', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  writeFileSync(join(dir, '.pre-commit-config.yaml'), 'repos: []\n');
+  const bin = stubPreCommit(dir);
+
+  // init tells the truth: the config runs via `pre-commit run`, not via a
+  // .git/hooks hook that does not exist.
+  const { code, out } = await withPath(`${bin}:${SYS}`, () =>
+    capture(() => init.run([], { cwd: dir })),
+  );
+  assert.equal(code, 0);
+  assert.match(
+    out,
+    /chained: \.pre-commit-config\.yaml via `pre-commit run` \(`pre-commit install` refuses while core\.hooksPath is set\) runs first, its exit code wins, then verify/,
+  );
+  assert.doesNotMatch(out, /\.git\/hooks\/pre-commit runs first/);
+
+  // gate passes: pre-commit ran with the right stage, then the shim moved on
+  let r = runHook(dir, '.multivac/hooks/pre-commit', `${bin}:${SYS}`);
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /PC-GATE run --hook-stage pre-commit/);
+  assert.match(r.stderr, /INACTIVE/);
+  // pre-push shim runs the push stage of the same config
+  r = runHook(dir, '.multivac/hooks/pre-push', `${bin}:${SYS}`);
+  assert.match(r.stdout, /PC-GATE run --hook-stage pre-push/);
+
+  // gate fails: its exit code IS the hook's exit code, verify never runs
+  stubPreCommit(dir, 3);
+  r = runHook(dir, '.multivac/hooks/pre-commit', `${bin}:${SYS}`);
+  assert.equal(r.status, 3, 'the project gate blocks the commit, not us');
+  assert.doesNotMatch(r.stderr, /INACTIVE/, 'the shim stopped at the failed gate');
+
+  // once the real hook exists, it wins over the fallback (the original chain)
+  saleorHooks(dir);
+  r = runHook(dir, '.multivac/hooks/pre-commit', `${bin}:${SYS}`);
+  assert.match(r.stdout, /SALEOR-GATE/);
+  assert.doesNotMatch(r.stdout, /PC-GATE/);
+
+  // doctor names the fallback state while the hook is absent
+  rmSync(join(dir, git(dir, 'rev-parse', '--git-dir'), 'hooks', 'pre-commit'));
+  const hooks = await withPath(`${bin}:${SYS}`, async () =>
+    line((await doctorReport(dir)).lines, 'hooks'),
+  );
+  assert.match(hooks, /\.pre-commit-config\.yaml with no \.git\/hooks\/pre-commit/);
+  assert.match(hooks, /pre-commit run --hook-stage/);
+  assert.match(hooks, /refuses while core\.hooksPath is set/);
+});
+
+test('saleor fresh clone without the binary: loud warning, never a block, init and doctor say the gate cannot run', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  writeFileSync(join(dir, '.pre-commit-config.yaml'), 'repos: []\n');
+
+  const errs: string[] = [];
+  const orig = console.error;
+  console.error = (l: string) => errs.push(String(l));
+  let out = '';
+  try {
+    ({ out } = await withPath(SYS, () => capture(() => init.run([], { cwd: dir }))));
+  } finally {
+    console.error = orig;
+  }
+  assert.doesNotMatch(out, /runs first/, 'init does not claim a gate that cannot run');
+  assert.match(
+    errs.join('\n'),
+    /\.pre-commit-config\.yaml present but the pre-commit binary is not installed — the project's gate will not run until it is/,
+  );
+
+  // the shim warns on stderr and never blocks — same posture as no runner
+  const r = runHook(dir, '.multivac/hooks/pre-commit', SYS);
+  assert.equal(r.status, 0, 'a missing binary never wedges the commit');
+  assert.match(r.stderr, /pre-commit is not installed/);
+  assert.match(r.stderr, /gate did NOT run/);
+
+  // doctor: the state and the fix
+  const hooks = await withPath(SYS, async () =>
+    line((await doctorReport(dir)).lines, 'hooks'),
+  );
+  assert.match(hooks, /WARNING \.pre-commit-config\.yaml present, no \.git\/hooks\/pre-commit and no pre-commit binary/);
+  assert.match(hooks, /gate cannot run → install pre-commit/);
+});
+
+test('husky arrangement has no such trap: hooksPath stays claimable and both gates run once husky arms', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  mkdirSync(join(dir, '.husky'));
+  writeFileSync(join(dir, '.husky/pre-commit'), '#!/bin/sh\necho HUSKY-GATE\n');
+  chmodSync(join(dir, '.husky/pre-commit'), 0o755);
+
+  await capture(() => init.run([], { cwd: dir }));
+  // init left core.hooksPath unset — husky's own `prepare` can still claim it
+  assert.equal(spawnSync('git', ['-C', dir, 'config', 'core.hooksPath']).status, 1);
+  git(dir, 'config', 'core.hooksPath', '.husky'); // husky arms
+  // the project's gate runs untouched, and multivac's shim beside it runs too
+  assert.match(runHook(dir, '.husky/pre-commit').stdout, /HUSKY-GATE/);
+  const bin = join(dir, 'fixture-bin');
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'mvac'), '#!/bin/sh\necho "mvac $*"\n');
+  chmodSync(join(bin, 'mvac'), 0o755);
+  const r = runHook(dir, '.husky/pre-push', `${bin}:${SYS}`);
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /mvac verify/);
 });
 
 test('a manager config alone (lefthook.yml) reads as chained: its hooks run once installed', async () => {
