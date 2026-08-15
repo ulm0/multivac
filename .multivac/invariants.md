@@ -278,4 +278,5 @@ checks them on every commit.
 <!-- @anchor MV-49 brain:src/commands/verify.ts /is mounted but is not a multivac brain/ -->
 <!-- @anchor MV-49 brain:test/verify/consumer.test.ts /named as a bad pin, never told to run init/ -->
 <!-- @anchor MV-49 brain:site/content/docs/reference/commands.md /is mounted but is not a multivac brain/ -->
+| MV-50 | RESERVED by change the-graph-refreshes-itself — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-graph-refreshes-itself.md](changes/the-graph-refreshes-itself.md) |
 
