@@ -38,18 +38,20 @@ params:
     displayTitle: true
     displayLogo: true
     # The mark is the console panel — lit lamps verified, unlit unanchored,
-    # amber in flight. Hextra renders one <img> per theme, and an <img> is an
-    # isolated document where currentColor falls back to black, so the dark
-    # slot carries the same drawing with its ink pinned.
+    # acid in flight. An <img> is an isolated document where currentColor falls
+    # back to black, so the navbar copy pins its ink light; this site has one
+    # ground and needs no per-theme slot.
     logo:
-      path: mark.svg
-      dark: mark-dark.svg
+      path: mark-dark.svg
       width: 23
       height: 20
 
+  # Dark only. The mark's accent is acid lime, which reads as acid on a dark
+  # ground and has to darken to olive on light — a second, quieter identity for
+  # the same product. One ground, one palette, no toggle.
   theme:
     default: dark
-    displayToggle: true
+    displayToggle: false
 
   page:
     width: normal

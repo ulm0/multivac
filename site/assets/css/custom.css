@@ -1,23 +1,22 @@
-/* The site wears the mark's palette: amber on warm neutral.
-   Hextra derives links, accents, focus rings and the active nav item from
-   --primary-*, so setting the hue here carries the panel's lit lamp through
-   the whole site instead of the theme's default blue. */
+/* The site wears the mark's palette: acid lime on near-black.
 
-:root {
-  /* #d97706 — the lit lamp, light mode */
-  --primary-hue: 32deg;
-  --primary-saturation: 95%;
-  --primary-lightness: 44%;
-}
+   Dark only — see site/hugo.yaml. Acid reads as acid on a dark ground; on
+   light it has to darken to olive, which is a different, quieter identity for
+   the same product. One ground, one palette.
 
+   Hextra derives links, focus rings, the active nav item and the search
+   highlight from --primary-*, so the hue is set once here rather than
+   repainting components. Both :root and .dark carry it because Hextra's
+   default-theme markup can render either class before hydration. */
+
+:root,
 .dark {
-  /* #f59e0b — CRT phosphor: brighter, so it holds on a dark ground */
-  --primary-hue: 38deg;
-  --primary-saturation: 92%;
-  --primary-lightness: 50%;
+  /* #c3f53c — hazard-sign lime, the lit lamp in flight */
+  --primary-hue: 76deg;
+  --primary-saturation: 90%;
+  --primary-lightness: 60%;
 }
 
-/* The selection matches the lamp rather than the browser default. */
 ::selection {
-  background-color: hsl(var(--primary-hue) var(--primary-saturation) var(--primary-lightness) / 0.28);
+  background-color: hsl(var(--primary-hue) var(--primary-saturation) var(--primary-lightness) / 0.3);
 }
