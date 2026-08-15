@@ -89,8 +89,14 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
     };
   }
   const star = a.repoKey === '*';
-  const label = (m: TaggedMatch): string =>
-    `${star ? `${m.key}:` : ''}${m.file}:${m.line}`;
+  /**
+   * Every hit says which repo it came from — `*` legs and single-repo legs
+   * alike. The leg's own repoKey is not enough context at the point of
+   * reading: a bare `src/cli.ts:42` in a six-repo ecosystem sends the reader
+   * to whichever checkout they happen to be standing in.
+   */
+  const at = (key: string, file: string): string => `${key}:${file}`;
+  const label = (m: TaggedMatch): string => `${at(m.key, m.file)}:${m.line}`;
   let globFileCount = 0;
   const globFiles: { key: string; file: string }[] = [];
   const matches: TaggedMatch[] = [];
@@ -157,7 +163,10 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
             )
           : leg('broken', `no match in ${where} — restore the code or retire the claim`);
       }
-      const fl = files.slice(0, 3).map((f) => f.split('\0')[1]).join(', ');
+      const fl = files
+        .slice(0, 3)
+        .map((f) => at(f.split('\0')[0], f.split('\0')[1]))
+        .join(', ');
       return leg(
         'broken',
         `found in ${files.length} files (${fl}${files.length > 3 ? ', …' : ''}) — narrow the regex or split into per-file legs`,
@@ -226,7 +235,7 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
         ? [...firstBy.values()].map(label)
         : globFiles
             .filter((f) => !firstBy.has(`${f.key}\0${f.file}`))
-            .map((f) => `${star ? `${f.key}:` : ''}${f.file}`);
+            .map((f) => at(f.key, f.file));
       if (failing.length === 0) return leg('ok');
       const shown =
         failing.slice(0, 3).join(', ') +

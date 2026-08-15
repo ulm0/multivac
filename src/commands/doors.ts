@@ -21,7 +21,12 @@ import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings } from '../doors/settings.js';
 import { installHooks } from '../hooks/install.js';
 import { binaryPresent } from '../adapters/detect.js';
-import { type DoorTarget, doorTargets, grapherSpec } from '../adapters/registry.js';
+import {
+  type DoorTarget,
+  doorTargets,
+  grapherSpec,
+  unverifiedGrapher,
+} from '../adapters/registry.js';
 
 const KNOWN_TARGETS = Object.keys(doorTargets);
 
@@ -108,8 +113,11 @@ async function projectInto(
 ): Promise<string[]> {
   const notices: string[] = [];
   // Declared AND installed, or no refresh entry at all — an absent binary
-  // would only wire a hook that cannot run; doctor already says why.
-  const spec = grapher === undefined ? null : grapherSpec(grapher);
+  // would only wire a hook that cannot run; doctor already says why. An
+  // unverified grapher wires nothing either: a hook running a command
+  // multivac guessed is worse than no hook at all.
+  const spec = grapher === undefined ? null : grapherSpec(grapher, config.graphers);
+  if (grapher !== undefined && spec === null) notices.push(unverifiedGrapher(grapher));
   const refresh = spec !== null && (await binaryPresent(spec)) ? spec.refresh : null;
   const doorFile = join(dir, 'AGENTS.md');
   await writeFile(doorFile, applyManagedBlock(await readOrNull(doorFile), body));

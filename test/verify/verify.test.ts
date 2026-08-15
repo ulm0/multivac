@@ -273,7 +273,7 @@ test('pin staleness reports offline: gitlink vs local channel ref + fetch age', 
   assert.equal(code, 0); // staleness reports, never gates
   assert.match(out, new RegExp(`stale\\s+api: pin 1 behind ${branch}`));
   assert.match(out, /never fetched|last fetch/);
-  assert.match(out, /repos sync/);
+  assert.match(out, /submodule update --remote/);
 });
 
 /** Same fixture as the report test: brain mounted in api, pin one behind. */
@@ -292,7 +292,7 @@ function staleEco(): { e: ScratchEcosystem; branch: string } {
   return { e, branch };
 }
 
-test('staleness: block — a resolvable stale pin exits 1 with the sync command', async () => {
+test('staleness: block — a resolvable stale pin exits 1 with the command that moves the pin', async () => {
   const { e, branch } = staleEco();
   writeFileSync(
     join(e.brain, '.multivac/config.yml'),
@@ -302,7 +302,7 @@ test('staleness: block — a resolvable stale pin exits 1 with the sync command'
   assert.equal(code, 1);
   assert.match(out, new RegExp(`stale\\s+api: pin 1 behind ${branch}`));
   assert.match(out, /blocking \(staleness: block\)/);
-  assert.match(out, /repos sync/);
+  assert.match(out, /submodule update --remote/);
   assert.match(out, /1 stale pin blocking/);
 });
 

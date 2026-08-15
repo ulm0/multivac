@@ -141,10 +141,15 @@ async function stalenessLines(brainDir: string, cfg: Config): Promise<Diagnostic
     const gates = gate && behind !== '?';
     const age = await lastFetchAge(brainDir).catch(() => null);
     const ageStr = age === null ? 'never fetched' : `last fetch ${fmtAge(age)} ago`;
+    // The command has to MOVE THE PIN. `repos sync` fetches — it never
+    // touches a gitlink, so following it left the line saying the same thing
+    // forever. `submodule update --remote` is the one that advances it, and
+    // it is what `doctor` already prints for the same fact.
     lines.push({
       text:
         `  stale     ${key}: pin ${behind} behind ${channel} · ${ageStr} — ` +
-        `${gates ? 'blocking (staleness: block); ' : ''}run \`multivac repos sync\``,
+        `${gates ? 'blocking (staleness: block); ' : ''}` +
+        `git -C ${entry.path} submodule update --remote ${cfg.mount}`,
       gates,
     });
   }

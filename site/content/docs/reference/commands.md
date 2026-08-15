@@ -771,7 +771,7 @@ the remote, leaves no local trace — so the absence is reported, never a
 refusal:
 
 ```txt
-api: recorded as landed — recording without evidence: points-expire is not contained in main here (a squash or a remote-only merge looks like this too)
+api: recorded as landed — no local merge commit to confirm it (points-expire is not contained in main here); normal for an MR merged on the remote, or squashed
 ```
 
 A repo with no `origin` is told to land locally instead of to push:

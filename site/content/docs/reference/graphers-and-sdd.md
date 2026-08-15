@@ -35,7 +35,11 @@ capabilities, and only the missing half turns off:
 | `speckit` | `.specify` | `specify` | `specify check` |
 | `graphify` | `graphify-out/graph.json` | `graphify` | `graphify update .` |
 | `codegraph` | `.codegraph` | `codegraph` | `codegraph sync` (build: `codegraph init`) |
-| *any other grapher* | `<name>-out/graph.json` | `<name>` | `<name> update .` |
+| `code-review-graph` | `.code-review-graph` | `code-review-graph` | `code-review-graph update` (build: `… build`) |
+| `axon` | `.axon` | `axon` | `axon analyze .` (build: the same command) |
+| `dependency-cruiser` | `dependency-cruiser-out/graph.json` | **`depcruise`** | `depcruise --output-type json --output-to …` |
+| `scip-typescript` | `index.scip` | `scip-typescript` | `scip-typescript index` (build: the same command) |
+| *any other grapher* | **unverified — you declare it** (see below) | | |
 
 If you cloned a repo that already has the artifact committed, the read half
 works with the tool not installed at all. The binary is only needed to
@@ -85,8 +89,8 @@ grapher    graphify @ api: artifact missing → run `graphify update .` there
 Every degraded shape is a pointer with the exact command:
 
 ```txt
-grapher    nograph @ brain: artifact missing · binary missing → npm i -g nograph, then `nograph update .`
-grapher    nograph @ brain: artifact ok · binary missing → npm i -g nograph (graph cannot refresh)
+grapher    codegraph @ brain: artifact missing · binary missing → npm i -g @colbymchenry/codegraph, then `codegraph init`
+grapher    codegraph @ brain: artifact ok · binary missing → npm i -g @colbymchenry/codegraph (graph cannot refresh)
 grapher    graphify @ brain: artifact ok · binary ok · graph STALE (older than last commit) → run `graphify update .` there
 ```
 
@@ -94,21 +98,45 @@ Stale means the artifact's mtime is older than the repo's last commit — the
 graph describes code that has since moved. It is a `doctor` warning and never
 a `verify` failure.
 
-### The generic contract
+### There is no generic contract
 
-Graphers are **not** an enumerated list. An unknown name still works, because
-the spec is derived from the name:
+multivac used to derive an unknown grapher's spec from its name —
+`<name>-out/graph.json`, `<name> update .`, `npm i -g <name>`. It does not any
+more, and the reason is a measurement: across ~47 surveyed graph tools that
+shape matched **one**, the tool it had been written from. Every other viable
+grapher overrides the artifact and the refresh, usually the binary too
+(`depcruise` is not `dependency-cruiser`), and half of them have no `update`
+verb at all because build and refresh are the same idempotent command. Even
+graphify's derived install line was wrong: it ships from PyPI, not npm.
 
-- artifact `<name>-out/graph.json`
-- binary `<name>`
-- install hint `npm i -g <name>`
-- refresh `<name> update .`
+Deriving a contract from a name means printing an invented path as if it were
+a fact — the one error this tool exists to prevent. So a name multivac has not
+verified is **unverified**: `doctor` reports it, `doors` wires no hook for it,
+`change close` runs nothing, and each of them prints the fields to declare.
 
-Two names carry verified overrides where the vendor's own docs disagree.
-`graphify` matches the generic contract exactly. `codegraph` indexes into
-`.codegraph/` rather than `<name>-out/`, and splits build from refresh —
-`codegraph init` builds it, `codegraph sync` refreshes it — which is why
-`doctor` names the right one for the situation:
+You do not need a merge request to use your own tool. Declare its contract:
+
+```yaml
+grapher: mytool
+graphers:
+  mytool:
+    artifact: .mytool/index.db        # repo-relative, file or directory
+    refresh: mytool index             # the one command safe to re-run
+    create: mytool init               # optional, if the build differs
+    binary: mytool                    # optional, defaults to the first word of refresh
+    install: pipx install mytool      # optional, printed when the binary is missing
+```
+
+`artifact` and `refresh` are required — half a contract is the same invented
+path. A declaration also overrides a registry entry, for when you know your
+install better than the table does.
+
+Some good tools have no artifact path of their own: dependency-cruiser writes
+wherever `--output-to` points. For those the path is **multivac's choice**, and
+the registry entry says so in its note rather than dressing it up as a vendor
+convention.
+
+Where build and refresh differ, `doctor` names the right one for the situation:
 
 ```txt
 grapher    codegraph @ brain: artifact missing → run `codegraph init` there

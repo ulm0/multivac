@@ -120,14 +120,43 @@ editing the config.
 | example | `grapher: graphify` |
 
 The code-graph tool for the brain, and the fallback for every repo that does
-not override it. Unlike `sdd`, **any name works**: graphers follow a generic
-contract derived from the name (`<name>-out/graph.json`, binary `<name>`,
-refresh `<name> update .`), overridden only where a known tool's own docs
-disagree.
+not override it. The name must be one multivac has **verified** (`graphify`,
+`codegraph`, `code-review-graph`, `axon`, `dependency-cruiser`,
+`scip-typescript`) or one you declare yourself under
+[`graphers`](#graphers) — multivac no longer derives an artifact path or a
+refresh command from a name, because inventing either is inventing a fact.
 
 **Without it:** no `grapher` lines in `doctor`, no refresh hint at the end of
 `change close`. A newborn brain is two content files; graphing that is noise,
 which is why `init` declares no grapher unless it detects one.
+
+### `graphers`
+
+| | |
+| --- | --- |
+| type | mapping of name -> `{ artifact, refresh, create?, binary?, install? }` |
+| default | `{}` |
+| example | see below |
+
+Contracts for graphers the shipped registry has not verified. This is what
+makes an unverified tool usable **without a merge request against multivac**:
+
+```yaml
+grapher: mytool
+graphers:
+  mytool:
+    artifact: .mytool/index.db   # repo-relative path the tool writes, file or directory
+    refresh: mytool index        # the one command safe to re-run
+    create: mytool init          # optional, when the build differs from the refresh
+    binary: mytool               # optional, defaults to the first word of refresh
+    install: pipx install mytool # optional, printed when the binary is missing
+```
+
+`artifact` and `refresh` are required. A declaration also overrides a shipped
+registry entry — you know your own install better than the table does.
+
+**Without it:** a `grapher:` naming an unverified tool is reported as
+unverified, with these exact fields to fill in, and nothing is run.
 
 ### `authorities`
 

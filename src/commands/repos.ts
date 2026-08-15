@@ -15,6 +15,7 @@ import { resolve } from 'node:path';
 import type { Command } from '../types.js';
 import { CONFIG_PATH, loadConfig } from '../lib/config.js';
 import { pathExists } from '../adapters/detect.js';
+import { gitFailure } from '../lib/git.js';
 import { say } from '../lib/out.js';
 
 const execFileP = promisify(execFile);
@@ -60,7 +61,8 @@ export async function reposSync(
         lines.push(`${key}: present at ${e.path} — fetched`);
       } catch (err) {
         const stderr = ((err as { stderr?: string }).stderr ?? String(err)).trim();
-        const last = stderr.split('\n').filter(Boolean).pop() ?? 'git fetch failed';
+        // First `fatal:`, not the last line: git's tail is advice, not cause.
+        const last = gitFailure(stderr, 'git fetch failed');
         lines.push(
           `${key}: present at ${e.path} — could not fetch: ${last}; ` +
             `its channel ref stays as last fetched (\`git -C ${e.path} fetch\`)`,
@@ -81,7 +83,7 @@ export async function reposSync(
     } catch (err) {
       exit = 1;
       const stderr = ((err as { stderr?: string }).stderr ?? String(err)).trim();
-      const last = stderr.split('\n').filter(Boolean).pop() ?? 'git clone failed';
+      const last = gitFailure(stderr, 'git clone failed');
       lines.push(
         AUTH_RE.test(stderr)
           ? `${key}: auth failed cloning ${e.url} — fix your ssh key/token for this host, then re-run \`multivac repos sync\` (no retry was attempted)`

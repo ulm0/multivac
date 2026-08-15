@@ -7,12 +7,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmdirSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initRepo } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
+import { GRAPH_LOCK } from '../../src/doors/settings.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -37,12 +46,24 @@ const capture = async (fn: () => Promise<number>): Promise<{ code: number; out: 
   }
 };
 
+/**
+ * `fakegraph` is not in the registry, so its contract has to be STATED —
+ * which is the point: an unknown tool is usable without a merge request, and
+ * multivac never derives one of these lines from the name.
+ */
+const DECL =
+  'graphers:\n' +
+  '  fakegraph:\n' +
+  '    artifact: fakegraph-out/graph.json\n' +
+  '    refresh: fakegraph update .\n' +
+  '    install: npm i -g fakegraph\n';
+
 /** Brain==code repo declaring the fake grapher, artifact committed. */
-function makeBrain(tmp: string): string {
+function makeBrain(tmp: string, config = `doors: [agents]\ngrapher: fakegraph\n${DECL}repos:\n  brain: .\n`): string {
   const brain = join(tmp, 'acme-brain');
   initRepo(brain, {
     'AGENTS.md': '# door\n',
-    '.multivac/config.yml': 'doors: [agents]\ngrapher: fakegraph\nrepos:\n  brain: .\n',
+    '.multivac/config.yml': config,
     '.multivac/invariants.md':
       '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
     'fakegraph-out/graph.json': '{"nodes":0}\n',
@@ -113,6 +134,55 @@ test('absent grapher binary degrades to the install notice, close still 0', asyn
   const { code, out } = await capture(() => change.run(['close', 'graph-absent'], { cwd: brain }));
   assert.equal(code, 0);
   assert.match(out, /graph fakegraph @ brain: binary not found — refresh skipped; npm i -g fakegraph/);
+  assert.equal(readFileSync(join(brain, 'fakegraph-out/graph.json'), 'utf8'), before);
+});
+
+test('close takes the SAME lock the post-edit hook takes, and waits for it', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-'));
+  const brain = makeBrain(tmp);
+  // The grapher records the moment it ran, so "after the lock was released"
+  // is a fact and not a hope.
+  const bin = makeGrapherBin(tmp, '#!/bin/sh\ndate +%s%N > fakegraph-out/ran-at\n');
+  await landedChange(brain, 'graph-lock');
+  const lock = join(brain, GRAPH_LOCK);
+  mkdirSync(lock, { recursive: true }); // an in-flight hook refresh holds it
+  let released = 0n;
+  setTimeout(() => {
+    released = BigInt(Date.now()) * 1_000_000n;
+    rmdirSync(lock);
+  }, 700);
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() => change.run(['close', 'graph-lock'], { cwd: brain }));
+    assert.equal(code, 0);
+    assert.match(out, /refreshed \(`fakegraph update \.`\)/);
+  });
+  // It WAITED — did not skip (the artifact was rewritten) and did not race
+  // (it ran only after the other holder let go).
+  const ranAt = BigInt(readFileSync(join(brain, 'fakegraph-out/ran-at'), 'utf8').trim());
+  assert.ok(released > 0n, 'the holder released before close finished');
+  assert.ok(ranAt > released, `refresh ran at ${ranAt}, lock released at ${released}`);
+  // And it cleaned up after itself: the next hook must not find a stale lock.
+  assert.equal(existsSync(lock), false);
+});
+
+test('an unverified grapher refuses at close: fields to declare, nothing run', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-'));
+  // Declared by name only — no registry entry, no `graphers:` block.
+  const brain = makeBrain(tmp, 'doors: [agents]\ngrapher: fakegraph\nrepos:\n  brain: .\n');
+  const bin = makeGrapherBin(tmp, '#!/bin/sh\necho refreshed >> fakegraph-out/graph.json\n');
+  await landedChange(brain, 'graph-unknown');
+  const before = readFileSync(join(brain, 'fakegraph-out/graph.json'), 'utf8');
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() =>
+      change.run(['close', 'graph-unknown'], { cwd: brain }),
+    );
+    assert.equal(code, 0); // a refusal to guess never fails the close
+    assert.match(out, /fakegraph" is not verified/);
+    assert.match(out, /graphers:/);
+    // The invented contract is gone: nothing named it, nothing ran it.
+    assert.doesNotMatch(out, /npm i -g fakegraph/);
+    assert.doesNotMatch(out, /refreshed \(/);
+  });
   assert.equal(readFileSync(join(brain, 'fakegraph-out/graph.json'), 'utf8'), before);
 });
 

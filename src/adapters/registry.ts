@@ -1,3 +1,5 @@
+import type { GrapherDecl } from '../types.js';
+
 // Tool-shipped adapter/target registry — data, not code. Adding a harness,
 // an SDD tool, or a grapher is ADDING AN ENTRY here (an MR to multivac),
 // never a new module. Project config only SELECTS entries by name.
@@ -356,38 +358,143 @@ export function sddSpec(name: string): AdapterSpec | undefined {
   return sdd[name];
 }
 
+/** A verified grapher entry: every field stated, nothing derived. */
+type GrapherEntry = Omit<AdapterSpec, 'kind' | 'automation' | 'steps' | 'projectSteps'>;
+
 /**
- * Graphers that do not fit the generic contract below. Everything omitted is
- * derived from the name, so an unknown grapher still works — these entries
- * exist only where the tool's own docs say otherwise.
+ * The graphers multivac has VERIFIED, each field read from a primary source.
+ *
+ * There is no generic contract to fall back on, and the reason is measured:
+ * `<name>-out/graph.json` + `<name> update .` + `npm i -g <name>` was derived
+ * from graphify and, across ~47 surveyed tools (internal landscape study),
+ * matched exactly one of them — and even for graphify the derived npm line was
+ * wrong, since it installs from PyPI. Every other viable grapher overrides the
+ * artifact and the refresh, usually the binary too (`depcruise` is not
+ * `dependency-cruiser`), and half of them have no `update` verb at all because
+ * build and refresh are the same idempotent command.
+ *
+ * What actually held across every tool that fits is narrower: a path in the
+ * repo, file OR directory; ONE terminal command safe to re-run; no model and
+ * no network inside it. A tool absent from this table is UNVERIFIED — see
+ * `grapherSpec`. A field the vendor does not document says UNVERIFIED in its
+ * own text rather than carrying a guess that reads like a fact.
  */
-const knownGraphers: Record<string, Partial<AdapterSpec>> = {
+const knownGraphers: Record<string, GrapherEntry> = {
   graphify: {
-    note: 'Matches the generic contract exactly: graphify-out/graph.json, `graphify update .`.',
+    artifacts: ['graphify-out/graph.json'],
+    binaries: ['graphify'],
+    // NOT `npm i -g graphify`: the shipped binary is a Python console script
+    // (`~/.local/bin/graphify` shebangs into the `graphifyy` uv tool). The
+    // derived npm line pointed at an unrelated registry entirely.
+    installHint: 'uv tool install graphifyy',
+    refresh: 'graphify update .',
+    // No separate create: `graphify extract` is the full AST+LLM build, which
+    // a close hook must not run. `update .` builds and refreshes, AST-only.
+    note: 'Python tool, published as `graphifyy`. Writes graphify-out/graph.json; `graphify update .` is AST-only (no model, no network), which is what makes it safe in a close hook — `graphify extract` is the LLM path and is deliberately not wired here.',
+    source: 'https://github.com/Graphify-Labs/graphify',
   },
   codegraph: {
     artifacts: ['.codegraph'],
+    binaries: ['codegraph'],
     installHint: 'npm i -g @colbymchenry/codegraph',
     refresh: 'codegraph sync',
     create: 'codegraph init',
     note: 'Indexes into .codegraph/, not <name>-out/; `codegraph init` builds it, `codegraph sync` refreshes it.',
     source: 'https://github.com/colbymchenry/codegraph',
   },
+  'code-review-graph': {
+    artifacts: ['.code-review-graph'],
+    binaries: ['code-review-graph'],
+    installHint: 'UNVERIFIED — the project documents no install line; `pipx install code-review-graph` is the shape, confirm it against the README before trusting it',
+    create: 'code-review-graph build',
+    refresh: 'code-review-graph update',
+    note: 'SQLite tree-sitter graph in .code-review-graph/. Explicit build and update verbs. Offline by default; cloud embeddings are opt-in behind CRG_ACCEPT_CLOUD_EMBEDDINGS=1, so leave that unset to keep the refresh deterministic.',
+    source: 'https://github.com/tirth8205/code-review-graph',
+  },
+  axon: {
+    artifacts: ['.axon'],
+    binaries: ['axon'],
+    installHint: 'UNVERIFIED — no install line published; build it from the repo',
+    create: 'axon analyze .',
+    refresh: 'axon analyze .',
+    note: 'Embedded KuzuDB under .axon/ (plus .axon/meta.json). No separate update verb — the refresh IS a re-run of analyze; `--full` forces a rebuild. Young project; treat the entry as thin.',
+    source: 'https://github.com/harshkedia177/axon',
+  },
+  'dependency-cruiser': {
+    // multivac's path, not the vendor's: depcruise writes wherever
+    // --output-to points, so the entry has to CHOOSE one and say that it did.
+    artifacts: ['dependency-cruiser-out/graph.json'],
+    binaries: ['depcruise'],
+    installHint: 'npm i -g dependency-cruiser',
+    create: 'depcruise --init',
+    refresh:
+      'depcruise --output-type json --output-to dependency-cruiser-out/graph.json src',
+    note: 'Binary is `depcruise`, not the adapter name. JS/TS only and module-level (imports, cycles, orphans) — not symbols. The artifact path is multivac\'s choice, not a vendor convention: the tool emits wherever --output-to points, and the refresh above is what makes that path true. The `src` argument is the default source root — change it in your own graphers: entry if yours differs.',
+    source: 'https://github.com/sverweij/dependency-cruiser',
+  },
+  'scip-typescript': {
+    artifacts: ['index.scip'],
+    binaries: ['scip-typescript'],
+    installHint: 'npm i -g @sourcegraph/scip-typescript',
+    // Build and refresh are one command: there is no incremental verb.
+    refresh: 'scip-typescript index',
+    note: 'Compiler-accurate, artifact default `index.scip` verified in the tool\'s own CommandLineOptions. Build and refresh are the same command — a full re-typecheck, which is heavy for a close hook on a large repo. The output is protobuf: unreadable without the separate `scip` CLI, whose only query surface is an EXPERIMENTAL conversion. Needs node_modules installed to run offline.',
+    source: 'https://github.com/sourcegraph/scip-typescript',
+  },
 };
 
+/** The graphers multivac can speak for. Printed when a name is not one. */
+export const grapherNames: string[] = Object.keys(knownGraphers);
+
 /**
- * Graphers follow one generic contract: artifact at `<name>-out/graph.json`,
- * binary named `<name>`, refreshed with `<name> update .` — overridden per
- * tool by `knownGraphers` where the vendor's docs disagree.
+ * The spec for a declared grapher, or **null when the name is unverified**.
+ *
+ * Null is the whole point. Deriving a contract from a name is multivac's one
+ * unforgivable error — inventing a path and printing it like a fact — and it
+ * was in here, applied to multivac's own registry. A caller that gets null
+ * prints `unverifiedGrapher(name)` and does nothing else: no probe of an
+ * invented artifact, no refresh of an invented command.
+ *
+ * `decls` is the config's own `graphers:` map and wins over the table: the
+ * operator knows their install, and their declaration is a statement, not a
+ * guess.
  */
-export function grapherSpec(name: string): AdapterSpec {
-  return {
-    kind: 'grapher',
-    artifacts: [`${name}-out/graph.json`],
-    binaries: [name],
-    installHint: `npm i -g ${name}`,
-    refresh: `${name} update .`,
-    automation: 'grapher-refresh',
-    ...knownGraphers[name],
+export function grapherSpec(
+  name: string,
+  decls: Record<string, GrapherDecl> = {},
+): AdapterSpec | null {
+  const known = knownGraphers[name];
+  const decl = decls[name];
+  if (!known && !decl) return null;
+  const base: GrapherEntry = known ?? {
+    artifacts: [decl!.artifact],
+    binaries: [decl!.binary ?? decl!.refresh.split(' ')[0]],
+    installHint:
+      decl!.install ??
+      `UNVERIFIED — no install line declared; add graphers.${name}.install to .multivac/config.yml`,
+    refresh: decl!.refresh,
+    create: decl!.create,
+    note: `declared in .multivac/config.yml (graphers.${name}) — multivac did not verify this contract, the operator stated it`,
   };
+  return { kind: 'grapher', automation: 'grapher-refresh', ...base };
+}
+
+/**
+ * What to print when `grapherSpec` returns null: the exact fields to declare,
+ * in the exact place they go. Refusing to guess is only honest if the refusal
+ * is actionable.
+ */
+export function unverifiedGrapher(name: string): string {
+  return (
+    `grapher "${name}" is not verified — multivac will not guess its artifact path or its refresh command. ` +
+    `Verified: ${grapherNames.join(', ')}. Declare yours in .multivac/config.yml:\n` +
+    `  graphers:\n` +
+    `    ${name}:\n` +
+    `      artifact: <repo-relative file or directory the tool writes>\n` +
+    `      refresh: <the one command safe to re-run>\n` +
+    `      create: <build command, if it differs from refresh>   # optional\n` +
+    `      binary: <binary on PATH, if not the first word of refresh>   # optional\n` +
+    `      install: <install line to print when the binary is missing>   # optional\n` +
+    `  — or open an MR adding it to knownGraphers in src/adapters/registry.ts`
+  );
 }

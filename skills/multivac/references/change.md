@@ -112,7 +112,14 @@ refresh into your harness's **post-edit hook**, so the map is current for the
 next question you ask it. It is backgrounded and silent: it never delays an
 edit, never fails one, and skips when a refresh is already running. `change
 close` runs the same refresh as the **safety net**, for edits made outside a
-harness. **Git hooks never refresh** — the shims run `verify` only. Nothing is
+harness — taking the same lock, but waiting on it rather than skipping, since
+close is the last chance to pick those edits up.
+
+A `grapher:` multivac has not verified is reported as **unverified** and
+nothing is run: it will not derive an artifact path or a refresh command from
+a name. Declare the contract under `graphers:` in `.multivac/config.yml`
+(`artifact` and `refresh`, optionally `create`/`binary`/`install`) and the tool
+works with no merge request against multivac. **Git hooks never refresh** — the shims run `verify` only. Nothing is
 staged or committed either way: graph output lands only in dedicated chore
 commits, if your project commits it at all.
 

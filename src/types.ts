@@ -18,6 +18,26 @@ export type LegState =
   | 'vacuous'
   | 'unevaluated';
 
+/**
+ * A grapher declared inline in .multivac/config.yml under `graphers:`.
+ * The escape hatch that keeps "unverified" from meaning "unusable": a tool
+ * the registry has never seen is one config block away from working, with no
+ * merge request against multivac. The operator STATES the contract; multivac
+ * never infers one (src/adapters/registry.ts, `grapherSpec`).
+ */
+export interface GrapherDecl {
+  /** Repo-relative path the tool writes — file or directory. */
+  artifact: string;
+  /** The one command safe to re-run. Its first word is the binary. */
+  refresh: string;
+  /** Build command, when it differs from the refresh. */
+  create?: string;
+  /** Binary on PATH, when it is not the first word of `refresh`. */
+  binary?: string;
+  /** Install line printed when the binary is missing. */
+  install?: string;
+}
+
 /** One declared repo in .multivac/config.yml. Bare string = { path }. */
 export interface RepoEntry {
   path: string;
@@ -39,6 +59,13 @@ export interface Config {
   /** yml key: sdd_auto. Default true. */
   sddAuto: boolean;
   grapher?: string;
+  /**
+   * yml key: graphers. Contracts for graphers the registry has not verified,
+   * stated by the operator: name -> { artifact, refresh, create?, binary?,
+   * install? }. This is what makes "unverified" mean "declare it here",
+   * not "you need an MR against multivac".
+   */
+  graphers: Record<string, GrapherDecl>;
   authorities: string[];
   /** Modes that gate (exit 1). Default [absent, count, each]; must include absent. */
   blocking: Mode[];

@@ -119,10 +119,10 @@ test('land records a local merge as evidence, and offers the local path with no 
   );
   assert.equal(code, 0);
   assert.match(out, /brain: recorded as landed — merged-here is merged into main [0-9a-f]{7}/);
-  assert.doesNotMatch(out, /without evidence/);
+  assert.doesNotMatch(out, /no local merge commit/);
 });
 
-test('land without a local merge records anyway, and says it has no evidence', async () => {
+test('land without a local merge records anyway, and says what it could not see', async () => {
   const b = brain();
   await declare(b, 'trust-me');
   assert.equal(await change.run(['apply', 'trust-me'], { cwd: b }), 0);
@@ -131,7 +131,10 @@ test('land without a local merge records anyway, and says it has no evidence', a
   );
   assert.equal(code, 0);
   // just branched: the tip equals main, which is no proof of anything
-  assert.match(out, /recorded as landed — recording without evidence: trust-me and main are the same commit/);
+  assert.match(
+    out,
+    /recorded as landed — no local merge commit to confirm it \(trust-me and main are the same commit[^)]*\); normal for an MR merged on the remote, or squashed/,
+  );
   const { change: c } = await loadChange(b, 'trust-me');
   assert.equal(c.repos.brain.status, 'landed'); // still recorded: trust, stated
 
@@ -144,7 +147,7 @@ test('land without a local merge records anyway, and says it has no evidence', a
   const second = await capture(() =>
     change.run(['land', 'never-merged', '--landed', 'brain'], { cwd: b }),
   );
-  assert.match(second.out, /without evidence: never-merged is not contained in main here/);
+  assert.match(second.out, /no local merge commit to confirm it \(never-merged is not contained in main here/);
 });
 
 test('close names the commit that stores the archive, scoped to this change', async () => {

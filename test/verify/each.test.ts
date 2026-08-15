@@ -112,7 +112,8 @@ test('each: a new manifest that omits the required pattern breaks the leg by nam
   commitFile(e.repos.api, 'k8s/rogue.yaml', 'kind: Deployment\n');
   const { code, out } = await captured(e.brain);
   assert.equal(code, 1);
-  assert.match(out, /each: 1 of 4 files lack the pattern \(k8s\/rogue\.yaml\)/);
+  // The hit names its repo: `k8s/rogue.yaml` alone is ambiguous in an ecosystem.
+  assert.match(out, /each: 1 of 4 files lack the pattern \(api:k8s\/rogue\.yaml\)/);
 });
 
 test('each over zero files is vacuous and blocks — the quantifier over nothing fails', async () => {

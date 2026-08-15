@@ -158,7 +158,7 @@ test('the channel read spans many files: an each leg reads every blob in one bat
   assert.equal((await captured(e.brain)).code, 0);
   const local = await captured(e.brain, '--worktree');
   assert.equal(local.code, 1);
-  assert.match(local.out, /each: 1 of 5 files lack the pattern \(src\/c\.ts\)/);
+  assert.match(local.out, /each: 1 of 5 files lack the pattern \(api:src\/c\.ts\)/);
 });
 
 test('the brain behind its OWN channel says so: an old law judging a current ecosystem', async () => {
