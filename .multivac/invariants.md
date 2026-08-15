@@ -303,4 +303,5 @@ checks them on every commit.
 <!-- @anchor MV-51 brain:skills/multivac/references/change.md /The SDD flow — the lifecycle instructs, YOU run/ -->
 <!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /The steps instruct the agent/ -->
 <!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /no agent-run archive step/ -->
+| MV-52 | RESERVED by change the-graph-follows-the-agent — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-graph-follows-the-agent.md](changes/the-graph-follows-the-agent.md) |
 
