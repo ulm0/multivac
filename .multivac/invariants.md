@@ -351,4 +351,6 @@ checks them on every commit.
 <!-- @anchor MV-54 brain:DESIGN.md /"As published" carries its age/ -->
 <!-- @anchor MV-54 brain:site/content/docs/reference/commands.md /The fetch is what keeps `verify` honest/ -->
 | MV-55 | RESERVED by change the-sdd-gates-its-own-flow — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
+| MV-56 | RESERVED by change the-sdd-gates-its-own-flow — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
+| MV-57 | RESERVED by change the-sdd-gates-its-own-flow — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-sdd-gates-its-own-flow.md](changes/the-sdd-gates-its-own-flow.md) |
 
