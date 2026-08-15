@@ -245,3 +245,4 @@ checks them on every commit.
 <!-- @anchor MV-44 brain:test/init/coexist.test.ts /husky arrangement has no such trap/ -->
 <!-- @anchor MV-44 brain:DESIGN.md /arms in the other order/ -->
 <!-- @anchor MV-44 brain:site/content/docs/reference/hooks.md /arms in every order/ -->
+| MV-45 | RESERVED by change close-keeps-used-reservations — state the rule here before close. | open | proposed | 2026-08-15 | [changes/close-keeps-used-reservations.md](changes/close-keeps-used-reservations.md) |
