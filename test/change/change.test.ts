@@ -22,7 +22,7 @@ const ctx = { cwd: eco.brain };
 const svc = join(tmp, 'acme-svc');
 
 // svc: declared but nonexistent (greenfield); mirror: cloneable from a local url;
-// sdd declared with a missing binary (must degrade to a notice, exit 0).
+// sdd declared with an unknown adapter (must degrade to a notice, exit 0).
 writeFileSync(
   join(eco.brain, '.multivac/config.yml'),
   [
@@ -43,7 +43,7 @@ writeFileSync(
 const gitOut = (cwd: string, ...args: string[]): string =>
   execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).trim();
 
-test('new scaffolds the change file (SDD binary absent = notice, still 0)', async () => {
+test('new scaffolds the change file (unknown SDD adapter = notice, still 0)', async () => {
   assert.equal(await change.run(['new', 'points-expire', 'Points expire'], ctx), 0);
   const { change: c } = await loadChange(eco.brain, 'points-expire');
   assert.equal(c.status, 'open');

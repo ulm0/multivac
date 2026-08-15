@@ -14,7 +14,8 @@ import { join } from 'node:path';
 import { gitInit, makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
-import { countActiveInvariants } from '../../src/doors/brain.js';
+import { countActiveInvariants, renderBrainDoor } from '../../src/doors/brain.js';
+import type { Config } from '../../src/types.js';
 
 const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-')));
 const read = (...p: string[]): string => readFileSync(join(...p), 'utf8');
@@ -179,4 +180,29 @@ test('missing repo is a notice, not a failure', async () => {
   const notice = out.find((l) => l.startsWith('ghost:'));
   assert.ok(notice, 'ghost repo produced a notice');
   assert.match(notice!, /repos sync/);
+});
+
+test('brain door carries the SDD flow when one is declared', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sdd: 'opsx',
+    sddAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    repos: {},
+  };
+  const door = renderBrainDoor(cfg, 1);
+  assert.match(door, /Features gate through the `opsx` SDD/);
+  assert.match(door, /`change new` → run \/opsx:propose <slug> in your agent/);
+  assert.match(door, /`change apply` → run \/opsx:apply <slug> in your agent/);
+  assert.match(door, /`change close` → run \/opsx:archive <slug> in your agent/);
+  // sdd_auto off: the flow still binds, the door says to run it unprompted
+  assert.match(renderBrainDoor({ ...cfg, sddAuto: false }, 1), /run each step yourself/);
+  // speckit has no archive step — the gap is stated, never invented
+  assert.match(renderBrainDoor({ ...cfg, sdd: 'speckit' }, 1), /no agent-run archive step/);
+  // no sdd declared: no flow lines at all
+  assert.doesNotMatch(renderBrainDoor({ ...cfg, sdd: undefined }, 1), /SDD/);
 });

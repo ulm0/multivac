@@ -54,12 +54,21 @@ export interface AdapterSpec {
   /** Command that builds the artifact the first time, when it differs. */
   create?: string;
   /**
-   * Automation contract: sdd_auto — workflow runs inside the change lifecycle
-   * unless sdd_auto: false / --no-sdd; grapher-refresh — `change close` runs
-   * the refresh in each touched scope (never committing the artifact), stale
-   * graph + present binary = doctor warning.
+   * Automation contract: sdd_auto — the change lifecycle prints the tool's
+   * agent instruction at each step unless sdd_auto: false / --no-sdd;
+   * grapher-refresh — `change close` runs the refresh in each touched scope
+   * (never committing the artifact), stale graph + present binary = doctor
+   * warning.
    */
   automation: 'sdd_auto' | 'grapher-refresh';
+  /**
+   * SDD only: what the AGENT runs at each lifecycle step, verified against the
+   * tool's own docs. These are chat commands, not terminal subcommands — the
+   * lifecycle prints them, it never shells them out. `<slug>` is interpolated.
+   * A missing step means the tool has no agent-run equivalent for it; the
+   * lifecycle says so honestly instead of inventing one.
+   */
+  agentSteps?: { propose?: string; apply?: string; archive?: string };
   /** What the tool's own docs say, where it matters. */
   note?: string;
   /** Vendor doc this entry was verified against. */
@@ -152,6 +161,11 @@ const sdd: Record<string, AdapterSpec> = {
     installHint: 'npm i -g @fission-ai/openspec',
     refresh: 'openspec update',
     automation: 'sdd_auto',
+    agentSteps: {
+      propose: 'run /opsx:propose <slug> in your agent to draft the spec change',
+      apply: 'run /opsx:apply <slug> in your agent to implement the proposed tasks',
+      archive: 'run /opsx:archive <slug> in your agent to update the specs and archive the change',
+    },
     note: 'The terminal CLI is init/update/list/show/validate; propose, apply and archive are the /opsx: commands your agent runs in chat.',
     source: 'https://github.com/Fission-AI/OpenSpec',
   },
@@ -162,6 +176,13 @@ const sdd: Record<string, AdapterSpec> = {
     installHint: 'uv tool install specify-cli',
     refresh: 'specify check',
     automation: 'sdd_auto',
+    agentSteps: {
+      propose: 'run /speckit.specify in your agent to write the spec for <slug>',
+      apply:
+        'run /speckit.plan, /speckit.tasks, then /speckit.implement in your agent to build <slug>',
+      // no archive: spec-kit's flow ends at implement — it has no archive step.
+    },
+    note: 'The agent flow is /speckit.specify → /speckit.plan → /speckit.tasks → /speckit.implement; spec-kit has no archive step.',
     source: 'https://github.com/github/spec-kit',
   },
 };

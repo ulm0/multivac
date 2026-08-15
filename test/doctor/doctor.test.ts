@@ -101,7 +101,11 @@ repos:
     const sdd = line(lines, 'sdd');
     assert.match(sdd, /opsx: artifact missing/);
     assert.match(sdd, /binary missing → npm i -g @fission-ai\/openspec/);
-    assert.match(sdd, /feature off until installed — not an error/);
+    assert.match(sdd, /sdd_auto on — change new\/apply\/close print the agent step/);
+    // The second sdd line names what the agent is expected to run.
+    const steps = lines.filter((l) => l.startsWith('sdd')).at(-1)!;
+    assert.match(steps, /agent steps — propose: run \/opsx:propose <slug>/);
+    assert.match(steps, /archive: run \/opsx:archive <slug>/);
   } finally {
     process.env.PATH = old;
   }

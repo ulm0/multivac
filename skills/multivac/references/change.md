@@ -65,8 +65,9 @@ The file also carries per-repo status
   may be running another change in the same repo, and a shared tree moves
   under them. It re-projects doors where the canonical door changed. A repo
   that doesn't exist is created: `git init`, first commit, consumer door
-  with the brain mounted. If an SDD adapter is declared, its workflow runs
-  inside apply automatically (`--no-sdd` to skip once). Where git cannot make
+  with the brain mounted. If an SDD adapter is declared, apply prints its
+  apply-step instruction for you to run (`--no-sdd` to skip once — see
+  "The SDD flow" below). Where git cannot make
   a worktree, apply branches in place and refuses outright if the tree holds
   someone else's uncommitted work — commit or stash it, then re-run.
 - **land** opens the MRs respecting the graph: roots first, an edge's
@@ -102,6 +103,26 @@ yet: ask, then write it.
 Decisions made mid-change become claims at close: propose the row, the
 human enacts. This is the organic birth path — the main one at steady
 state.
+
+## The SDD flow — the lifecycle instructs, YOU run
+
+When the brain door declares an SDD (`sdd:` in the config), features gate
+through that tool's own workflow — and its propose/apply/archive steps are
+**chat commands you run in the agent**, not terminal subcommands multivac
+could shell out. So the lifecycle prints the instruction at the right moment
+and running it is your job:
+
+| lifecycle step | prints |
+| --- | --- |
+| `change new` | the tool's **propose** instruction (e.g. `run /opsx:propose <slug> in your agent to draft the spec change`) |
+| `change apply` | the **apply** instruction |
+| `change close` | the **archive** instruction |
+
+Run the printed command before moving on — a spec change that was never
+proposed cannot be archived honestly. A tool with no agent-run equivalent for
+a step says so (spec-kit has no archive step); that is an honest gap, not an
+instruction you missed. `--no-sdd` skips the printout once; `sdd_auto: false`
+turns it off permanently — the flow still binds, you just carry it unprompted.
 
 ## Retiring an invariant
 

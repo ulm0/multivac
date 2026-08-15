@@ -159,11 +159,8 @@ adapter, not necessarily the tool's own binary name:
 
 ```txt
 $ mvac doctor
-sdd        opsx: artifact ok · binary ok · workflow automated in change lifecycle (sdd_auto)
-```
-
-```txt
-sdd        opsx: artifact missing (looked for openspec/specs, openspec/changes) · binary ok · workflow automated in change lifecycle (sdd_auto)
+sdd        opsx: artifact ok · binary ok · sdd_auto on — change new/apply/close print the agent step
+sdd        opsx agent steps — propose: run /opsx:propose <slug> in your agent to draft the spec change · apply: run /opsx:apply <slug> in your agent to implement the proposed tasks · archive: run /opsx:archive <slug> in your agent to update the specs and archive the change
 ```
 
 ```txt
@@ -173,37 +170,36 @@ sdd        nope: unknown adapter — known: opsx, speckit; fix sdd: in .multivac
 {{< callout >}}
 For OpenSpec, the terminal CLI is `init` / `update` / `list` / `show` /
 `validate`; `propose`, `apply` and `archive` are the `/opsx:` commands your
-agent runs in chat. multivac calls the binary with its own step names, so an
-unmapped step degrades to a notice rather than failing the change.
+agent runs in chat. That is why multivac never shells the steps out: it prints
+the instruction and the agent runs it.
 {{< /callout >}}
 
-### Where the steps run
+### The steps instruct the agent
 
-| lifecycle step | SDD step invoked |
+An SDD's propose/apply/archive steps are **chat commands the agent runs**, not
+terminal subcommands — invoking the binary with a step name would silently do
+nothing. So the lifecycle emits the instruction at the right moment, worded
+per tool in the shipped registry (`agentSteps`), with the slug interpolated:
+
+| lifecycle step | prints |
 | --- | --- |
-| `change new <slug>` | `propose <slug>` |
-| `change apply <slug>` | `apply <slug>` |
-| `change close <slug>` | `archive <slug>` |
+| `change new <slug>` | `sdd opsx: run /opsx:propose <slug> in your agent to draft the spec change` |
+| `change apply <slug>` | `sdd opsx: run /opsx:apply <slug> in your agent to implement the proposed tasks` |
+| `change close <slug>` | `sdd opsx: run /opsx:archive <slug> in your agent to update the specs and archive the change` |
 
-Each runs in the brain directory, only when an `sdd` is declared **and**
-`sdd_auto` is on **and** `--no-sdd` was not passed.
-
-### Failure always degrades
-
-A declared adapter whose binary is missing is a notice, not a failure:
+For `speckit` the flow is `/speckit.specify` at new, then `/speckit.plan`,
+`/speckit.tasks` and `/speckit.implement` at apply — and **no archive step**,
+because spec-kit has none; the lifecycle says so honestly instead of inventing
+one:
 
 ```txt
-sdd opsx: binary not found — propose skipped; npm i -g @fission-ai/openspec
+sdd speckit: archive — this tool has no agent-run archive step; nothing to run
 ```
 
-A binary that runs and fails is a warning that hands the step back to you —
-the change continues:
-
-```txt
-sdd opsx: propose failed (Command failed: openspec propose sdd-probe) — run it by hand
-```
-
-The change lifecycle never fails because a foreign tool did.
+Each instruction is printed only when an `sdd` is declared **and** `sdd_auto`
+is on **and** `--no-sdd` was not passed. The brain door carries the same flow,
+so an agent knows it at session start. Nothing here needs the tool's binary —
+the instruction is for the agent, not the shell.
 
 ### `sdd_auto` and `--no-sdd`
 
@@ -211,11 +207,11 @@ Two ways to opt out, at two scopes:
 
 | | scope | effect |
 | --- | --- | --- |
-| `sdd_auto: false` in config | permanent | the adapter stays declared and reported; no step ever runs automatically |
-| `--no-sdd` on a `change` invocation | this run | skips the step once |
+| `sdd_auto: false` in config | permanent | the adapter stays declared and reported; no instruction is ever printed |
+| `--no-sdd` on a `change` invocation | this run | skips the printout once |
 
 ```txt
-sdd        opsx: artifact missing (looked for openspec/specs, openspec/changes) · binary ok · sdd_auto: false — workflow manual
+sdd        opsx: artifact missing (looked for openspec/specs, openspec/changes) · binary ok · sdd_auto: false — the lifecycle prints nothing; run the steps yourself
 ```
 
 `doctor` keeps reporting the adapter either way. Turning automation off is not

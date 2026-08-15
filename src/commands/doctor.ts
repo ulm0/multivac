@@ -113,11 +113,15 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
     : `artifact missing (looked for ${spec.artifacts.join(', ')})`;
   const bin = binary ? 'binary ok' : `binary missing → ${spec.installHint}`;
   const auto = !cfg.sddAuto
-    ? 'sdd_auto: false — workflow manual'
-    : binary
-      ? 'workflow automated in change lifecycle (sdd_auto)'
-      : 'feature off until installed — not an error';
-  return [label('sdd') + `${cfg.sdd}: ${art} · ${bin} · ${auto}`];
+    ? 'sdd_auto: false — the lifecycle prints nothing; run the steps yourself'
+    : 'sdd_auto on — change new/apply/close print the agent step';
+  const out = [label('sdd') + `${cfg.sdd}: ${art} · ${bin} · ${auto}`];
+  // What the agent is expected to run — chat commands, never shelled out.
+  const steps = (['propose', 'apply', 'archive'] as const)
+    .map((s) => `${s}: ${spec.agentSteps?.[s] ?? `none — no agent-run ${s} step`}`)
+    .join(' · ');
+  out.push(label('sdd') + `${cfg.sdd} agent steps — ${steps}`);
+  return out;
 }
 
 /** Artifact older than the repo's last commit = stale. Best-effort. */
