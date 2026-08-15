@@ -78,6 +78,10 @@ test('a sibling parked on a WIP branch does not redden the brain: the channel is
   // Says WHICH bytes: the ref and its short sha, never a bare verdict.
   const sha = git(e.repos.api, 'rev-parse', '--short=7', 'origin/main');
   assert.match(out, new RegExp(`read\\s+api: origin/main @ ${sha} — the channel, as published`));
+  // ...and HOW OLD those bytes are. A remote-tracking ref is a local snapshot
+  // and verify never fetches, so "as published" without an age is the same
+  // silence in a new place: a fix already on main would read as a red.
+  assert.match(out, /as published \((last fetch \d+[mhd] ago|never fetched here)\)/);
   // And the off-channel checkout is legible, not mysterious.
   assert.match(out, /parked on wip\/refactor @ [0-9a-f]{7}, not read/);
 });
@@ -155,4 +159,30 @@ test('the channel read spans many files: an each leg reads every blob in one bat
   const local = await captured(e.brain, '--worktree');
   assert.equal(local.code, 1);
   assert.match(local.out, /each: 1 of 5 files lack the pattern \(src\/c\.ts\)/);
+});
+
+test('the brain behind its OWN channel says so: an old law judging a current ecosystem', async () => {
+  const e = parkedEco(...TOMBSTONE);
+  // The brain is read as a working tree on purpose, so it is the one repo whose
+  // staleness MV-53 could not catch — and an out-of-date law table reads as a
+  // red in the ecosystem, which is the same wolf in a new coat.
+  publishRepo(e.brain, e.tmp, 'acme-brain');
+  git(e.brain, 'commit', '-q', '--allow-empty', '-m', 'law moves on');
+  git(e.brain, 'push', '-q', 'origin', 'main');
+  git(e.brain, 'reset', '-q', '--hard', 'HEAD~1');
+  const { out } = await captured(e.brain);
+  assert.match(out, /1 behind its own channel origin\/main @ [0-9a-f]{7}/);
+  assert.match(out, /an out-of-date law judges a current ecosystem/);
+});
+
+test('a brain merely ON A BRANCH is not "behind": the drift line stays quiet', async () => {
+  const e = parkedEco(...TOMBSTONE);
+  publishRepo(e.brain, e.tmp, 'acme-brain2');
+  // Ordinary working state: a feature branch, ahead of its channel. Off it by
+  // construction — and saying so every run is how a real line stops being read.
+  git(e.brain, 'checkout', '-q', '-b', 'feature/x');
+  git(e.brain, 'commit', '-q', '--allow-empty', '-m', 'work');
+  const { code, out } = await captured(e.brain);
+  assert.equal(code, 0);
+  assert.doesNotMatch(out, /behind its own channel/);
 });

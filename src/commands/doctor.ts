@@ -235,12 +235,25 @@ async function branchesLine(brain: string, cfg: Config): Promise<string> {
     const branch = (await git.currentBranch(dir)) ?? 'detached HEAD';
     const head = await git.revParse(dir, 'HEAD');
     const at = `${branch}${head ? ` @ ${head.slice(0, 7)}` : ''}`;
-    if (e.isBrain || key === 'brain') {
-      parts.push(`${key}: on ${at} — brain==code, verify reads this working tree`);
-      continue;
-    }
     const channel = channelRef(cfg, e);
     const sha = await git.revParse(dir, channel);
+    if (e.isBrain || key === 'brain') {
+      // Read as a working tree on purpose — but a brain BEHIND its own channel
+      // judges a current ecosystem with an out-of-date law, and that reads as a
+      // red nobody can explain. Behind, not merely different: a feature branch
+      // is off its channel by construction, and saying so every run is noise.
+      const behind =
+        sha === null || sha === head
+          ? '0'
+          : await git.run(dir, ['rev-list', '--count', `HEAD..${sha}`]).catch(() => '0');
+      parts.push(
+        `${key}: on ${at} — brain==code, verify reads this working tree` +
+          (behind === '0'
+            ? ''
+            : `; ${behind} behind its own channel ${channel} @ ${sha!.slice(0, 7)} → git -C ${e.path} pull`),
+      );
+      continue;
+    }
     if (sha === null) {
       parts.push(
         `${key}: on ${at} — channel ${channel} does not resolve here; verify FALLS BACK to this working tree → git -C ${e.path} fetch`,

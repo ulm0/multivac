@@ -1,6 +1,13 @@
 // `multivac repos` — list declared repos; `repos sync [--shallow]` clones
-// every declared-with-url missing repo. The ONLY command besides `change`
-// that clones. execFile git clone, clear auth-failure message, no retry.
+// every declared-with-url missing repo AND fetches every present one. The ONLY
+// command besides `change` that touches the network. execFile git, clear
+// auth-failure message, no retry.
+//
+// The fetch is not a nicety. Since MV-53 a brain-scoped `verify` judges each
+// sibling at its channel ref — a LOCAL remote-tracking ref — so the whole
+// ecosystem's verdict is only as true as the last fetch. Cloning alone left a
+// day-old `origin/main` reading as "the ecosystem as published", and every
+// staleness line in `verify` already names this command as the fix.
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -44,7 +51,21 @@ export async function reposSync(
   for (const [key, e] of entries) {
     const dest = resolve(brainDir, e.path);
     if (await pathExists(dest)) {
-      lines.push(`${key}: present at ${e.path}`);
+      // Refresh the remote-tracking refs verify reads. Best-effort: a repo with
+      // no remote, or a machine offline, still has a usable — if older — ref,
+      // and verify's `read` line carries its age. So a failed refresh reports
+      // and never gates; only a repo we could not GET at all does that.
+      try {
+        await execFileP('git', ['-C', dest, 'fetch', '--quiet'], { maxBuffer: 16 * 1024 * 1024 });
+        lines.push(`${key}: present at ${e.path} — fetched`);
+      } catch (err) {
+        const stderr = ((err as { stderr?: string }).stderr ?? String(err)).trim();
+        const last = stderr.split('\n').filter(Boolean).pop() ?? 'git fetch failed';
+        lines.push(
+          `${key}: present at ${e.path} — could not fetch: ${last}; ` +
+            `its channel ref stays as last fetched (\`git -C ${e.path} fetch\`)`,
+        );
+      }
       continue;
     }
     if (!e.url) {
@@ -73,7 +94,7 @@ export async function reposSync(
 
 export const reposCommand: Command = {
   name: 'repos',
-  help: 'list declared repos; `repos sync [--shallow]` clones the missing ones',
+  help: 'list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest',
   async run(argv, ctx) {
     const sub = argv[0];
     if (sub === undefined || sub === 'list') {

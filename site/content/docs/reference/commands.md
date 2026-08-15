@@ -16,7 +16,7 @@ commands:
   count      dry-run an anchor leg: match count + per-file breakdown, verify's own matcher
   doors      project doors + install git hooks into the brain and declared repos
   doctor     what is declared, what was found, what is degraded, how to fix it
-  repos      list declared repos; `repos sync [--shallow]` clones the missing ones
+  repos      list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest
   change     new/plan/apply/land/close — the ecosystem change lifecycle
   help       help <topic|command> — `help anchor` prints the anchor grammar on one screen
 ```
@@ -175,8 +175,8 @@ Deterministic, offline, sub-second by design. `dir` defaults to `.`.
 ```txt
 $ mvac verify
 4 claims · 4 anchored (100%)
-  read      api: origin/main @ 1a2b3c4 — the channel, as published
-  read      web: origin/main @ 9f8e7d6 — the channel, as published (this checkout is parked on wip/redesign @ 4d5e6f7, not read)
+  read      api: origin/main @ 1a2b3c4 — the channel, as published (last fetch 2h ago)
+  read      web: origin/main @ 9f8e7d6 — the channel, as published (last fetch 2h ago) (this checkout is parked on wip/redesign @ 4d5e6f7, not read)
   read      brain: working tree on main @ abc1234 — the brain's own repo, the commit this run gates
 
   ok          3
@@ -214,6 +214,24 @@ wrong.
 ref or the branch and its short sha; a checkout parked off its channel is
 named as such, so an off-channel repo is legible rather than a silent premise
 behind a mysterious verdict.
+
+**A channel ref is a local snapshot, so its age is on the line** (MV-54).
+`verify` never touches the network: `origin/main` is whatever the last
+`mvac repos sync` fetched, and a fix merged upstream an hour ago is simply not
+there yet. Without the age, that reads as a red in the ecosystem instead of a
+stale ref on this machine.
+
+The brain's own repo gets the mirror of the same honesty. It is read as a
+working tree on purpose — but a brain **behind** its own channel judges a
+current ecosystem with an out-of-date law, which looks identical to a broken
+ecosystem:
+
+```txt
+  read      brain: working tree on main @ abc1234 — the brain's own repo, the commit this run gates; 2 behind its own channel origin/main @ def5678 — an out-of-date law judges a current ecosystem
+```
+
+*Behind*, never merely *different*: working on a feature branch is off-channel
+by construction, and a line that fires on every run stops being read.
 
 A channel ref that cannot be resolved — no remote, or never fetched — falls
 back to the working tree **and says so**. The meaning never changes in
@@ -465,7 +483,7 @@ doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: .cu
 grapher    graphify @ brain: artifact missing → run `graphify update .` there
 grapher    graphify @ api: artifact missing → run `graphify update .` there
 repos      1/2 present · payments missing → `multivac repos sync` (git clone git@example.com:acme/payments.git ../payments)
-branches   api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
+branches   brain: on main @ abc1234 — brain==code, verify reads this working tree; 2 behind its own channel origin/main @ def5678 → git -C . pull · api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
 pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain) · payments: not cloned
 hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac)
 untracked  nothing build-critical untracked
@@ -477,7 +495,7 @@ untracked  nothing build-critical untracked
 | `sdd` | artifact, binary, whether `sdd_auto` is on, and a second line naming what the agent is expected to run at each step — **omitted entirely when no `sdd` is declared** |
 | `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness |
 | `repos` | how many are present, and the clone command for each that is not |
-| `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The line that explains a `verify` result at a glance |
+| `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
 | `untracked` | brain paths a `.gitignore` swallows (WARNING — the law cannot ship), then untracked, non-ignored files that look build-critical |
@@ -537,20 +555,35 @@ payments     missing  ../payments  (git@example.com:acme/payments.git)
 ```
 
 `repos` and `repos list` are the same thing. `repos sync` clones every
-declared-but-missing repo that has a `url`:
+declared-but-missing repo that has a `url`, and fetches every repo already on
+disk:
 
 ```txt
 $ mvac repos sync
-api: present at ../api
+api: present at ../api — fetched
 payments: cloned git@example.com:acme/payments.git -> ../payments
 ```
 
+The fetch is what keeps `verify` honest: a brain-scoped run reads each sibling
+at its channel ref, and that ref is a **local** remote-tracking snapshot —
+`verify` never touches the network, so it is only as fresh as the last
+`repos sync`. Every staleness line in `verify` names this command for exactly
+that reason.
+
 `--shallow` adds `--depth 1` — fine for verify-only machines, not enough for
-`change`, which needs to branch. Failures are named, never retried silently,
-and exit 1:
+`change`, which needs to branch. A clone that fails is named, never retried
+silently, and exits 1:
 
 ```txt
 payments: auth failed cloning git@example.com:acme/payments.git — fix your ssh key/token for this host, then re-run `multivac repos sync` (no retry was attempted)
+```
+
+A *fetch* that fails reports and never gates — offline, or a repo with no
+remote, still leaves a usable if older ref, and `verify`'s `read` line carries
+its age:
+
+```txt
+api: present at ../api — could not fetch: Could not resolve host: example.com; its channel ref stays as last fetched (`git -C ../api fetch`)
 ```
 
 An unknown subcommand exits 2:

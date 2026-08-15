@@ -6,7 +6,13 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 import { changesDir, parseChange } from '../change/file.js';
-import { channelRef, loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
+import {
+  channelRef,
+  loadConfig,
+  ConfigError,
+  CONFIG_PATH,
+  DEFAULT_CHANNEL,
+} from '../lib/config.js';
 import {
   currentBranch,
   lastFetchAge,
@@ -184,6 +190,30 @@ async function worktreeAt(dir: string): Promise<{ text: string; head: string | n
 }
 
 /**
+ * A brain==code tree behind its own channel, said out loud. The brain is read
+ * as a working tree on purpose — it is the commit the run gates — but that
+ * makes an out-of-date brain checkout indistinguishable from a red ecosystem:
+ * an old law table judges a current sibling, and the operator, seeing a claim
+ * whose fix is already on the brain's main, concludes the gate is broken. The
+ * same "OFF channel" sentence siblings already get, for the one repo MV-53
+ * exempted from the channel read.
+ */
+async function brainDrift(dir: string, channel: string, head: string | null): Promise<string> {
+  const sha = await revParse(dir, channel);
+  if (sha === null || sha === head) return '';
+  // BEHIND, not merely different. A feature branch is off its channel by
+  // construction and that is the normal state of a working brain — saying so
+  // every run is noise, and noise is how a real line stops being read. Only
+  // commits the channel has and this tree lacks can make the law out of date.
+  const behind = await git(dir, ['rev-list', '--count', `HEAD..${sha}`]).catch(() => '0');
+  if (behind === '0') return '';
+  return (
+    `; ${behind} behind its own channel ${channel} @ ${short(sha)}` +
+    ' — an out-of-date law judges a current ecosystem'
+  );
+}
+
+/**
  * THE decision this change exists for: which bytes each declared repo is
  * judged on, and the sentence that says so.
  *
@@ -213,7 +243,9 @@ async function resolveSources(
       out.push({
         key,
         dir,
-        line: `${key}: working tree ${wt.text} — brain==code, the commit this run gates`,
+        line:
+          `${key}: working tree ${wt.text} — brain==code, the commit this run gates` +
+          (await brainDrift(dir, channelRef(cfg, e), wt.head)),
       });
       continue;
     }
@@ -232,19 +264,28 @@ async function resolveSources(
       out.push({ key, dir, line: `${key}: working tree ${wt.text} — ${why}${drift}` });
       continue;
     }
+    // "As published" is only as true as the last fetch: a remote-tracking ref
+    // is a local snapshot, and verify never touches the network. Naming its age
+    // here is the difference between a red an operator can act on and one that
+    // reads as the tool lying about a fix that is already on main.
+    const age = await lastFetchAge(dir).catch(() => null);
     out.push({
       key,
       dir,
       ref: channel,
       line:
-        `${key}: ${channel} @ ${short(sha)} — the channel, as published` +
+        `${key}: ${channel} @ ${short(sha)} — the channel, as published ` +
+        `${age === null ? '(never fetched here)' : `(last fetch ${fmtAge(age)} ago)`}` +
         (off ? ` (this checkout is parked ${wt.text}, not read)` : ''),
     });
   }
+  const bw = await worktreeAt(brainDir);
   out.push({
     key: 'brain',
     dir: brainDir,
-    line: `brain: working tree ${(await worktreeAt(brainDir)).text} — the brain's own repo, the commit this run gates`,
+    line:
+      `brain: working tree ${bw.text} — the brain's own repo, the commit this run gates` +
+      (await brainDrift(brainDir, cfg.channel ?? DEFAULT_CHANNEL, bw.head)),
   });
   return out;
 }

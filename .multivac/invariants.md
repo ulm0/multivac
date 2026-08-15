@@ -318,7 +318,7 @@ checks them on every commit.
 <!-- @anchor MV-52 brain:site/content/docs/reference/graphers-and-sdd.md /harness post-edit hook/ -->
 <!-- @anchor MV-52 brain:DESIGN.md /The graph refresh follows the agent, not the commit/ -->
 <!-- @anchor MV-52 brain:skills/multivac/references/change.md /it follows YOUR edits, not the commit/ -->
-| MV-53 | Each context verifies what it is responsible for. A brain-scoped `verify` reads every declared repo at its channel ref — `channel:` on the entry, else the global, else `origin/main` — resolved in that repo and read with `git ls-tree` plus one `git cat-file --batch`, never that repo's working tree: the brain's law is about the ecosystem as published, so a sibling parked on a WIP branch is mid-task, not a violation. The brain's OWN repo is the exception and is always read as a working tree, because that is the commit the run gates. A channel ref that does not resolve falls back to the working tree and says so. A consumer-scoped run is unchanged: the working tree, the content about to be committed there. Every run prints one `read` line per repo naming the ref or the branch and its short sha, and names a checkout parked off its channel; `--worktree` forces the whole-ecosystem working-tree read; `doctor` carries a `branches` line saying where each repo is parked and whether that is its channel. | specified | active | 2026-08-15 | [changes/archive/each-scope-verifies-its-own.md](changes/archive/each-scope-verifies-its-own.md) |
+| MV-53 | Each context verifies what it is responsible for. A brain-scoped `verify` reads every declared repo at its channel ref — `channel:` on the entry, else the global, else `origin/main` — resolved in that repo and read with `git ls-tree` plus one `git cat-file --batch`, never that repo's working tree: the brain's law is about the ecosystem as published, so a sibling parked on a WIP branch is mid-task, not a violation. The brain's OWN repo is the exception and is always read as a working tree, because that is the commit the run gates. A channel ref that does not resolve falls back to the working tree and says so. A consumer-scoped run is unchanged: the working tree, the content about to be committed there. Every run prints one `read` line per repo naming the ref or the branch and its short sha — for a channel read, how old that ref is (MV-54) — and names a checkout parked off its channel; `--worktree` forces the whole-ecosystem working-tree read; `doctor` carries a `branches` line saying where each repo is parked and whether that is its channel. | specified | active | 2026-08-15 | [changes/archive/each-scope-verifies-its-own.md](changes/archive/each-scope-verifies-its-own.md) |
 <!-- @anchor MV-53 brain:src/commands/verify.ts /async function resolveSources/ -->
 <!-- @anchor MV-53 brain:src/commands/verify.ts /the channel, as published/ -->
 <!-- @anchor MV-53 brain:src/commands/verify.ts /FELL BACK to the working tree/ -->
@@ -338,4 +338,16 @@ checks them on every commit.
 <!-- @anchor MV-53 brain:site/content/docs/reference/commands.md /What each run reads/ -->
 <!-- @anchor MV-53 brain:site/content/docs/reference/configuration.md /The ecosystem as published/ -->
 <!-- @anchor MV-53 brain:skills/multivac/SKILL.md /Read the .read. lines before you read the verdicts/ -->
+| MV-54 | A channel ref is only as true as the last fetch, and every surface says so. `repos sync` fetches every declared repo already on disk as well as cloning the missing ones — a failed clone gates, a failed fetch reports and never gates. A brain-scoped `verify` names the age of each channel ref it read (`last fetch 2h ago`, or `never fetched here`), and a brain==code tree behind its own channel is named on its `read` line and on `doctor`'s `branches` line. `verify`, `doctor` and `doors` still never touch the network (MV-01): freshness is bought only in the explicit command. | specified | active | 2026-08-15 | [changes/sync-fetches-the-channel.md](changes/sync-fetches-the-channel.md) |
+<!-- @anchor MV-54 brain:src/commands/repos.ts /'fetch', '--quiet'/ unique -->
+<!-- @anchor MV-54 brain:src/commands/repos.ts /could not fetch/ -->
+<!-- @anchor MV-54 brain:src/commands/verify.ts /async function brainDrift/ -->
+<!-- @anchor MV-54 brain:src/commands/verify.ts /never fetched here/ -->
+<!-- @anchor MV-54 brain:src/commands/verify.ts /an out-of-date law judges a current ecosystem/ -->
+<!-- @anchor MV-54 brain:test/verify/scope.test.ts /a brain merely ON A BRANCH is not/ -->
+<!-- @anchor MV-54 brain:src/commands/doctor.ts /behind its own channel/ -->
+<!-- @anchor MV-54 brain:test/repos/sync.test.ts /origin\/main was refreshed by sync/ -->
+<!-- @anchor MV-54 brain:test/verify/scope.test.ts /the brain behind its OWN channel says so/ -->
+<!-- @anchor MV-54 brain:DESIGN.md /"As published" carries its age/ -->
+<!-- @anchor MV-54 brain:site/content/docs/reference/commands.md /The fetch is what keeps `verify` honest/ -->
 

@@ -237,7 +237,9 @@ The key answers two questions:
    tree, because that is the commit the run gates. Undeclared, this defaults
    to `origin/main`; a ref that does not resolve there falls back to the
    working tree and says so on that repo's `read` line. `--worktree` forces
-   the working-tree read across the whole ecosystem.
+   the working-tree read across the whole ecosystem. The ref is a **local**
+   remote-tracking snapshot — `verify` never fetches — so the `read` line also
+   names how old it is; `mvac repos sync` is what refreshes it.
 2. **What each consumer's brain-mount pin is compared against**, resolved
    **in the brain checkout**. This one has no default: undeclared, `verify`
    skips the staleness check for that repo entirely — there is nothing to
