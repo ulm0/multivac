@@ -279,7 +279,7 @@ checks them on every commit.
 <!-- @anchor MV-49 brain:src/commands/verify.ts /is mounted but is not a multivac brain/ -->
 <!-- @anchor MV-49 brain:test/verify/consumer.test.ts /named as a bad pin, never told to run init/ -->
 <!-- @anchor MV-49 brain:site/content/docs/reference/commands.md /is mounted but is not a multivac brain/ -->
-| MV-50 | `change close` executes the declared grapher's refresh — in the brain and in each declared+present repo the change touched, per-scope grapher falling back to the global one — when the binary is on PATH; an absent binary degrades to the install notice and a failing refresh warns, never failing the close. The refresh module never invokes git, so the artifact is left uncommitted, to land only in dedicated chore commits. The hook shims run `verify` only, and the site says refresh happens at `change close` — not through the hook path. | specified | active | 2026-08-15 | [changes/archive/the-graph-refreshes-itself.md](changes/archive/the-graph-refreshes-itself.md) |
+| MV-50 | `change close` executes the declared grapher's refresh — in the brain and in each declared+present repo the change touched, per-scope grapher falling back to the global one — when the binary is on PATH; an absent binary degrades to the install notice and a failing refresh warns, never failing the close. The refresh module never invokes git, so the artifact is left uncommitted, to land only in dedicated chore commits. The git hook shims run `verify` only, and the site says there is no refresh on the git hook path; close is the safety net for edits made outside a harness, not the mechanism (MV-52). | specified | active | 2026-08-15 | [changes/archive/the-graph-refreshes-itself.md](changes/archive/the-graph-refreshes-itself.md) |
 <!-- @anchor MV-50 brain:src/commands/change.ts /await refreshGraph\(s\.name, s\.dir, s\.scope\)/ -->
 <!-- @anchor MV-50 brain:src/adapters/refresh.ts /never spawns git/ -->
 <!-- @anchor MV-50 brain:src/adapters/refresh.ts /'git'|gitRun/ absent -->
@@ -287,7 +287,7 @@ checks them on every commit.
 <!-- @anchor MV-50 brain:src/adapters/refresh.ts /refresh failed/ -->
 <!-- @anchor MV-50 brain:test/change/grapher-refresh.test.ts /artifact changed and stays uncommitted/ -->
 <!-- @anchor MV-50 brain:test/change/grapher-refresh.test.ts /never a failed close/ -->
-<!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /there is no refresh on the hook path/ -->
+<!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /no refresh on the git hook/ -->
 <!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /never stages or commits the refreshed artifact/ -->
 | MV-51 | SDD steps instruct the agent, never shell out: the registry's SDD adapter specs carry `agentSteps` — per-step chat instructions verified against each tool's own docs (the `/opsx:` commands for opsx; `/speckit.specify` then `/speckit.plan`+`/speckit.tasks`+`/speckit.implement` for speckit, which has no archive equivalent — the gap is stated, never invented). `change new`/`apply`/`close` print the declared SDD's instruction for that step, `<slug>` interpolated, only when `sdd_auto` is on and `--no-sdd` was not passed; the lifecycle never invokes a fake `<binary> <step>` subcommand. The brain door carries the flow so the agent knows it at session start, and doctor reports whether `sdd_auto` is on plus what the agent is expected to run. | specified | active | 2026-08-15 | [changes/archive/the-sdd-tells-the-agent.md](changes/archive/the-sdd-tells-the-agent.md) |
 <!-- @anchor MV-51 brain:src/adapters/registry.ts /agentSteps\?: \{ propose\?/ -->
@@ -303,5 +303,19 @@ checks them on every commit.
 <!-- @anchor MV-51 brain:skills/multivac/references/change.md /The SDD flow — the lifecycle instructs, YOU run/ -->
 <!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /The steps instruct the agent/ -->
 <!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /no agent-run archive step/ -->
-| MV-52 | RESERVED by change the-graph-follows-the-agent — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-graph-follows-the-agent.md](changes/the-graph-follows-the-agent.md) |
+| MV-52 | The graph refresh follows the agent, not the commit: `doors` installs it as a post-edit hook in every declared target whose registry entry carries `hookConfig.postEdit`, and only when a grapher is declared AND its binary is present — one more entry in the same managed `.claude/settings.json` merge that preserves foreign keys, removed again when the grapher goes away. The entry is fire-and-forget (backgrounded, stdio discarded, `exit 0` whatever the tool did) and coalesced behind an atomic lock directory under `.multivac/cache/`, so a per-edit harness cannot thrash a large repo. The git hook shims contain no grapher call at all, the refresh module never spawns git, and doctor names the live path — post-edit hook where the harness has one, `change close` as the net, git hooks never. | specified | active | 2026-08-15 | [changes/archive/the-graph-follows-the-agent.md](changes/archive/the-graph-follows-the-agent.md) |
+<!-- @anchor MV-52 brain:src/hooks/install.ts /graph|refresh/ absent -->
+<!-- @anchor MV-52 brain:src/doors/settings.ts /export function refreshHookCmd/ -->
+<!-- @anchor MV-52 brain:src/doors/settings.ts /graph-refresh\.lock/ -->
+<!-- @anchor MV-52 brain:src/doors/settings.ts /is the atomic lock/ -->
+<!-- @anchor MV-52 brain:src/commands/doors.ts /binaryPresent\(spec\)/ -->
+<!-- @anchor MV-52 brain:src/adapters/registry.ts /postEdit\?: string/ -->
+<!-- @anchor MV-52 brain:src/adapters/refresh.ts /'git'|gitRun/ absent -->
+<!-- @anchor MV-52 brain:src/commands/doctor.ts /refresh path: / -->
+<!-- @anchor MV-52 brain:test/doors/settings.test.ts /backgrounded, coalesced, never a failure/ -->
+<!-- @anchor MV-52 brain:test/doors/doors.test.ts /harness post-edit entry, git shim untouched/ -->
+<!-- @anchor MV-52 brain:test/doors/doors.test.ts /no grapher declared: no refresh entry at all/ -->
+<!-- @anchor MV-52 brain:site/content/docs/reference/graphers-and-sdd.md /harness post-edit hook/ -->
+<!-- @anchor MV-52 brain:DESIGN.md /The graph refresh follows the agent, not the commit/ -->
+<!-- @anchor MV-52 brain:skills/multivac/references/change.md /it follows YOUR edits, not the commit/ -->
 

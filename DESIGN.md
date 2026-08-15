@@ -1084,11 +1084,17 @@ Two normative rules, applying to the brain and to every declared repo:
   `change close`. Opt-out is explicit — `sdd_auto: false` in `.multivac/config.yml`,
   or `--no-sdd` on a single change. A declared-but-absent binary degrades as
   usual: notice, feature off, exit 0.
-- **Grapher freshness is automatic.** When a grapher is declared and its
-  binary present, the graph artifact is refreshed after **any change to that
-  repo's files** — brain or code repo — via the post-edit/pre-commit hook
-  path. A stale graph next to a present binary is a `doctor` warning, never
-  silence.
+- **The graph refresh follows the agent, not the commit.** The grapher is a
+  navigation aid, not enforcement: nothing lands wrong because the graph is
+  stale, so the refresh belongs where the edits are. When a grapher is
+  declared and its binary present, `doors` installs it as the **harness's
+  post-edit hook** — for a harness that has one — fire-and-forget, coalesced
+  behind a lock, never failing an edit and never adding latency to it.
+  `change close` runs the same refresh as the **safety net**, for edits made
+  outside a harness. **Git hooks never refresh**: the shims run `verify` only,
+  because an ergonomic convenience does not belong on a gate. Nothing is ever
+  staged or committed, and a stale graph next to a present binary is a
+  `doctor` warning, never silence.
 
 `multivac doctor` answers "what is declared, what was found, what is degraded, how
 do I fix it":

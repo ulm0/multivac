@@ -104,6 +104,17 @@ Decisions made mid-change become claims at close: propose the row, the
 human enacts. This is the organic birth path — the main one at steady
 state.
 
+## The graph — it follows YOUR edits, not the commit
+
+When a `grapher:` is declared and its binary is installed, `doors` wires the
+refresh into your harness's **post-edit hook**, so the map is current for the
+next question you ask it. It is backgrounded and silent: it never delays an
+edit, never fails one, and skips when a refresh is already running. `change
+close` runs the same refresh as the **safety net**, for edits made outside a
+harness. **Git hooks never refresh** — the shims run `verify` only. Nothing is
+staged or committed either way: graph output lands only in dedicated chore
+commits, if your project commits it at all.
+
 ## The SDD flow — the lifecycle instructs, YOU run
 
 When the brain door declares an SDD (`sdd:` in the config), features gate

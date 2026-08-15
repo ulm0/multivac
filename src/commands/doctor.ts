@@ -176,6 +176,18 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
     }
     out.push(label('grapher') + msg);
   }
+  // Where the refresh actually comes from. The harness post-edit hook is the
+  // live path when a declared door target has one; git hooks never refresh.
+  if (out.length > 0) {
+    const postEdit = cfg.doors.filter((d) => doorTargets[d]?.hookConfig?.postEdit);
+    out.push(
+      label('grapher') +
+        (postEdit.length > 0
+          ? `refresh path: ${postEdit.join(', ')} post-edit hook (installed when the binary is present) · ` +
+            '`change close` is the net · git hooks never refresh'
+          : 'refresh path: `change close` only — no declared harness has a post-edit hook · git hooks never refresh'),
+    );
+  }
   return out;
 }
 

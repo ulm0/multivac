@@ -32,8 +32,14 @@ export interface DoorTarget {
   frontmatter?: string;
   /** Where the multivac skill installs for this harness, if it has skills. */
   skill?: string;
-  /** Harness hook config: file plus the shape of the entry written there. */
-  hookConfig?: { path: string; shape: string };
+  /**
+   * Harness hook config: the file, the shape of the entries written there,
+   * and — when the harness fires a hook after a file edit — `postEdit`, the
+   * matcher naming its file-editing tools. A target declaring `postEdit` is
+   * where the grapher refresh is installed; a harness without one refreshes
+   * at `change close` only.
+   */
+  hookConfig?: { path: string; shape: string; postEdit?: string };
   /** Why `doors` refuses this target. Required for kind 'unsupported'. */
   reason?: string;
   /** Path whose presence makes `init` propose this target. */
@@ -56,9 +62,13 @@ export interface AdapterSpec {
   /**
    * Automation contract: sdd_auto — the change lifecycle prints the tool's
    * agent instruction at each step unless sdd_auto: false / --no-sdd;
-   * grapher-refresh — `change close` runs the refresh in each touched scope
-   * (never committing the artifact), stale graph + present binary = doctor
-   * warning.
+   * grapher-refresh — the refresh follows the AGENT, not the commit: `doors`
+   * installs it as a post-edit hook in every declared harness whose registry
+   * entry has `hookConfig.postEdit`, when the grapher's binary is present
+   * (fire-and-forget, coalesced, never failing the edit); `change close` runs
+   * it in each touched scope as the safety net for edits made outside a
+   * harness. Git hooks never refresh — they run `verify` only. Nothing is
+   * ever committed; stale graph + present binary = doctor warning.
    */
   automation: 'sdd_auto' | 'grapher-refresh';
   /**
@@ -95,7 +105,9 @@ export const doorTargets: Record<string, DoorTarget> = {
     skill: '.claude/skills/multivac/SKILL.md',
     hookConfig: {
       path: '.claude/settings.json',
-      shape: 'hooks.SessionStart -> multivac verify',
+      shape:
+        'hooks.SessionStart + hooks.PostToolUse -> mvac verify; hooks.PostToolUse -> the grapher refresh, when one is declared and installed',
+      postEdit: 'Edit|Write|MultiEdit',
     },
     detect: 'CLAUDE.md',
   },
