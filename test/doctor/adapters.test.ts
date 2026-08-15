@@ -120,20 +120,31 @@ test('the four verified entries carry their real contracts', () => {
   assert.deepEqual(crg.artifacts, ['.code-review-graph']);
   assert.equal(crg.create, 'code-review-graph build');
   assert.equal(crg.refresh, 'code-review-graph update');
-  assert.match(crg.installHint, /UNVERIFIED/);
+  // Published in the project's own README; UNVERIFIED here was a gap that
+  // was not one, and it sent the reader off to look up what this states.
+  assert.equal(crg.installHint, 'pipx install code-review-graph');
 
   const axon = grapherSpec('axon')!;
   assert.deepEqual(axon.artifacts, ['.axon']);
   // No update verb: build and refresh are the same idempotent command.
   assert.equal(axon.create, 'axon analyze .');
   assert.equal(axon.refresh, 'axon analyze .');
-  assert.match(axon.installHint, /UNVERIFIED/);
+  // The distribution name is not the adapter name — PyPI's `axon` is an
+  // unrelated project, which is exactly why the line has to be stated.
+  assert.equal(axon.installHint, 'pip install axoniq');
+  assert.doesNotMatch(axon.installHint, /\baxon\b(?!iq)/);
 
   const dc = grapherSpec('dependency-cruiser')!;
   assert.deepEqual(dc.binaries, ['depcruise']); // NOT the adapter name
   assert.match(dc.refresh, /^depcruise /);
   // Caller-chosen output: the note has to say the path is multivac's.
   assert.match(dc.note ?? '', /multivac's choice/);
+  // ...and the choice has to be one the shipped command can actually write:
+  // --output-to creates no directories, so the artifact is a root-level file
+  // and the refresh names that same path.
+  assert.deepEqual(dc.artifacts, ['dependency-cruiser-graph.json']);
+  assert.doesNotMatch(dc.artifacts[0], /\//);
+  assert.match(dc.refresh, /--output-to dependency-cruiser-graph\.json\b/);
 
   const scip = grapherSpec('scip-typescript')!;
   assert.deepEqual(scip.artifacts, ['index.scip']);

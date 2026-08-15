@@ -405,7 +405,10 @@ const knownGraphers: Record<string, GrapherEntry> = {
   'code-review-graph': {
     artifacts: ['.code-review-graph'],
     binaries: ['code-review-graph'],
-    installHint: 'UNVERIFIED — the project documents no install line; `pipx install code-review-graph` is the shape, confirm it against the README before trusting it',
+    // Published, not guessed: the README gives `pip install code-review-graph`
+    // and `pipx install code-review-graph`, and PyPI serves the project under
+    // its own name. pipx is the one that puts the binary on PATH.
+    installHint: 'pipx install code-review-graph',
     create: 'code-review-graph build',
     refresh: 'code-review-graph update',
     note: 'SQLite tree-sitter graph in .code-review-graph/. Explicit build and update verbs. Offline by default; cloud embeddings are opt-in behind CRG_ACCEPT_CLOUD_EMBEDDINGS=1, so leave that unset to keep the refresh deterministic.',
@@ -414,22 +417,28 @@ const knownGraphers: Record<string, GrapherEntry> = {
   axon: {
     artifacts: ['.axon'],
     binaries: ['axon'],
-    installHint: 'UNVERIFIED — no install line published; build it from the repo',
+    // The PyPI name is NOT the adapter name, and getting that wrong is the
+    // graphify trap again: PyPI's `axon` is an unrelated library for talking
+    // to visionmedia's axon. `axoniq` is this project.
+    installHint: 'pip install axoniq',
     create: 'axon analyze .',
     refresh: 'axon analyze .',
-    note: 'Embedded KuzuDB under .axon/ (plus .axon/meta.json). No separate update verb — the refresh IS a re-run of analyze; `--full` forces a rebuild. Young project; treat the entry as thin.',
+    note: 'Published on PyPI as `axoniq`; the binary is `axon`. Embedded KuzuDB under .axon/ (plus .axon/meta.json). No separate update verb — the refresh IS a re-run of analyze; `--full` forces a rebuild. Young project; treat the entry as thin.',
     source: 'https://github.com/harshkedia177/axon',
   },
   'dependency-cruiser': {
     // multivac's path, not the vendor's: depcruise writes wherever
     // --output-to points, so the entry has to CHOOSE one and say that it did.
-    artifacts: ['dependency-cruiser-out/graph.json'],
+    // A FILE at the root, not `<dir>/graph.json`: --output-to does not create
+    // directories, so a nested choice died with ENOENT on every first run in
+    // a repo that had never made the directory by hand.
+    artifacts: ['dependency-cruiser-graph.json'],
     binaries: ['depcruise'],
     installHint: 'npm i -g dependency-cruiser',
     create: 'depcruise --init',
     refresh:
-      'depcruise --output-type json --output-to dependency-cruiser-out/graph.json src',
-    note: 'Binary is `depcruise`, not the adapter name. JS/TS only and module-level (imports, cycles, orphans) — not symbols. The artifact path is multivac\'s choice, not a vendor convention: the tool emits wherever --output-to points, and the refresh above is what makes that path true. The `src` argument is the default source root — change it in your own graphers: entry if yours differs.',
+      'depcruise --output-type json --output-to dependency-cruiser-graph.json src',
+    note: 'Binary is `depcruise`, not the adapter name. JS/TS only and module-level (imports, cycles, orphans) — not symbols. The artifact path is multivac\'s choice, not a vendor convention: the tool emits wherever --output-to points, and the refresh above is what makes that path true — a root-level file, because --output-to writes no directories and a nested path fails with ENOENT until somebody mkdirs it. `depcruise --init` writes .dependency-cruiser.mjs (interactively) and the refresh needs it. The `src` argument is the default source root — change it in your own graphers: entry if yours differs.',
     source: 'https://github.com/sverweij/dependency-cruiser',
   },
   'scip-typescript': {
