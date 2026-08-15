@@ -160,7 +160,8 @@ and **amended** as the product moves, version bumped, Sync Impact Report
 prepended. Create it if it is absent — and "absent" includes the file spec-kit
 scaffolds for you: `specify init` writes the template unfilled, so a repo can
 carry a `constitution.md` full of `[ALL_CAPS]` placeholders and have no
-constitution at all. The brain door says so at session start, and `doctor`
+constitution at all. Both doors say so at session start — `init` writes the
+instruction into the door it scaffolds, `doors` into the brain door — and `doctor`
 reports the document missing, still-a-template, present, or **stale** — older
 than the law's newest row, which is the law moving while the constitution did
 not. It is a report, never a gate: no machine can judge whether a principle

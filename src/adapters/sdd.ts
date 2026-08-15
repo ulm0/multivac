@@ -24,7 +24,7 @@ import {
   type LifecyclePoint,
   type SddStep,
 } from './registry.js';
-import { artifactHit, onPath, sddRoots } from './detect.js';
+import { artifactHit, onPath, sddRoots, type SddRoot } from './detect.js';
 
 const execFileP = promisify(execFile);
 
@@ -128,11 +128,15 @@ export async function sddGate(
   const roots = await sddRoots(brain, cfg);
   const lines: string[] = [];
   let ok = true;
+  // Which repos were searched is half the refusal: in an ecosystem of six,
+  // "spec.md is missing" does not say where it was supposed to be, and the
+  // agent writes it into the wrong one.
+  const where = roots.map((r) => r.scope).join(', ');
   for (const step of gating) {
     const want = withSlug(step.artifact!, slug);
-    let found: { root: string; rel: string } | null = null;
+    let found: { root: SddRoot; rel: string } | null = null;
     for (const root of roots) {
-      const hit = await artifactHit(root, want);
+      const hit = await artifactHit(root.dir, want);
       if (hit) {
         found = { root, rel: hit };
         break;
@@ -140,14 +144,16 @@ export async function sddGate(
     }
     if (!found) {
       ok = false;
-      lines.push(`sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${want} is missing`);
+      lines.push(
+        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${want} is missing — looked in ${where}`,
+      );
       lines.push(`  ${withSlug(step.run, slug)}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
     }
-    lines.push(`sdd ${cfg.sdd}: ${found.rel} ok`);
+    lines.push(`sdd ${cfg.sdd}: ${found.root.scope}: ${found.rel} ok`);
     if (!step.validate) continue;
-    const verdict = await toolVerdict(withSlug(step.validate, slug), found.root);
+    const verdict = await toolVerdict(withSlug(step.validate, slug), found.root.dir);
     if (verdict !== null) {
       ok = false;
       lines.push(

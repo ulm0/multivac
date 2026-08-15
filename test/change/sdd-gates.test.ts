@@ -103,6 +103,8 @@ test('opsx: new prints propose, and plan REFUSES until proposal.md exists', asyn
   assert.equal(refused.code, 1);
   // Names the artifact it looked for...
   assert.match(refused.out, /refused — openspec\/changes\/gate-a\/proposal\.md is missing/);
+  // ...where it looked for it...
+  assert.match(refused.out, /looked in brain/);
   // ...and the exact agent command to run.
   assert.match(refused.out, /run \/opsx:propose gate-a in your agent/);
   assert.match(refused.out, /then re-run: multivac change plan gate-a/);
@@ -111,7 +113,9 @@ test('opsx: new prints propose, and plan REFUSES until proposal.md exists', asyn
   artifact('openspec/changes/gate-a/proposal.md');
   const passed = await capture(() => change.run(['plan', 'gate-a'], ctx));
   assert.equal(passed.code, 0);
-  assert.match(passed.out, /sdd opsx: openspec\/changes\/gate-a\/proposal\.md ok/);
+  // The hit names the repo it landed in, not only the path: in an ecosystem
+  // of six, a bare relative path does not say which checkout satisfied it.
+  assert.match(passed.out, /sdd opsx: brain: openspec\/changes\/gate-a\/proposal\.md ok/);
   // plan is also where the tasks step is printed — its own gate is apply.
   assert.match(passed.out, /proof: openspec\/changes\/gate-a\/tasks\.md/);
 });
@@ -235,6 +239,36 @@ test('speckit: close is not gated — the missing archive step is stated, not fa
     /sdd speckit: `change close` is not gated — this tool declares no step whose artifact could prove it/,
   );
   assert.match(c.out, /sdd speckit: close — this tool has no agent-run close step; nothing to run/);
+  commitAll();
+});
+
+// --- where the gate looked ---
+
+test('the gate names the repo it searched, and the one it found the artifact in', async () => {
+  // The specs live in the code repo, not the brain — the ordinary shape once
+  // an ecosystem has more than one checkout.
+  const api = join(tmp, 'acme-api');
+  initRepo(api, { 'README.md': '# api\n' });
+  config(['doors: [agents]', 'sdd: opsx', 'repos:', '  brain: .', '  api: ../acme-api']);
+  const c1 = await capture(() => change.run(['new', 'gate-f', 'Gate f'], ctx));
+  assert.equal(c1.code, 0);
+  const parsed = await loadChange(brain, 'gate-f');
+  parsed.change.repos = { api: { status: 'planned' } };
+  parsed.change.landing_order = [['api']];
+  parsed.change.invariants.adds = [];
+  await saveChange(brain, parsed);
+
+  const refused = await capture(() => change.run(['plan', 'gate-f'], ctx));
+  assert.equal(refused.code, 1);
+  // Every root it searched, by the name the config gave it — otherwise the
+  // agent writes the proposal into whichever checkout it happens to be in.
+  assert.match(refused.out, /looked in brain, api/);
+
+  mkdirSync(join(api, 'openspec/changes/gate-f'), { recursive: true });
+  writeFileSync(join(api, 'openspec/changes/gate-f/proposal.md'), 'x\n');
+  const passed = await capture(() => change.run(['plan', 'gate-f'], ctx));
+  assert.equal(passed.code, 0);
+  assert.match(passed.out, /sdd opsx: api: openspec\/changes\/gate-f\/proposal\.md ok/);
   commitAll();
 });
 

@@ -13,12 +13,14 @@ import {
   RITUAL_PATH,
   layoutError,
   legacyLayout,
+  loadConfig,
 } from '../lib/config.js';
 import { RITUAL_TEMPLATE } from '../lib/ritual.js';
 import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { banner } from '../lib/banner.js';
 import { applyManagedBlock } from '../doors/block.js';
+import { projectLawLines } from '../doors/brain.js';
 import { PRECOMMIT_MISSING_FIX, installHooks } from '../hooks/install.js';
 import { detectAdapters, type Detected } from '../adapters/detect.js';
 
@@ -306,9 +308,18 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
 
   // 1. the door — the one file that stays at the root, because that is where
   // harnesses look for it. Managed block only; user content untouched.
+  // An sdd declared here brings its project-level document with it: `doors`
+  // is a later, separate command, and a constitution the agent is only told
+  // about on the second command is one nobody writes.
+  const sddName = f.sdd ?? (await loadConfig(dir).catch(() => null))?.sdd;
+  const law = sddName ? projectLawLines(sddName) : [];
+  const body =
+    law.length > 0
+      ? `${DOOR_BODY}\n\nFeatures gate through the \`${sddName}\` SDD, in that tool's OWN flow:\n${law.join('\n')}`
+      : DOOR_BODY;
   const doorPath = join(dir, 'AGENTS.md');
   const existing = await readFile(doorPath, 'utf8').catch(() => null);
-  const next = applyManagedBlock(existing, DOOR_BODY);
+  const next = applyManagedBlock(existing, body);
   if (next !== existing) {
     await writeFile(doorPath, next);
     report(
