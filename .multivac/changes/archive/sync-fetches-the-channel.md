@@ -1,9 +1,9 @@
 ---
 slug: sync-fetches-the-channel
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
