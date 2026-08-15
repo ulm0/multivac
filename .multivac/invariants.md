@@ -261,3 +261,4 @@ checks them on every commit.
 <!-- @anchor MV-46 brain:test/change/concurrency.test.ts /touch only the closing slug/ -->
 <!-- @anchor MV-46 brain:test/change/lifecycle-polish.test.ts /the branch\+MR variant/ -->
 | MV-47 | RESERVED by change the-gate-cannot-lie — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-gate-cannot-lie.md](changes/the-gate-cannot-lie.md) |
+| MV-48 | RESERVED by change the-gate-cannot-lie — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-gate-cannot-lie.md](changes/the-gate-cannot-lie.md) |
