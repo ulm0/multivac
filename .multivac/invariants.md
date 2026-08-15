@@ -16,9 +16,9 @@ checks them on every commit.
 <!-- @anchor MV-02 brain:package.json /"(picomatch|yaml)": "/ count=2 -->
 <!-- @anchor MV-02 brain:package.json /"dependencies":/ unique -->
 <!-- @anchor MV-02 brain:test/invariants/deps.test.ts /'picomatch', 'yaml'/ -->
-| MV-03 | Git runs via execFile with an argument vector, never through a shell. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+| MV-03 | Git runs with an argument vector — `execFile` for a one-shot, `spawn` for a stream — never through a shell: no `exec(`, no `execSync`, no `shell: true`. | specified | active | 2026-08-15 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-03 brain:src/lib/git.ts /execFile/ -->
-<!-- @anchor MV-03 brain:src/lib/git.ts /exec\(|execSync|spawn|shell:[[:space:]]*true/ absent -->
+<!-- @anchor MV-03 brain:src/lib/git.ts /exec\(|execSync|shell:[[:space:]]*true/ absent -->
 | MV-04 | multivac never fabricates git identity: no writes to user.name or user.email anywhere in the source. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-04 brain:src/** /user\.(name|email)/ absent -->
 | MV-05 | The anchor dialect gate rejects PCRE shorthand classes at write time with a translation hint. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
@@ -46,7 +46,7 @@ checks them on every commit.
 | MV-12 | A repo entry whose path resolves to the brain root IS the brain: brain door, never a consumer door, and no mount or pin check. `brain` is a first-class repo key in config, change files and anchors; `*` stays reserved. Spelling is not identity: two keys naming one tree — through `.`, `..` or a symlink — are one evaluation target, so a `*` leg never counts the same file twice. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-12 brain:src/lib/config.ts /const isBrain = samePath/ -->
 <!-- @anchor MV-12 brain:src/lib/paths.ts /export const samePath/ -->
-<!-- @anchor MV-12 brain:src/anchor/evaluate.ts /const key = realPath/ -->
+<!-- @anchor MV-12 brain:src/anchor/evaluate.ts /const at = \(h: RepoHandle/ -->
 <!-- @anchor MV-12 brain:src/commands/doors.ts /entry\.isBrain/ -->
 <!-- @anchor MV-12 brain:src/commands/doctor.ts /brain==code/ -->
 <!-- @anchor MV-12 brain:src/commands/change.ts /reserved handle for the brain/ -->
@@ -318,4 +318,5 @@ checks them on every commit.
 <!-- @anchor MV-52 brain:site/content/docs/reference/graphers-and-sdd.md /harness post-edit hook/ -->
 <!-- @anchor MV-52 brain:DESIGN.md /The graph refresh follows the agent, not the commit/ -->
 <!-- @anchor MV-52 brain:skills/multivac/references/change.md /it follows YOUR edits, not the commit/ -->
+| MV-53 | RESERVED by change each-scope-verifies-its-own — state the rule here before close. | open | proposed | 2026-08-15 | [changes/each-scope-verifies-its-own.md](changes/each-scope-verifies-its-own.md) |
 
