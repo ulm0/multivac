@@ -338,4 +338,5 @@ checks them on every commit.
 <!-- @anchor MV-53 brain:site/content/docs/reference/commands.md /What each run reads/ -->
 <!-- @anchor MV-53 brain:site/content/docs/reference/configuration.md /The ecosystem as published/ -->
 <!-- @anchor MV-53 brain:skills/multivac/SKILL.md /Read the .read. lines before you read the verdicts/ -->
+| MV-54 | RESERVED by change sync-fetches-the-channel — state the rule here before close. | open | proposed | 2026-08-15 | [changes/sync-fetches-the-channel.md](changes/sync-fetches-the-channel.md) |
 
