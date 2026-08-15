@@ -31,6 +31,21 @@ function cleanEnv(): NodeJS.ProcessEnv {
   return env;
 }
 
+/**
+ * The one line of git's stderr worth showing.
+ *
+ * git puts the CAUSE in its `fatal:` line and then keeps talking — hints,
+ * "Please make sure you have the correct access rights", "and the repository
+ * exists." Taking the last line therefore reports a sentence fragment of
+ * advice as if it were the error, and taking all of it buries the cause in a
+ * paragraph. First `fatal:`, falling back to the last line for the commands
+ * that fail without one.
+ */
+export function gitFailure(stderr: string | undefined, fallback: string): string {
+  const lines = (stderr ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+  return lines.find((l) => l.startsWith('fatal:')) ?? lines.at(-1) ?? fallback;
+}
+
 /** Run git in a repo, return trimmed stdout. Throws with stderr on failure. */
 export async function run(repo: string, args: string[]): Promise<string> {
   try {
@@ -42,7 +57,7 @@ export async function run(repo: string, args: string[]): Promise<string> {
   } catch (e) {
     const err = e as { stderr?: string; message: string };
     throw new Error(
-      `git ${args[0]} failed in ${repo}: ${err.stderr?.trim() || err.message}`,
+      `git ${args[0]} failed in ${repo}: ${gitFailure(err.stderr, err.message)}`,
     );
   }
 }

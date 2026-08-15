@@ -18,6 +18,7 @@ import { say } from '../lib/out.js';
 import {
   doorTargets,
   grapherSpec,
+  unverifiedGrapher,
   sddNames,
   sddSpec,
   type AdapterSpec,
@@ -220,7 +221,13 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
   const binCache = new Map<string, boolean>();
   for (const s of scopes) {
     if (!s.name) continue; // not declared for this scope: silence
-    const spec = grapherSpec(s.name);
+    const spec = grapherSpec(s.name, cfg.graphers);
+    if (spec === null) {
+      // Unverified: doctor cannot probe an artifact nobody declared, and it
+      // will not invent one to probe. It says exactly what to write instead.
+      out.push(label('grapher') + `${s.name} @ ${s.scope}: ${unverifiedGrapher(s.name)}`);
+      continue;
+    }
     let bin = binCache.get(s.name);
     if (bin === undefined) {
       bin = await binaryPresent(spec);

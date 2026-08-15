@@ -192,6 +192,7 @@ test('brain door carries the SDD flow when one is declared', () => {
     staleness: 'report',
     strictPrePush: false,
     mount: '.brain',
+    graphers: {},
     repos: {},
   };
   const door = renderBrainDoor(cfg, 1);
@@ -228,7 +229,7 @@ test('brain door carries the SDD flow when one is declared', () => {
 test('grapher declared + present: harness post-edit entry, git shim untouched', async () => {
   writeFileSync(
     join(eco.brain, '.multivac/config.yml'),
-    'doors: [agents, claude]\ngrapher: node\nrepos:\n  api: ../acme-api\n',
+    'doors: [agents, claude]\ngrapher: node\ngraphers:\n  node:\n    artifact: node-out/graph.json\n    refresh: node --version\nrepos:\n  api: ../acme-api\n',
   );
   const { code } = await runDoors();
   assert.equal(code, 0);
@@ -239,19 +240,19 @@ test('grapher declared + present: harness post-edit entry, git shim untouched', 
       { matcher?: string; hooks: { command: string }[] }[]
     >;
     const refresh = hooks.PostToolUse.map((e) => e.hooks[0].command).find((c) =>
-      c.includes('node update .'),
+      c.includes('node --version'),
     );
     assert.ok(refresh, 'post-edit refresh entry written');
     assert.match(refresh!, /graph-refresh\.lock/); // coalesced
     assert.match(refresh!, /& exit 0$/); // backgrounded, never a failure
     assert.equal(
-      hooks.PostToolUse.find((e) => e.hooks[0].command.includes('node update .'))!.matcher,
+      hooks.PostToolUse.find((e) => e.hooks[0].command.includes('node --version'))!.matcher,
       'Edit|Write|MultiEdit',
     );
     // the git shims stay verify-only — no grapher ever runs on the commit path
     for (const hook of ['pre-commit', 'pre-push']) {
       const shim = read(dir, `.multivac/hooks/${hook}`);
-      assert.doesNotMatch(shim, /node update|graph/);
+      assert.doesNotMatch(shim, /node --version|graph/);
       assert.match(shim, /mvac verify/);
     }
   }

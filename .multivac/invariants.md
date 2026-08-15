@@ -79,11 +79,11 @@ checks them on every commit.
 <!-- @anchor MV-17 brain:src/commands/verify.ts /openChangeClaims/ -->
 <!-- @anchor MV-17 brain:src/anchor/evaluate.ts /pendingBy/ -->
 <!-- @anchor MV-17 brain:test/verify/verify.test.ts /confers nothing/ -->
-| MV-18 | The lifecycle reports what it knows: `plan` checks `invariants.adds` against the law table the way it checks touches and retires; `land` records `--landed` against local evidence — the change branch contained in the default branch — and says "recording without evidence" when it has none; `close` ends by naming the commit that stores the archive. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+| MV-18 | The lifecycle reports what it knows: `plan` checks `invariants.adds` against the law table the way it checks touches and retires; `land` records `--landed` against local evidence — the change branch contained in the default branch — and, when it has none, says so as the ordinary fact it is ("no local merge commit to confirm it", normal for a squashed or remote-merged MR) rather than as a warning; `close` ends by naming the commit that stores the archive. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-18 brain:src/commands/change.ts /already in \$\{LAW_PATH\}/ -->
-<!-- @anchor MV-18 brain:src/commands/change.ts /recording without evidence/ -->
+<!-- @anchor MV-18 brain:src/commands/change.ts /no local merge commit to confirm it/ -->
 <!-- @anchor MV-18 brain:src/commands/change.ts /archived — commit this/ -->
-<!-- @anchor MV-18 brain:test/change/lifecycle-polish.test.ts /recording without evidence/ -->
+<!-- @anchor MV-18 brain:test/change/lifecycle-polish.test.ts /no local merge commit to confirm it/ -->
 | MV-19 | The anchor include/exclude globs are picomatch patterns over repo-relative paths (`**` crosses directories, `{a,b}` alternates, dotfiles match) — stated in the design and the site's anchor grammar, and named in the parse error that rejects a malformed repo spec. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-19 brain:src/anchor/parse.ts /picomatch patterns/ -->
 <!-- @anchor MV-19 brain:DESIGN.md /glob dialect is picomatch/ -->
@@ -280,7 +280,7 @@ checks them on every commit.
 <!-- @anchor MV-49 brain:test/verify/consumer.test.ts /named as a bad pin, never told to run init/ -->
 <!-- @anchor MV-49 brain:site/content/docs/reference/commands.md /is mounted but is not a multivac brain/ -->
 | MV-50 | `change close` executes the declared grapher's refresh — in the brain and in each declared+present repo the change touched, per-scope grapher falling back to the global one — when the binary is on PATH; an absent binary degrades to the install notice and a failing refresh warns, never failing the close. The refresh module never invokes git, so the artifact is left uncommitted, to land only in dedicated chore commits. The git hook shims run `verify` only, and the site says there is no refresh on the git hook path; close is the safety net for edits made outside a harness, not the mechanism (MV-52). | specified | active | 2026-08-15 | [changes/archive/the-graph-refreshes-itself.md](changes/archive/the-graph-refreshes-itself.md) |
-<!-- @anchor MV-50 brain:src/commands/change.ts /await refreshGraph\(s\.name, s\.dir, s\.scope\)/ -->
+<!-- @anchor MV-50 brain:src/commands/change.ts /await refreshGraph\(s\.name, s\.dir, s\.scope, cfg\.graphers\)/ -->
 <!-- @anchor MV-50 brain:src/adapters/refresh.ts /never spawns git/ -->
 <!-- @anchor MV-50 brain:src/adapters/refresh.ts /'git'|gitRun/ absent -->
 <!-- @anchor MV-50 brain:src/adapters/refresh.ts /binary not found — refresh skipped/ -->
@@ -392,4 +392,32 @@ checks them on every commit.
 <!-- @anchor MV-57 brain:test/doctor/doctor.test.ts /reported present, missing and stale — never gated/ -->
 <!-- @anchor MV-57 brain:skills/multivac/references/change.md /reports the document missing, still-a-template, present, or/ -->
 <!-- @anchor MV-57 brain:site/content/docs/reference/graphers-and-sdd.md /The project-level document/ -->
+| MV-58 | One grapher refresh runs at a time per directory. Every path that shells a grapher — the harness post-edit hook and `change close` — takes the same `.multivac/cache/graph-refresh.lock`, a `mkdir` on that scope's own checkout. The two paths differ in what they do when it is held: the hook SKIPS, because the refresh already running covers this edit; close WAITS on a bounded poll and then proceeds with a notice, because close is the net for edits made outside a harness and a skipped close leaves the graph stale with nobody left to refresh it. The 30-minute sweep in the hook is a ceiling, not a liveness check — it cannot tell a killed process from a slow one — and the code says so instead of claiming it clears stale locks. | specified | active | 2026-08-15 | [changes/the-small-lies-and-the-shared-lock.md](changes/the-small-lies-and-the-shared-lock.md) |
+<!-- @anchor MV-58 brain:src/doors/settings.ts /export const GRAPH_LOCK/ unique -->
+<!-- @anchor MV-58 brain:src/doors/settings.ts /cannot tell a killed process from a grapher still indexing/ -->
+<!-- @anchor MV-58 brain:src/adapters/refresh.ts /Take the SAME lock the post-edit hook takes/ -->
+<!-- @anchor MV-58 brain:src/adapters/refresh.ts /await mkdir\(lock\)/ unique -->
+<!-- @anchor MV-58 brain:src/adapters/refresh.ts /Where the hook SKIPS, close WAITS/ -->
+<!-- @anchor MV-58 brain:test/change/grapher-refresh.test.ts /close takes the SAME lock the post-edit hook takes, and waits for it/ -->
+<!-- @anchor MV-58 brain:site/content/docs/reference/graphers-and-sdd.md /grapher-refresh/ -->
+| MV-59 | The registry never invents a grapher's contract. A name absent from `knownGraphers` and from the config's own `graphers:` declarations is UNVERIFIED: `grapherSpec` returns null and every caller — `doctor`, `doors`, `change close` — prints the exact fields to declare instead of deriving `<name>-out/graph.json`, `<name> update .` and `npm i -g <name>` from the name, a shape that matched exactly one of ~47 surveyed tools. An unknown tool becomes usable with no merge request against multivac by declaring `graphers.<name>` in `.multivac/config.yml` with `artifact` and `refresh` (optionally `create`, `binary`, `install`); the binary defaults to the first word of `refresh`, because a tool's binary name is not its adapter name (`depcruise` is not `dependency-cruiser`). An artifact path multivac chose rather than the vendor is named as multivac's choice in the entry's note, and a field the vendor's docs do not state says UNVERIFIED rather than carrying a guess. | specified | active | 2026-08-15 | [changes/the-small-lies-and-the-shared-lock.md](changes/the-small-lies-and-the-shared-lock.md) |
+<!-- @anchor MV-59 brain:src/adapters/registry.ts /export function grapherSpec/ unique -->
+<!-- @anchor MV-59 brain:src/adapters/registry.ts /if \(!known && !decl\) return null/ unique -->
+<!-- @anchor MV-59 brain:src/adapters/registry.ts /export function unverifiedGrapher/ unique -->
+<!-- @anchor MV-59 brain:src/adapters/registry.ts /decl!\.binary \?\? decl!\.refresh\.split/ -->
+<!-- @anchor MV-59 brain:src/lib/config.ts /multivac will not guess either/ -->
+<!-- @anchor MV-59 brain:src/commands/{doctor,doors}.ts /unverifiedGrapher\(/ each -->
+<!-- @anchor MV-59 brain:src/adapters/refresh.ts /unverifiedGrapher\(name\)/ -->
+<!-- @anchor MV-59 brain:test/doctor/adapters.test.ts /an unknown grapher is UNVERIFIED — nothing is derived from the name/ -->
+<!-- @anchor MV-59 brain:test/doctor/adapters.test.ts /a config-declared grapher is usable without a registry MR/ -->
+<!-- @anchor MV-59 brain:test/doctor/adapters.test.ts /the four verified entries carry their real contracts/ -->
+<!-- @anchor MV-59 brain:test/change/grapher-refresh.test.ts /an unverified grapher refuses at close/ -->
+<!-- @anchor MV-59 brain:site/content/docs/reference/graphers-and-sdd.md /There is no generic contract/ -->
+<!-- @anchor MV-59 brain:site/content/docs/reference/configuration.md /### `graphers`/ -->
+| MV-60 | Every finding line names the repo it was found in. A leg's matches, the files that fail an `each`, and the candidate files of an ambiguous self-heal all print as `<repoKey>:<file>[:<line>]`, whether the leg is anchored to one repo or to `*` — an unprefixed `src/cli.ts:42` is ambiguous the moment a second repo is declared. | specified | active | 2026-08-15 | [changes/the-small-lies-and-the-shared-lock.md](changes/the-small-lies-and-the-shared-lock.md) |
+<!-- @anchor MV-60 brain:src/anchor/evaluate.ts /Every hit says which repo it came from/ -->
+<!-- @anchor MV-60 brain:src/anchor/evaluate.ts /const at = \(key: string, file: string\): string/ unique -->
+<!-- @anchor MV-60 brain:src/anchor/evaluate.ts /\$\{star \? `\$\{/ absent -->
+<!-- @anchor MV-60 brain:test/verify/each.test.ts /pattern .+api:k8s/ -->
+<!-- @anchor MV-60 brain:test/verify/scope.test.ts /pattern .+api:src/ -->
 

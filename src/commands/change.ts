@@ -641,10 +641,14 @@ async function cmdLand(
       if (ev?.merged) {
         say(`${landed}: recorded as landed — ${slug} is merged into ${ev.ref} ${ev.sha.slice(0, 7)}`);
       } else {
+        // The common case, not a warning: an MR merged on the remote — or
+        // squashed — leaves no local merge commit to point at. Say what was
+        // looked for and move on; "without evidence" read as an accusation
+        // on the ordinary path.
         say(
-          `${landed}: recorded as landed — recording without evidence: ` +
-            `${ev?.missing ?? 'no local default branch to check a merge against'} ` +
-            '(a squash or a remote-only merge looks like this too)',
+          `${landed}: recorded as landed — no local merge commit to confirm it ` +
+            `(${ev?.missing ?? 'no local default branch to check a merge against'}); ` +
+            'normal for an MR merged on the remote, or squashed',
         );
       }
     } else {
@@ -767,7 +771,7 @@ async function cmdClose(
     if (existsSync(dir)) graphScopes.push({ scope: key, dir, name: entry.grapher ?? cfg.grapher });
   }
   for (const s of graphScopes) {
-    if (s.name) await refreshGraph(s.name, s.dir, s.scope);
+    if (s.name) await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
   }
   // The rest of the ceremony is the team's: printed at the moment it matters,
   // never verified, never gating. Nothing written = nothing printed.

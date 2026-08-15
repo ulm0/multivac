@@ -174,6 +174,10 @@ test('doctor: symlink door ok, stale graph warned, fresh graph quiet', async () 
     join(eco.brain, '.multivac/config.yml'),
     `doors: [claude]
 grapher: acmegraph
+graphers:
+  acmegraph:
+    artifact: acmegraph-out/graph.json
+    refresh: acmegraph update .
 repos: {}
 `,
   );

@@ -4,7 +4,7 @@ import { access, lstat, readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
-import type { Config, Mode, RepoEntry } from '../types.js';
+import type { Config, GrapherDecl, Mode, RepoEntry } from '../types.js';
 
 export class ConfigError extends Error {}
 
@@ -208,6 +208,33 @@ function repoEntry(key: string, v: unknown): RepoEntry {
   };
 }
 
+/**
+ * One `graphers:` entry. `artifact` and `refresh` are required and the error
+ * says so with the exact block to write: half a contract is the same invented
+ * path the registry stopped deriving.
+ */
+function grapherDecl(name: string, v: unknown): GrapherDecl {
+  if (v === null || typeof v !== 'object' || Array.isArray(v)) {
+    fail(`graphers.${name} must be a mapping with artifact: and refresh:`);
+  }
+  const o = v as Record<string, unknown>;
+  const artifact = optString(o.artifact, `graphers.${name}.artifact`);
+  const refresh = optString(o.refresh, `graphers.${name}.refresh`);
+  if (!artifact || !refresh) {
+    fail(
+      `graphers.${name} needs both "artifact" (the repo-relative path the tool writes) ` +
+        'and "refresh" (the one command safe to re-run) — multivac will not guess either',
+    );
+  }
+  return {
+    artifact,
+    refresh,
+    create: optString(o.create, `graphers.${name}.create`),
+    binary: optString(o.binary, `graphers.${name}.binary`),
+    install: optString(o.install, `graphers.${name}.install`),
+  };
+}
+
 /** Load config from `<brainDir>/.multivac/config.yml`, defaults applied. */
 export async function loadConfig(brainDir: string): Promise<Config> {
   const stale = await layoutError(brainDir);
@@ -259,6 +286,15 @@ export async function loadConfig(brainDir: string): Promise<Config> {
     fail('"strict_pre_push" must be true or false');
   }
 
+  const graphersRaw = o.graphers ?? {};
+  if (typeof graphersRaw !== 'object' || graphersRaw === null || Array.isArray(graphersRaw)) {
+    fail('"graphers" must be a mapping of name -> { artifact, refresh, create?, binary?, install? }');
+  }
+  const graphers: Record<string, GrapherDecl> = {};
+  for (const [k, v] of Object.entries(graphersRaw as Record<string, unknown>)) {
+    graphers[k] = grapherDecl(k, v);
+  }
+
   const reposRaw = o.repos ?? {};
   if (typeof reposRaw !== 'object' || reposRaw === null || Array.isArray(reposRaw)) {
     fail('"repos" must be a mapping of key -> path or { path, ... }');
@@ -290,6 +326,7 @@ export async function loadConfig(brainDir: string): Promise<Config> {
     sdd: optString(o.sdd, 'sdd'),
     sddAuto,
     grapher: optString(o.grapher, 'grapher'),
+    graphers,
     authorities: stringList(o.authorities, 'authorities'),
     blocking,
     staleness,

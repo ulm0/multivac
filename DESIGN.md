@@ -863,7 +863,12 @@ numbered-pages form is form, not mechanism. A `--template` may exist later,
 as data.
 
 **No native graph, ever.** The grapher is a declared adapter, per repo or
-global. Present artifact → the consumer door points at it ("orient with the
+global — and a *verified* one: the registry states each tool's artifact and
+refresh, and refuses to derive either from a name. That derivation existed,
+and a survey of ~47 graph tools found it described exactly one of them. An
+unverified name is reported as unverified with the fields to declare, and
+`graphers:` in the project config carries them, so an unknown tool needs no
+merge request here. Present artifact → the consumer door points at it ("orient with the
 graph before reading raw" — the reference ecosystem's hook, generalized).
 Present binary → the `run` capability refreshes it. A newborn brain is two
 content files; a graph of that is noise — `doctor` suggests a grapher past
@@ -1180,7 +1185,7 @@ do I fix it":
 $ multivac doctor
 doors      AGENTS.md (canonical) · CLAUDE.md (symlink) · .cursor/rules/multivac.mdc (stub)
 sdd        opsx        artifact ok (12 specs) · binary ok
-grapher    graphify    artifact ok · binary missing  → pipx install graphify
+grapher    graphify    artifact ok · binary missing  → uv tool install graphifyy
 repos      4/5 present · payments not cloned (22 anchors unevaluated)
 ```
 

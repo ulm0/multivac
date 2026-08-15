@@ -11,9 +11,14 @@ const HOOK_CMD = 'mvac verify';
 /** Claude Code's file-editing tools — the default post-edit matcher. */
 const EDIT_TOOLS = 'Edit|Write|MultiEdit';
 
-/** Coalescing lock, under the gitignored cache. Also identifies our entry. */
+/**
+ * Coalescing lock, under the gitignored cache. Also identifies our entry.
+ * Repo-relative on purpose: it is the lock for THAT checkout, and
+ * `refreshGraph` takes the very same path so the hook and `change close`
+ * cannot run a grapher over each other (src/adapters/refresh.ts).
+ */
 const CACHE = '.multivac/cache';
-const LOCK = `${CACHE}/graph-refresh.lock`;
+export const GRAPH_LOCK = `${CACHE}/graph-refresh.lock`;
 
 type Json = Record<string, unknown>;
 
@@ -23,14 +28,20 @@ type Json = Record<string, unknown>;
  * Never blocks the agent's edit loop and never fails it:
  * - `mkdir` of a directory is the atomic lock — a refresh already running
  *   means this edit's hook exits immediately instead of thrashing a big repo.
- *   A lock left behind by a killed process is cleared after 30 minutes.
+ *   Skipping is right HERE and only here: the running refresh will pick this
+ *   edit up too. `change close` takes the same lock and waits instead.
+ * - the 30-minute sweep is a ceiling, not a liveness check: `find -mmin +30`
+ *   cannot tell a killed process from a grapher still indexing a huge repo,
+ *   so a refresh that outlives 30 minutes gets its lock swept and a second
+ *   refresh may start beside it. The real fix is a pid in the lock; until a
+ *   repo is slow enough to need it, 30 minutes is the bound we accept.
  * - the refresh runs in a background subshell with stdio detached, so the
  *   harness gets its exit the moment the hook is fired.
  * - the hook always exits 0: a foreign tool's failure is not the agent's.
  */
 export function refreshHookCmd(refresh: string): string {
   return (
-    `L=${LOCK}; find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ` +
+    `L=${GRAPH_LOCK}; find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ` +
     `mkdir -p ${CACHE} && mkdir "$L" 2>/dev/null || exit 0; ` +
     `{ ${refresh}; rmdir "$L"; } >/dev/null 2>&1 </dev/null & exit 0`
   );
@@ -117,13 +128,13 @@ export function mergeClaudeSettings(
   ensureEvent(hooks as Json, 'SessionStart', HOOK_CMD, HOOK_CMD);
   ensureEvent(hooks as Json, 'PostToolUse', HOOK_CMD, HOOK_CMD, matcher);
   if (opts.refresh) {
-    ensureEvent(hooks as Json, 'PostToolUse', LOCK, refreshHookCmd(opts.refresh), matcher);
+    ensureEvent(hooks as Json, 'PostToolUse', GRAPH_LOCK, refreshHookCmd(opts.refresh), matcher);
   } else {
     // No grapher declared, or its binary is gone: our entry goes with it —
     // a hook pointing at a missing tool is worse than no hook.
     const list = (hooks as Json).PostToolUse;
     if (Array.isArray(list)) {
-      const mine = ourEntry(list, LOCK);
+      const mine = ourEntry(list, GRAPH_LOCK);
       if (mine) list.splice(list.indexOf(mine), 1);
     }
   }
