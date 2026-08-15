@@ -253,8 +253,13 @@ async function pinsLine(brain: string, cfg: Config): Promise<string> {
   return parts.join(' · ');
 }
 
-/** Coexistence with a foreign hook dir: multivac wired, refused, or absent. */
-async function alongsideParts(brain: string, dir: string): Promise<string[]> {
+/** Coexistence with a foreign hook dir: multivac wired, refused, or absent.
+ *  `armed` is the enforcement floor here: both shims run multivac AND a runner
+ *  exists — the same condition `--strict` asserts. */
+async function alongsideParts(
+  brain: string,
+  dir: string,
+): Promise<{ parts: string[]; armed: boolean }> {
   const parts: string[] = [];
   let installed = true;
   for (const shim of ['pre-commit', 'pre-push']) {
@@ -279,25 +284,35 @@ async function alongsideParts(brain: string, dir: string): Promise<string[]> {
         : `INACTIVE — no runnable multivac, the shims verify nothing → ${INACTIVE_FIX}`,
     );
   }
-  return parts;
+  return { parts, armed: installed && runner !== null };
 }
 
-async function hooksLine(brain: string): Promise<string> {
+/** The hooks report line, plus whether the enforcement gate is actually armed
+ *  — the floor `--strict` asserts. Disarmed ⇒ a commit here is not verified. */
+async function hooksLine(brain: string): Promise<{ line: string; armed: boolean }> {
   const hp = await git.run(brain, ['config', 'core.hooksPath']).catch(() => null);
   // A hooksPath the repo set itself is its own gate: multivac coexists there,
   // it never repoints — advising `git config core.hooksPath` here would be
   // advising the user to disarm their own enforcement.
   if (hp !== null && hp !== HOOKS_DIR) {
-    return [
-      `core.hooksPath is ${hp} (this repo's own gate — multivac installs alongside, never repoints)`,
-      ...(await alongsideParts(brain, hp)),
-    ].join(' · ');
+    const { parts, armed } = await alongsideParts(brain, hp);
+    return {
+      line: [
+        `core.hooksPath is ${hp} (this repo's own gate — multivac installs alongside, never repoints)`,
+        ...parts,
+      ].join(' · '),
+      armed,
+    };
   }
   if (hp === null && (await pathExists(join(brain, '.husky')))) {
-    return [
-      'core.hooksPath unset, .husky/ present (husky claims it on install — multivac installs alongside, never repoints)',
-      ...(await alongsideParts(brain, '.husky')),
-    ].join(' · ');
+    const { parts, armed } = await alongsideParts(brain, '.husky');
+    return {
+      line: [
+        'core.hooksPath unset, .husky/ present (husky claims it on install — multivac installs alongside, never repoints)',
+        ...parts,
+      ].join(' · '),
+      armed,
+    };
   }
   const parts: string[] = [
     hp === HOOKS_DIR
@@ -342,7 +357,10 @@ async function hooksLine(brain: string): Promise<string> {
         : `INACTIVE — no runnable multivac, the shims verify nothing → ${INACTIVE_FIX}`,
     );
   }
-  return parts.join(' · ');
+  // Armed only when core.hooksPath is ours (unset ⇒ git never runs the shims —
+  // measurement 3's exact disarm), both shims are present, and something can
+  // run them. Any one missing and a commit here goes unverified.
+  return { line: parts.join(' · '), armed: hp === HOOKS_DIR && installed && runner !== null };
 }
 
 /** Config file at a repo root: tsconfig*, package*, *.config.*, .*rc[.ext]. */
@@ -429,9 +447,14 @@ async function untrackedLine(brain: string, cfg: Config): Promise<string> {
   return ignoredWarning === null ? untracked : `${ignoredWarning} · ${untracked}`;
 }
 
-/** Build the full report. Exit 1 only when the config itself is invalid. */
+/**
+ * Build the full report. Bare `doctor` exits 1 only when the config/law is
+ * invalid. Under `strict`, a disarmed enforcement gate is also exit 1: the
+ * CI-usable assertion that the floor is actually armed, not merely described.
+ */
 export async function doctorReport(
   brainDir: string,
+  strict = false,
 ): Promise<{ lines: string[]; exit: number }> {
   const stale = await layoutError(brainDir);
   if (stale) return { lines: [label('layout') + stale], exit: 1 };
@@ -446,6 +469,7 @@ export async function doctorReport(
   }
   const doorParts: string[] = [];
   for (const name of cfg.doors) doorParts.push(await doorState(brainDir, name));
+  const hooks = await hooksLine(brainDir);
   const lines: string[] = [
     label('doors') +
       (doorParts.join(' · ') ||
@@ -454,17 +478,36 @@ export async function doctorReport(
     ...(await grapherLines(brainDir, cfg)),
     label('repos') + (await reposLine(brainDir, cfg)),
     label('pins') + (await pinsLine(brainDir, cfg)),
-    label('hooks') + (await hooksLine(brainDir)),
+    label('hooks') + hooks.line,
     label('untracked') + (await untrackedLine(brainDir, cfg)),
   ];
+  // The one strict-only exit: a report that exits 0 while nothing is enforced
+  // is the lie measurement 3 caught. `--strict` refuses to be that report.
+  if (strict && !hooks.armed) {
+    lines.push(
+      label('strict') +
+        'FAIL — the enforcement gate is not armed; a commit here is not verified (see hooks above)',
+    );
+    return { lines, exit: 1 };
+  }
   return { lines, exit: 0 };
 }
 
 export const doctorCommand: Command = {
   name: 'doctor',
   help: 'what is declared, what was found, what is degraded, how to fix it',
-  async run(_argv, ctx) {
-    const { lines, exit } = await doctorReport(ctx.cwd);
+  usage: [
+    'usage: multivac doctor [--strict]',
+    'reports what is declared, found, degraded, and how to fix it.',
+    'exit 0 even when degraded; exit 1 only when the config/law is invalid.',
+    '--strict also exits 1 when the enforcement gate is disarmed — the shim',
+    "  missing, core.hooksPath not multivac's with no shim chained, or no",
+    '  runnable multivac — so `mvac doctor --strict` is a CI-usable assertion',
+    '  that the gate is armed, not just a report that describes it.',
+  ],
+  async run(argv, ctx) {
+    const strict = argv.includes('--strict');
+    const { lines, exit } = await doctorReport(ctx.cwd, strict);
     for (const l of lines) say(l);
     return exit;
   },

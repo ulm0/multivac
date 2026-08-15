@@ -3,10 +3,12 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import {
   chmodSync,
   mkdirSync,
   mkdtempSync,
+  rmSync,
   symlinkSync,
   utimesSync,
   writeFileSync,
@@ -240,4 +242,37 @@ test('doctor: a tree with nothing untracked says so', async () => {
     line((await doctorReport(eco.brain)).lines, 'untracked'),
     /nothing build-critical untracked/,
   );
+});
+
+test('doctor --strict exits 1 when the gate is disarmed; bare doctor stays 0', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-strict-')));
+  await installHooks(eco.brain); // fresh: core.hooksPath = .multivac/hooks, both shims
+  // runnable multivac, so the shim bites: a built dist with node_modules beside
+  // it (node and git stay on the real PATH — nuking PATH would blind git too).
+  mkdirSync(join(eco.brain, 'dist'), { recursive: true });
+  writeFileSync(join(eco.brain, 'dist/cli.js'), '// built\n');
+  mkdirSync(join(eco.brain, 'node_modules'), { recursive: true });
+
+  // armed: hooksPath ours, both shims present, a runner exists
+  const armed = await doctorReport(eco.brain, true);
+  assert.equal(armed.exit, 0, 'armed passes --strict');
+  assert.equal(/enforcement gate is not armed/.test(armed.lines.join('\n')), false);
+  assert.equal((await doctorReport(eco.brain)).exit, 0, 'bare doctor is 0 when armed');
+
+  // measurement 3's exact disarm: unset core.hooksPath — git never runs the
+  // shims, so a commit here is unverified. bare stays a 0 report, strict is 1.
+  execFileSync('git', ['-C', eco.brain, 'config', '--unset', 'core.hooksPath']);
+  const bare = await doctorReport(eco.brain);
+  assert.equal(bare.exit, 0, 'bare doctor still only reports');
+  assert.equal(/enforcement gate is not armed/.test(bare.lines.join('\n')), false);
+  const strict = await doctorReport(eco.brain, true);
+  assert.equal(strict.exit, 1, 'strict fails on the disarm');
+  assert.match(line(strict.lines, 'strict'), /enforcement gate is not armed/);
+
+  // hooksPath ours again but the pre-commit shim is gone: the floor is down
+  execFileSync('git', ['-C', eco.brain, 'config', 'core.hooksPath', '.multivac/hooks']);
+  assert.equal((await doctorReport(eco.brain, true)).exit, 0, 'shim present again ⇒ armed');
+  rmSync(join(eco.brain, '.multivac/hooks/pre-commit'));
+  assert.equal((await doctorReport(eco.brain, true)).exit, 1, 'a missing shim is disarmed');
+  assert.equal((await doctorReport(eco.brain)).exit, 0, 'bare doctor never gates on it');
 });

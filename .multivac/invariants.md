@@ -260,5 +260,17 @@ checks them on every commit.
 <!-- @anchor MV-46 brain:src/commands/change.ts /add -A/ count=1 -->
 <!-- @anchor MV-46 brain:test/change/concurrency.test.ts /touch only the closing slug/ -->
 <!-- @anchor MV-46 brain:test/change/lifecycle-polish.test.ts /the branch\+MR variant/ -->
-| MV-47 | RESERVED by change the-gate-cannot-lie — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-gate-cannot-lie.md](changes/the-gate-cannot-lie.md) |
-| MV-48 | RESERVED by change the-gate-cannot-lie — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-gate-cannot-lie.md](changes/the-gate-cannot-lie.md) |
+| MV-47 | `doctor --strict` exits 1 when the enforcement gate is disarmed — the shim missing, `core.hooksPath` not multivac's with no shim chained, or no runnable multivac so the shim no-ops. Bare `doctor` stays a report that exits 0 and describes the degradation; its only other exit 1 is an invalid config/law. The exit contract is stated in `mvac doctor --help`, the site's doctor page and the CLI reference. | specified | active | 2026-08-15 | [changes/archive/the-gate-cannot-lie.md](changes/archive/the-gate-cannot-lie.md) |
+<!-- @anchor MV-47 brain:src/commands/doctor.ts /enforcement gate is not armed/ -->
+<!-- @anchor MV-47 brain:src/commands/doctor.ts /strict && !hooks\.armed/ -->
+<!-- @anchor MV-47 brain:src/commands/doctor.ts /hp === HOOKS_DIR && installed && runner/ -->
+<!-- @anchor MV-47 brain:test/doctor/doctor.test.ts /--strict exits 1 when the gate is disarmed/ -->
+<!-- @anchor MV-47 brain:site/content/docs/reference/commands.md /exits 1 when the enforcement gate is disarmed/ -->
+| MV-48 | `count`'s `count=N` summary names the universal it cannot pin: it ends with one line pointing a rule that must hold in every file at `each` and a forbid-everywhere rule at `each!`, via `mvac help anchor` — the deletion-ratchet hole `each` was built to close. The `each`/`each!` breakdown lists the zero-match files an each-author needs. `help anchor`, the site's writing-anchors guide and the count reference carry the same guidance. | specified | active | 2026-08-15 | [changes/archive/the-gate-cannot-lie.md](changes/archive/the-gate-cannot-lie.md) |
+<!-- @anchor MV-48 brain:src/commands/count.ts /must hold in every file/ -->
+<!-- @anchor MV-48 brain:src/commands/count.ts /each \? scan\.globFiles/ -->
+<!-- @anchor MV-48 brain:src/commands/help.ts /must hold across files is each/ -->
+<!-- @anchor MV-48 brain:test/cli/count.test.ts /count summary nudges toward each/ -->
+<!-- @anchor MV-48 brain:site/content/docs/reference/commands.md /must hold in every file/ -->
+<!-- @anchor MV-48 brain:site/content/docs/guide/writing-anchors.md /dry-run nudges you here on purpose/ -->
+

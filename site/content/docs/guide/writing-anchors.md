@@ -95,7 +95,10 @@ Translate:
   that omits the pattern. Measurement 2 proved it by injection — a
   `privileged: true` rogue container added to a default k8s manifest left
   fifteen anchors green at exit 0. "For every file, P" is `each`; "for no
-  file, P" is `each!` — quantified per file, failing files named.
+  file, P" is `each!` — quantified per file, failing files named. The
+  `count` dry-run nudges you here on purpose: every `count=N` summary ends
+  by naming `each`/`each!`, so a universal-shaped rule is never pinned as a
+  ratchet by accident.
 - **Vacuous globs fail loudly.** A glob matching zero tracked files is a
   blocking failure for `absent`/`count`/`each` — a directory rename must not
   silently green a tombstone, and a universal over nothing proves nothing —

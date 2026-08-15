@@ -353,6 +353,21 @@ a PCRE shorthand, or an unknown repo key is a usage answer, exit 2. Quote the
 spec — it is one argument. `*` as the repo key counts across every declared
 repo plus the brain, each file prefixed with its repo key.
 
+The `count=N` summary ends with one line pointing you at the universal it
+cannot express: a rule that must hold in every file is `each`, and forbidding
+a pattern everywhere is `each!` (`see mvac help anchor`). `count=N` is a
+deletion ratchet — it catches removal of an existing match, never a **new**
+file that omits the pattern — so a "no file may contain X" or "every file
+must contain X" property belongs in `each`/`each!`, not a pinned count.
+
+```txt
+$ mvac count 'api:k8s/*.yaml /limits:/'
+  k8s/api.yaml  1
+  k8s/db.yaml  1
+2 matches in 2 tracked files — a ratchet pins count=2
+for a rule that must hold in every file, use `each`; to forbid a pattern everywhere, `each!` — see `mvac help anchor`
+```
+
 With a trailing `each` or `each!` the leg is the per-file universal, and the
 breakdown changes to match: **every** file the glob matches is listed —
 including the zero-match files the universal would fail on — and the summary
@@ -381,7 +396,7 @@ Repos not on disk are reported and skipped, exit 0. `doors` writes working
 trees — never commits, never clones. An invalid config exits **1** here (not
 2). Per-target detail: [Agent integrations](../integrations).
 
-## `doctor`
+## `doctor [--strict]`
 
 Read-only diagnosis. Never mutates, never clones.
 
@@ -430,8 +445,27 @@ never ship, while `git add` stays silent. That is a WARNING with the fix:
 untracked  WARNING 6 brain paths IGNORED by .gitignore — .multivac/config.yml, … — the law cannot ship; fix: run `multivac init .` (appends !.multivac/ negations to .gitignore) · nothing build-critical untracked
 ```
 
-Exit 0 in every degraded state above. The **only** exit 1 is a config that
-does not load.
+Bare `doctor` exits 0 in every degraded state above; its only exit 1 is a
+config or law that does not load — detection of a disarmed gate depends on a
+human reading the report.
+
+**`doctor --strict` is the CI-usable assertion.** It adds one condition and
+otherwise prints the same report.
+It exits 1 when the enforcement gate is disarmed — the shim missing,
+`core.hooksPath` not multivac's with no shim chained alongside, or no runnable
+multivac so the shim no-ops. So a CI step `mvac doctor --strict` fails the
+build the moment the floor is not armed, instead of passing green while
+nothing is enforced:
+
+```txt
+$ git config --unset core.hooksPath && mvac doctor --strict; echo $?
+hooks      core.hooksPath unset → git config core.hooksPath .multivac/hooks · pre-commit installed · pre-push installed · active (mvac)
+strict     FAIL — the enforcement gate is not armed; a commit here is not verified (see hooks above)
+1
+```
+
+Invalid config/law stays exit 1 under both. Bare `doctor` never gates on a
+disarmed gate — it only describes it.
 
 ## `repos` / `repos sync [--shallow]`
 
@@ -727,7 +761,7 @@ help <command>` prints that command's usage; bare `mvac help` lists topics.
 | code | meaning |
 | --- | --- |
 | **0** | ok — including every degraded state: unevaluated repos, absent adapters, missing repos, unsupported door targets, non-blocking broken legs |
-| **1** | a check failed or a gate refused: blocking leg broken/vacuous, anchor parse error, stale pin under `staleness: block`, `close` before every repo landed, a claim not green, a clone that failed, invalid config **in `doors` and `doctor`** |
+| **1** | a check failed or a gate refused: blocking leg broken/vacuous, anchor parse error, stale pin under `staleness: block`, `close` before every repo landed, a claim not green, a clone that failed, invalid config **in `doors` and `doctor`**, a disarmed enforcement gate under **`doctor --strict`** |
 | **2** | usage or environment: no command, unknown command, unknown flag, unknown subcommand, missing or invalid `.multivac/config.yml` |
 
 ```txt

@@ -117,6 +117,14 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     );
   } else {
     say(`${total} match${total === 1 ? '' : 'es'} in ${files} tracked file${plural(files)} — a ratchet pins count=${total}`);
+    // count=N is a deletion ratchet, not a universal: it never fails a NEW
+    // file that omits the pattern. An adopter checking a property that should
+    // hold across files wants `each`, not this — name it, or the tool teaches
+    // the M2 hole `each` was built to close.
+    say(
+      'for a rule that must hold in every file, use `each`; to forbid a pattern ' +
+        'everywhere, `each!` — see `mvac help anchor`',
+    );
   }
   return 0;
 }
