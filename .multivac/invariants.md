@@ -273,4 +273,5 @@ checks them on every commit.
 <!-- @anchor MV-48 brain:test/cli/count.test.ts /count summary nudges toward each/ -->
 <!-- @anchor MV-48 brain:site/content/docs/reference/commands.md /must hold in every file/ -->
 <!-- @anchor MV-48 brain:site/content/docs/guide/writing-anchors.md /dry-run nudges you here on purpose/ -->
+| MV-49 | RESERVED by change the-mount-explains-itself — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-mount-explains-itself.md](changes/the-mount-explains-itself.md) |
 
