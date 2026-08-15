@@ -288,5 +288,18 @@ checks them on every commit.
 <!-- @anchor MV-50 brain:test/change/grapher-refresh.test.ts /never a failed close/ -->
 <!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /there is no refresh on the hook path/ -->
 <!-- @anchor MV-50 brain:site/content/docs/reference/graphers-and-sdd.md /never stages or commits the refreshed artifact/ -->
-| MV-51 | RESERVED by change the-sdd-tells-the-agent — state the rule here before close. | open | proposed | 2026-08-15 | [changes/the-sdd-tells-the-agent.md](changes/the-sdd-tells-the-agent.md) |
+| MV-51 | SDD steps instruct the agent, never shell out: the registry's SDD adapter specs carry `agentSteps` — per-step chat instructions verified against each tool's own docs (the `/opsx:` commands for opsx; `/speckit.specify` then `/speckit.plan`+`/speckit.tasks`+`/speckit.implement` for speckit, which has no archive equivalent — the gap is stated, never invented). `change new`/`apply`/`close` print the declared SDD's instruction for that step, `<slug>` interpolated, only when `sdd_auto` is on and `--no-sdd` was not passed; the lifecycle never invokes a fake `<binary> <step>` subcommand. The brain door carries the flow so the agent knows it at session start, and doctor reports whether `sdd_auto` is on plus what the agent is expected to run. | specified | active | 2026-08-15 | [changes/archive/the-sdd-tells-the-agent.md](changes/archive/the-sdd-tells-the-agent.md) |
+<!-- @anchor MV-51 brain:src/adapters/registry.ts /agentSteps\?: \{ propose\?/ -->
+<!-- @anchor MV-51 brain:src/adapters/registry.ts /spec-kit has no archive step/ -->
+<!-- @anchor MV-51 brain:src/commands/change.ts /INSTRUCT the agent, never shell out/ -->
+<!-- @anchor MV-51 brain:src/commands/change.ts /instruction\.replaceAll\('<slug>', slug\)/ -->
+<!-- @anchor MV-51 brain:src/commands/change.ts /execFileP\(bin,/ absent -->
+<!-- @anchor MV-51 brain:src/commands/change.ts /\$\{step\} done/ absent -->
+<!-- @anchor MV-51 brain:src/doors/brain.ts /Features gate through the/ -->
+<!-- @anchor MV-51 brain:src/commands/doctor.ts /agent steps — / -->
+<!-- @anchor MV-51 brain:test/change/sdd-instructs.test.ts /print the opsx instructions, slug interpolated/ -->
+<!-- @anchor MV-51 brain:test/change/sdd-instructs.test.ts /--no-sdd suppresses the instruction/ -->
+<!-- @anchor MV-51 brain:skills/multivac/references/change.md /The SDD flow — the lifecycle instructs, YOU run/ -->
+<!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /The steps instruct the agent/ -->
+<!-- @anchor MV-51 brain:site/content/docs/reference/graphers-and-sdd.md /no agent-run archive step/ -->
 

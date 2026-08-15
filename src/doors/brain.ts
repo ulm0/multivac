@@ -1,6 +1,7 @@
 // Brain door: the block AGENTS.md carries at the brain's root.
 
 import type { Config } from '../types.js';
+import { sddSpec } from '../adapters/registry.js';
 
 /**
  * Count non-retired data rows in the law table.
@@ -44,6 +45,24 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     '- The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.',
     '- Check the law against the code before acting: `multivac verify`.',
   ];
+  if (config.sdd) {
+    const steps = sddSpec(config.sdd)?.agentSteps;
+    lines.push(
+      `- Features gate through the \`${config.sdd}\` SDD. ` +
+        (config.sddAuto
+          ? 'The change lifecycle prints each step; YOU run it:'
+          : '`sdd_auto: false` — nothing is printed; run each step yourself:'),
+    );
+    for (const [cmd, step] of [
+      ['change new', 'propose'],
+      ['change apply', 'apply'],
+      ['change close', 'archive'],
+    ] as const) {
+      lines.push(
+        `  - \`${cmd}\` → ${steps?.[step] ?? `no agent-run ${step} step for this tool`}`,
+      );
+    }
+  }
   if (activeInvariants === 0) {
     lines.push('', 'brain empty — load the multivac skill to fill it.');
   }

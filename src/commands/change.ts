@@ -1,5 +1,5 @@
 // multivac change — new / plan / apply / land / close. The mechanics are
-// deterministic; SDD steps are adapter calls that degrade to notices.
+// deterministic; SDD steps are instructions printed for the agent to run.
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -13,8 +13,7 @@ import { say, warn } from '../lib/out.js';
 import { ritualChecklist } from '../lib/ritual.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
-import { sddSpec } from '../adapters/registry.js';
-import { binaryPresent } from '../adapters/detect.js';
+import { sddNames, sddSpec } from '../adapters/registry.js';
 import { refreshGraph } from '../adapters/refresh.js';
 import { evaluate } from './verify.js';
 import {
@@ -70,33 +69,31 @@ async function commitBookkeeping(
 }
 
 
-/** Run one SDD workflow step. Declared+absent binary = notice, never a failure. */
-async function runSdd(
+/**
+ * One SDD workflow step: INSTRUCT the agent, never shell out. propose/apply/
+ * archive are chat commands the agent runs (for OpenSpec they are the /opsx:
+ * commands, not `openspec` subcommands — invoking the binary with a step name
+ * would silently skip). The registry's `agentSteps` carries the exact wording
+ * per tool; a step with no agent-run equivalent says so honestly.
+ */
+function runSdd(
   cfg: Config,
-  brain: string,
   step: 'propose' | 'apply' | 'archive',
   slug: string,
   noSdd: boolean,
-): Promise<void> {
+): void {
   if (!cfg.sdd || !cfg.sddAuto || noSdd) return;
   const spec = sddSpec(cfg.sdd);
-  if (spec && !(await binaryPresent(spec))) {
-    say(`sdd ${cfg.sdd}: binary not found — ${step} skipped; ${spec.installHint}`);
+  if (!spec) {
+    say(`sdd ${cfg.sdd}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`);
     return;
   }
-  const bin = spec?.binaries[0] ?? cfg.sdd;
-  const args = [step, slug];
-  try {
-    await execFileP(bin, args, { cwd: brain });
-    say(`sdd ${cfg.sdd}: ${step} done`);
-  } catch (e) {
-    const err = e as NodeJS.ErrnoException;
-    if (err.code === 'ENOENT') {
-      say(`sdd ${cfg.sdd}: binary not found — ${step} skipped; install it or set sdd_auto: false`);
-    } else {
-      warn(`sdd ${cfg.sdd}: ${step} failed (${err.message.split('\n')[0]}) — run it by hand`);
-    }
+  const instruction = spec.agentSteps?.[step];
+  if (!instruction) {
+    say(`sdd ${cfg.sdd}: ${step} — this tool has no agent-run ${step} step; nothing to run`);
+    return;
   }
+  say(`sdd ${cfg.sdd}: ${instruction.replaceAll('<slug>', slug)}`);
 }
 
 function repoEntryOf(cfg: Config, key: string): Config['repos'][string] {
@@ -474,7 +471,7 @@ async function cmdNew(
   say(`  1. repos: { api: { status: planned } }        # status: ${REPO_STATUSES.join('|')}`);
   say('  2. landing_order: [[api]]                     # stages; earlier stages land first');
   say(`  3. claims: [{ id: ${reserved?.id ?? '<ID>'}, statement: "..." }]  # what close verifies`);
-  await runSdd(cfg, brain, 'propose', slug, noSdd);
+  runSdd(cfg, 'propose', slug, noSdd);
   return 0;
 }
 
@@ -583,7 +580,7 @@ async function cmdApply(
     }
     workspaces.push(`${key}: ${await ensureWorkspace(brain, abs, slug, key)}`);
   }
-  await runSdd(cfg, brain, 'apply', slug, noSdd);
+  runSdd(cfg, 'apply', slug, noSdd);
   say(`work here — one checkout per repo, nobody else's tree moves:`);
   for (const w of workspaces) say(`  ${w}`);
   say(`then commit on branch ${slug} and run \`multivac change land ${slug}\``);
@@ -696,7 +693,7 @@ async function cmdClose(
   // archive is committed — checking after would release rows this very close
   // just verified green.
   const anchored = await anchoredClaimIds(brain);
-  await runSdd(cfg, brain, 'archive', slug, noSdd);
+  runSdd(cfg, 'archive', slug, noSdd);
   const dest = await archiveChange(brain, parsed);
   say(`archived -> ${relative(brain, dest)}`);
   // A reservation the change never used goes back to the pool; the worktrees
