@@ -1,10 +1,11 @@
 // Probe a repo/brain for adapter artifacts and PATH binaries. Pure checks,
 // no subprocess: a hand-rolled `which` over PATH plus fs existence.
 
-import { access } from 'node:fs/promises';
+import { access, readdir } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { delimiter, join } from 'node:path';
+import { delimiter, join, resolve } from 'node:path';
 import { doorTargets, type AdapterSpec } from './registry.js';
+import type { Config } from '../types.js';
 
 export interface AdapterStatus {
   name: string;
@@ -41,6 +42,45 @@ export async function artifactPresent(
     if (await pathExists(join(dir, a))) return true;
   }
   return false;
+}
+
+/**
+ * Every directory an SDD tool's files may live in: the brain plus each
+ * declared, present, non-brain repo. A gate that only looked in the brain
+ * would refuse a change whose specs live in the code repo.
+ */
+export async function sddRoots(brain: string, cfg: Config): Promise<string[]> {
+  const dirs = [brain];
+  for (const e of Object.values(cfg.repos)) {
+    if (e.isBrain) continue; // already the brain
+    const d = resolve(brain, e.path);
+    if (await pathExists(d)) dirs.push(d);
+  }
+  return dirs;
+}
+
+/**
+ * Does `rel` exist under `root`? A single `*` inside one path segment is
+ * matched by readdir — spec-kit numbers its own feature directory
+ * (`specs/003-user-auth/`), so the exact path is unknowable in advance.
+ * Returns the resolved repo-relative path that hit, or null.
+ */
+export async function artifactHit(root: string, rel: string): Promise<string | null> {
+  if (!rel.includes('*')) return (await pathExists(join(root, rel))) ? rel : null;
+  const parts = rel.split('/');
+  const i = parts.findIndex((s) => s.includes('*'));
+  const re = new RegExp(
+    `^${parts[i].replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
+  );
+  const parent = join(root, ...parts.slice(0, i));
+  const rest = parts.slice(i + 1);
+  for (const name of (await readdir(parent).catch(() => [])).sort()) {
+    if (!re.test(name)) continue;
+    if (await pathExists(join(parent, name, ...rest))) {
+      return [...parts.slice(0, i), name, ...rest].join('/');
+    }
+  }
+  return null;
 }
 
 /** True when `bin` is executable on PATH — the hook shim's `command -v`, in Node. */

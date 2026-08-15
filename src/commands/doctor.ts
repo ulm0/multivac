@@ -27,6 +27,8 @@ import {
   binaryPresent,
   pathExists,
 } from '../adapters/detect.js';
+import { flowLines, stepsGating } from '../adapters/sdd.js';
+import { readLaw } from '../change/reserve.js';
 import {
   HOOKS_DIR,
   INACTIVE_FIX,
@@ -92,6 +94,64 @@ async function doorState(brain: string, name: string): Promise<string> {
   return `${name}: ${t.door} ok${t.kind === 'native' ? ' (read natively)' : ''}`;
 }
 
+/**
+ * The project-level document — the constitution, for a tool that has one.
+ * Reported, never gated: whether its CONTENT still fits the product is a
+ * judgement no machine can make. What a machine CAN say is that the law moved
+ * and the constitution did not — exactly the drift this tool hunts.
+ */
+async function projectDocLines(
+  brain: string,
+  cfg: Config,
+  spec: AdapterSpec,
+): Promise<string[]> {
+  const steps = spec.projectSteps ?? [];
+  if (steps.length === 0) {
+    return [
+      label('sdd') +
+        `${cfg.sdd} project law — this tool has no project-level document; nothing to create, nothing to keep fresh`,
+    ];
+  }
+  // The newest law row is the product's own high-water mark.
+  const law = await readLaw(brain);
+  const newest = (law?.rows ?? [])
+    .map((r) => r.date)
+    .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+    .sort()
+    .at(-1);
+  const roots = [brain, ...(await presentRepoDirs(brain, cfg))];
+  const out: string[] = [];
+  for (const p of steps) {
+    let found: string | null = null;
+    for (const root of roots) {
+      const path = join(root, p.artifact);
+      const st = await stat(path).catch(() => null);
+      if (!st) continue;
+      // Scaffolded is not written: spec-kit installs the constitution as its
+      // own template, so a file full of placeholders is a placeholder, and
+      // calling it "present" would be the fakery this report exists to avoid.
+      if (p.placeholder) {
+        const text = await readFile(path, 'utf8').catch(() => '');
+        if (new RegExp(p.placeholder).test(text)) {
+          found = `${p.artifact} is still the unfilled template shipped by the tool (placeholders remain) → ${p.run}`;
+          break;
+        }
+      }
+      const day = new Date(st.mtimeMs).toISOString().slice(0, 10);
+      found =
+        newest && newest > day
+          ? `${p.artifact} present (last modified ${day}) but the law's newest row is ${newest} — STALE: the law moved while this did not; a report, never a gate`
+          : `${p.artifact} present (last modified ${day})${newest ? `, law's newest row ${newest}` : ''} — fresh`;
+      break;
+    }
+    out.push(
+      label('sdd') + `${cfg.sdd} project law — ${found ?? `${p.artifact} missing → ${p.run}`}`,
+    );
+    out.push(label('sdd') + `${cfg.sdd} project law — revisit: ${p.revisit}`);
+  }
+  return out;
+}
+
 async function sddLines(brain: string, cfg: Config): Promise<string[]> {
   if (!cfg.sdd) return []; // not declared: silence
   const spec = sddSpec(cfg.sdd);
@@ -114,14 +174,21 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
     : `artifact missing (looked for ${spec.artifacts.join(', ')})`;
   const bin = binary ? 'binary ok' : `binary missing → ${spec.installHint}`;
   const auto = !cfg.sddAuto
-    ? 'sdd_auto: false — the lifecycle prints nothing; run the steps yourself'
-    : 'sdd_auto on — change new/apply/close print the agent step';
+    ? 'sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself'
+    : "sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts";
   const out = [label('sdd') + `${cfg.sdd}: ${art} · ${bin} · ${auto}`];
-  // What the agent is expected to run — chat commands, never shelled out.
-  const steps = (['propose', 'apply', 'archive'] as const)
-    .map((s) => `${s}: ${spec.agentSteps?.[s] ?? `none — no agent-run ${s} step`}`)
-    .join(' · ');
-  out.push(label('sdd') + `${cfg.sdd} agent steps — ${steps}`);
+  // The tool's whole flow, in its own order and length, each step with the
+  // artifact that proves it ran — or the reason nothing ever could.
+  for (const l of flowLines(spec)) out.push(label('sdd') + `${cfg.sdd} flow — ${l}`);
+  // Which lifecycle commands actually refuse, and which cannot for this tool.
+  const gates = (['plan', 'apply', 'close'] as const).map((g) => {
+    const on = stepsGating(spec, g);
+    return on.length > 0
+      ? `change ${g}: refuses without ${on.map((s) => s.artifact).join(', ')}`
+      : `change ${g}: not gated — this tool declares no step to prove there`;
+  });
+  out.push(label('sdd') + `${cfg.sdd} gates — ${gates.join(' · ')}`);
+  out.push(...(await projectDocLines(brain, cfg, spec)));
   return out;
 }
 

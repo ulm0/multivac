@@ -22,6 +22,8 @@ export interface LawRow {
   /** 2nd cell — a reservation still carries the scaffolded RESERVED text. */
   statement: string;
   state: string;
+  /** 5th cell — when the row last moved: the law's own high-water mark. */
+  date: string;
   /** 6th cell — where the row came from; a reservation names the change file. */
   source: string;
 }
@@ -35,7 +37,13 @@ export function lawRows(text: string): LawRow[] {
     const cells = t.split('|').map((c) => c.trim());
     const id = cells[1] ?? '';
     if (!id || id === 'ID') continue;
-    rows.push({ id, statement: cells[2] ?? '', state: cells[4] ?? '', source: cells[6] ?? '' });
+    rows.push({
+      id,
+      statement: cells[2] ?? '',
+      state: cells[4] ?? '',
+      date: cells[5] ?? '',
+      source: cells[6] ?? '',
+    });
   }
   return rows;
 }

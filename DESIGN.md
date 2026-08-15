@@ -1129,14 +1129,38 @@ name (`doors: [agents, claude]`, `sdd: opsx`, `grapher: graphify`).
 
 ### Automation by default (owner decision, 2026-08-13)
 
-Two normative rules, applying to the brain and to every declared repo:
+Three normative rules, applying to the brain and to every declared repo:
 
-- **SDD runs inside the change lifecycle.** When an SDD adapter is declared
-  and its `run` capability is present, its workflow is **automated**:
-  propose at `change new`, apply during `change apply`, archive/sync at
-  `change close`. Opt-out is explicit — `sdd_auto: false` in `.multivac/config.yml`,
-  or `--no-sdd` on a single change. A declared-but-absent binary degrades as
-  usual: notice, feature off, exit 0.
+- **SDD runs inside the change lifecycle, in the SDD's own shape.** When an
+  adapter is declared, the lifecycle drives **that tool's flow** — not a fixed
+  propose/apply/archive triple, which was OpenSpec's shape imposed on every
+  other tool. The registry carries, per tool, an **ordered `steps` array of
+  arbitrary length**, each step bound to a lifecycle point
+  (`new`/`plan`/`apply`/`land`/`close`) rather than to a step name, plus
+  **`projectSteps`** for a project-level document — spec-kit's constitution,
+  written once and amended as the product moves; OpenSpec has none and the
+  registry says so. Opt-out is explicit — `sdd_auto: false` in
+  `.multivac/config.yml`, or `--no-sdd` on a single change. A
+  declared-but-absent binary degrades as usual: notice, feature off, exit 0.
+- **The steps are gated on what the tool really produces** (owner decision,
+  2026-08-15). Printing an instruction nobody checks is the
+  discipline-that-nothing-verifies this tool exists to end, so every step
+  declares the **artifact that proves it ran** — `<slug>` interpolated, one
+  `*` segment allowed for tools that number their own feature directory.
+  `change plan` refuses without the propose-equivalent, `change apply` without
+  the plan/tasks artifact, `change close` without the archive-equivalent, each
+  refusal naming the exact agent command and the path it looked for. Three
+  rules keep it honest: a step whose tool leaves nothing behind
+  (`/speckit.analyze` writes zero bytes by design; a clean `/speckit.converge`
+  is forbidden to touch `tasks.md`) is declared **ungateable** with its reason
+  and is never gated, and a lifecycle point no step can prove **says so**
+  instead of passing quietly; where a tool ships its own validator its
+  **verdict is reused** (`openspec validate --json`), never reimplemented —
+  the lifecycle shells out for validation only, never to fake an agent-run
+  step; and the project-level document is **reported, never gated** — `doctor`
+  calls it missing, present, or STALE against the law's newest row, because a
+  constitution's content cannot be machine-judged. `sdd_auto: false` and
+  `--no-sdd` turn every gate off: that is exploration mode.
 - **The graph refresh follows the agent, not the commit.** The grapher is a
   navigation aid, not enforcement: nothing lands wrong because the graph is
   stale, so the refresh belongs where the edits are. When a grapher is

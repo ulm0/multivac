@@ -65,9 +65,10 @@ The file also carries per-repo status
   may be running another change in the same repo, and a shared tree moves
   under them. It re-projects doors where the canonical door changed. A repo
   that doesn't exist is created: `git init`, first commit, consumer door
-  with the brain mounted. If an SDD adapter is declared, apply prints its
-  apply-step instruction for you to run (`--no-sdd` to skip once — see
-  "The SDD flow" below). Where git cannot make
+  with the brain mounted. If an SDD adapter is declared, apply **refuses**
+  until that tool's plan/tasks artifact exists, then prints its apply-step
+  instructions (`--no-sdd` to skip both once — see "The SDD flow" below).
+  Where git cannot make
   a worktree, apply branches in place and refuses outright if the tree holds
   someone else's uncommitted work — commit or stash it, then re-run.
 - **land** opens the MRs respecting the graph: roots first, an edge's
@@ -115,25 +116,53 @@ harness. **Git hooks never refresh** — the shims run `verify` only. Nothing is
 staged or committed either way: graph output lands only in dedicated chore
 commits, if your project commits it at all.
 
-## The SDD flow — the lifecycle instructs, YOU run
+## The SDD flow — the lifecycle instructs, YOU run, the gate checks
 
 When the brain door declares an SDD (`sdd:` in the config), features gate
-through that tool's own workflow — and its propose/apply/archive steps are
-**chat commands you run in the agent**, not terminal subcommands multivac
-could shell out. So the lifecycle prints the instruction at the right moment
-and running it is your job:
+through **that tool's own workflow, in that tool's own shape** — not through a
+fixed propose/apply/archive triple. The steps are **chat commands you run in
+the agent**, not terminal subcommands multivac could shell out, so the
+lifecycle prints each one at its own moment and running it is your job.
 
-| lifecycle step | prints |
+The half that makes the printing mean something: **each step names the artifact
+that proves it ran, and the next lifecycle command refuses without it.**
+
+| refuses | until |
 | --- | --- |
-| `change new` | the tool's **propose** instruction (e.g. `run /opsx:propose <slug> in your agent to draft the spec change`) |
-| `change apply` | the **apply** instruction |
-| `change close` | the **archive** instruction |
+| `change plan` | the propose-equivalent artifact exists (`openspec/changes/<slug>/proposal.md`, `specs/*<slug>*/spec.md`) |
+| `change apply` | the plan/tasks artifact exists (`.../tasks.md`, and for spec-kit `.../plan.md` too) |
+| `change close` | the archive-equivalent has happened (`openspec/changes/archive/*-<slug>`) |
 
-Run the printed command before moving on — a spec change that was never
-proposed cannot be archived honestly. A tool with no agent-run equivalent for
-a step says so (spec-kit has no archive step); that is an honest gap, not an
-instruction you missed. `--no-sdd` skips the printout once; `sdd_auto: false`
-turns it off permanently — the flow still binds, you just carry it unprompted.
+Every refusal names the path it looked for and the exact command to run, so
+the fix is the line above the error. When the tool ships its own validator its
+**verdict is reused** — `openspec validate` decides whether an OpenSpec change
+is well-formed, multivac does not re-litigate its rules.
+
+Some steps cannot be proven and are never gated — they say so instead:
+
+- `/opsx:apply` leaves only `- [x]` in tasks.md, typed by the agent about its
+  own work;
+- `/speckit.analyze` is read-only by design and writes zero bytes;
+- a clean `/speckit.converge` is forbidden to touch tasks.md.
+
+Run those anyway. "Ungateable" means the check is missing, not the obligation.
+
+**The project-level document.** spec-kit carries a constitution
+(`.specify/memory/constitution.md`) — written once with `/speckit.constitution`
+and **amended** as the product moves, version bumped, Sync Impact Report
+prepended. Create it if it is absent — and "absent" includes the file spec-kit
+scaffolds for you: `specify init` writes the template unfilled, so a repo can
+carry a `constitution.md` full of `[ALL_CAPS]` placeholders and have no
+constitution at all. The brain door says so at session start, and `doctor`
+reports the document missing, still-a-template, present, or **stale** — older
+than the law's newest row, which is the law moving while the constitution did
+not. It is a report, never a gate: no machine can judge whether a principle
+still fits.
+OpenSpec has no such document, and multivac says that rather than inventing one.
+
+`--no-sdd` turns the steps and the gates off for one run; `sdd_auto: false`
+turns them off permanently. That is exploration mode — the flow still binds,
+you just carry it unprompted and unchecked.
 
 ## Retiring an invariant
 

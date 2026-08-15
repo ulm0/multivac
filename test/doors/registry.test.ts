@@ -18,7 +18,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand } from '../../src/commands/doors.js';
-import { doorTargets } from '../../src/adapters/registry.js';
+import {
+  doorTargets,
+  sddNames,
+  sddSpec,
+  type LifecyclePoint,
+} from '../../src/adapters/registry.js';
 
 const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-registry-')));
 const names = Object.keys(doorTargets);
@@ -108,5 +113,53 @@ test('every entry cites the vendor doc it was read from', () => {
   for (const [name, t] of Object.entries(doorTargets)) {
     assert.match(t.source, /^https:\/\//, `${name}: no primary source`);
     assert.ok(t.note.length > 0, `${name}: no note on what the harness reads`);
+  }
+});
+
+/**
+ * The SDD flow contract, read off the registry so a tool added tomorrow fails
+ * this test on the day it is added. The load-bearing rule: a step either
+ * declares the artifact that PROVES it, or declares in words why nothing can.
+ * Silence is the one thing the data may not say.
+ */
+const ORDER: LifecyclePoint[] = ['new', 'plan', 'apply', 'land', 'close'];
+
+test('every SDD step proves itself or says why it cannot', () => {
+  assert.ok(sddNames.length > 0, 'the registry ships at least one SDD adapter');
+  for (const name of sddNames) {
+    const spec = sddSpec(name)!;
+    const steps = spec.steps ?? [];
+    assert.ok(steps.length > 0, `${name}: no flow declared`);
+    let previous = -1;
+    for (const s of steps) {
+      assert.ok(s.run.length > 0, `${name}: a step with nothing to run`);
+      // Exactly one of the two — never both, never neither.
+      assert.equal(
+        Boolean(s.artifact) !== Boolean(s.ungateable),
+        true,
+        `${name}/${s.run}: declare an artifact OR an ungateable reason, not both or neither`,
+      );
+      if (s.artifact) {
+        assert.ok(s.gate, `${name}/${s.run}: an artifact with no gate gates nothing`);
+        // A gate can only look for what an earlier point produced.
+        assert.ok(
+          ORDER.indexOf(s.gate!) > ORDER.indexOf(s.at),
+          `${name}/${s.run}: gate ${s.gate} is not after ${s.at}`,
+        );
+      } else {
+        assert.ok(!s.gate, `${name}/${s.run}: ungateable steps are never gated`);
+        assert.ok(s.ungateable!.length > 20, `${name}/${s.run}: give the real reason`);
+      }
+      // The flow is ORDERED: a step never sits earlier than the one before it.
+      const at = ORDER.indexOf(s.at);
+      assert.ok(at >= previous, `${name}: step at ${s.at} comes after a later point`);
+      previous = at;
+    }
+    for (const p of spec.projectSteps ?? []) {
+      assert.ok(p.artifact.length > 0, `${name}: a project document with no path`);
+      assert.ok(p.run.length > 0, `${name}: a project document nothing writes`);
+      assert.ok(p.revisit.length > 0, `${name}: a project document with no revisit rule`);
+    }
+    assert.match(spec.source ?? '', /^https:\/\//, `${name}: no primary source`);
   }
 });

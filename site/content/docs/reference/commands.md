@@ -492,7 +492,7 @@ untracked  nothing build-critical untracked
 | line | reports |
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
-| `sdd` | artifact, binary, whether `sdd_auto` is on, and a second line naming what the agent is expected to run at each step — **omitted entirely when no `sdd` is declared** |
+| `sdd` | artifact, binary, whether `sdd_auto` is on; then one `flow —` line per step of the tool's own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law —` for the tool's project-level document: missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no `sdd` is declared** |
 | `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness |
 | `repos` | how many are present, and the clone command for each that is not |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
@@ -603,7 +603,7 @@ multivac change <sub> <slug> [args]
   apply <slug>           worktree per repo (greenfield repos get created)
   land <slug>            landing-order report; --landed <repo> records a merge
   close <slug>           verify claims, archive the change, print .multivac/ritual.md
-flags: --no-sdd (skip SDD steps), --landed <repo> (land only)
+flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only)
 ```
 
 Exactly two flags, both listed above. An unknown one exits 2:
@@ -633,8 +633,11 @@ free invariant ID out of the law table and writes it straight back as a
 `proposed` row naming this change — never pick an ID by hand. A `proposed` row
 never gates `verify`, and `close` releases the reservation if the change never
 used it — used meaning the rule was stated in place of the scaffolded RESERVED
-text, or an anchor names the ID. Then prints the SDD `propose` instruction for
-the agent to run, if an `sdd` is declared and `sdd_auto` is on.
+text, or an anchor names the ID. Then prints the SDD steps bound to the `new`
+point — with the artifact each will be checked for — if an `sdd` is declared
+and `sdd_auto` is on. `plan`, `apply` and `close` **refuse** while those
+artifacts are missing; see
+[Graphers and SDD](/docs/reference/graphers-and-sdd/#the-gate-what-the-tool-really-produces).
 
 The scaffolded declaration and the reserved row land as **one commit on the
 current branch** (message `change open: <slug> — reserves <ID>`): the shared

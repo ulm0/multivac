@@ -2,6 +2,7 @@
 
 import type { Config } from '../types.js';
 import { sddSpec } from '../adapters/registry.js';
+import { proofOf } from '../adapters/sdd.js';
 
 /**
  * Count non-retired data rows in the law table.
@@ -46,21 +47,27 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     '- Check the law against the code before acting: `multivac verify`.',
   ];
   if (config.sdd) {
-    const steps = sddSpec(config.sdd)?.agentSteps;
+    const spec = sddSpec(config.sdd);
     lines.push(
-      `- Features gate through the \`${config.sdd}\` SDD. ` +
+      `- Features gate through the \`${config.sdd}\` SDD, in that tool's OWN flow. ` +
         (config.sddAuto
-          ? 'The change lifecycle prints each step; YOU run it:'
-          : '`sdd_auto: false` — nothing is printed; run each step yourself:'),
+          ? 'The lifecycle prints each step and REFUSES to move on without the artifact that proves it ran; YOU run the steps:'
+          : '`sdd_auto: false` — nothing is printed and nothing is gated; run each step yourself:'),
     );
-    for (const [cmd, step] of [
-      ['change new', 'propose'],
-      ['change apply', 'apply'],
-      ['change close', 'archive'],
-    ] as const) {
-      lines.push(
-        `  - \`${cmd}\` → ${steps?.[step] ?? `no agent-run ${step} step for this tool`}`,
-      );
+    // The project-level document: the law of the project, not of one change.
+    // Written once, then amended as the product moves — so the door tells the
+    // agent to create it when it is not there.
+    for (const p of spec?.projectSteps ?? []) {
+      lines.push(`  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT.`);
+      lines.push(`    revisit: ${p.revisit}`);
+    }
+    if (spec && (spec.projectSteps ?? []).length === 0) {
+      lines.push('  - this tool has no project-level document — nothing to write once and amend');
+    }
+    // The per-change flow, in the tool's own order and length. Each line ends
+    // with what proves it ran, or with why nothing ever can.
+    for (const s of spec?.steps ?? []) {
+      lines.push(`  - \`change ${s.at}\` → ${s.run} [${proofOf(s)}]`);
     }
   }
   if (activeInvariants === 0) {

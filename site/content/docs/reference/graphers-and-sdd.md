@@ -201,8 +201,10 @@ adapter, not necessarily the tool's own binary name:
 
 ```txt
 $ mvac doctor
-sdd        opsx: artifact ok · binary ok · sdd_auto on — change new/apply/close print the agent step
-sdd        opsx agent steps — propose: run /opsx:propose <slug> in your agent to draft the spec change · apply: run /opsx:apply <slug> in your agent to implement the proposed tasks · archive: run /opsx:archive <slug> in your agent to update the specs and archive the change
+sdd        opsx: artifact ok · binary ok · sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts
+sdd        opsx flow — new: run /opsx:propose <slug> in your agent … [proof: openspec/changes/<slug>/proposal.md — `change plan` refuses without it]
+sdd        opsx gates — change plan: refuses without openspec/changes/<slug>/proposal.md · change apply: refuses without openspec/changes/<slug>/tasks.md · change close: refuses without openspec/changes/archive/*-<slug>
+sdd        opsx project law — this tool has no project-level document; nothing to create, nothing to keep fresh
 ```
 
 ```txt
@@ -213,52 +215,137 @@ sdd        nope: unknown adapter — known: opsx, speckit; fix sdd: in .multivac
 For OpenSpec, the terminal CLI is `init` / `update` / `list` / `show` /
 `validate`; `propose`, `apply` and `archive` are the `/opsx:` commands your
 agent runs in chat. That is why multivac never shells the steps out: it prints
-the instruction and the agent runs it.
+the instruction, the agent runs it, and the gate checks what it left behind.
 {{< /callout >}}
 
-### The steps instruct the agent
+### Each tool's own flow, not a fixed triple
 
-An SDD's propose/apply/archive steps are **chat commands the agent runs**, not
-terminal subcommands — invoking the binary with a step name would silently do
-nothing. So the lifecycle emits the instruction at the right moment, worded
-per tool in the shipped registry (`agentSteps`), with the slug interpolated:
+An SDD's steps are **chat commands the agent runs**, not terminal subcommands —
+invoking the binary with a step name would silently do nothing. And the tools
+do not agree on what the steps *are*: OpenSpec has propose/apply/archive,
+spec-kit has eight commands and no archive at all. So the shipped registry
+carries, per tool, an **ordered flow of arbitrary length**, each step bound to
+a lifecycle point rather than to a name, with the slug interpolated:
 
-| lifecycle step | prints |
+| tool | its flow, as multivac drives it |
 | --- | --- |
-| `change new <slug>` | `sdd opsx: run /opsx:propose <slug> in your agent to draft the spec change` |
-| `change apply <slug>` | `sdd opsx: run /opsx:apply <slug> in your agent to implement the proposed tasks` |
-| `change close <slug>` | `sdd opsx: run /opsx:archive <slug> in your agent to update the specs and archive the change` |
+| `opsx` | `new`: `/opsx:propose` · `plan`: finish the propose loop through `tasks.md` · `apply`: `/opsx:apply` · `land`: `/opsx:archive` |
+| `speckit` | `new`: `/speckit.specify`, `/speckit.clarify` · `plan`: `/speckit.plan`, `/speckit.tasks` · `apply`: `/speckit.analyze`, `/speckit.implement`, `/speckit.converge` |
 
-For `speckit` the flow is `/speckit.specify` at new, then `/speckit.plan`,
-`/speckit.tasks` and `/speckit.implement` at apply — and **no archive step**,
-because spec-kit has none; the lifecycle says so honestly instead of inventing
+Spec-kit has **no archive step**; the lifecycle says so instead of inventing
 one:
 
 ```txt
-sdd speckit: archive — this tool has no agent-run archive step; nothing to run
+sdd speckit: close — this tool has no agent-run close step; nothing to run
 ```
 
-Each instruction is printed only when an `sdd` is declared **and** `sdd_auto`
-is on **and** `--no-sdd` was not passed. The brain door carries the same flow,
-so an agent knows it at session start. Nothing here needs the tool's binary —
-the instruction is for the agent, not the shell.
+### The gate: what the tool really produces
+
+Every step names the artifact that **proves** it ran, and the next lifecycle
+command refuses without it:
+
+| refuses | until | opsx | speckit |
+| --- | --- | --- | --- |
+| `change plan` | the propose-equivalent exists | `openspec/changes/<slug>/proposal.md` | `specs/*<slug>*/spec.md` |
+| `change apply` | the plan/tasks artifact exists | `openspec/changes/<slug>/tasks.md` | `specs/*<slug>*/plan.md`, `specs/*<slug>*/tasks.md` |
+| `change close` | the archive-equivalent happened | `openspec/changes/archive/*-<slug>` | *not gated — spec-kit has no archive* |
+
+The refusal names the command and the path, so the fix is on the line above
+the error:
+
+```txt
+$ mvac change plan add-user-auth
+sdd opsx: `change plan add-user-auth` refused — openspec/changes/add-user-auth/proposal.md is missing
+  run /opsx:propose add-user-auth in your agent — it loops openspec's own artifact DAG (proposal → spec deltas → design → tasks)
+  then re-run: multivac change plan add-user-auth
+  (`--no-sdd` skips the SDD gates for one run; `sdd_auto: false` in .multivac/config.yml turns them off)
+```
+
+The `*` is a real segment matcher, not decoration: spec-kit numbers its own
+feature directory (`specs/003-add-user-auth/`) and OpenSpec date-stamps its
+archive (`archive/2026-08-15-add-user-auth`), so the exact path is the tool's
+to choose.
+
+**The tool's verdict is reused, never reimplemented.** OpenSpec ships
+`openspec validate`, which knows what a well-formed change is — delta headers,
+a scenario per requirement, no conflict with the main specs. multivac runs it
+for its verdict and quotes it back:
+
+```txt
+sdd opsx: `change apply add-user-auth` refused — `openspec validate add-user-auth --json --no-interactive` says: Change must have at least one delta
+  fix it in the tool, then re-run: multivac change apply add-user-auth
+```
+
+Shelling out happens for **validation only**. A step itself is never faked by
+running something that looks like it.
+
+### Ungateable steps are stated, never faked
+
+Some steps leave nothing behind, by their own design. Those are declared
+ungateable with the reason and are simply not gated — you still run them:
+
+| step | why nothing can prove it |
+| --- | --- |
+| `/opsx:apply` | its only trace is `- [x]` in `tasks.md`, a character the agent types about its own work |
+| `/speckit.analyze` | STRICTLY READ-ONLY by its own spec — it writes zero bytes |
+| `/speckit.implement` | "all tasks `[X]`" is the agent grading its own homework |
+| `/speckit.converge` | a clean converge is forbidden to touch `tasks.md` — success is invisible on disk |
+
+A lifecycle point with nothing to prove says so rather than passing quietly:
+
+```txt
+sdd speckit: `change close` is not gated — this tool declares no step whose artifact could prove it
+```
+
+### The project-level document
+
+Spec-kit carries a constitution — `.specify/memory/constitution.md`, written
+once and **amended** as the product moves. It ships as an unfilled template, so
+an untouched repo has a placeholder and not a constitution. The brain door
+tells the agent to create it if absent, and `doctor` reports it:
+
+```txt
+sdd        speckit project law — .specify/memory/constitution.md missing → run /speckit.constitution in your agent to write the project principles …
+sdd        speckit project law — revisit: once at start, then on every principle change: amend it in place, bump CONSTITUTION_VERSION by semver …
+```
+
+Scaffolded is not written. `specify init` installs `constitution.md`
+byte-identical to its own template, so the file exists in every fresh repo and
+its existence proves nothing. A document still carrying the template's
+`[ALL_CAPS]` placeholders is reported as what it is:
+
+```txt
+sdd        speckit project law — .specify/memory/constitution.md is still the unfilled template shipped by the tool (placeholders remain) → run /speckit.constitution …
+```
+
+Staleness is the interesting half: when the law's newest row is newer than the
+constitution, the product's law moved while its constitution did not.
+
+```txt
+sdd        speckit project law — .specify/memory/constitution.md present (last modified 2026-08-01) but the law's newest row is 2026-08-15 — STALE: the law moved while this did not; a report, never a gate
+```
+
+It stays a report. Whether a principle still fits the product is a judgement,
+and no file mtime can make it. OpenSpec has no project-level document at all —
+its `openspec/config.yaml` `context:` ships commented out and unvalidated — so
+multivac says that rather than inventing one.
 
 ### `sdd_auto` and `--no-sdd`
 
-Two ways to opt out, at two scopes:
+Two ways to opt out, at two scopes. Both turn off the **steps and the gates**:
 
 | | scope | effect |
 | --- | --- | --- |
-| `sdd_auto: false` in config | permanent | the adapter stays declared and reported; no instruction is ever printed |
-| `--no-sdd` on a `change` invocation | this run | skips the printout once |
+| `sdd_auto: false` in config | permanent | the adapter stays declared and reported; nothing is printed and nothing is gated |
+| `--no-sdd` on a `change` invocation | this run | skips the printout and the refusal once |
 
 ```txt
-sdd        opsx: artifact missing (looked for openspec/specs, openspec/changes) · binary ok · sdd_auto: false — the lifecycle prints nothing; run the steps yourself
+sdd        opsx: artifact missing (looked for openspec/specs, openspec/changes) · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
 ```
 
-`doctor` keeps reporting the adapter either way. Turning automation off is not
-the same as undeclaring it — you still want to know the artifact is there and
-the binary is current.
+That is exploration mode. `doctor` keeps reporting the adapter either way —
+turning automation off is not the same as undeclaring it; you still want to
+know the artifact is there and the binary is current.
 
 ## Detection at init
 

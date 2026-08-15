@@ -101,14 +101,71 @@ repos:
     const sdd = line(lines, 'sdd');
     assert.match(sdd, /opsx: artifact missing/);
     assert.match(sdd, /binary missing → npm i -g @fission-ai\/openspec/);
-    assert.match(sdd, /sdd_auto on — change new\/apply\/close print the agent step/);
-    // The second sdd line names what the agent is expected to run.
-    const steps = lines.filter((l) => l.startsWith('sdd')).at(-1)!;
-    assert.match(steps, /agent steps — propose: run \/opsx:propose <slug>/);
-    assert.match(steps, /archive: run \/opsx:archive <slug>/);
+    assert.match(sdd, /sdd_auto on — the lifecycle prints this tool's own steps and refuses/);
+    // The flow lines name every step and what proves it.
+    const all = lines.filter((l) => l.startsWith('sdd')).join('\n');
+    assert.match(all, /flow — new: run \/opsx:propose <slug>/);
+    assert.match(all, /flow — land: run \/opsx:archive <slug>/);
+    assert.match(all, /ungateable: apply leaves no artifact of its own/);
+    // ...and one line says exactly which lifecycle commands refuse.
+    assert.match(all, /gates — change plan: refuses without openspec\/changes\/<slug>\/proposal\.md/);
+    assert.match(all, /change close: refuses without openspec\/changes\/archive\/\*-<slug>/);
+    // OpenSpec has no project-level document; doctor says so rather than inventing one.
+    assert.match(all, /project law — this tool has no project-level document/);
   } finally {
     process.env.PATH = old;
   }
+});
+
+/**
+ * The project-level document: reported, never gated. Missing names the command
+ * that writes it; present-but-older-than-the-law's-newest-row is STALE — the
+ * product's law moved while its constitution did not.
+ */
+test('doctor: the constitution is reported present, missing and stale — never gated', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-const-')));
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents]\nsdd: speckit\nrepos:\n  api: ../acme-api\n',
+  );
+  const lawRow = (date: string): void =>
+    writeFileSync(
+      join(eco.brain, '.multivac/invariants.md'),
+      '# Invariants\n\n| ID | statement | authority | state | date | source |\n' +
+        '| --- | --- | --- | --- | --- | --- |\n' +
+        `| INV-01 | the law moved | specified | active | ${date} | [x](x) |\n`,
+    );
+  const sddLines = async (): Promise<string> =>
+    (await doctorReport(eco.brain)).lines.filter((l) => l.startsWith('sdd')).join('\n');
+
+  lawRow('2026-08-15');
+  // Absent: the exact agent command that creates it.
+  const missing = await sddLines();
+  assert.match(missing, /project law — \.specify\/memory\/constitution\.md missing → run \/speckit\.constitution/);
+  assert.match(missing, /project law — revisit: once at start, then on every principle change/);
+
+  // Scaffolded is not written: spec-kit installs constitution.md as its own
+  // unfilled template, so "present" would be a lie an untouched repo earns.
+  const doc = join(eco.brain, '.specify/memory/constitution.md');
+  mkdirSync(join(eco.brain, '.specify/memory'), { recursive: true });
+  writeFileSync(doc, '# [PROJECT_NAME] Constitution\n\n## [PRINCIPLE_1_NAME]\n');
+  assert.match(
+    await sddLines(),
+    /is still the unfilled template shipped by the tool \(placeholders remain\) → run \/speckit\.constitution/,
+  );
+
+  // Present but older than the law's newest row: drift, reported as such.
+  writeFileSync(doc, '# Constitution\n');
+  const old = new Date('2026-08-01T00:00:00Z').getTime() / 1000;
+  utimesSync(doc, old, old);
+  const stale = await sddLines();
+  assert.match(stale, /present \(last modified 2026-08-01\) but the law's newest row is 2026-08-15 — STALE/);
+
+  // A law that has not moved past it: fresh. Exit 0 throughout — a report.
+  lawRow('2026-07-01');
+  const fresh = await sddLines();
+  assert.match(fresh, /present \(last modified 2026-08-01\).*— fresh/);
+  assert.equal((await doctorReport(eco.brain)).exit, 0);
 });
 
 test('doctor: symlink door ok, stale graph warned, fresh graph quiet', async () => {
