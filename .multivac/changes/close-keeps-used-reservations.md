@@ -3,7 +3,7 @@ slug: close-keeps-used-reservations
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:

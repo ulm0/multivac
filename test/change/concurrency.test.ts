@@ -124,6 +124,43 @@ test('a declared id another change reserved fails plan, loudly', async () => {
   assert.match(rows[0], /race-one/);
 });
 
+test('close keeps a reservation whose rule has been stated', async () => {
+  assert.equal(await change.run(['new', 'kept-one', 'Kept one'], ctx), 0);
+  const id = (await loadChange(eco.brain, 'kept-one')).change.invariants.adds[0];
+  const parsed = await loadChange(eco.brain, 'kept-one');
+  parsed.change.repos = { api: { status: 'landed' } };
+  parsed.change.landing_order = [['api']];
+  await saveChange(eco.brain, parsed);
+  const lawPath = join(eco.brain, '.multivac/invariants.md');
+  writeFileSync(
+    lawPath,
+    readFileSync(lawPath, 'utf8').replace(
+      `RESERVED by change kept-one — state the rule here before close.`,
+      'The kept-one rule, stated.',
+    ),
+  );
+  assert.equal(await change.run(['close', 'kept-one'], ctx), 0);
+  const law = readFileSync(lawPath, 'utf8');
+  assert.ok(law.includes(`| ${id} |`), 'a stated rule survives close, anchored or not');
+});
+
+test('close keeps a reservation anchored in the change file it archives', async () => {
+  assert.equal(await change.run(['new', 'kept-two', 'Kept two'], ctx), 0);
+  const id = (await loadChange(eco.brain, 'kept-two')).change.invariants.adds[0];
+  const parsed = await loadChange(eco.brain, 'kept-two');
+  parsed.change.repos = { api: { status: 'landed' } };
+  parsed.change.landing_order = [['api']];
+  parsed.change.invariants.adds = [id];
+  parsed.body += `\n<!-- @anchor ${id} api:README.md /acme-api/ -->\n`;
+  await saveChange(eco.brain, parsed);
+  // the anchor lives in the change file, tracked — exactly what archive moves
+  execFileSync('git', ['-C', eco.brain, 'add', '-A'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', eco.brain, 'commit', '-q', '-m', 'kept-two bookkeeping'], { stdio: 'ignore' });
+  assert.equal(await change.run(['close', 'kept-two'], ctx), 0);
+  const law = readFileSync(join(eco.brain, '.multivac/invariants.md'), 'utf8');
+  assert.ok(law.includes(`| ${id} |`), 'anchors are read before archive moves the file');
+});
+
 test('close releases a reservation the change never used', async () => {
   const id = (await loadChange(eco.brain, 'race-one')).change.invariants.adds[0];
   const parsed = await loadChange(eco.brain, 'race-one');

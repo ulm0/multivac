@@ -19,6 +19,8 @@ const lawRelChange = (slug: string): string => `changes/${slug}.md`;
 
 export interface LawRow {
   id: string;
+  /** 2nd cell — a reservation still carries the scaffolded RESERVED text. */
+  statement: string;
   state: string;
   /** 6th cell — where the row came from; a reservation names the change file. */
   source: string;
@@ -33,7 +35,7 @@ export function lawRows(text: string): LawRow[] {
     const cells = t.split('|').map((c) => c.trim());
     const id = cells[1] ?? '';
     if (!id || id === 'ID') continue;
-    rows.push({ id, state: cells[4] ?? '', source: cells[6] ?? '' });
+    rows.push({ id, statement: cells[2] ?? '', state: cells[4] ?? '', source: cells[6] ?? '' });
   }
   return rows;
 }
@@ -168,7 +170,10 @@ export async function reserveId(
 
 /**
  * Close-time cleanup: a reservation this change never used (still proposed,
- * still unanchored, still pointing here) leaves the table. Returns the IDs.
+ * still unanchored, statement still the scaffolded RESERVED text, still
+ * pointing here) leaves the table. A row the author stated is used, whether
+ * or not an anchor names it — the ledger's own instruction is "state the rule
+ * here before close", and a stated rule must never evaporate. Returns the IDs.
  */
 export async function releaseUnused(
   brain: string,
@@ -179,7 +184,15 @@ export async function releaseUnused(
     const law = await readLaw(brain);
     if (!law) return [];
     const dead = new Set(
-      law.rows.filter((r) => r.state === 'proposed' && owns(r, slug) && !anchored.has(r.id)).map((r) => r.id),
+      law.rows
+        .filter(
+          (r) =>
+            r.state === 'proposed' &&
+            owns(r, slug) &&
+            !anchored.has(r.id) &&
+            r.statement.startsWith('RESERVED by change '),
+        )
+        .map((r) => r.id),
     );
     if (dead.size === 0) return [];
     const kept = law.text

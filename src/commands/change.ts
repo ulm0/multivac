@@ -638,6 +638,11 @@ async function cmdClose(
   } else {
     say('no claims declared — nothing to verify');
   }
+  // Read the anchor set before archive moves the change file: its anchors
+  // land at changes/archive/<slug>.md, a path `lsFiles` cannot see until the
+  // archive is committed — checking after would release rows this very close
+  // just verified green.
+  const anchored = await anchoredClaimIds(brain);
   await runSdd(cfg, brain, 'archive', slug, noSdd);
   const dest = await archiveChange(brain, parsed);
   say(`archived -> ${relative(brain, dest)}`);
@@ -647,7 +652,7 @@ async function cmdClose(
   );
   // A reservation the change never used goes back to the pool; the worktrees
   // go with the change that owned them.
-  const released = await releaseUnused(brain, slug, await anchoredClaimIds(brain));
+  const released = await releaseUnused(brain, slug, anchored);
   if (released.length > 0) {
     say(`released unused reservation${released.length > 1 ? 's' : ''}: ${released.join(', ')}`);
   }

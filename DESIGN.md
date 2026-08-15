@@ -126,7 +126,8 @@ apart, both mechanical:
   loudly, at declare time, not at merge. The table is the registry, so there is
   no second store to reconcile, and `proposed` rows already never gate verify.
   The read-append-write runs under an exclusive `.multivac/invariants.md.lock`
-  (`wx` — atomic across processes); an unused reservation is released at close.
+  (`wx` — atomic across processes); an unused reservation — still carrying the
+  scaffolded RESERVED statement and anchored nowhere — is released at close.
   Its ceiling: reservations are visible to whoever shares the brain checkout,
   which is where `new` and `plan` run — not across unmerged branches.
 
