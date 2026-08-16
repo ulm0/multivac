@@ -98,7 +98,10 @@ async function installHookConfig(
       matcher: hookConfig.postEdit,
     });
     await mkdir(dirname(settingsFile), { recursive: true });
-    await writeFile(settingsFile, merged);
+    await writeFile(settingsFile, merged.text);
+    // What the merge saw but will not act on — a duplicate an older multivac
+    // left behind. It rides the notices this target already prints.
+    notices.push(...merged.notices);
   } catch (e) {
     notices.push((e as Error).message);
   }

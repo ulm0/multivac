@@ -113,6 +113,12 @@ and entry it does not own:
 of it; `PostToolUse` re-checks after every edit. Both run the **default**
 policy, not `--strict`.
 
+What multivac owns here is the individual command, matched exactly — never an
+entry that merely mentions it. `mvac verify --strict` is your hook and stays
+untouched, commands you add beside multivac's stay in place, and the matcher on
+an entry is yours. The rule and the notice it prints are in
+[hooks](/docs/reference/hooks/#what-preserving-means-here).
+
 If `CLAUDE.md` already exists as a regular file, `doors` refuses to replace
 it and says what to do:
 

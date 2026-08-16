@@ -227,6 +227,33 @@ defensive. A settings file that is not valid JSON is left alone and reported:
 brain: notice: .claude/settings.json is not valid JSON — fix it, then rerun `multivac doors`
 ```
 
+### What "preserving" means here
+
+The merge **owns only the hook it wrote**, and the unit of ownership is the
+individual command, not the entry around it. An entry is your grouping — your
+matcher, your list of commands — so:
+
+- Identity is exact. `mvac verify` is multivac's; `mvac verify --strict` is
+  yours and is never claimed. The refresh command is recognised by the lock
+  preamble multivac generates, which nothing else writes.
+- An update rewrites one command in place. Commands you added beside it stay,
+  in order, and fields multivac does not write — a `timeout`, say — stay with
+  them.
+- A matcher is written once, when multivac creates its own entry, and is never
+  rewritten afterwards. The matcher on an entry is yours.
+- Dropping the grapher removes multivac's refresh command, not the entry: an
+  entry you share with it survives, carrying your commands.
+
+Earlier versions matched on a *substring* of the command and then replaced the
+whole entry, which could eat a hand-written hook and leave a second copy of
+multivac's own behind. `doors` reports that leftover rather than fixing it,
+because the survivor is byte-identical to what multivac writes and only you
+know which one you meant to keep:
+
+```txt
+brain: notice: .claude/settings.json: hooks.PostToolUse runs `mvac verify` 2 times — verify fires once per copy. Delete the entries you do not want by hand; multivac removes no hook entry it did not write, because doing that silently is the defect this notice reports.
+```
+
 ## What blocks and what informs
 
 Every rung runs the same `verify`, so the policy is the same everywhere:
