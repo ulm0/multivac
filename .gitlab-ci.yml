@@ -6,6 +6,14 @@ stages:
 test:
   stage: test
   image: node:24
+  # A tag runs the publish job and nothing else. The commit a tag names has
+  # already been through this job on its way to main, so re-running it here is
+  # duplication that only delays the release and adds a second way for it to
+  # fail.
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: never
+    - when: on_success
   before_script:
     - corepack enable
     - corepack prepare --activate  # the version is package.json's packageManager, not a second pin
@@ -25,6 +33,14 @@ test:
 selfverify:
   stage: test
   image: node:24
+  # A tag runs the publish job and nothing else. The commit a tag names has
+  # already been through the test job and this one on its way to main, so re-running it here is
+  # duplication that only delays the release and adds a second way for it to
+  # fail.
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: never
+    - when: on_success
   before_script:
     - corepack enable
     - corepack prepare --activate  # the version is package.json's packageManager, not a second pin
@@ -86,9 +102,10 @@ publish:
     - npm install -g npm@latest
   script:
     - pnpm install --frozen-lockfile
-    - pnpm test
-    - node dist/cli.js verify --strict
-    # The tag is the authority on what is being released.
+    # Build, because the tarball ships dist/ and nothing else produces it here.
+    - pnpm run build
+    # The tag is the authority on what is being released, and this is the one
+    # check that cannot have been made earlier: it is about the tag itself.
     - test "v$(node -p 'require("./package.json").version')" = "$CI_COMMIT_TAG"
     - npm publish --access public
   rules:
