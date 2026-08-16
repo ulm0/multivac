@@ -1,9 +1,9 @@
 ---
 slug: the-merge-keeps-what-it-did-not-write
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:

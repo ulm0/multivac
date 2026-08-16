@@ -1,9 +1,9 @@
 ---
 slug: the-first-release
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -14,9 +14,9 @@ invariants:
   retires: []
 claims:
   - id: MV-08
-    statement: "The pnpm guard fires only inside this repo, so installing the published package with npm or npx works."
+    statement: The pnpm guard fires only inside this repo, so installing the published package with npm or npx works.
   - id: MV-68
-    statement: "The tarball ships dist and skills by allowlist, and releases publish by OIDC on a version tag, never a token." 
+    statement: The tarball ships dist and skills by allowlist, and releases publish by OIDC on a version tag, never a token.
 ---
 
 # The first release

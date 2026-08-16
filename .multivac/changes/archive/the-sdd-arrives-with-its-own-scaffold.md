@@ -1,9 +1,9 @@
 ---
 slug: the-sdd-arrives-with-its-own-scaffold
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -13,7 +13,7 @@ invariants:
   retires: []
 claims:
   - id: MV-75
-    statement: "An adapter declares the scaffold that makes its steps runnable, so declaring an SDD that is not installed yet is something the lifecycle resolves instead of a hole only --no-sdd gets out of."
+    statement: An adapter declares the scaffold that makes its steps runnable, so declaring an SDD that is not installed yet is something the lifecycle resolves instead of a hole only --no-sdd gets out of.
 ---
 
 # The SDD arrives with its own scaffold

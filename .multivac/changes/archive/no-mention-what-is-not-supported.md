@@ -1,9 +1,9 @@
 ---
 slug: no-mention-what-is-not-supported
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -14,7 +14,7 @@ invariants:
   retires: []
 claims:
   - id: MV-28
-    statement: "Every registry entry is a harness multivac can actually own; there is no unsupported kind and no entry for a tool it cannot write a door for."
+    statement: Every registry entry is a harness multivac can actually own; there is no unsupported kind and no entry for a tool it cannot write a door for.
 ---
 
 # Do not name what you do not support

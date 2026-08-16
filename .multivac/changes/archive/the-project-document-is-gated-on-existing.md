@@ -1,9 +1,9 @@
 ---
 slug: the-project-document-is-gated-on-existing
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -14,7 +14,7 @@ invariants:
   retires: []
 claims:
   - id: MV-76
-    statement: "A project-level document is gated on existing and on not still being the template, never on its content; staleness stays a report."
+    statement: A project-level document is gated on existing and on not still being the template, never on its content; staleness stays a report.
 ---
 
 # The project document is gated on existing
