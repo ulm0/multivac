@@ -100,6 +100,9 @@ repos:
     assert.equal(exit, 0);
     const sdd = line(lines, 'sdd');
     assert.match(sdd, /opsx: artifact missing/);
+    // No init was verified for this tool, so none is named: the clause below
+    // belongs to the adapter that declares a scaffold, not to every absence.
+    assert.doesNotMatch(sdd, /declared but never run here/);
     assert.match(sdd, /binary missing → npm i -g @fission-ai\/openspec/);
     assert.match(sdd, /sdd_auto on — the lifecycle prints this tool's own steps and refuses/);
     // The flow lines name every step and what proves it.
@@ -115,6 +118,35 @@ repos:
   } finally {
     process.env.PATH = old;
   }
+});
+
+/**
+ * Declared but never run here: doctor NAMES the tool's own init and says who
+ * runs it, because naming is all it may do — that command downloads templates
+ * and MV-01 keeps this report offline. Gone the moment the artifact is there:
+ * the clause reports a state, it is not decoration on every absence.
+ */
+test('doctor: a declared-but-unscaffolded sdd names the init, and says it never runs it', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-scaffold-')));
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents]\nsdd: speckit\nrepos:\n  api: ../acme-api\n',
+  );
+  const sddLine = async (): Promise<string> => line((await doctorReport(eco.brain)).lines, 'sdd');
+
+  const never = await sddLine();
+  assert.match(never, /artifact missing \(looked for \.specify\)/);
+  assert.match(
+    never,
+    /declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force`, doctor never does \(it reaches the network\)/,
+  );
+
+  // Once it has run here there is no such state to report, and no command to
+  // name: doctor drops the clause instead of nagging about a done thing.
+  mkdirSync(join(eco.brain, '.specify'), { recursive: true });
+  const after = await sddLine();
+  assert.match(after, /artifact ok/);
+  assert.doesNotMatch(after, /declared but never run here/);
 });
 
 /**

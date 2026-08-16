@@ -655,7 +655,7 @@
     "semantic_hash": ""
   },
   ".multivac/invariants.md": {
-    "mtime": 1786892705.8394012,
+    "mtime": 1786893884.7260005,
     "ast_hash": "38c194d1861150046d4ee076c25c15fa",
     "semantic_hash": ""
   },
@@ -685,7 +685,7 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1786892738.912866,
+    "mtime": 1786893884.726143,
     "ast_hash": "545db0584b9ca710734969b76d940be2",
     "semantic_hash": ""
   },
@@ -700,8 +700,8 @@
     "semantic_hash": ""
   },
   "site/content/docs/_index.md": {
-    "mtime": 1786687460.6135898,
-    "ast_hash": "1cf5e79f05d35235c63adf1f68cd70f4",
+    "mtime": 1786893947.2586274,
+    "ast_hash": "de61c50a0912fc153441e589f725bce4",
     "semantic_hash": ""
   },
   "site/content/docs/concepts/_index.md": {
@@ -1155,13 +1155,23 @@
     "semantic_hash": ""
   },
   ".multivac/changes/archive/the-site-quotes-the-version-the-package-declares.md": {
-    "mtime": 1786892697.1135855,
+    "mtime": 1786893884.7257614,
     "ast_hash": "e04415768b32c57fca745df7992dae8c",
     "semantic_hash": ""
   },
   ".multivac/changes/archive/the-release-says-what-changed.md": {
-    "mtime": 1786892705.8389258,
+    "mtime": 1786893884.7256572,
     "ast_hash": "0b733f190b420e489e85f8d530ac6228",
+    "semantic_hash": ""
+  },
+  "site/content/docs/concepts/adoption.md": {
+    "mtime": 1786893910.8799763,
+    "ast_hash": "c6357c9ba03bc9be0df16d06eb0f64ae",
+    "semantic_hash": ""
+  },
+  "site/content/docs/concepts/composition.md": {
+    "mtime": 1786893966.8233047,
+    "ast_hash": "cdfcbb84492afc7c3d95a619d883f806",
     "semantic_hash": ""
   }
 }

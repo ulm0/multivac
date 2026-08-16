@@ -16,7 +16,7 @@ import { ritualChecklist } from '../lib/ritual.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
-import { sddGate, sddInstructions } from '../adapters/sdd.js';
+import { runScaffold, sddGate, sddInstructions } from '../adapters/sdd.js';
 import { refreshGraph } from '../adapters/refresh.js';
 import { evaluate } from './verify.js';
 import {
@@ -98,6 +98,12 @@ async function gateSdd(
   slug: string,
   noSdd: boolean,
 ): Promise<boolean> {
+  // BEFORE the refusal, not after it: a tool that has never run here cannot
+  // have produced the artifact this is about to demand, and the command that
+  // would fix that is the tool's own init. This is the single funnel for plan,
+  // apply and close, so one call covers all three. A scaffold that fails
+  // changes nothing here — the gate below still refuses on its own terms.
+  await runScaffold(brain, cfg, noSdd);
   const { ok, lines } = await sddGate(brain, cfg, gate, slug, noSdd);
   for (const l of lines) (ok ? say : warn)(l);
   return ok;
@@ -478,6 +484,10 @@ async function cmdNew(
   say(`  1. repos: { api: { status: planned } }        # status: ${REPO_STATUSES.join('|')}`);
   say('  2. landing_order: [[api]]                     # stages; earlier stages land first');
   say(`  3. claims: [{ id: ${reserved?.id ?? '<ID>'}, statement: "..." }]  # what close verifies`);
+  // The first moment the tool's steps are printed is the first moment they
+  // have to be runnable: scaffold before printing, so the lines below name
+  // chat commands that exist.
+  await runScaffold(brain, cfg, noSdd);
   runSdd(cfg, 'new', slug, noSdd);
   return 0;
 }

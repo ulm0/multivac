@@ -15,7 +15,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, dirname, isAbsolute, join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import {
@@ -104,6 +104,34 @@ test('every entry is one multivac can actually own', async () => {
     assert.ok(t.source, `${name}: an entry without a vendor source is a guess`);
   }
   assert.ok(!('aider' in doorTargets));
+});
+
+// MV-73 puts a delete pass inside the directory an entry's `skill` names, so
+// that path is no longer only where bytes are written — it is the directory
+// emptied of everything the package does not ship. Two shapes are catastrophic
+// and neither is far-fetched: `SKILL.md` (dirname `.`) mirrors the target's
+// whole REPOSITORY, and `.claude/SKILL.md` (dirname `.claude`) mirrors away
+// settings.json and every sibling skill `specify init` installed there. The
+// rule that excludes both, and any other shared parent, is that the mirrored
+// directory is named for the tool that owns it: nothing but multivac installs
+// into a directory called `multivac`. No user can cause this — the registry is
+// data this repo ships — so the day such an entry could exist is the day it is
+// added, and this is the check that fails on it.
+test("a skill path names multivac's own directory, never a shared one", () => {
+  for (const [name, t] of Object.entries(doorTargets)) {
+    if (!t.skill) continue;
+    const projected = dirname(t.skill);
+    assert.ok(!isAbsolute(t.skill), `${name}: skill path is absolute: ${t.skill}`);
+    assert.ok(
+      !t.skill.split('/').includes('..'),
+      `${name}: skill climbs out of the target: ${t.skill}`,
+    );
+    assert.equal(
+      basename(projected),
+      'multivac',
+      `${name}: doors would mirror ${projected}/ — a directory multivac does not own`,
+    );
+  }
 });
 
 test('every entry cites the vendor doc it was read from', () => {

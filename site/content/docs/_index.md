@@ -22,12 +22,13 @@ across N repos. Verification is the precondition; the product is the change.
 4. **Distribute** — how the brain reaches consumer repos, pinned, with
    staleness visible instead of silent.
 
-## Three sections
+## Three sections, and the changelog
 
 {{< cards >}}
-  {{< card link="concepts" title="Concepts" subtitle="The model: why it exists, claims and anchors, the cross-repo change, distribution." >}}
+  {{< card link="concepts" title="Concepts" subtitle="The model: why it exists, claims and anchors, the cross-repo change, distribution, how adoption goes." >}}
   {{< card link="guide" title="Guide" subtitle="The path: install, init, fill the brain, write anchors, run a change." >}}
   {{< card link="reference" title="Reference" subtitle="The surface: every command and flag, every config key, every integration." >}}
+  {{< card link="changelog" title="Changelog" subtitle="What each release contained. The repository's own CHANGELOG.md, mounted here rather than copied." >}}
 {{< /cards >}}
 
 ## Where to start
@@ -52,3 +53,7 @@ across N repos. Verification is the precondition; the product is the change.
 4. [The change](concepts/the-change) — the cross-repo change lifecycle.
 5. [Invariants](concepts/invariants) — how law is born, amended, and retired.
 6. [Distribution](concepts/distribution) — mounts, pins, doors, and skills.
+7. [Adoption](concepts/adoption) — the arc from `init` to steady state, which
+   phase buys what, and how the path differs by the shape you are in.
+8. [Composition](concepts/composition) — why spec-driven tools and code
+   graphers are built on rather than competed with.

@@ -14,7 +14,7 @@ invariants:
   retires: []
 claims:
   - id: MV-74
-    statement: "The managed settings merge owns only the entry it wrote: a foreign entry whose command merely mentions the marker is left alone, hooks array and matcher intact."
+    statement: "The managed settings merge owns only the hook it wrote: an entry whose command merely mentions the marker is left alone, hooks array and matcher intact — and where that leaves the gate off the edit tools, multivac adds its own entry beside it and says so."
 ---
 
 # The merge keeps what it did not write

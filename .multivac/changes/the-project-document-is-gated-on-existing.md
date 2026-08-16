@@ -67,3 +67,26 @@ and a gate there would refuse honest work on every unrelated row.
 MV-57 is amended, not retired: the sentence that survives is that the document's
 *content* is never machine-judged. The sentence that goes is that its *presence*
 is never checked either.
+
+## What merging MV-75 found
+
+MV-75 landed while this branch was open, and `src/adapters/sdd.ts` merged with
+no textual conflict into something semantically wrong: `runScaffold` runs
+immediately before `sddGate` in the same command, and `specify init` writes
+`.specify/memory/constitution.md` as the *unfilled template*. So a repo where
+spec-kit had never run now had a constitution on disk one line before this gate
+read it, written by nobody.
+
+The gate was right and the fixture was not. The suite's stub `specify` wrote
+`unfilled\n`, which matches no `[ALL_CAPS]` token, so the placeholder branch
+never fired and `plan` went green on a document the scaffold had just invented —
+this row's own test failing `0 !== 1`. Two facts, both checked: the scaffold did
+run in that command (`specifyRuns().length === 1`, `scaffolded — brain:.specify
+is there now`, the file present), and the gate passed it because the stub's
+bytes were not the tool's bytes.
+
+The fix is in the fixture, not in the gate: the stub now writes the template
+with its tokens, and a test pins the interaction directly — scaffold and gate in
+one command, the gate refusing *because it is the template*. Had the stub stayed
+kinder than the tool, the whole of MV-76 would have been undone one layer down
+by the command that runs in front of it. MV-76 is amended to say so.

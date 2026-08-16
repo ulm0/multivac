@@ -65,6 +65,52 @@ const stubOpenspec = (exit: number, stdout = ''): void => {
   chmodSync(p, 0o755);
 };
 stubOpenspec(0);
+
+/**
+ * What a real `specify init` leaves at .specify/memory/constitution.md: the
+ * template, `[ALL_CAPS]` fill-in tokens intact. The stub writes THIS and not a
+ * one-word stand-in, because the one-word stand-in is a fixture kinder than the
+ * tool: it made the scaffold hand the project-document gate a document that
+ * looked written, and the gate MV-76 exists to fire went green behind it.
+ * A fixture that cannot reproduce the tool's own output cannot catch what the
+ * tool's own output does.
+ */
+const CONSTITUTION_TEMPLATE =
+  '# [PROJECT_NAME] Constitution\n\n## Core Principles\n\n' +
+  '### [PRINCIPLE_1_NAME]\n\n[PRINCIPLE_1_DESCRIPTION]\n\n' +
+  '**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE]\n';
+
+/**
+ * A stub `specify` at the same front of PATH, for the same reason and one
+ * more: the lifecycle now RUNS this one. `specify init` downloads templates,
+ * so a suite that let the real binary through would reach the network from a
+ * unit test and write a different tree on every machine.
+ *
+ * `writes` is the whole point of the stub: a tool that exits 0 and creates
+ * nothing is a real outcome the lifecycle has to refuse to call success.
+ */
+const runLog = join(tmp, 'specify-runs');
+const stubSpecify = (exit: number, writes = true, stderr = ''): void => {
+  const p = join(bin, 'specify');
+  writeFileSync(
+    p,
+    `#!/bin/sh\necho "$@" >> '${runLog}'\n` +
+      (writes
+        ? `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\n`
+        : '') +
+      (stderr ? `echo '${stderr}' >&2\n` : '') +
+      `exit ${exit}\n`,
+  );
+  chmodSync(p, 0o755);
+};
+stubSpecify(0);
+/** How many times the stub has been invoked, and with what. */
+const specifyRuns = (): string[] =>
+  existsSync(runLog) ? readFileSync(runLog, 'utf8').split('\n').filter(Boolean) : [];
+const forgetSpecifyRuns = (): void => rmSync(runLog, { force: true });
+/** Put the brain back in the state of a repo where spec-kit has never run. */
+const unscaffold = (): void => rmSync(join(brain, '.specify'), { recursive: true, force: true });
+
 process.env.PATH = `${bin}${delimiter}${process.env.PATH ?? ''}`;
 
 const config = (lines: string[]): void =>
@@ -510,6 +556,12 @@ test('plan refuses while the project document is absent or still the template', 
   await change.run(['new', 'proj-doc', 'Project doc'], ctx);
   await declareBrain('proj-doc');
   artifact('specs/001-proj-doc/spec.md', '# Real spec\n'); // the per-change gate is satisfied
+  // spec-kit has already run here, so MV-75's scaffold is a no-op and the five
+  // states below are the gate's own doing. Stated, not assumed: the moment
+  // .specify goes missing the init writes the constitution back as the
+  // template, and "absent" stops being a state this test can reach. That case
+  // has its own test at the bottom of this file.
+  assert.ok(existsSync(join(brain, '.specify')), 'the scaffold must not fire during this test');
 
   // 1. Absent. The door has said CREATE IT IF ABSENT in capitals since the
   //    beginning and nothing ever refused for it.
@@ -585,5 +637,177 @@ test('a stale project document still reports, never gates', async () => {
   const opsx = await capture(() => change.run(['plan', 'proj-doc'], ctx));
   assert.equal(opsx.code, 0);
   assert.doesNotMatch(opsx.out, /constitution/);
+  commitAll();
+});
+
+// --- the scaffold: the tool's own init, run once, before its steps are asked for ---
+
+test('a declared SDD that is not installed scaffolds itself', async () => {
+  // The deadlock this closes: `plan` refuses without spec.md, spec.md comes
+  // from /speckit.specify, and that chat command does not exist until
+  // `specify init` has run — so the only exits were the two switches that turn
+  // the gate off to fix the reason it fired.
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0);
+
+  const c = await capture(() => change.run(['new', 'scaffold-a', 'Scaffold a'], ctx));
+  assert.equal(c.code, 0);
+  // The command is the vendor's, verbatim, and it is printed before it runs.
+  assert.match(
+    c.out,
+    /running the tool's own init in brain: `specify init --here --integration claude --force`/,
+  );
+  // Which roots were searched, so an operator whose specs live in a sibling
+  // checkout can see which one was scaffolded.
+  assert.match(c.out, /\.specify is in none of brain/);
+  assert.match(c.out, /scaffolded — brain:\.specify is there now/);
+  assert.ok(existsSync(join(brain, '.specify')), 'the init must have written its artifact');
+  assert.equal(specifyRuns().length, 1);
+  // The steps stay chat commands: the scaffold satisfies none of them.
+  assert.match(c.out, /run \/speckit\.specify in your agent/);
+});
+
+test('a scaffolded repo is left alone — the init runs once, not on every command', async () => {
+  // `specify init` downloads templates and can overwrite them; a lifecycle that
+  // re-ran it on every command would be worse than the hole it fills.
+  //
+  // BOTH halves, in one test and in this order: "it did not run" only means
+  // something next to a run that did happen, on the same command, under the
+  // same config — otherwise a lifecycle that scaffolds nothing at all passes.
+  await declareBrain('scaffold-a');
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0);
+  const first = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.match(first.out, /running the tool's own init/);
+  assert.equal(specifyRuns().length, 1, 'an absent .specify must run the init exactly once');
+
+  const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.equal(c.code, 1); // no spec.md yet — that gate is unaffected
+  assert.equal(specifyRuns().length, 1, 'a present .specify must run nothing');
+  assert.doesNotMatch(c.out, /running the tool's own init/);
+  assert.doesNotMatch(c.out, /scaffolded/);
+});
+
+test('a scaffold that fails says what the tool said, and the gate stays closed', async () => {
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(2, false, 'error: failed to download template from GitHub');
+  const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.equal(specifyRuns().length, 1);
+  // The TOOL'S words, not node's `Command failed: …`.
+  assert.match(c.out, /it said: error: failed to download template from GitHub/);
+  assert.match(c.out, /left no \.specify in brain/);
+  // Handed back so it can be run by hand.
+  assert.match(c.out, /run it in brain by hand/);
+  // A failed scaffold decides nothing on its own: the gate below still refuses
+  // for its own reason, and the lifecycle did not throw.
+  assert.equal(c.code, 1);
+  assert.match(c.out, /refused — specs\/\*scaffold-a\*\/spec\.md is missing/);
+});
+
+test('a scaffold that exits 0 and writes nothing is a failure, not a success', async () => {
+  // An exit code is the tool's claim; the artifact is the fact. The gates look
+  // for the artifact, so the artifact is what decides.
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0, false);
+  const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.equal(specifyRuns().length, 1);
+  assert.match(c.out, /left no \.specify in brain — it exited 0 and wrote nothing there/);
+  assert.doesNotMatch(c.out, /scaffolded —/);
+});
+
+test('a scaffold whose binary is missing prints the install line and runs nothing', async () => {
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0);
+  const savedPath = process.env.PATH;
+  process.env.PATH = '/usr/bin:/bin'; // git stays reachable; specify does not
+  try {
+    const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+    assert.match(c.out, /`specify` is not on PATH/);
+    assert.match(c.out, /install it: uv tool install specify-cli/);
+    assert.equal(specifyRuns().length, 0);
+    assert.equal(c.code, 1);
+  } finally {
+    process.env.PATH = savedPath;
+  }
+});
+
+test('an adapter with no verified init states the gap instead of guessing one', async () => {
+  // openspec's CLI has an `init`, but what it writes was never verified by
+  // running it — and a guessed command would run against someone's repo.
+  // MV-59's rule, one layer up from graphers.
+  rmSync(join(brain, 'openspec'), { recursive: true, force: true });
+  config(['doors: [agents]', 'sdd: opsx', 'repos:', '  brain: .']);
+  const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.match(c.out, /sdd opsx: declared, and nothing of it is in brain/);
+  assert.match(c.out, /will not guess one/);
+  assert.match(c.out, /npm i -g @fission-ai\/openspec/);
+  assert.equal(sddSpec('opsx')!.scaffold, undefined);
+});
+
+test('--no-sdd and sdd_auto: false turn the scaffold off with everything else', async () => {
+  // The scaffold is SDD automation, governed by the two switches that already
+  // exist. A third switch would be a fourth state to explain.
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0);
+  // The control the two silences are measured against: same repo, same absent
+  // artifact, both switches on — it runs. Without this line "nothing ran" is
+  // equally true of a lifecycle that never scaffolds at all.
+  const on = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.match(on.out, /running the tool's own init/);
+  assert.equal(specifyRuns().length, 1);
+
+  unscaffold();
+  forgetSpecifyRuns();
+  const off = await capture(() => change.run(['plan', 'scaffold-a', '--no-sdd'], ctx));
+  assert.equal(off.code, 0);
+  assert.doesNotMatch(off.out, /sdd speckit/);
+  assert.equal(specifyRuns().length, 0);
+
+  config(['doors: [agents]', 'sdd: speckit', 'sdd_auto: false', 'repos:', '  brain: .']);
+  const never = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.equal(never.code, 0);
+  assert.doesNotMatch(never.out, /sdd speckit/);
+  assert.equal(specifyRuns().length, 0);
+  assert.ok(!existsSync(join(brain, '.specify')));
+  commitAll();
+});
+
+test('the scaffold does not satisfy the project-document gate it runs in front of', async () => {
+  // Where MV-75 and MV-76 meet, and the only place either can undo the other.
+  // `runScaffold` runs BEFORE `sddGate` in the same command, and what
+  // `specify init` writes at .specify/memory/constitution.md is the UNFILLED
+  // template — so one second after the init, the gate's artifact exists and
+  // nobody has written it. If existence were the whole check, the scaffold
+  // would hand the gate a pass on the exact document MV-76 was built to
+  // refuse: the hole closed at the top and reopened one layer down, in a
+  // command that prints "scaffolded" and green in the same breath.
+  //
+  // The placeholder pin is what stops it, so it is pinned here against the
+  // stub that writes what the real init writes rather than a stand-in that is
+  // kinder than the tool.
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0);
+  await declareBrain('scaffold-a');
+  artifact('specs/001-scaffold-a/spec.md', '# Real spec\n'); // the per-change gate is satisfied
+
+  const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.equal(specifyRuns().length, 1, 'the scaffold must have run in this very command');
+  assert.match(c.out, /scaffolded — brain:\.specify is there now/);
+  assert.ok(existsSync(constitution), 'the init writes the constitution, unfilled');
+  assert.equal(c.code, 1);
+  assert.match(
+    c.out,
+    /constitution\.md is still the unfilled template shipped by the tool \(placeholders remain/,
+  );
   commitAll();
 });
