@@ -236,13 +236,30 @@ matcher, your list of commands — so:
 - Identity is exact. `mvac verify` is multivac's; `mvac verify --strict` is
   yours and is never claimed. The refresh command is recognised by the lock
   preamble multivac generates, which nothing else writes.
-- An update rewrites one command in place. Commands you added beside it stay,
-  in order, and fields multivac does not write — a `timeout`, say — stay with
-  them.
+- An update rewrites one command in place, and fills in the `type` multivac
+  itself writes if the hook was typed by hand without it — a hook missing
+  `type` never runs. Commands you added beside it stay, in order, and fields
+  multivac does not write — a `timeout`, say — stay with them.
 - A matcher is written once, when multivac creates its own entry, and is never
   rewritten afterwards. The matcher on an entry is yours.
 - Dropping the grapher removes multivac's refresh command, not the entry: an
   entry you share with it survives, carrying your commands.
+
+Owning a command is not the same as covering an event. If the only
+`mvac verify` in `PostToolUse` sits in an entry of yours on another matcher —
+`Bash`, say — the gate is not on the edit tools at all, and multivac will not
+rewrite your matcher to get there. It adds its own entry beside yours and says
+so:
+
+```txt
+brain: notice: .claude/settings.json: hooks.PostToolUse already runs `mvac verify`, but not on matcher `Edit|Write|MultiEdit` — the gate has to cover what it gates, so multivac added its own entry beside yours rather than rewrite a matcher it does not own. Delete whichever you do not want by hand.
+```
+
+Adding is reversible and rewriting your matcher is not, so that is the way it
+goes — but the part that is not negotiable is the sentence: an edit gate that
+quietly ends up wired to nothing is the failure this rule exists to prevent.
+The refresh takes no such requirement; it is a navigation aid rather than a
+gate, so it rides wherever its hook already sits.
 
 Earlier versions matched on a *substring* of the command and then replaced the
 whole entry, which could eat a hand-written hook and leave a second copy of

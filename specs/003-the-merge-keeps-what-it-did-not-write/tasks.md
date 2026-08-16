@@ -34,9 +34,11 @@ Depends on: nothing. Blocks: Phase 2.
 - [X] **T005** In `src/doors/settings.ts`, replace the marker-substring
   `ourEntry` with hook-level ownership: an `owns(command): boolean` predicate per
   hook the project installs — whole-string equality for the check command,
-  generated-prefix match on the lock preamble for the refresh command. Carry the
-  sentence `owns only the entry it wrote` in the comment that explains it, and
-  leave no `command.includes(marker)` anywhere in the file. (FR-001, FR-002,
+  generated-prefix match on the lock preamble for the refresh command. The unit
+  of ownership is the HOOK, so the sentence is `owns only the hook it wrote` and
+  MV-74's leg pins the loop that descends into an entry's hooks, not the comment
+  that describes it — a comment survives the revert of the logic it explains.
+  Leave no `command.includes(marker)` anywhere in the file. (FR-001, FR-002,
   FR-003)
 - [X] **T006** In the same file, rewrite `ensureEvent`: find the owned hook
   object across the event's entries, set its `command` in place, and return

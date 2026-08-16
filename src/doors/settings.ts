@@ -73,7 +73,7 @@ type Owned = { entry: Json; hooks: unknown[]; hook: Json };
 /**
  * Every hook object of ours in an event's list. The unit of ownership is the
  * HOOK, never the entry: an entry is the user's grouping — their matcher,
- * their commands — so the merge owns only the entry it wrote, and an entry of
+ * their commands — so the merge owns only the hook it wrote, and an entry of
  * theirs that merely mentions our command is read past, never claimed.
  */
 function ourHooks(list: unknown[], owns: Owns): Owned[] {
@@ -104,27 +104,59 @@ function eventList(hooks: Json, event: string): unknown[] {
   return list;
 }
 
-/** Add (or update in place) one multivac hook; foreign entries never move. */
+/** Remove one value from its array. Not there removes nothing: `indexOf` would
+ *  hand `splice` a -1 and take the tail instead, and this is somebody's
+ *  settings file. Unreachable as the callers stand; the file is the reason. */
+function drop(arr: unknown[], value: unknown): void {
+  const i = arr.indexOf(value);
+  if (i >= 0) arr.splice(i, 1);
+}
+
+/**
+ * Add (or update in place) one multivac hook; foreign entries never move.
+ * Returns a notice when it had to add a copy beside one that already exists.
+ *
+ * `gate` says this hook has to COVER what `matcher` names. A hook of ours in
+ * an entry with a different matcher is still ours to keep fresh, but it does
+ * not gate the edit tools, and rewriting somebody's matcher is the defect this
+ * module was fixed to stop doing — so the gate gets its own entry beside
+ * theirs, and the caller is told. The refresh takes no such requirement: it is
+ * the agent's navigation aid, not a gate, so it rides wherever its hook sits.
+ */
 function ensureEvent(
   hooks: Json,
   event: string,
   owns: Owns,
   command: string,
-  matcher?: string,
-): void {
+  opts: { matcher?: string; gate?: boolean } = {},
+): string | null {
+  const { matcher, gate } = opts;
   const list = eventList(hooks, event);
-  const [mine] = ourHooks(list, owns);
-  if (mine) {
-    // Ours already: rewrite THIS hook's command so a changed grapher is not
-    // stale — and nothing else. Sibling commands stay, fields we do not write
-    // (a `timeout`) stay, and the matcher is never rewritten: it is written
-    // once, on the entry we create below, and belongs to whoever holds it.
-    mine.hook.command = command;
-    return;
+  const mine = ourHooks(list, owns);
+  for (const m of mine) {
+    // Ours already: rewrite THIS hook and nothing else. Sibling commands stay,
+    // fields we do not write (a `timeout`) stay, and the matcher is never
+    // rewritten: it is written once, on the entry we create below, and belongs
+    // to whoever holds it. `command` is a no-op on the gate — there identity IS
+    // the whole command — and carries the refresh, whose tail is the grapher's
+    // own command. `type` is a field we DO write, so a hook of ours that was
+    // hand-typed without it gets completed rather than left malformed: the
+    // harness runs no hook whose type is missing.
+    m.hook.command = command;
+    m.hook.type = 'command';
   }
+  const covers = mine.some((m) => m.entry.matcher === matcher);
+  if (mine.length > 0 && (!gate || covers)) return null;
   const entry: Json = { hooks: [{ type: 'command', command }] };
   if (matcher !== undefined) entry.matcher = matcher;
   list.push(entry);
+  if (mine.length === 0) return null;
+  const where = matcher === undefined ? 'unconditionally' : `on matcher \`${matcher}\``;
+  return (
+    `.claude/settings.json: hooks.${event} already runs \`${command}\`, but not ${where} — ` +
+    'the gate has to cover what it gates, so multivac added its own entry beside yours ' +
+    'rather than rewrite a matcher it does not own. Delete whichever you do not want by hand.'
+  );
 }
 
 /**
@@ -133,6 +165,10 @@ function ensureEvent(
  * further down the list. Reported, never removed: the survivor is now
  * byte-identical to ours, so nothing on disk distinguishes a bug's leftover
  * from a second hook somebody wants. The count is provable; the choice is not.
+ *
+ * Read BEFORE this merge touches anything, so what it counts is what was found
+ * on disk. A copy multivac adds itself in this run announces itself, in the
+ * notice `ensureEvent` returns, and is not reported here as somebody's mess.
  */
 function duplicateNotice(hooks: Json, event: string): string | null {
   const list = hooks[event];
@@ -181,10 +217,19 @@ export function mergeClaudeSettings(
     );
   }
   const matcher = opts.matcher ?? EDIT_TOOLS;
-  ensureEvent(hooks as Json, 'SessionStart', ownsVerify, HOOK_CMD);
-  ensureEvent(hooks as Json, 'PostToolUse', ownsVerify, HOOK_CMD, matcher);
+  const notices: string[] = [];
+  for (const event of ['SessionStart', 'PostToolUse']) {
+    const dup = duplicateNotice(hooks as Json, event);
+    if (dup) notices.push(dup);
+  }
+  for (const added of [
+    ensureEvent(hooks as Json, 'SessionStart', ownsVerify, HOOK_CMD, { gate: true }),
+    ensureEvent(hooks as Json, 'PostToolUse', ownsVerify, HOOK_CMD, { matcher, gate: true }),
+  ]) {
+    if (added) notices.push(added);
+  }
   if (opts.refresh) {
-    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh), matcher);
+    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh), { matcher });
   } else {
     // No grapher declared, or its binary is gone: our hook goes with it —
     // a hook pointing at a missing tool is worse than no hook. Every match is
@@ -193,13 +238,10 @@ export function mergeClaudeSettings(
     const list = (hooks as Json).PostToolUse;
     if (Array.isArray(list)) {
       for (const { entry, hooks: hs, hook } of ourHooks(list, ownsRefresh)) {
-        hs.splice(hs.indexOf(hook), 1);
-        if (hs.length === 0) list.splice(list.indexOf(entry), 1);
+        drop(hs, hook);
+        if (hs.length === 0) drop(list, entry);
       }
     }
   }
-  const notices = ['SessionStart', 'PostToolUse']
-    .map((e) => duplicateNotice(hooks as Json, e))
-    .filter((n): n is string => n !== null);
   return { text: JSON.stringify(settings, null, 2) + '\n', notices };
 }

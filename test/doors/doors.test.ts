@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readlinkSync,
@@ -269,4 +270,28 @@ test('no grapher declared: no refresh entry at all', async () => {
     assert.doesNotMatch(settings, /graph-refresh\.lock/);
     assert.match(settings, /mvac verify/);
   }
+});
+
+// What the merge sees and refuses to settle has to REACH the human: a notice
+// computed and dropped on the floor is the silence this change exists to end.
+test('a duplicate gate left by an older doors is printed, and nothing is deleted', async () => {
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents, claude]\nrepos:\n  api: ../acme-api\n',
+  );
+  const settingsFile = join(eco.brain, '.claude', 'settings.json');
+  mkdirSync(join(eco.brain, '.claude'), { recursive: true });
+  const entry = {
+    matcher: 'Edit|Write|MultiEdit',
+    hooks: [{ type: 'command', command: 'mvac verify' }],
+  };
+  writeFileSync(settingsFile, JSON.stringify({ hooks: { PostToolUse: [entry, entry] } }));
+
+  const { code, out } = await runDoors();
+  assert.equal(code, 0);
+  const notice = out.find((l) => l.includes('runs `mvac verify` 2 times'));
+  assert.ok(notice, out.join('\n')); // it reaches the printed output
+  assert.match(notice!, /^brain: notice: /);
+  assert.match(notice!, /by hand/); // and says who removes it
+  assert.equal(JSON.parse(read(settingsFile)).hooks.PostToolUse.length, 2); // deleted nothing
 });

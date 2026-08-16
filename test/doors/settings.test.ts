@@ -70,6 +70,50 @@ test('a foreign entry that mentions the marker is left alone', () => {
   assert.equal(merged(merged(raw)), merged(raw));
 });
 
+test('a gate under a matcher we do not own gets ours beside it, and says so', () => {
+  // Exactly multivac's command, in an entry multivac did not write, on a
+  // matcher of their own: ours by identity, theirs by grouping. Claiming it
+  // and stopping there would leave the edit tools ungated — silently.
+  const raw = JSON.stringify({
+    hooks: { PostToolUse: [{ matcher: 'Bash', hooks: [{ command: 'mvac verify' }] }] },
+  });
+  const out = mergeClaudeSettings(raw);
+  const post = JSON.parse(out.text).hooks.PostToolUse as {
+    matcher: string;
+    hooks: { command: string }[];
+  }[];
+  assert.equal(post.length, 2);
+  assert.equal(post[0].matcher, 'Bash'); // their matcher is never rewritten
+  assert.equal(post[1].matcher, 'Edit|Write|MultiEdit'); // the gate covers what it gates
+  assert.equal(post[1].hooks[0].command, 'mvac verify');
+  assert.equal(out.notices.length, 1); // and the user is told, not left to find it
+  assert.match(out.notices[0], /PostToolUse/);
+  assert.match(out.notices[0], /Edit\|Write\|MultiEdit/);
+  assert.match(out.notices[0], /added its own entry beside yours/);
+  // A second run adds nothing more — the gate is covered — and the copy it
+  // added last time is now reported as the duplicate it is.
+  const again = mergeClaudeSettings(out.text);
+  assert.equal(JSON.parse(again.text).hooks.PostToolUse.length, 2);
+  assert.equal(again.notices.length, 1);
+  assert.match(again.notices[0], /2 times/);
+});
+
+test('a hook of ours typed by hand is completed, not left malformed', () => {
+  // `type` is a field multivac writes, so a hook that is ours by identity gets
+  // it: the harness runs no hook whose type is missing, and claiming one
+  // without repairing it would gate nothing at all.
+  const raw = JSON.stringify({
+    hooks: {
+      PostToolUse: [{ matcher: 'Edit|Write|MultiEdit', hooks: [{ command: 'mvac verify' }] }],
+    },
+  });
+  const out = mergeClaudeSettings(raw);
+  const post = JSON.parse(out.text).hooks.PostToolUse as { hooks: { type?: string }[] }[];
+  assert.equal(post.length, 1); // claimed, so no second copy is appended
+  assert.equal(post[0].hooks[0].type, 'command');
+  assert.deepEqual(out.notices, []);
+});
+
 test('an update rewrites one hook, not the entry around it', () => {
   const first = merged(null, { refresh: 'graphify update .' });
   // A user adds their own command, and a timeout, to the entry we wrote.
