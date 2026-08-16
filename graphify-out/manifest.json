@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   ".multivac/invariants.md": {
-    "mtime": 1786867853.2902827,
-    "ast_hash": "df00961833c6c57152f5f003a57743b8",
+    "mtime": 1786869013.7227147,
+    "ast_hash": "4a17f2d69c1f61128b5138865a9b466e",
     "semantic_hash": ""
   },
   ".multivac/ritual.md": {
@@ -695,7 +695,7 @@
     "semantic_hash": ""
   },
   "site/content/_index.md": {
-    "mtime": 1786867646.3291442,
+    "mtime": 1786868995.6065192,
     "ast_hash": "2d778cfe49db2318117b6d38205965ff",
     "semantic_hash": ""
   },
@@ -800,8 +800,8 @@
     "semantic_hash": ""
   },
   "site/hugo.yaml": {
-    "mtime": 1786858670.6343694,
-    "ast_hash": "b98b10ba59cc8dcdd2a1a299203de4ce",
+    "mtime": 1786868795.4388463,
+    "ast_hash": "0bdb8a8fed1852c5392000e6e7d9cb66",
     "semantic_hash": ""
   },
   "site/i18n/en.yaml": {
@@ -1104,18 +1104,63 @@
     "ast_hash": "06fd89e478bb8e0e668917a5f02f9055",
     "semantic_hash": ""
   },
-  "test/invariants/site-version.test.ts": {
-    "mtime": 1786867632.405497,
-    "ast_hash": "7e31b900c2137f23c11e8bd1070ac8f4",
+  "specs/001-the-project-document-is-gated-on-existing/spec.md": {
+    "mtime": 1786868795.4394362,
+    "ast_hash": "57a9cd61f50ebb2235fef87a5ddbb5b5",
+    "semantic_hash": ""
+  },
+  "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md": {
+    "mtime": 1786868795.4391668,
+    "ast_hash": "a84d73b0c1a110b77cfca44c044b4b23",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/the-release-says-what-changed.md": {
+    "mtime": 1786868795.4363453,
+    "ast_hash": "7a02e9407518a8bb2978be4ecf0c3b85",
     "semantic_hash": ""
   },
   "specs/001-the-project-document-is-gated-on-existing/plan.md": {
-    "mtime": 1786867379.3830276,
+    "mtime": 1786868795.4392946,
     "ast_hash": "311db0670c3d19d2f5b781de97529b79",
     "semantic_hash": ""
   },
+  "specs/002-the-release-says-what-changed/spec.md": {
+    "mtime": 1786868795.439801,
+    "ast_hash": "0343fec796446c52b672c5cba7c4ed72",
+    "semantic_hash": ""
+  },
+  "specs/002-the-release-says-what-changed/checklists/requirements.md": {
+    "mtime": 1786868795.439607,
+    "ast_hash": "5b53661844038ca86e35df1b600f8e8c",
+    "semantic_hash": ""
+  },
+  "CHANGELOG.md": {
+    "mtime": 1786868795.4367445,
+    "ast_hash": "500145b7d25af2619e491755f625dc23",
+    "semantic_hash": ""
+  },
+  "test/invariants/changelog.test.ts": {
+    "mtime": 1786868795.439998,
+    "ast_hash": "6b7c23fd181d8140bf393517d80ba9aa",
+    "semantic_hash": ""
+  },
+  "specs/002-the-release-says-what-changed/plan.md": {
+    "mtime": 1786868795.4397018,
+    "ast_hash": "6e56aa3e4178a06467033ed06e746004",
+    "semantic_hash": ""
+  },
+  "specs/002-the-release-says-what-changed/tasks.md": {
+    "mtime": 1786868795.4398956,
+    "ast_hash": "704331e8b6d631c0d68f9e7d8d129d57",
+    "semantic_hash": ""
+  },
+  "test/invariants/site-version.test.ts": {
+    "mtime": 1786868995.606617,
+    "ast_hash": "7e31b900c2137f23c11e8bd1070ac8f4",
+    "semantic_hash": ""
+  },
   ".multivac/changes/the-site-quotes-the-version-the-package-declares.md": {
-    "mtime": 1786867841.722941,
+    "mtime": 1786868995.6047444,
     "ast_hash": "8529d40984a25a50e1d384508a54fb84",
     "semantic_hash": ""
   }
