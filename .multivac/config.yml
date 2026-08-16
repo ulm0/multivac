@@ -3,7 +3,9 @@
 # brain==code: this repo is both the brain and the code it governs.
 # `brain: .` says so — anchors target `brain:<glob>`, the change lifecycle
 # branches here, and there is no mount or pin to check.
-doors: [agents]
+doors: [agents, claude]
+sdd: speckit
+grapher: graphify
 authorities: [published, specified, open]
 repos:
   brain: .
