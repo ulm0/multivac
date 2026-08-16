@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Raster source. The PNG/ICO variants cannot carry a prefers-color-scheme
+       query, so they ship opaque: the panel becomes the icon's own ground and
+       the mark reads on either tab strip. The unlit lamp is a dim fill rather
+       than a hollow ring — a 1px ring disappears at 16x16. -->
+  <rect width="64" height="64" rx="14" fill="#111111"/>
+  <circle cx="23" cy="23" r="8" fill="#f2f2f2"/>
+  <circle cx="41" cy="41" r="8" fill="#f2f2f2"/>
+  <circle cx="23" cy="41" r="8" fill="#3f3f3f"/>
+  <circle cx="41" cy="23" r="8" fill="#c3f53c"/>
+</svg>
