@@ -17,12 +17,13 @@ surfaces: closing a change prints the team's ritual — who reviews, who is
 told, what ships before what — as a checklist, never as a gate. Deterministic
 core, no API key required; git is the enforcement floor.
 
-**Status: early build, pre-release.** The day-one capability is implemented
-and tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the
-`change` lifecycle — and multivac develops itself with it: this repo is its
-own brain, its rules are anchored invariants, and CI re-verifies them on every
-push. Published on npm; it has not yet been run against a multi-repo
-ecosystem — the shape it was designed for.
+**Status: released, and early.** It is on npm — [CHANGELOG.md](CHANGELOG.md)
+says what each release contained. The day-one capability is implemented and
+tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the `change`
+lifecycle — and multivac develops itself with it: this repo is its own brain,
+its rules are anchored invariants, and CI re-verifies them on every push. What
+it has not done yet is run against a multi-repo ecosystem — the shape it was
+designed for.
 
 ```sh
 npx multivac init

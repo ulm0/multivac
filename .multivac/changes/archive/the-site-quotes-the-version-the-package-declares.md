@@ -1,9 +1,9 @@
 ---
 slug: the-site-quotes-the-version-the-package-declares
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -13,7 +13,7 @@ invariants:
   retires: []
 claims:
   - id: MV-77
-    statement: "The version the site advertises is the version the package declares, compared by a test because no anchor can compare two files."
+    statement: The version the site advertises is the version the package declares, compared by a test because no anchor can compare two files.
 ---
 
 # The site quotes the version the package declares

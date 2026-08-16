@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   ".multivac/invariants.md": {
-    "mtime": 1786869013.7227147,
-    "ast_hash": "4a17f2d69c1f61128b5138865a9b466e",
+    "mtime": 1786892705.8394012,
+    "ast_hash": "38c194d1861150046d4ee076c25c15fa",
     "semantic_hash": ""
   },
   ".multivac/ritual.md": {
@@ -685,8 +685,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1786861034.4609249,
-    "ast_hash": "9636722429928e6d01f1603316e1ec3d",
+    "mtime": 1786892738.912866,
+    "ast_hash": "545db0584b9ca710734969b76d940be2",
     "semantic_hash": ""
   },
   "site/archetypes/default.md": {
@@ -695,7 +695,7 @@
     "semantic_hash": ""
   },
   "site/content/_index.md": {
-    "mtime": 1786868995.6065192,
+    "mtime": 1786892685.0675838,
     "ast_hash": "2d778cfe49db2318117b6d38205965ff",
     "semantic_hash": ""
   },
@@ -1114,11 +1114,6 @@
     "ast_hash": "a84d73b0c1a110b77cfca44c044b4b23",
     "semantic_hash": ""
   },
-  ".multivac/changes/the-release-says-what-changed.md": {
-    "mtime": 1786868795.4363453,
-    "ast_hash": "7a02e9407518a8bb2978be4ecf0c3b85",
-    "semantic_hash": ""
-  },
   "specs/001-the-project-document-is-gated-on-existing/plan.md": {
     "mtime": 1786868795.4392946,
     "ast_hash": "311db0670c3d19d2f5b781de97529b79",
@@ -1155,13 +1150,18 @@
     "semantic_hash": ""
   },
   "test/invariants/site-version.test.ts": {
-    "mtime": 1786868995.606617,
+    "mtime": 1786892685.0678678,
     "ast_hash": "7e31b900c2137f23c11e8bd1070ac8f4",
     "semantic_hash": ""
   },
-  ".multivac/changes/the-site-quotes-the-version-the-package-declares.md": {
-    "mtime": 1786868995.6047444,
-    "ast_hash": "8529d40984a25a50e1d384508a54fb84",
+  ".multivac/changes/archive/the-site-quotes-the-version-the-package-declares.md": {
+    "mtime": 1786892697.1135855,
+    "ast_hash": "e04415768b32c57fca745df7992dae8c",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/the-release-says-what-changed.md": {
+    "mtime": 1786892705.8389258,
+    "ast_hash": "0b733f190b420e489e85f8d530ac6228",
     "semantic_hash": ""
   }
 }
