@@ -15,7 +15,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, isAbsolute, join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import {
@@ -104,6 +104,23 @@ test('every entry is one multivac can actually own', async () => {
     assert.ok(t.source, `${name}: an entry without a vendor source is a guess`);
   }
   assert.ok(!('aider' in doorTargets));
+});
+
+// MV-73 puts a delete pass inside the directory an entry's `skill` names, so
+// that path is no longer only where bytes are written — it is what gets
+// mirrored. `dirname('SKILL.md')` is `.`, which would resolve the projected
+// directory to the target's ROOT and mirror a user's whole repository against a
+// handful of markdown files. No user could ever cause that: the registry is
+// data this repo ships, so the day such an entry could exist is the day it is
+// added, and this is the check that fails on it.
+test('a skill path names a directory of its own, never the repo root', () => {
+  for (const [name, t] of Object.entries(doorTargets)) {
+    if (!t.skill) continue;
+    const projected = dirname(t.skill);
+    assert.notEqual(projected, '.', `${name}: skill at the target root — doors would mirror the repo`);
+    assert.ok(!projected.startsWith('..'), `${name}: skill outside the target: ${t.skill}`);
+    assert.ok(!isAbsolute(t.skill), `${name}: skill path is absolute: ${t.skill}`);
+  }
 });
 
 test('every entry cites the vendor doc it was read from', () => {

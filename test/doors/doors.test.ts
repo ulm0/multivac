@@ -2,15 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+  existsSync,
   lstatSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   readlinkSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { gitInit, makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
@@ -256,6 +260,89 @@ test('grapher declared + present: harness post-edit entry, git shim untouched', 
       assert.match(shim, /mvac verify/);
     }
   }
+});
+
+// MV-73. `pnpm test` runs from the repo root, so the packaged skill `doors`
+// projects from is `skills/multivac` right here — the same tree MV-72 pins the
+// committed copy against.
+const SKILL_SRC = 'skills/multivac';
+const projected = join(eco.repos.api, '.claude/skills/multivac');
+const skills = join(eco.repos.api, '.claude/skills');
+
+/** Relative paths of every file under `root`, sorted. */
+function tree(root: string): string[] {
+  return readdirSync(root, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile())
+    .map((e) => relative(root, join(e.parentPath, e.name)))
+    .sort();
+}
+
+async function doorsWithSkills(): Promise<void> {
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents, claude]\nrepos:\n  api: ../acme-api\n',
+  );
+  assert.equal((await runDoors()).code, 0);
+}
+
+test('a file the source no longer has is deleted from the copy (MV-73)', async () => {
+  await doorsWithSkills(); // first run: the copy exists and matches
+  assert.deepEqual(tree(projected), tree(SKILL_SRC));
+
+  // A file retired from the source, a whole directory retired with it, a file
+  // a user added, and a projected file edited in place. On disk nothing tells
+  // them apart, and the mirror does not try: the source decides all four.
+  writeFileSync(join(projected, 'references/STALE.md'), '# retired page\n');
+  mkdirSync(join(projected, 'old/deeper'), { recursive: true });
+  writeFileSync(join(projected, 'old/deeper/gone.md'), '# from an old version\n');
+  writeFileSync(join(projected, 'USER.md'), '# my own notes\n');
+  writeFileSync(join(projected, 'SKILL.md'), '# edited by hand\n');
+
+  await doorsWithSkills();
+
+  assert.ok(!existsSync(join(projected, 'references/STALE.md')), 'retired file removed');
+  assert.ok(!existsSync(join(projected, 'old')), 'retired directory removed with its subtree');
+  assert.ok(!existsSync(join(projected, 'USER.md')), 'a file nobody shipped is not ours to keep');
+  assert.equal(read(projected, 'SKILL.md'), read(SKILL_SRC, 'SKILL.md'));
+  // The whole tree, not just the four plants: same file list, same bytes.
+  assert.deepEqual(tree(projected), tree(SKILL_SRC));
+  for (const rel of tree(SKILL_SRC)) {
+    assert.deepEqual(readFileSync(join(projected, rel)), readFileSync(join(SKILL_SRC, rel)));
+  }
+
+  // Idempotent: the run after a correct mirror removes nothing.
+  await doorsWithSkills();
+  assert.deepEqual(tree(projected), tree(SKILL_SRC));
+});
+
+test('a file standing where the source has a directory is resolved, not copied over', async () => {
+  rmSync(join(projected, 'references'), { recursive: true, force: true });
+  writeFileSync(join(projected, 'references'), 'a file with a directory\'s name\n');
+
+  await doorsWithSkills();
+
+  assert.ok(statSync(join(projected, 'references')).isDirectory());
+  assert.deepEqual(tree(projected), tree(SKILL_SRC));
+});
+
+// The bound, and the reason it is load-bearing: `specify init --here` installs
+// ten sibling skills into this very parent. A prune that walked
+// `.claude/skills/` instead of `.claude/skills/multivac/` would delete another
+// tool's installation as a side effect of writing a door.
+test('sibling skills under the same parent survive — the prune never walks the parent', async () => {
+  mkdirSync(join(skills, 'speckit-specify'), { recursive: true });
+  writeFileSync(join(skills, 'speckit-specify/SKILL.md'), '# speckit specify\n');
+  mkdirSync(join(skills, 'speckit-plan/references'), { recursive: true });
+  writeFileSync(join(skills, 'speckit-plan/references/plan.md'), '# speckit plan\n');
+  writeFileSync(join(skills, 'README.md'), '# what lives in this directory\n');
+
+  await doorsWithSkills();
+
+  assert.equal(read(skills, 'speckit-specify/SKILL.md'), '# speckit specify\n');
+  assert.equal(read(skills, 'speckit-plan/references/plan.md'), '# speckit plan\n');
+  assert.equal(read(skills, 'README.md'), '# what lives in this directory\n');
+  // and the door's own AGENTS.md, one level further out again, is untouched
+  assert.match(read(eco.repos.api, 'AGENTS.md'), /consumer door|multivac:begin/);
 });
 
 test('no grapher declared: no refresh entry at all', async () => {

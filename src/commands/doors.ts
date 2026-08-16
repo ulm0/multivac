@@ -4,13 +4,17 @@
 
 import {
   cpSync,
+  type Dirent,
   existsSync,
   lstatSync,
+  mkdirSync,
+  readdirSync,
   readlinkSync,
+  rmSync,
   symlinkSync,
 } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Command, CommandContext, Config } from '../types.js';
 import { ConfigError, LAW_PATH, loadConfig } from '../lib/config.js';
@@ -68,13 +72,54 @@ function linkDoor(dir: string, door: string): string | null {
   }
 }
 
-/** Copy the packaged skill to where the target's `skill` path says it lives. */
+/** Every entry under `root`: relative path -> what it is. Kind and not just
+ *  name, so a file standing where the source has a directory is a difference. */
+function treeKinds(root: string): Map<string, string> {
+  const kind = (e: Dirent): string =>
+    e.isDirectory() ? 'dir' : e.isFile() ? 'file' : 'other';
+  const kinds = new Map<string, string>();
+  for (const e of readdirSync(root, { recursive: true, withFileTypes: true })) {
+    kinds.set(relative(root, join(e.parentPath, e.name)), kind(e));
+  }
+  return kinds;
+}
+
+/**
+ * MV-73: the projection is a mirror, not an accretion. A file the source
+ * stopped shipping belongs to a version of the skill that is gone, so the run
+ * that notices is the run that removes it — and a file somebody added here is
+ * removed by the same rule, because nothing on disk says who wrote it and
+ * guessing would be claiming more than we checked.
+ *
+ * Bounded to `dest` — the directory the registry entry declared — and NEVER its
+ * parent: `specify init` installs ten sibling skills in that same parent, and a
+ * prune walking it would delete another tool's installation. The bound is a
+ * rule about the data, checked over the registry in test/doors/registry.test.ts.
+ *
+ * Removal comes BEFORE the copy on purpose. It only ever touches what the
+ * source does not have, so nothing a failed copy would leave missing is
+ * deleted, and a file sitting where the source has a directory is resolved
+ * rather than failing the copy.
+ */
+function mirror(src: string, dest: string): void {
+  const keep = treeKinds(src);
+  mkdirSync(dest, { recursive: true });
+  for (const [rel, kind] of treeKinds(dest)) {
+    if (keep.get(rel) !== kind) rmSync(join(dest, rel), { recursive: true, force: true });
+  }
+  cpSync(src, dest, { recursive: true });
+}
+
+/** Mirror the packaged skill into where the target's `skill` path says it
+ *  lives — written, and pruned back to what the package still ships. */
 function installSkill(dir: string, skill: string, notices: string[]): void {
   const root = packageRoot();
   const skillSrc = root ? join(root, 'skills', 'multivac') : null;
   if (skillSrc && existsSync(skillSrc)) {
-    cpSync(skillSrc, join(dir, dirname(skill)), { recursive: true });
+    mirror(skillSrc, join(dir, dirname(skill)));
   } else {
+    // No source, no mirror: emptying a user's skill directory over a broken
+    // install of multivac would be this tool doing the damage it reports.
     notices.push(
       'packaged skill skills/multivac missing — reinstall multivac to get it',
     );
