@@ -1161,8 +1161,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_anchor_evaluate_repohandle",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "repohandle"
     },
     {
@@ -1260,8 +1260,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_anchor_match",
-      "community": 21,
-      "community_name": "match.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "match.ts"
     },
     {
@@ -1271,8 +1271,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_anchor_match_match",
-      "community": 21,
-      "community_name": "match.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "match"
     },
     {
@@ -1315,8 +1315,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_anchor_match_reposcanner_untracked",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": ".untracked()"
     },
     {
@@ -1348,8 +1348,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "src_anchor_match_matchesinfile",
-      "community": 21,
-      "community_name": "match.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "matchesinfile()"
     },
     {
@@ -1359,8 +1359,8 @@
       "source_location": "L100",
       "_origin": "ast",
       "id": "src_anchor_match_legscan",
-      "community": 21,
-      "community_name": "match.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "legscan"
     },
     {
@@ -1393,7 +1393,7 @@
       "_origin": "ast",
       "id": "src_anchor_normalize",
       "community": 21,
-      "community_name": "match.ts",
+      "community_name": "normalize.ts",
       "norm_label": "normalize.ts"
     },
     {
@@ -1404,7 +1404,7 @@
       "_origin": "ast",
       "id": "src_anchor_normalize_sqlstatement",
       "community": 21,
-      "community_name": "match.ts",
+      "community_name": "normalize.ts",
       "norm_label": "sqlstatement"
     },
     {
@@ -1415,7 +1415,7 @@
       "_origin": "ast",
       "id": "src_anchor_normalize_dollartag",
       "community": 21,
-      "community_name": "match.ts",
+      "community_name": "normalize.ts",
       "norm_label": "dollartag()"
     },
     {
@@ -1426,7 +1426,7 @@
       "_origin": "ast",
       "id": "src_anchor_normalize_endofquoted",
       "community": 21,
-      "community_name": "match.ts",
+      "community_name": "normalize.ts",
       "norm_label": "endofquoted()"
     },
     {
@@ -1437,7 +1437,7 @@
       "_origin": "ast",
       "id": "src_anchor_normalize_sqlstatements",
       "community": 21,
-      "community_name": "match.ts",
+      "community_name": "normalize.ts",
       "norm_label": "sqlstatements()"
     },
     {
@@ -1448,7 +1448,7 @@
       "_origin": "ast",
       "id": "src_anchor_parse",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "parse.ts"
     },
     {
@@ -1458,7 +1458,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_anchor_parse_parsediagnostic",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "parsediagnostic"
     },
@@ -1469,7 +1469,7 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_anchor_parse_parseresult",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "parseresult"
     },
@@ -1481,7 +1481,7 @@
       "_origin": "ast",
       "id": "src_anchor_parse_nibble",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "nibble()"
     },
     {
@@ -1492,7 +1492,7 @@
       "_origin": "ast",
       "id": "src_anchor_parse_parseanchors",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "parseanchors()"
     },
     {
@@ -1503,7 +1503,7 @@
       "_origin": "ast",
       "id": "src_anchor_parse_collectbrainanchors",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "collectbrainanchors()"
     },
     {
@@ -1514,7 +1514,7 @@
       "_origin": "ast",
       "id": "src_anchor_parse_claimrow",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "claimrow"
     },
     {
@@ -1525,7 +1525,7 @@
       "_origin": "ast",
       "id": "src_anchor_parse_readclaimrows",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "readclaimrows()"
     },
     {
@@ -3130,8 +3130,8 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "src_commands_verify_paint",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "paint()"
     },
     {
@@ -3273,8 +3273,8 @@
       "source_location": "L349",
       "_origin": "ast",
       "id": "src_commands_verify_findstalemount",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "findstalemount()"
     },
     {
@@ -3284,8 +3284,8 @@
       "source_location": "L362",
       "_origin": "ast",
       "id": "src_commands_verify_normurl",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 15,
+      "community_name": "count.ts",
       "norm_label": "normurl()"
     },
     {
@@ -3295,8 +3295,8 @@
       "source_location": "L375",
       "_origin": "ast",
       "id": "src_commands_verify_resolverepokey",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 15,
+      "community_name": "count.ts",
       "norm_label": "resolverepokey()"
     },
     {
@@ -3317,7 +3317,7 @@
       "source_location": "L425",
       "_origin": "ast",
       "id": "src_commands_verify_evaluated",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "evaluated"
     },
@@ -3350,8 +3350,8 @@
       "source_location": "L556",
       "_origin": "ast",
       "id": "src_commands_verify_runverify",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "runverify()"
     },
     {
@@ -3988,8 +3988,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_git",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "git.ts"
     },
     {
@@ -3999,8 +3999,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_git_execfilep",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "execfilep"
     },
     {
@@ -4010,8 +4010,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_lib_git_ambient_git_env",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "ambient_git_env"
     },
     {
@@ -4021,8 +4021,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_lib_git_cleanenv",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "cleanenv()"
     },
     {
@@ -4065,8 +4065,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "src_lib_git_unmergedfiles",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "unmergedfiles()"
     },
     {
@@ -4076,8 +4076,8 @@
       "source_location": "L102",
       "_origin": "ast",
       "id": "src_lib_git_untrackedfiles",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "untrackedfiles()"
     },
     {
@@ -4087,8 +4087,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "src_lib_git_lstree",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "lstree()"
     },
     {
@@ -4098,8 +4098,8 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_lib_git_catfileblobs",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "catfileblobs()"
     },
     {
@@ -4109,8 +4109,8 @@
       "source_location": "L164",
       "_origin": "ast",
       "id": "src_lib_git_headsha",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "headsha()"
     },
     {
@@ -4131,8 +4131,8 @@
       "source_location": "L174",
       "_origin": "ast",
       "id": "src_lib_git_currentbranch",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "currentbranch()"
     },
     {
@@ -4142,8 +4142,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "src_lib_git_remotetrackingref",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "remotetrackingref()"
     },
     {
@@ -4241,8 +4241,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_out",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "out.ts"
     },
     {
@@ -4252,8 +4252,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_lib_out_wrap",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "wrap()"
     },
     {
@@ -4263,8 +4263,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_out_red",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "red"
     },
     {
@@ -4274,8 +4274,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_lib_out_green",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "green"
     },
     {
@@ -4285,8 +4285,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_lib_out_yellow",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "yellow"
     },
     {
@@ -4296,8 +4296,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_lib_out_dim",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "dim"
     },
     {
@@ -4307,8 +4307,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_lib_out_bold",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 8,
+      "community_name": "out.ts",
       "norm_label": "bold"
     },
     {
@@ -4373,8 +4373,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_regex",
-      "community": 16,
-      "community_name": "parse.ts",
+      "community": 59,
+      "community_name": "regex.ts",
       "norm_label": "regex.ts"
     },
     {
@@ -4384,8 +4384,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_lib_regex_regexdialecterror",
-      "community": 16,
-      "community_name": "parse.ts",
+      "community": 59,
+      "community_name": "regex.ts",
       "norm_label": "regexdialecterror"
     },
     {
@@ -4395,8 +4395,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "src_lib_regex_escape_hints",
-      "community": 16,
-      "community_name": "parse.ts",
+      "community": 59,
+      "community_name": "regex.ts",
       "norm_label": "escape_hints"
     },
     {
@@ -4406,8 +4406,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_lib_regex_posix_classes",
-      "community": 16,
-      "community_name": "parse.ts",
+      "community": 59,
+      "community_name": "regex.ts",
       "norm_label": "posix_classes"
     },
     {
@@ -4417,8 +4417,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_lib_regex_compileanchorregex",
-      "community": 16,
-      "community_name": "parse.ts",
+      "community": 2,
+      "community_name": "evaluate.ts",
       "norm_label": "compileanchorregex()"
     },
     {
@@ -4538,7 +4538,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_types",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "types.ts"
     },
@@ -4550,7 +4550,7 @@
       "_origin": "ast",
       "id": "src_types_mode",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "mode"
     },
     {
@@ -4560,7 +4560,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_types_legstate",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "legstate"
     },
@@ -4615,7 +4615,7 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "src_types_anchor",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "anchor"
     },
@@ -4626,7 +4626,7 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "src_types_legresult",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "legresult"
     },
@@ -4637,7 +4637,7 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "src_types_claimresult",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "claimresult"
     },
@@ -4648,7 +4648,7 @@
       "source_location": "L141",
       "_origin": "ast",
       "id": "src_types_verifyreport",
-      "community": 27,
+      "community": 16,
       "community_name": "types.ts",
       "norm_label": "verifyreport"
     },
@@ -4693,7 +4693,7 @@
       "_origin": "ast",
       "id": "test_anchor_normalize_test",
       "community": 21,
-      "community_name": "match.ts",
+      "community_name": "normalize.ts",
       "norm_label": "normalize.test.ts"
     },
     {
@@ -4704,7 +4704,7 @@
       "_origin": "ast",
       "id": "test_anchor_parse_test",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "parse.test.ts"
     },
     {
@@ -5649,8 +5649,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_helpers_regex_test",
-      "community": 16,
-      "community_name": "parse.ts",
+      "community": 59,
+      "community_name": "regex.ts",
       "norm_label": "regex.test.ts"
     },
     {
@@ -5660,8 +5660,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_helpers_scaffold_test",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "scaffold.test.ts"
     },
     {
@@ -5671,8 +5671,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "test_helpers_scaffold_test_eco",
-      "community": 8,
-      "community_name": "git.ts",
+      "community": 7,
+      "community_name": "verify.ts",
       "norm_label": "eco"
     },
     {
@@ -6134,7 +6134,7 @@
       "_origin": "ast",
       "id": "test_skill_test",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "skill.test.ts"
     },
     {
@@ -6145,7 +6145,7 @@
       "_origin": "ast",
       "id": "test_skill_test_root",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "root"
     },
     {
@@ -6156,7 +6156,7 @@
       "_origin": "ast",
       "id": "test_skill_test_skill_dir",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "skill_dir"
     },
     {
@@ -6167,7 +6167,7 @@
       "_origin": "ast",
       "id": "test_skill_test_files",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "files"
     },
     {
@@ -6178,7 +6178,7 @@
       "_origin": "ast",
       "id": "test_skill_test_packcontents",
       "community": 16,
-      "community_name": "parse.ts",
+      "community_name": "types.ts",
       "norm_label": "packcontents"
     },
     {
@@ -7546,6 +7546,72 @@
       "norm_label": "brain==code is a first-class shape"
     },
     {
+      "label": "built-with-itself-includes-the-door.md",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_built_with_itself_includes_the_door",
+      "community": 27,
+      "community_name": "Built with itself includes the door",
+      "norm_label": "built-with-itself-includes-the-door.md"
+    },
+    {
+      "label": "Built with itself includes the door",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
+      "community": 27,
+      "community_name": "Built with itself includes the door",
+      "norm_label": "built with itself includes the door"
+    },
+    {
+      "label": "Generated is not the same as disposable",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L47",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_built_with_itself_includes_the_door_generated_is_not_the_same_as_disposable",
+      "community": 27,
+      "community_name": "Built with itself includes the door",
+      "norm_label": "generated is not the same as disposable"
+    },
+    {
+      "label": "The door was saying more than the law does",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L73",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_built_with_itself_includes_the_door_the_door_was_saying_more_than_the_law_does",
+      "community": 27,
+      "community_name": "Built with itself includes the door",
+      "norm_label": "the door was saying more than the law does"
+    },
+    {
+      "label": "Friction found while doing this",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L81",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_built_with_itself_includes_the_door_friction_found_while_doing_this",
+      "community": 27,
+      "community_name": "Built with itself includes the door",
+      "norm_label": "friction found while doing this"
+    },
+    {
+      "label": "The reservation",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L102",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_built_with_itself_includes_the_door_the_reservation",
+      "community": 27,
+      "community_name": "Built with itself includes the door",
+      "norm_label": "the reservation"
+    },
+    {
       "label": "c2-mit-license.md",
       "file_type": "document",
       "source_file": ".multivac/changes/archive/c2-mit-license.md",
@@ -8014,8 +8080,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_seed_finds_the_contracts",
-      "community": 107,
-      "community_name": "seed-finds-the-contracts.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "seed-finds-the-contracts.md"
     },
     {
@@ -8025,8 +8091,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_seed_finds_the_contracts_seed_finds_the_contracts",
-      "community": 107,
-      "community_name": "seed-finds-the-contracts.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "seed finds the contracts"
     },
     {
@@ -8157,8 +8223,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_chain_arms_either_way",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 83,
+      "community_name": "the-chain-arms-either-way.md",
       "norm_label": "the-chain-arms-either-way.md"
     },
     {
@@ -8168,8 +8234,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_chain_arms_either_way_the_chain_arms_in_every_order",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 83,
+      "community_name": "the-chain-arms-either-way.md",
       "norm_label": "the chain arms in every order"
     },
     {
@@ -8201,8 +8267,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gaps_that_were_not_gaps",
-      "community": 83,
-      "community_name": "the-gaps-that-were-not-gaps.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-gaps-that-were-not-gaps.md"
     },
     {
@@ -8212,8 +8278,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gaps_that_were_not_gaps_the_gaps_that_were_not_gaps",
-      "community": 83,
-      "community_name": "the-gaps-that-were-not-gaps.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the gaps that were not gaps"
     },
     {
@@ -8311,8 +8377,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_refreshes_itself",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 107,
+      "community_name": "the-graph-refreshes-itself.md",
       "norm_label": "the-graph-refreshes-itself.md"
     },
     {
@@ -8322,8 +8388,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_refreshes_itself_the_graph_refreshes_itself",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 107,
+      "community_name": "the-graph-refreshes-itself.md",
       "norm_label": "the graph refreshes itself"
     },
     {
@@ -8333,8 +8399,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ledger_keeps_itself",
-      "community": 109,
-      "community_name": "the-ledger-keeps-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-ledger-keeps-itself.md"
     },
     {
@@ -8344,8 +8410,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ledger_keeps_itself_the_ledger_keeps_itself",
-      "community": 109,
-      "community_name": "the-ledger-keeps-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the ledger keeps itself"
     },
     {
@@ -8355,8 +8421,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_mount_explains_itself",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 109,
+      "community_name": "the-mount-explains-itself.md",
       "norm_label": "the-mount-explains-itself.md"
     },
     {
@@ -8366,8 +8432,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_mount_explains_itself_the_mount_explains_itself",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 109,
+      "community_name": "the-mount-explains-itself.md",
       "norm_label": "the mount explains itself"
     },
     {
@@ -8399,8 +8465,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ramp_is_part_of_the_road",
-      "community": 111,
-      "community_name": "the-ramp-is-part-of-the-road.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-ramp-is-part-of-the-road.md"
     },
     {
@@ -8410,8 +8476,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ramp_is_part_of_the_road_the_on_ramp_help_anchor_count_dry_run_safe_help_readable_verify",
-      "community": 111,
-      "community_name": "the-ramp-is-part-of-the-road.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the on-ramp: help anchor, count dry-run, safe --help, readable verify"
     },
     {
@@ -8465,8 +8531,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sdd_tells_the_agent",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 111,
+      "community_name": "the-sdd-tells-the-agent.md",
       "norm_label": "the-sdd-tells-the-agent.md"
     },
     {
@@ -8476,8 +8542,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sdd_tells_the_agent_the_sdd_tells_the_agent",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 111,
+      "community_name": "the-sdd-tells-the-agent.md",
       "norm_label": "the sdd tells the agent"
     },
     {
@@ -8509,8 +8575,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_small_lies_and_the_shared_lock",
-      "community": 112,
-      "community_name": "the-small-lies-and-the-shared-lock.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-small-lies-and-the-shared-lock.md"
     },
     {
@@ -8520,8 +8586,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_small_lies_and_the_shared_lock_the_small_lies_and_the_shared_lock",
-      "community": 112,
-      "community_name": "the-small-lies-and-the-shared-lock.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the small lies and the shared lock"
     },
     {
@@ -8567,72 +8633,6 @@
       "community": 92,
       "community_name": "verify-untracked-and-pending.md",
       "norm_label": "verify tells untracked from vacuous, and pending from broken"
-    },
-    {
-      "label": "built-with-itself-includes-the-door.md",
-      "file_type": "document",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "multivac_changes_built_with_itself_includes_the_door",
-      "community": 59,
-      "community_name": "Built with itself includes the door",
-      "norm_label": "built-with-itself-includes-the-door.md"
-    },
-    {
-      "label": "Built with itself includes the door",
-      "file_type": "document",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L19",
-      "_origin": "ast",
-      "id": "multivac_changes_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
-      "community": 59,
-      "community_name": "Built with itself includes the door",
-      "norm_label": "built with itself includes the door"
-    },
-    {
-      "label": "Generated is not the same as disposable",
-      "file_type": "document",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L37",
-      "_origin": "ast",
-      "id": "multivac_changes_built_with_itself_includes_the_door_generated_is_not_the_same_as_disposable",
-      "community": 59,
-      "community_name": "Built with itself includes the door",
-      "norm_label": "generated is not the same as disposable"
-    },
-    {
-      "label": "The door was saying more than the law does",
-      "file_type": "document",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L63",
-      "_origin": "ast",
-      "id": "multivac_changes_built_with_itself_includes_the_door_the_door_was_saying_more_than_the_law_does",
-      "community": 59,
-      "community_name": "Built with itself includes the door",
-      "norm_label": "the door was saying more than the law does"
-    },
-    {
-      "label": "Friction found while doing this",
-      "file_type": "document",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L71",
-      "_origin": "ast",
-      "id": "multivac_changes_built_with_itself_includes_the_door_friction_found_while_doing_this",
-      "community": 59,
-      "community_name": "Built with itself includes the door",
-      "norm_label": "friction found while doing this"
-    },
-    {
-      "label": "The reservation",
-      "file_type": "document",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L92",
-      "_origin": "ast",
-      "id": "multivac_changes_built_with_itself_includes_the_door_the_reservation",
-      "community": 59,
-      "community_name": "Built with itself includes the door",
-      "norm_label": "the reservation"
     },
     {
       "label": "every-command-shows-its-flags.md",
@@ -8751,8 +8751,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_the_first_release",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 112,
+      "community_name": "the-first-release.md",
       "norm_label": "the-first-release.md"
     },
     {
@@ -8762,8 +8762,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "multivac_changes_the_first_release_the_first_release",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 112,
+      "community_name": "the-first-release.md",
       "norm_label": "the first release"
     },
     {
@@ -31755,6 +31755,72 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_built_with_itself_includes_the_door",
+      "target": "multivac_changes_archive_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/invariants.md",
+      "source_location": "L515",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_invariants",
+      "target": "multivac_changes_archive_built_with_itself_includes_the_door",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L81",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
+      "target": "multivac_changes_archive_built_with_itself_includes_the_door_friction_found_while_doing_this",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
+      "target": "multivac_changes_archive_built_with_itself_includes_the_door_generated_is_not_the_same_as_disposable",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L73",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
+      "target": "multivac_changes_archive_built_with_itself_includes_the_door_the_door_was_saying_more_than_the_law_does",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/built-with-itself-includes-the-door.md",
+      "source_location": "L102",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
+      "target": "multivac_changes_archive_built_with_itself_includes_the_door_the_reservation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/archive/c2-mit-license.md",
       "source_location": "L19",
       "weight": 1.0,
@@ -32531,72 +32597,6 @@
       "_origin": "ast",
       "source": "multivac_changes_archive_verify_untracked_and_pending",
       "target": "multivac_changes_archive_verify_untracked_and_pending_verify_tells_untracked_from_vacuous_and_pending_from_broken",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L19",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_built_with_itself_includes_the_door",
-      "target": "multivac_changes_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/invariants.md",
-      "source_location": "L515",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_invariants",
-      "target": "multivac_changes_built_with_itself_includes_the_door",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L71",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
-      "target": "multivac_changes_built_with_itself_includes_the_door_friction_found_while_doing_this",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L37",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
-      "target": "multivac_changes_built_with_itself_includes_the_door_generated_is_not_the_same_as_disposable",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L63",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
-      "target": "multivac_changes_built_with_itself_includes_the_door_the_door_was_saying_more_than_the_law_does",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/built-with-itself-includes-the-door.md",
-      "source_location": "L92",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_built_with_itself_includes_the_door_built_with_itself_includes_the_door",
-      "target": "multivac_changes_built_with_itself_includes_the_door_the_reservation",
       "confidence_score": 1.0
     },
     {
@@ -35747,5 +35747,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "447a65a497e9a41048766c8df74592c0a38a54a3"
+  "built_at_commit": "ddf75e6a750330c44a9f85b54efbde2c2abec5eb"
 }

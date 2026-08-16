@@ -1,9 +1,9 @@
 ---
 slug: built-with-itself-includes-the-door
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -13,7 +13,7 @@ invariants:
   retires: []
 claims:
   - id: MV-72
-    statement: "The skill this repo ships and the skill its own harness reads are one tree, held identical by a test because no anchor can compare two trees."
+    statement: The skill this repo ships and the skill its own harness reads are one tree, held identical by a test because no anchor can compare two trees.
 ---
 
 # Built with itself includes the door
