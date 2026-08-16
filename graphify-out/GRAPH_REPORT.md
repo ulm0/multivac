@@ -1,16 +1,16 @@
 # Graph Report - multivac  (2026-08-16)
 
 ## Corpus Check
-- 218 files · ~211,317 words
+- 218 files · ~211,327 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1407 nodes · 2371 edges · 142 communities (105 shown, 37 thin omitted)
+- 1407 nodes · 2372 edges · 141 communities (105 shown, 36 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 13 edges (avg confidence: 0.55)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `038f91a5`
+- Built from commit: `e83e238c`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -100,7 +100,7 @@
 - the-door-for-contributors.md
 - count.ts
 - the-gate-names-its-room.md
-- Changelog
+- README.md
 - Reading `mvac verify`
 - the-panel-lights-up.md
 - Interview: a brain from scratch
@@ -115,7 +115,7 @@
 - gitlab.com/ulm0/multivac/site
 - CLAUDE.md
 - speckit-analyze/SKILL.md
-- the-project-document-is-gated-on-existing.md
+- The release says what changed
 - coexist.test.ts
 - Execution Steps
 - doors-prunes-what-it-projects.md
@@ -125,10 +125,10 @@
 - Feature Specification: [FEATURE NAME]
 - gitInit
 - speckit-plan/SKILL.md
-- The release says what changed
+- ls-files-counts-each-file-once.md
 - the-ramp-is-part-of-the-road.md
 - The merge keeps what it did not write
-- ls-files-counts-each-file-once.md
+- the-site-quotes-the-version-the-package-declares.md
 - speckit-specify/SKILL.md
 - speckit-tasks/SKILL.md
 - Core Principles
@@ -140,13 +140,12 @@
 - speckit-constitution/SKILL.md
 - speckit-taskstoissues/SKILL.md
 - [CHECKLIST TYPE] Checklist: [FEATURE NAME]
-- the-graph-refreshes-itself.md
+- the-project-document-is-gated-on-existing.md
 - each.test.ts
 - scope.test.ts
 - settings.ts
 - consumer.test.ts
-- the-site-quotes-the-version-the-package-declares.md
-- the-ledger-keeps-itself.md
+- the-chain-arms-either-way.md
 
 ## God Nodes (most connected - your core abstractions)
 1. `say()` - 35 edges
@@ -175,7 +174,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (142 total, 37 thin omitted)
+## Communities (141 total, 36 thin omitted)
 
 ### Community 0 - "Specification Quality Checklist: The project document is gated on existing"
 Cohesion: 0.11
@@ -235,7 +234,7 @@ Nodes (16): DoorKind, DoorTarget, doorTargets, GatePoint, GrapherEntry, GrapherQ
 
 ### Community 14 - ".multivac/invariants.md"
 Cohesion: 0.07
-Nodes (14): Close keeps used reservations, Each scope verifies what it is responsible for, seed finds the contracts, The chain arms in every order, The gaps that were not gaps, The graph follows the agent, The mount explains itself, The SDD gates its own flow (+6 more)
+Nodes (15): Close keeps used reservations, Each scope verifies what it is responsible for, seed finds the contracts, The gaps that were not gaps, The graph follows the agent, The graph refreshes itself, The ledger keeps itself, The mount explains itself (+7 more)
 
 ### Community 16 - "parse.ts"
 Cohesion: 0.16
@@ -330,8 +329,8 @@ Cohesion: 0.25
 Nodes (7): `broken` is a fork, not an error, `moved` is where the thinking is, Reading `mvac verify`, Reporting a run to a human, The four outcomes, What gates and what only reports, Where it reads from
 
 ### Community 39 - "Contributing to multivac"
-Cohesion: 0.15
-Nodes (10): Adding a harness, a grapher or an SDD tool, Contributing to multivac, Friction is a finding, Getting set up, Merge requests, The loop, What we ask, Contributing (+2 more)
+Cohesion: 0.29
+Nodes (7): Adding a harness, a grapher or an SDD tool, Contributing to multivac, Friction is a finding, Getting set up, Merge requests, The loop, What we ask
 
 ### Community 40 - "the-change.md"
 Cohesion: 0.29
@@ -437,9 +436,9 @@ Nodes (8): 1. Run the seeder, 2. Read the inventory BY CATEGORY, not by repo, 3.
 Cohesion: 0.33
 Nodes (7): count, run(), USAGE, findMount(), ConfigError, realPath(), samePath()
 
-### Community 85 - "Changelog"
-Cohesion: 0.50
-Nodes (3): 0.1.0 — 2026-08-16, 0.1.1 — 2026-08-16, Changelog
+### Community 85 - "README.md"
+Cohesion: 0.20
+Nodes (6): 0.1.0 — 2026-08-16, 0.1.1 — 2026-08-16, Changelog, Contributing, License, multivac
 
 ### Community 86 - "Reading `mvac verify`"
 Cohesion: 0.25
@@ -460,6 +459,10 @@ Nodes (8): Complexity Tracking, Constitution Check, Documentation (this feature)
 ### Community 106 - "speckit-analyze/SKILL.md"
 Cohesion: 0.08
 Nodes (25): 1. Initialize Analysis Context, 2. Load Artifacts (Progressive Disclosure), 3. Build Semantic Models, 4. Detection Passes (Token-Efficient Analysis), 5. Severity Assignment, 6. Produce Compact Analysis Report, 7. Provide Next Actions, 8. Offer Remediation (+17 more)
+
+### Community 107 - "The release says what changed"
+Cohesion: 0.33
+Nodes (5): Found while doing it, Scope, The release says what changed, The rule, Why a test again
 
 ### Community 109 - "Execution Steps"
 Cohesion: 0.12
@@ -488,10 +491,6 @@ Nodes (5): unmergedFiles(), gitInit(), fixture(), conflicted(), git()
 ### Community 117 - "speckit-plan/SKILL.md"
 Cohesion: 0.18
 Nodes (10): Completion Report, Done When, Key rules, Mandatory Post-Execution Hooks, Outline, Phase 0: Outline & Research, Phase 1: Design & Contracts, Phases (+2 more)
-
-### Community 118 - "The release says what changed"
-Cohesion: 0.33
-Nodes (5): Found while doing it, Scope, The release says what changed, The rule, Why a test again
 
 ### Community 120 - "The merge keeps what it did not write"
 Cohesion: 0.50
@@ -560,7 +559,7 @@ Nodes (4): git(), HEADER, LAW, mountedEco()
 ## Knowledge Gaps
 - **670 isolated node(s):** `common.sh script`, `name`, `version`, `description`, `license` (+665 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **37 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **36 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -569,7 +568,7 @@ _Questions this graph is uniquely positioned to answer:_
   _High betweenness centrality (0.007) - this node is a cross-community bridge._
 - **Why does `makeScratchEcosystem()` connect `fixture.ts` to `file.ts`, `doors.ts`, `init.ts`, `each.test.ts`, `scope.test.ts`, `consumer.test.ts`, `registry.ts`, `loadChange`, `git.ts`, `verify.test.ts`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `multivac — design` connect `multivac — design` to `Contributing to multivac`?**
+- **Why does `multivac — design` connect `multivac — design` to `README.md`?**
   _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **What connects `common.sh script`, `name`, `version` to the rest of the system?**
   _670 weakly-connected nodes found - possible documentation gaps or missing edges._

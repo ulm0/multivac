@@ -9984,8 +9984,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_chain_arms_either_way",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 139,
+      "community_name": "the-chain-arms-either-way.md",
       "norm_label": "the-chain-arms-either-way.md"
     },
     {
@@ -9995,8 +9995,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_chain_arms_either_way_the_chain_arms_in_every_order",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 139,
+      "community_name": "the-chain-arms-either-way.md",
       "norm_label": "the chain arms in every order"
     },
     {
@@ -10138,8 +10138,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_refreshes_itself",
-      "community": 133,
-      "community_name": "the-graph-refreshes-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-graph-refreshes-itself.md"
     },
     {
@@ -10149,8 +10149,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_refreshes_itself_the_graph_refreshes_itself",
-      "community": 133,
-      "community_name": "the-graph-refreshes-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the graph refreshes itself"
     },
     {
@@ -10160,8 +10160,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ledger_keeps_itself",
-      "community": 140,
-      "community_name": "the-ledger-keeps-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-ledger-keeps-itself.md"
     },
     {
@@ -10171,8 +10171,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ledger_keeps_itself_the_ledger_keeps_itself",
-      "community": 140,
-      "community_name": "the-ledger-keeps-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the ledger keeps itself"
     },
     {
@@ -10242,6 +10242,72 @@
       "norm_label": "the on-ramp: help anchor, count dry-run, safe --help, readable verify"
     },
     {
+      "label": "the-release-says-what-changed.md",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_release_says_what_changed",
+      "community": 107,
+      "community_name": "The release says what changed",
+      "norm_label": "the-release-says-what-changed.md"
+    },
+    {
+      "label": "The release says what changed",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_release_says_what_changed_the_release_says_what_changed",
+      "community": 107,
+      "community_name": "The release says what changed",
+      "norm_label": "the release says what changed"
+    },
+    {
+      "label": "The rule",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L32",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_release_says_what_changed_the_rule",
+      "community": 107,
+      "community_name": "The release says what changed",
+      "norm_label": "the rule"
+    },
+    {
+      "label": "Why a test again",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L42",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_release_says_what_changed_why_a_test_again",
+      "community": 107,
+      "community_name": "The release says what changed",
+      "norm_label": "why a test again"
+    },
+    {
+      "label": "Scope",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L51",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_release_says_what_changed_scope",
+      "community": 107,
+      "community_name": "The release says what changed",
+      "norm_label": "scope"
+    },
+    {
+      "label": "Found while doing it",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L58",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_release_says_what_changed_found_while_doing_it",
+      "community": 107,
+      "community_name": "The release says what changed",
+      "norm_label": "found while doing it"
+    },
+    {
       "label": "the-ritual-has-a-home.md",
       "file_type": "document",
       "source_file": ".multivac/changes/archive/the-ritual-has-a-home.md",
@@ -10306,6 +10372,39 @@
       "community": 14,
       "community_name": ".multivac/invariants.md",
       "norm_label": "the sdd tells the agent"
+    },
+    {
+      "label": "the-site-quotes-the-version-the-package-declares.md",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-site-quotes-the-version-the-package-declares.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares",
+      "community": 121,
+      "community_name": "the-site-quotes-the-version-the-package-declares.md",
+      "norm_label": "the-site-quotes-the-version-the-package-declares.md"
+    },
+    {
+      "label": "The site quotes the version the package declares",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-site-quotes-the-version-the-package-declares.md",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
+      "community": 121,
+      "community_name": "the-site-quotes-the-version-the-package-declares.md",
+      "norm_label": "the site quotes the version the package declares"
+    },
+    {
+      "label": "Why this is a test, not an anchor",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/the-site-quotes-the-version-the-package-declares.md",
+      "source_location": "L30",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_why_this_is_a_test_not_an_anchor",
+      "community": 121,
+      "community_name": "the-site-quotes-the-version-the-package-declares.md",
+      "norm_label": "why this is a test, not an anchor"
     },
     {
       "label": "the-site-tells-the-whole-story.md",
@@ -10490,7 +10589,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_ls_files_counts_each_file_once",
-      "community": 121,
+      "community": 118,
       "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "ls-files-counts-each-file-once.md"
     },
@@ -10501,7 +10600,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_ls_files_counts_each_file_once_ls_files_counts_each_file_once",
-      "community": 121,
+      "community": 118,
       "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "ls-files counts each file once"
     },
@@ -10512,7 +10611,7 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "multivac_changes_ls_files_counts_each_file_once_and_the_ignore_rule_that_let_a_symlink_through",
-      "community": 121,
+      "community": 118,
       "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "and the ignore rule that let a symlink through"
     },
@@ -10666,7 +10765,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_the_project_document_is_gated_on_existing",
-      "community": 107,
+      "community": 133,
       "community_name": "the-project-document-is-gated-on-existing.md",
       "norm_label": "the-project-document-is-gated-on-existing.md"
     },
@@ -10677,7 +10776,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_the_project_document_is_gated_on_existing_the_project_document_is_gated_on_existing",
-      "community": 107,
+      "community": 133,
       "community_name": "the-project-document-is-gated-on-existing.md",
       "norm_label": "the project document is gated on existing"
     },
@@ -10688,75 +10787,9 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "multivac_changes_the_project_document_is_gated_on_existing_what_changes",
-      "community": 107,
+      "community": 133,
       "community_name": "the-project-document-is-gated-on-existing.md",
       "norm_label": "what changes"
-    },
-    {
-      "label": "the-release-says-what-changed.md",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "multivac_changes_the_release_says_what_changed",
-      "community": 118,
-      "community_name": "The release says what changed",
-      "norm_label": "the-release-says-what-changed.md"
-    },
-    {
-      "label": "The release says what changed",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L19",
-      "_origin": "ast",
-      "id": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
-      "community": 118,
-      "community_name": "The release says what changed",
-      "norm_label": "the release says what changed"
-    },
-    {
-      "label": "The rule",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L32",
-      "_origin": "ast",
-      "id": "multivac_changes_the_release_says_what_changed_the_rule",
-      "community": 118,
-      "community_name": "The release says what changed",
-      "norm_label": "the rule"
-    },
-    {
-      "label": "Why a test again",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L42",
-      "_origin": "ast",
-      "id": "multivac_changes_the_release_says_what_changed_why_a_test_again",
-      "community": 118,
-      "community_name": "The release says what changed",
-      "norm_label": "why a test again"
-    },
-    {
-      "label": "Scope",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L51",
-      "_origin": "ast",
-      "id": "multivac_changes_the_release_says_what_changed_scope",
-      "community": 118,
-      "community_name": "The release says what changed",
-      "norm_label": "scope"
-    },
-    {
-      "label": "Found while doing it",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L58",
-      "_origin": "ast",
-      "id": "multivac_changes_the_release_says_what_changed_found_while_doing_it",
-      "community": 118,
-      "community_name": "The release says what changed",
-      "norm_label": "found while doing it"
     },
     {
       "label": "the-sdd-arrives-with-its-own-scaffold.md",
@@ -10823,39 +10856,6 @@
       "community": 11,
       "community_name": "The SDD arrives with its own scaffold",
       "norm_label": "order"
-    },
-    {
-      "label": "the-site-quotes-the-version-the-package-declares.md",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-site-quotes-the-version-the-package-declares.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "multivac_changes_the_site_quotes_the_version_the_package_declares",
-      "community": 139,
-      "community_name": "the-site-quotes-the-version-the-package-declares.md",
-      "norm_label": "the-site-quotes-the-version-the-package-declares.md"
-    },
-    {
-      "label": "The site quotes the version the package declares",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-site-quotes-the-version-the-package-declares.md",
-      "source_location": "L19",
-      "_origin": "ast",
-      "id": "multivac_changes_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
-      "community": 139,
-      "community_name": "the-site-quotes-the-version-the-package-declares.md",
-      "norm_label": "the site quotes the version the package declares"
-    },
-    {
-      "label": "Why this is a test, not an anchor",
-      "file_type": "document",
-      "source_file": ".multivac/changes/the-site-quotes-the-version-the-package-declares.md",
-      "source_location": "L30",
-      "_origin": "ast",
-      "id": "multivac_changes_the_site_quotes_the_version_the_package_declares_why_this_is_a_test_not_an_anchor",
-      "community": 139,
-      "community_name": "the-site-quotes-the-version-the-package-declares.md",
-      "norm_label": "why this is a test, not an anchor"
     },
     {
       "label": ".multivac/invariants.md",
@@ -11738,20 +11738,20 @@
       "norm_label": "notes"
     },
     {
-      "label": "CLAUDE.md",
+      "label": "AGENTS.md",
       "file_type": "document",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L1",
       "_origin": "ast",
       "id": "claude",
       "community": 105,
       "community_name": "CLAUDE.md",
-      "norm_label": "claude.md"
+      "norm_label": "agents.md"
     },
     {
       "label": "multivac \u2014 brain door",
       "file_type": "document",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L2",
       "_origin": "ast",
       "id": "claude_multivac_brain_door",
@@ -11767,7 +11767,7 @@
       "_origin": "ast",
       "id": "changelog",
       "community": 85,
-      "community_name": "Changelog",
+      "community_name": "README.md",
       "norm_label": "changelog.md"
     },
     {
@@ -11778,7 +11778,7 @@
       "_origin": "ast",
       "id": "changelog_changelog",
       "community": 85,
-      "community_name": "Changelog",
+      "community_name": "README.md",
       "norm_label": "changelog"
     },
     {
@@ -11789,7 +11789,7 @@
       "_origin": "ast",
       "id": "changelog_0_1_1_2026_08_16",
       "community": 85,
-      "community_name": "Changelog",
+      "community_name": "README.md",
       "norm_label": "0.1.1 \u2014 2026-08-16"
     },
     {
@@ -11800,7 +11800,7 @@
       "_origin": "ast",
       "id": "changelog_0_1_0_2026_08_16",
       "community": 85,
-      "community_name": "Changelog",
+      "community_name": "README.md",
       "norm_label": "0.1.0 \u2014 2026-08-16"
     },
     {
@@ -11953,8 +11953,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "contributing",
-      "community": 39,
-      "community_name": "Contributing to multivac",
+      "community": 85,
+      "community_name": "README.md",
       "norm_label": "contributing.md"
     },
     {
@@ -12041,8 +12041,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "design",
-      "community": 39,
-      "community_name": "Contributing to multivac",
+      "community": 85,
+      "community_name": "README.md",
       "norm_label": "design.md"
     },
     {
@@ -12536,8 +12536,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "readme",
-      "community": 39,
-      "community_name": "Contributing to multivac",
+      "community": 85,
+      "community_name": "README.md",
       "norm_label": "readme.md"
     },
     {
@@ -12547,30 +12547,30 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "readme_multivac",
-      "community": 39,
-      "community_name": "Contributing to multivac",
+      "community": 85,
+      "community_name": "README.md",
       "norm_label": "multivac"
     },
     {
       "label": "Contributing",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L42",
+      "source_location": "L43",
       "_origin": "ast",
       "id": "readme_contributing",
-      "community": 39,
-      "community_name": "Contributing to multivac",
+      "community": 85,
+      "community_name": "README.md",
       "norm_label": "contributing"
     },
     {
       "label": "License",
       "file_type": "document",
       "source_file": "README.md",
-      "source_location": "L50",
+      "source_location": "L51",
       "_origin": "ast",
       "id": "readme_license",
-      "community": 39,
-      "community_name": "Contributing to multivac",
+      "community": 85,
+      "community_name": "README.md",
       "norm_label": "license"
     },
     {
@@ -37804,6 +37804,72 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_the_release_says_what_changed",
+      "target": "multivac_changes_archive_the_release_says_what_changed_the_release_says_what_changed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/invariants.md",
+      "source_location": "L541",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_invariants",
+      "target": "multivac_changes_archive_the_release_says_what_changed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L58",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_the_release_says_what_changed_the_release_says_what_changed",
+      "target": "multivac_changes_archive_the_release_says_what_changed_found_while_doing_it",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L51",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_the_release_says_what_changed_the_release_says_what_changed",
+      "target": "multivac_changes_archive_the_release_says_what_changed_scope",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_the_release_says_what_changed_the_release_says_what_changed",
+      "target": "multivac_changes_archive_the_release_says_what_changed_the_rule",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/the-release-says-what-changed.md",
+      "source_location": "L42",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_the_release_says_what_changed_the_release_says_what_changed",
+      "target": "multivac_changes_archive_the_release_says_what_changed_why_a_test_again",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/archive/the-ritual-has-a-home.md",
       "source_location": "L23",
       "weight": 1.0,
@@ -37854,6 +37920,39 @@
       "_origin": "ast",
       "source": "multivac_invariants",
       "target": "multivac_changes_archive_the_sdd_tells_the_agent",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/the-site-quotes-the-version-the-package-declares.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares",
+      "target": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/invariants.md",
+      "source_location": "L537",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_invariants",
+      "target": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/the-site-quotes-the-version-the-package-declares.md",
+      "source_location": "L30",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
+      "target": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_why_this_is_a_test_not_an_anchor",
       "confidence_score": 1.0
     },
     {
@@ -38222,72 +38321,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L19",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_the_release_says_what_changed",
-      "target": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/invariants.md",
-      "source_location": "L541",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_invariants",
-      "target": "multivac_changes_the_release_says_what_changed",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L58",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
-      "target": "multivac_changes_the_release_says_what_changed_found_while_doing_it",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L51",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
-      "target": "multivac_changes_the_release_says_what_changed_scope",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L32",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
-      "target": "multivac_changes_the_release_says_what_changed_the_rule",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/the-release-says-what-changed.md",
-      "source_location": "L42",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
-      "target": "multivac_changes_the_release_says_what_changed_why_a_test_again",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/the-sdd-arrives-with-its-own-scaffold.md",
       "source_location": "L19",
       "weight": 1.0,
@@ -38349,39 +38382,6 @@
       "_origin": "ast",
       "source": "multivac_changes_the_sdd_arrives_with_its_own_scaffold_the_sdd_arrives_with_its_own_scaffold",
       "target": "multivac_changes_the_sdd_arrives_with_its_own_scaffold_what_this_does_not_automate",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/the-site-quotes-the-version-the-package-declares.md",
-      "source_location": "L19",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_the_site_quotes_the_version_the_package_declares",
-      "target": "multivac_changes_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/invariants.md",
-      "source_location": "L537",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_invariants",
-      "target": "multivac_changes_the_site_quotes_the_version_the_package_declares",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/the-site-quotes-the-version-the-package-declares.md",
-      "source_location": "L30",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
-      "target": "multivac_changes_the_site_quotes_the_version_the_package_declares_why_this_is_a_test_not_an_anchor",
       "confidence_score": 1.0
     },
     {
@@ -39201,7 +39201,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
@@ -39218,6 +39218,17 @@
       "_origin": "ast",
       "source": "changelog",
       "target": "changelog_changelog",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "readme",
+      "target": "changelog",
       "confidence_score": 1.0
     },
     {
@@ -39257,7 +39268,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L48",
+      "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme",
@@ -39400,7 +39411,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L45",
+      "source_location": "L46",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme",
@@ -39488,7 +39499,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L40",
+      "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme",
@@ -39983,7 +39994,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L42",
+      "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme_multivac",
@@ -39994,7 +40005,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "README.md",
-      "source_location": "L50",
+      "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
       "source": "readme_multivac",
@@ -42874,5 +42885,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "038f91a5a184e769ffe0655244d2f8727dfb262b"
+  "built_at_commit": "e83e238ca76a0e9f0d010e648d62f926ecb1ccc3"
 }

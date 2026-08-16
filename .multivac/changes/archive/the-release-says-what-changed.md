@@ -1,9 +1,9 @@
 ---
 slug: the-release-says-what-changed
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
