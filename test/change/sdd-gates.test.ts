@@ -541,6 +541,17 @@ test('an artifact byte-identical to its template, or empty, is refused', async (
   artifact('specs/001-tmpl/plan.md', `${template}\n## Summary\n\nA real plan.\n`);
   const real = await capture(() => change.run(['apply', 'tmpl'], ctx));
   assert.equal(real.code, 0);
+
+  // 4. The comparison FAILS OPEN when it cannot be made. MV-65 chose whole-file
+  //    equality over a placeholder pin, and that choice only holds because a
+  //    repo whose templates were never fetched — or whose preset resolves one
+  //    from somewhere these paths do not name — keeps its honest work. MV-76's
+  //    row leans on this being deliberate, so it is pinned rather than left as
+  //    an assertion about a branch nothing exercises.
+  rmSync(join(brain, '.specify/templates/plan-template.md'), { force: true });
+  const noTemplate = await capture(() => change.run(['apply', 'tmpl'], ctx));
+  assert.equal(noTemplate.code, 0, 'an unreadable template must not refuse an authored artifact');
+  assert.doesNotMatch(noTemplate.out, /byte-identical/);
   commitAll();
 });
 
