@@ -63,10 +63,6 @@ test('every declared target writes what its kind says, and only that', async () 
   assert.ok(!out.some((l) => l.includes('unknown door target')), out.join('\n'));
 
   for (const [name, t] of Object.entries(doorTargets)) {
-    if (t.kind === 'unsupported') {
-      assert.ok(!existsSync(join(eco.brain, t.door)), `${name}: wrote a door it cannot own`);
-      continue;
-    }
     const p = join(eco.brain, t.door);
     assert.ok(existsSync(p), `${name}: ${t.door} not written`);
     if (t.kind === 'symlink') {
@@ -92,21 +88,22 @@ test('a second run is byte-identical — projection is idempotent', async () => 
   assert.deepEqual(snapshot(), once);
 });
 
-test('an unsupported entry is refused, and the notice carries its reason', async () => {
-  const unsupported = Object.entries(doorTargets).filter(([, t]) => t.kind === 'unsupported');
-  assert.ok(unsupported.length > 0, 'the registry records at least one honest gap');
-  for (const [name, t] of unsupported) {
-    assert.ok(t.reason, `${name}: unsupported without a reason`);
-    writeFileSync(
-      join(eco.brain, '.multivac/config.yml'),
-      `doors: [agents, ${name}]\nrepos:\n  api: ../acme-api\n`,
+test('every entry is one multivac can actually own', async () => {
+  // There is no `unsupported` kind any more, and that is the point: a harness
+  // whose door multivac cannot write does not get an entry at all. `aider` had
+  // one, and it appeared among the supported everywhere the registry is
+  // enumerated — in --provider's legal values, in the reference table, in the
+  // count — carrying a note explaining that none of it applied. An unknown
+  // name already gets the list of what IS supported, which is the useful
+  // answer; naming a tool you do not support reads as support.
+  for (const [name, t] of Object.entries(doorTargets)) {
+    assert.ok(
+      ['canonical', 'native', 'symlink', 'stub'].includes(t.kind),
+      `${name}: ${t.kind} is not a kind doors knows how to write`,
     );
-    const out = await runDoors();
-    const notice = out.find((l) => l.includes(`${name}: no door written`));
-    assert.ok(notice, `${name}: refused silently — ${out.join('\n')}`);
-    assert.ok(notice.includes(t.reason!), `${name}: notice drops the reason`);
-    assert.ok(!existsSync(join(eco.brain, t.door)), `${name}: wrote a door anyway`);
+    assert.ok(t.source, `${name}: an entry without a vendor source is a guess`);
   }
+  assert.ok(!('aider' in doorTargets));
 });
 
 test('every entry cites the vendor doc it was read from', () => {

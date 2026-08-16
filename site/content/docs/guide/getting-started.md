@@ -60,14 +60,14 @@ into `config.yml` (`# doors: [agents, claude, cursor]`, `# sdd: opsx`,
 `# grapher: graphify`). Flags enact instead of proposing:
 
 ```sh
-mvac init . --agent claude,cursor --sdd opsx --grapher graphify
+mvac init . --provider claude,cursor --sdd opsx --grapher graphify
 ```
 
 Flags are configuration, not one-shot magic: they land in
 `.multivac/config.yml`. Adopting Cursor in three months is one line in that
 file plus `mvac doors` — not re-running init. The default is `doors: [agents]`:
 `AGENTS.md` alone, already read by Codex, opencode, Cursor, and Claude Code.
-`--agent claude` is what adds the symlink.
+`--provider claude` is what adds the symlink.
 
 ## What the empty brain says
 

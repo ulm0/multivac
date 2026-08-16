@@ -71,3 +71,39 @@ test('help with a command name prints its usage; unknown topic exits 2', async (
   const bad = await run(['help', 'frobnicate'], dir);
   assert.equal(bad.code, 2);
 });
+
+test('every command prints its own flags and arguments, not just a description', async () => {
+  // The gap this closes: `mvac init --help` printed one line and said nothing
+  // about [dir], --provider, --sdd, --grapher or --quiet. Five of nine were
+  // the same. The dispatcher was already right; the data was missing.
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-help-'));
+  for (const c of commands) {
+    const { code, out } = await run([c.name, '--help'], dir);
+    assert.equal(code, 0, `${c.name} --help must exit 0`);
+    assert.ok(
+      out.includes(`usage: multivac ${c.name}`),
+      `${c.name} --help must print a usage line, got:\n${out}`,
+    );
+    assert.ok(
+      out.split('\n').filter(Boolean).length >= 2,
+      `${c.name} --help must say more than its one-line description`,
+    );
+  }
+});
+
+test("init's help lists the adapters the tool actually ships", async () => {
+  // Rendered FROM the registry, so a new adapter cannot leave the help behind
+  // — and `agents` is excluded, because agents.md is the format every door
+  // projects from, not a coding agent anyone could have installed.
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-help-'));
+  const { out } = await run(['init', '--help'], dir);
+  for (const name of ['claude', 'cursor', 'copilot']) {
+    assert.ok(out.includes(name), `--provider should list ${name}`);
+  }
+  // The line that enumerates the legal values, not the prose around it.
+  const values = out.split('\n').find((l) => l.includes('claude, cursor'));
+  assert.ok(values, 'the provider list should be on one line');
+  assert.doesNotMatch(values, /\bagents\b/);
+  for (const name of ['opsx', 'speckit']) assert.ok(out.includes(name));
+  for (const name of ['graphify', 'codegraph']) assert.ok(out.includes(name));
+});

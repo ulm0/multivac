@@ -21,7 +21,7 @@ core, no API key required; git is the enforcement floor.
 and tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the
 `change` lifecycle — and multivac develops itself with it: this repo is its
 own brain, its rules are anchored invariants, and CI re-verifies them on every
-push. Published as **0.1.0**; it has not yet been run against a multi-repo
+push. Published on npm; it has not yet been run against a multi-repo
 ecosystem — the shape it was designed for.
 
 ```sh

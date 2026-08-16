@@ -54,7 +54,7 @@ repos:
 
 Which harness door targets `doors` projects, and which ones `doctor` reports
 on. Names must exist in the shipped registry; see
-[Agent integrations](../integrations) for the nine entries.
+[Agent integrations](../integrations) for the eight entries.
 
 **Without it:** `doors` still writes the canonical `AGENTS.md` into the brain
 and every present repo, because that write is unconditional — but no symlink,
@@ -69,7 +69,7 @@ An unknown name is a notice from `doors` and a line from `doctor`, never a
 crash:
 
 ```txt
-doors      nope: unknown target — known: agents, claude, cursor, opencode, codex, windsurf, gemini, copilot, aider; fix doors: in .multivac/config.yml
+doors      nope: unknown target — known: agents, claude, cursor, opencode, codex, windsurf, gemini, copilot; fix doors: in .multivac/config.yml
 ```
 
 ### `sdd`

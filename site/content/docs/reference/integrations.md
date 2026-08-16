@@ -29,7 +29,14 @@ Then `mvac doors`. That is the whole adoption step — never re-run `init`.
 | `native` | **nothing.** The harness already reads `AGENTS.md`; a second file would be a paraphrase | `opencode`, `codex`, `windsurf` |
 | `symlink` | a second name for the same bytes: `<door> → AGENTS.md` | `claude`, `gemini` |
 | `stub` | a small tool-owned file, optional frontmatter, then the managed block, pointing at `AGENTS.md` | `cursor`, `copilot` |
-| `unsupported` | nothing, and a notice with the reason | `aider` |
+
+There is no kind for "cannot be owned". A harness whose door multivac cannot
+write gets **no entry**, because an entry is how this tool says *supported* —
+it appears in `--provider`'s legal values, in the table above, and in the count
+of what multivac integrates with. `aider` had one for a while, carrying a note
+that explained at length why none of it applied; it read as support to anyone
+who did not open it. An unknown name already gets the list of what is
+supported, which is the answer that helps.
 
 Everything multivac writes into a file it does not fully own lands between
 `<!-- multivac:begin -->` and `<!-- multivac:end -->`. Content outside that
@@ -40,12 +47,11 @@ block is yours and is never touched.
 ```txt
 $ mvac doors
 brain: door + hooks updated
-brain: notice: aider: no door written — aider has no door file multivac can own — run `aider --read AGENTS.md`, or add `read: [AGENTS.md]` to your own .aider.conf.yml, and drop aider from doors:
 ```
 
 ```txt
 $ mvac doctor
-doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: .cursor/rules/multivac.mdc ok · opencode: AGENTS.md ok (read natively) · codex: AGENTS.md ok (read natively) · windsurf: AGENTS.md ok (read natively) · gemini: GEMINI.md ok (symlink) · copilot: .github/copilot-instructions.md ok · aider: no door — aider has no door file multivac can own — run `aider --read AGENTS.md`, or add `read: [AGENTS.md]` to your own .aider.conf.yml, and drop aider from doors:
+doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: .cursor/rules/multivac.mdc ok · opencode: AGENTS.md ok (read natively) · codex: AGENTS.md ok (read natively) · windsurf: AGENTS.md ok (read natively) · gemini: GEMINI.md ok (symlink) · copilot: .github/copilot-instructions.md ok
 ```
 
 ---
@@ -231,29 +237,6 @@ Read `AGENTS.md` at the repo root — the multivac door: what is law here, where
 <!-- multivac:end -->
 ```
 
-## `aider` — not supported
-
-| | |
-| --- | --- |
-| file written | **none** |
-| kind | `unsupported` |
-| source | <https://aider.chat/docs/usage/conventions.html> |
-
-**aider auto-loads no conventions file.** `AGENTS.md` reaches it only per
-run — `aider --read AGENTS.md`, or `/read AGENTS.md` in session — or as a
-`read:` entry in `.aider.conf.yml`, which is a file that also carries model
-and API settings. multivac will not take ownership of a file like that, and
-inventing a door aider does not read would be worse than the gap.
-
-So `doors` refuses it, with the workaround in the refusal:
-
-```txt
-brain: notice: aider: no door written — aider has no door file multivac can own — run `aider --read AGENTS.md`, or add `read: [AGENTS.md]` to your own .aider.conf.yml, and drop aider from doors:
-```
-
-Exit 0. An unsupported entry is a documented gap, not a failure.
-
----
 
 ## Three artifact classes
 
@@ -272,7 +255,7 @@ repo `doors` reaches, regardless of which harness entries you declared — see
 
 ## Detection
 
-With no `--agent` flag, `init` probes for the `detect` path of every registry
+With no `--provider` flag, `init` probes for the `detect` path of every registry
 entry and writes what it found as a **commented proposal**, never as an
 enabled key:
 

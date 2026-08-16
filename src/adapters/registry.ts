@@ -4,9 +4,9 @@ import type { GrapherDecl } from '../types.js';
 // an SDD tool, or a grapher is ADDING AN ENTRY here (an MR to multivac),
 // never a new module. Project config only SELECTS entries by name.
 //
-// Every entry carries the vendor doc it was read from. An entry whose format
-// cannot be verified from a primary source is `unsupported` with the reason —
-// an honest gap beats an invented door.
+// Every entry carries the vendor doc it was read from. A format that cannot be
+// verified from a primary source gets no entry at all — an honest gap beats an
+// invented door, and a named tool reads as a supported one.
 
 export type DoorKind =
   /** AGENTS.md itself — the one file every other kind projects from. */
@@ -16,9 +16,7 @@ export type DoorKind =
   /** A second name for the same bytes. */
   | 'symlink'
   /** A tool-owned file: optional frontmatter, then the managed block. */
-  | 'stub'
-  /** No repo-level door multivac can own. `reason` says what the harness does read. */
-  | 'unsupported';
+  | 'stub';
 
 /** One harness target: what `doors` writes for it. */
 export interface DoorTarget {
@@ -42,8 +40,6 @@ export interface DoorTarget {
    * at `change close` only.
    */
   hookConfig?: { path: string; shape: string; postEdit?: string };
-  /** Why `doors` refuses this target. Required for kind 'unsupported'. */
-  reason?: string;
   /** Path whose presence makes `init` propose this target. */
   detect?: string;
 }
@@ -244,9 +240,19 @@ export interface AdapterSpec {
 }
 
 /**
- * Known harness targets. `agents` is the canonical door; the rest project or
- * declare they need no projection. Four of the eight harnesses read AGENTS.md
- * natively — for those the canonical door IS the integration.
+ * Known harness targets. `agents` is the canonical door; the rest project from
+ * it or read it natively. Three of the eight read AGENTS.md as-is, and for
+ * those the canonical door IS the integration — declaring them changes no
+ * file, it only makes `doctor` account for them.
+ *
+ * A harness whose door multivac cannot own does not get an entry. It used to:
+ * `aider` sat here as `kind: 'unsupported'`, listed among the supported
+ * everywhere the registry is enumerated — in `--provider`'s legal values, in
+ * the reference table, in the count of what this tool integrates with —
+ * carrying a note that said, at length, that none of it applied. Naming a tool
+ * you do not support is worse than silence: it reads as support to everyone
+ * who does not open the entry. An unknown name already gets the list of what
+ * IS supported, which is the answer that helps.
  */
 export const doorTargets: Record<string, DoorTarget> = {
   agents: {
@@ -312,14 +318,6 @@ export const doorTargets: Record<string, DoorTarget> = {
     note: 'Copilot reads AGENTS.md only in some surfaces (cloud agent, VS Code chat, Copilot CLI); .github/copilot-instructions.md is the one path supported everywhere, and it takes plain markdown with no frontmatter.',
     source: 'https://docs.github.com/en/copilot/reference/custom-instructions-support',
     detect: '.github/copilot-instructions.md',
-  },
-  aider: {
-    door: '.aider.conf.yml',
-    kind: 'unsupported',
-    note: 'aider auto-loads no conventions file. AGENTS.md reaches it only per run, `aider --read AGENTS.md` or `/read AGENTS.md`, or as a `read:` entry in .aider.conf.yml — a config file that also carries model and API settings.',
-    reason:
-      'aider has no door file multivac can own — run `aider --read AGENTS.md`, or add `read: [AGENTS.md]` to your own .aider.conf.yml, and drop aider from doors:',
-    source: 'https://aider.chat/docs/usage/conventions.html',
   },
 };
 
