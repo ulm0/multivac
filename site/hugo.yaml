@@ -5,6 +5,15 @@ title: multivac
 module:
   imports:
     - path: github.com/imfing/hextra
+  # The changelog is mounted, never copied. One file serves both surfaces, so
+  # the two cannot disagree — there is no second copy to forget (MV-78).
+  # Declaring any content mount replaces the default, so `content` is restated
+  # here alongside it.
+  mounts:
+    - source: content
+      target: content
+    - source: ../CHANGELOG.md
+      target: content/docs/changelog.md
 
 enableInlineShortcodes: true
 

@@ -1118,8 +1118,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_adapters_detect",
-      "community": 0,
-      "community_name": "doctor.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "detect.ts"
     },
     {
@@ -1129,8 +1129,8 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_adapters_detect_adapterstatus",
-      "community": 0,
-      "community_name": "doctor.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "adapterstatus"
     },
     {
@@ -1140,8 +1140,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_adapters_detect_policy",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "policy"
     },
     {
@@ -1151,8 +1151,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "src_adapters_detect_pathexists",
-      "community": 5,
-      "community_name": "install.ts",
+      "community": 8,
+      "community_name": "doctor.ts",
       "norm_label": "pathexists()"
     },
     {
@@ -1162,7 +1162,7 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_adapters_detect_artifactpresent",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "artifactpresent()"
     },
@@ -1173,8 +1173,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_adapters_detect_sddroot",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "sddroot"
     },
     {
@@ -1184,8 +1184,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "src_adapters_detect_sddroots",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "sddroots()"
     },
     {
@@ -1195,8 +1195,8 @@
       "source_location": "L77",
       "_origin": "ast",
       "id": "src_adapters_detect_artifacthit",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "artifacthit()"
     },
     {
@@ -1206,7 +1206,7 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "src_adapters_detect_onpath",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "onpath()"
     },
@@ -1217,8 +1217,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "src_adapters_detect_binarypresent",
-      "community": 0,
-      "community_name": "doctor.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "binarypresent()"
     },
     {
@@ -1228,8 +1228,8 @@
       "source_location": "L116",
       "_origin": "ast",
       "id": "src_adapters_detect_detected",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "detected"
     },
     {
@@ -1239,8 +1239,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "src_adapters_detect_detectadapters",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "detectadapters()"
     },
     {
@@ -1250,8 +1250,8 @@
       "source_location": "L143",
       "_origin": "ast",
       "id": "src_adapters_detect_detect",
-      "community": 0,
-      "community_name": "doctor.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "detect()"
     },
     {
@@ -1261,8 +1261,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_adapters_refresh",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "refresh.ts"
     },
     {
@@ -1272,8 +1272,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_adapters_refresh_execfilep",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "execfilep"
     },
     {
@@ -1283,8 +1283,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_adapters_refresh_sleep",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "sleep()"
     },
     {
@@ -1294,8 +1294,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "src_adapters_refresh_takelock",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "takelock()"
     },
     {
@@ -1305,8 +1305,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "src_adapters_refresh_refreshgraph",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "refreshgraph()"
     },
     {
@@ -1316,8 +1316,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_adapters_registry",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "registry.ts"
     },
     {
@@ -1327,8 +1327,8 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_adapters_registry_doorkind",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "doorkind"
     },
     {
@@ -1338,8 +1338,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_adapters_registry_doortarget",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "doortarget"
     },
     {
@@ -1349,8 +1349,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "src_adapters_registry_lifecyclepoint",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "lifecyclepoint"
     },
     {
@@ -1360,8 +1360,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "src_adapters_registry_gatepoint",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "gatepoint"
     },
     {
@@ -1371,8 +1371,8 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "src_adapters_registry_sddstep",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "sddstep"
     },
     {
@@ -1382,8 +1382,8 @@
       "source_location": "L154",
       "_origin": "ast",
       "id": "src_adapters_registry_sddprojectstep",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "sddprojectstep"
     },
     {
@@ -1393,8 +1393,8 @@
       "source_location": "L185",
       "_origin": "ast",
       "id": "src_adapters_registry_grapherquery",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "grapherquery"
     },
     {
@@ -1404,8 +1404,8 @@
       "source_location": "L193",
       "_origin": "ast",
       "id": "src_adapters_registry_adapterspec",
-      "community": 0,
-      "community_name": "doctor.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "adapterspec"
     },
     {
@@ -1415,8 +1415,8 @@
       "source_location": "L257",
       "_origin": "ast",
       "id": "src_adapters_registry_doortargets",
-      "community": 0,
-      "community_name": "doctor.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "doortargets"
     },
     {
@@ -1426,8 +1426,8 @@
       "source_location": "L324",
       "_origin": "ast",
       "id": "src_adapters_registry_sdd",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "sdd"
     },
     {
@@ -1437,8 +1437,8 @@
       "source_location": "L468",
       "_origin": "ast",
       "id": "src_adapters_registry_sddnames",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "sddnames"
     },
     {
@@ -1448,8 +1448,8 @@
       "source_location": "L470",
       "_origin": "ast",
       "id": "src_adapters_registry_sddspec",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "sddspec()"
     },
     {
@@ -1459,8 +1459,8 @@
       "source_location": "L475",
       "_origin": "ast",
       "id": "src_adapters_registry_grapherentry",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "grapherentry"
     },
     {
@@ -1470,8 +1470,8 @@
       "source_location": "L505",
       "_origin": "ast",
       "id": "src_adapters_registry_knowngraphers",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "knowngraphers"
     },
     {
@@ -1481,8 +1481,8 @@
       "source_location": "L563",
       "_origin": "ast",
       "id": "src_adapters_registry_graphernames",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "graphernames"
     },
     {
@@ -1492,8 +1492,8 @@
       "source_location": "L578",
       "_origin": "ast",
       "id": "src_adapters_registry_grapherspec",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "grapherspec()"
     },
     {
@@ -1503,8 +1503,8 @@
       "source_location": "L603",
       "_origin": "ast",
       "id": "src_adapters_registry_unverifiedgrapher",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "unverifiedgrapher()"
     },
     {
@@ -1514,8 +1514,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_adapters_sdd",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "sdd.ts"
     },
     {
@@ -1525,8 +1525,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_adapters_sdd_execfilep",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "execfilep"
     },
     {
@@ -1536,8 +1536,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "src_adapters_sdd_openitems",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "openitems()"
     },
     {
@@ -1547,8 +1547,8 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "src_adapters_sdd_readtext",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "readtext()"
     },
     {
@@ -1558,8 +1558,8 @@
       "source_location": "L65",
       "_origin": "ast",
       "id": "src_adapters_sdd_copiedfrom",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "copiedfrom()"
     },
     {
@@ -1569,8 +1569,8 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "src_adapters_sdd_withslug",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "withslug()"
     },
     {
@@ -1580,8 +1580,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "src_adapters_sdd_stepsat",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "stepsat()"
     },
     {
@@ -1591,8 +1591,8 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "src_adapters_sdd_stepsgating",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "stepsgating()"
     },
     {
@@ -1602,8 +1602,8 @@
       "source_location": "L88",
       "_origin": "ast",
       "id": "src_adapters_sdd_stepsledgered",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "stepsledgered()"
     },
     {
@@ -1613,8 +1613,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "src_adapters_sdd_proofof",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "proofof()"
     },
     {
@@ -1624,8 +1624,8 @@
       "source_location": "L100",
       "_origin": "ast",
       "id": "src_adapters_sdd_flowlines",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "flowlines()"
     },
     {
@@ -1635,8 +1635,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "src_adapters_sdd_gateresult",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "gateresult"
     },
     {
@@ -1646,8 +1646,8 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "src_adapters_sdd_verdict",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "verdict"
     },
     {
@@ -1657,8 +1657,8 @@
       "source_location": "L129",
       "_origin": "ast",
       "id": "src_adapters_sdd_toolverdict",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "toolverdict()"
     },
     {
@@ -1668,8 +1668,8 @@
       "source_location": "L172",
       "_origin": "ast",
       "id": "src_adapters_sdd_sddgate",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "sddgate()"
     },
     {
@@ -1679,8 +1679,8 @@
       "source_location": "L329",
       "_origin": "ast",
       "id": "src_adapters_sdd_sddinstructions",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "sddinstructions()"
     },
     {
@@ -1690,7 +1690,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_anchor_evaluate",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "evaluate.ts"
     },
@@ -1701,8 +1701,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_anchor_evaluate_repohandle",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 112,
+      "community_name": "evaluate.ts",
       "norm_label": "repohandle"
     },
     {
@@ -1712,7 +1712,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_anchor_evaluate_evaluateoptions",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "evaluateoptions"
     },
@@ -1723,7 +1723,7 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_anchor_evaluate_rank",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "rank"
     },
@@ -1734,7 +1734,7 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "src_anchor_evaluate_target",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "target"
     },
@@ -1745,7 +1745,7 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "src_anchor_evaluate_taggedmatch",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "taggedmatch"
     },
@@ -1756,7 +1756,7 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "src_anchor_evaluate_rewriteglob",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "rewriteglob()"
     },
@@ -1767,7 +1767,7 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "src_anchor_evaluate_untrackedhint",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "untrackedhint()"
     },
@@ -1778,7 +1778,7 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "src_anchor_evaluate_evalleg",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "evalleg()"
     },
@@ -1789,7 +1789,7 @@
       "source_location": "L258",
       "_origin": "ast",
       "id": "src_anchor_evaluate_evaluateanchors",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "evaluateanchors()"
     },
@@ -1800,7 +1800,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_anchor_match",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "match.ts"
     },
@@ -1811,7 +1811,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_anchor_match_match",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "match"
     },
@@ -1822,7 +1822,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_anchor_match_reposcanner",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "reposcanner"
     },
@@ -1833,7 +1833,7 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "src_anchor_match_reposcanner_constructor",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": ".constructor()"
     },
@@ -1844,7 +1844,7 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_anchor_match_reposcanner_files",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": ".files()"
     },
@@ -1855,7 +1855,7 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_anchor_match_reposcanner_untracked",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": ".untracked()"
     },
@@ -1866,7 +1866,7 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "src_anchor_match_reposcanner_prefetch",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": ".prefetch()"
     },
@@ -1877,7 +1877,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "src_anchor_match_reposcanner_read",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": ".read()"
     },
@@ -1888,7 +1888,7 @@
       "source_location": "L84",
       "_origin": "ast",
       "id": "src_anchor_match_matchesinfile",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "matchesinfile()"
     },
@@ -1899,7 +1899,7 @@
       "source_location": "L100",
       "_origin": "ast",
       "id": "src_anchor_match_legscan",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "legscan"
     },
@@ -1910,7 +1910,7 @@
       "source_location": "L111",
       "_origin": "ast",
       "id": "src_anchor_match_scanleg",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "scanleg()"
     },
@@ -1921,7 +1921,7 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "src_anchor_match_scanwholerepo",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "scanwholerepo()"
     },
@@ -1932,7 +1932,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_anchor_normalize",
-      "community": 62,
+      "community": 59,
       "community_name": "normalize.ts",
       "norm_label": "normalize.ts"
     },
@@ -1943,7 +1943,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_anchor_normalize_sqlstatement",
-      "community": 62,
+      "community": 59,
       "community_name": "normalize.ts",
       "norm_label": "sqlstatement"
     },
@@ -1954,7 +1954,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_anchor_normalize_dollartag",
-      "community": 62,
+      "community": 59,
       "community_name": "normalize.ts",
       "norm_label": "dollartag()"
     },
@@ -1965,7 +1965,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "src_anchor_normalize_endofquoted",
-      "community": 62,
+      "community": 59,
       "community_name": "normalize.ts",
       "norm_label": "endofquoted()"
     },
@@ -1976,7 +1976,7 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_anchor_normalize_sqlstatements",
-      "community": 62,
+      "community": 59,
       "community_name": "normalize.ts",
       "norm_label": "sqlstatements()"
     },
@@ -1987,8 +1987,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_anchor_parse",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "parse.ts"
     },
     {
@@ -1998,7 +1998,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_anchor_parse_parsediagnostic",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "parsediagnostic"
     },
@@ -2009,8 +2009,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_anchor_parse_parseresult",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "parseresult"
     },
     {
@@ -2020,8 +2020,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_anchor_parse_nibble",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "nibble()"
     },
     {
@@ -2031,8 +2031,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_anchor_parse_parseanchors",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "parseanchors()"
     },
     {
@@ -2042,8 +2042,8 @@
       "source_location": "L168",
       "_origin": "ast",
       "id": "src_anchor_parse_collectbrainanchors",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "collectbrainanchors()"
     },
     {
@@ -2053,8 +2053,8 @@
       "source_location": "L191",
       "_origin": "ast",
       "id": "src_anchor_parse_claimrow",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "claimrow"
     },
     {
@@ -2064,8 +2064,8 @@
       "source_location": "L197",
       "_origin": "ast",
       "id": "src_anchor_parse_readclaimrows",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "readclaimrows()"
     },
     {
@@ -2097,8 +2097,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_change_file_repo_statuses",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "repo_statuses"
     },
     {
@@ -2152,7 +2152,7 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_change_file_changesdir",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "changesdir()"
     },
@@ -2163,7 +2163,7 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "src_change_file_changepath",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "changepath()"
     },
@@ -2174,8 +2174,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "src_change_file_changerel",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "changerel()"
     },
     {
@@ -2251,8 +2251,8 @@
       "source_location": "L221",
       "_origin": "ast",
       "id": "src_change_file_scaffoldchange",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "scaffoldchange()"
     },
     {
@@ -2262,7 +2262,7 @@
       "source_location": "L235",
       "_origin": "ast",
       "id": "src_change_file_loadchange",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "loadchange()"
     },
@@ -2273,7 +2273,7 @@
       "source_location": "L264",
       "_origin": "ast",
       "id": "src_change_file_savechange",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "savechange()"
     },
@@ -2328,8 +2328,8 @@
       "source_location": "L330",
       "_origin": "ast",
       "id": "src_change_file_landingplan",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "landingplan()"
     },
     {
@@ -2350,7 +2350,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_change_reserve",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "reserve.ts"
     },
@@ -2361,7 +2361,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_change_reserve_lawpath",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "lawpath()"
     },
@@ -2372,7 +2372,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_change_reserve_lawrelchange",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "lawrelchange()"
     },
@@ -2383,7 +2383,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_change_reserve_lawrow",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "lawrow"
     },
@@ -2394,7 +2394,7 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "src_change_reserve_lawrows",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "lawrows()"
     },
@@ -2405,7 +2405,7 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "src_change_reserve_readlaw",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "readlaw()"
     },
@@ -2416,7 +2416,7 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "src_change_reserve_owns",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "owns()"
     },
@@ -2427,7 +2427,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "src_change_reserve_nextfreeid",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "nextfreeid()"
     },
@@ -2438,7 +2438,7 @@
       "source_location": "L82",
       "_origin": "ast",
       "id": "src_change_reserve_sleep",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "sleep()"
     },
@@ -2449,7 +2449,7 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "src_change_reserve_withlawlock",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "withlawlock()"
     },
@@ -2460,7 +2460,7 @@
       "source_location": "L116",
       "_origin": "ast",
       "id": "src_change_reserve_insertrow",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "insertrow()"
     },
@@ -2471,7 +2471,7 @@
       "source_location": "L130",
       "_origin": "ast",
       "id": "src_change_reserve_writelaw",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "writelaw()"
     },
@@ -2482,7 +2482,7 @@
       "source_location": "L136",
       "_origin": "ast",
       "id": "src_change_reserve_reservation",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "reservation"
     },
@@ -2493,7 +2493,7 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "src_change_reserve_reserveid",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "reserveid()"
     },
@@ -2504,7 +2504,7 @@
       "source_location": "L160",
       "_origin": "ast",
       "id": "src_change_reserve_reserveidlocked",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "reserveidlocked()"
     },
@@ -2515,7 +2515,7 @@
       "source_location": "L198",
       "_origin": "ast",
       "id": "src_change_reserve_releaseunused",
-      "community": 12,
+      "community": 2,
       "community_name": "reserve.ts",
       "norm_label": "releaseunused()"
     },
@@ -2527,7 +2527,7 @@
       "_origin": "ast",
       "id": "src_cli",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "cli.ts"
     },
     {
@@ -2538,7 +2538,7 @@
       "_origin": "ast",
       "id": "src_cli_version",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "version()"
     },
     {
@@ -2549,7 +2549,7 @@
       "_origin": "ast",
       "id": "src_cli_usage",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "usage()"
     },
     {
@@ -2560,7 +2560,7 @@
       "_origin": "ast",
       "id": "src_cli_main",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "main()"
     },
     {
@@ -2581,8 +2581,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_commands_change_execfilep",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "execfilep"
     },
     {
@@ -2592,8 +2592,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "src_commands_change_commitbookkeeping",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "commitbookkeeping()"
     },
     {
@@ -2603,8 +2603,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "src_commands_change_runsdd",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "runsdd()"
     },
     {
@@ -2614,8 +2614,8 @@
       "source_location": "L94",
       "_origin": "ast",
       "id": "src_commands_change_gatesdd",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "gatesdd()"
     },
     {
@@ -2625,8 +2625,8 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "src_commands_change_repoentryof",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "repoentryof()"
     },
     {
@@ -2636,8 +2636,8 @@
       "source_location": "L117",
       "_origin": "ast",
       "id": "src_commands_change_clone",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "clone()"
     },
     {
@@ -2724,8 +2724,8 @@
       "source_location": "L236",
       "_origin": "ast",
       "id": "src_commands_change_hasorigin",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "hasorigin()"
     },
     {
@@ -2735,8 +2735,8 @@
       "source_location": "L243",
       "_origin": "ast",
       "id": "src_commands_change_repoabs",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "repoabs()"
     },
     {
@@ -2801,8 +2801,8 @@
       "source_location": "L359",
       "_origin": "ast",
       "id": "src_commands_change_removeworktrees",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "removeworktrees()"
     },
     {
@@ -2812,8 +2812,8 @@
       "source_location": "L385",
       "_origin": "ast",
       "id": "src_commands_change_greenfield",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "greenfield()"
     },
     {
@@ -2823,8 +2823,8 @@
       "source_location": "L395",
       "_origin": "ast",
       "id": "src_commands_change_invariantstates",
-      "community": 12,
-      "community_name": "reserve.ts",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "invariantstates()"
     },
     {
@@ -2834,8 +2834,8 @@
       "source_location": "L401",
       "_origin": "ast",
       "id": "src_commands_change_anchoredclaimids",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "anchoredclaimids()"
     },
     {
@@ -2845,8 +2845,8 @@
       "source_location": "L415",
       "_origin": "ast",
       "id": "src_commands_change_bump",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "bump()"
     },
     {
@@ -2856,8 +2856,8 @@
       "source_location": "L420",
       "_origin": "ast",
       "id": "src_commands_change_cmdnew",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "cmdnew()"
     },
     {
@@ -2867,8 +2867,8 @@
       "source_location": "L485",
       "_origin": "ast",
       "id": "src_commands_change_cmdplan",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "cmdplan()"
     },
     {
@@ -2878,8 +2878,8 @@
       "source_location": "L556",
       "_origin": "ast",
       "id": "src_commands_change_cmdapply",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "cmdapply()"
     },
     {
@@ -2889,8 +2889,8 @@
       "source_location": "L609",
       "_origin": "ast",
       "id": "src_commands_change_cmdland",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "cmdland()"
     },
     {
@@ -2900,8 +2900,8 @@
       "source_location": "L692",
       "_origin": "ast",
       "id": "src_commands_change_cmdclose",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "cmdclose()"
     },
     {
@@ -2944,7 +2944,7 @@
       "source_location": "L845",
       "_origin": "ast",
       "id": "src_commands_change_change",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "change"
     },
@@ -2955,8 +2955,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_count",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "count.ts"
     },
     {
@@ -2966,8 +2966,8 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_commands_count_usage",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "usage"
     },
     {
@@ -2977,8 +2977,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_commands_count_run",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "run()"
     },
     {
@@ -2988,8 +2988,8 @@
       "source_location": "L132",
       "_origin": "ast",
       "id": "src_commands_count_count",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "count"
     },
     {
@@ -2999,7 +2999,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_doctor",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "doctor.ts"
     },
@@ -3010,7 +3010,7 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "src_commands_doctor_label",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "label()"
     },
@@ -3021,7 +3021,7 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_commands_doctor_fmtage",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "fmtage()"
     },
@@ -3032,7 +3032,7 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "src_commands_doctor_presentrepodirs",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "presentrepodirs()"
     },
@@ -3043,7 +3043,7 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "src_commands_doctor_doorstate",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "doorstate()"
     },
@@ -3054,7 +3054,7 @@
       "source_location": "L103",
       "_origin": "ast",
       "id": "src_commands_doctor_projectdoclines",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "projectdoclines()"
     },
@@ -3065,7 +3065,7 @@
       "source_location": "L155",
       "_origin": "ast",
       "id": "src_commands_doctor_sddlines",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "sddlines()"
     },
@@ -3076,7 +3076,7 @@
       "source_location": "L196",
       "_origin": "ast",
       "id": "src_commands_doctor_graphstale",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "graphstale()"
     },
@@ -3087,7 +3087,7 @@
       "source_location": "L208",
       "_origin": "ast",
       "id": "src_commands_doctor_grapherlines",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "grapherlines()"
     },
@@ -3098,7 +3098,7 @@
       "source_location": "L268",
       "_origin": "ast",
       "id": "src_commands_doctor_reposline",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "reposline()"
     },
@@ -3109,7 +3109,7 @@
       "source_location": "L298",
       "_origin": "ast",
       "id": "src_commands_doctor_branchesline",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "branchesline()"
     },
@@ -3120,7 +3120,7 @@
       "source_location": "L345",
       "_origin": "ast",
       "id": "src_commands_doctor_pinsline",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "pinsline()"
     },
@@ -3131,7 +3131,7 @@
       "source_location": "L403",
       "_origin": "ast",
       "id": "src_commands_doctor_alongsideparts",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "alongsideparts()"
     },
@@ -3142,7 +3142,7 @@
       "source_location": "L436",
       "_origin": "ast",
       "id": "src_commands_doctor_hooksline",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "hooksline()"
     },
@@ -3153,7 +3153,7 @@
       "source_location": "L514",
       "_origin": "ast",
       "id": "src_commands_doctor_scripttext",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "scripttext()"
     },
@@ -3164,7 +3164,7 @@
       "source_location": "L526",
       "_origin": "ast",
       "id": "src_commands_doctor_buildcritical",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "buildcritical()"
     },
@@ -3175,7 +3175,7 @@
       "source_location": "L550",
       "_origin": "ast",
       "id": "src_commands_doctor_untrackedline",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "untrackedline()"
     },
@@ -3186,7 +3186,7 @@
       "source_location": "L599",
       "_origin": "ast",
       "id": "src_commands_doctor_doctorreport",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "doctorreport()"
     },
@@ -3198,7 +3198,7 @@
       "_origin": "ast",
       "id": "src_commands_doctor_doctorcommand",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "doctorcommand"
     },
     {
@@ -3208,7 +3208,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_doors",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "doors.ts"
     },
@@ -3219,7 +3219,7 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_commands_doors_known_targets",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "known_targets"
     },
@@ -3230,7 +3230,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "src_commands_doors_readornull",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "readornull()"
     },
@@ -3241,7 +3241,7 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_commands_doors_packageroot",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "packageroot()"
     },
@@ -3252,7 +3252,7 @@
       "source_location": "L53",
       "_origin": "ast",
       "id": "src_commands_doors_linkdoor",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "linkdoor()"
     },
@@ -3263,7 +3263,7 @@
       "source_location": "L72",
       "_origin": "ast",
       "id": "src_commands_doors_installskill",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "installskill()"
     },
@@ -3274,7 +3274,7 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "src_commands_doors_installhookconfig",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "installhookconfig()"
     },
@@ -3285,7 +3285,7 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "src_commands_doors_projectinto",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "projectinto()"
     },
@@ -3296,7 +3296,7 @@
       "source_location": "L166",
       "_origin": "ast",
       "id": "src_commands_doors_run",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "run()"
     },
@@ -3307,7 +3307,7 @@
       "source_location": "L213",
       "_origin": "ast",
       "id": "src_commands_doors_doorscommand",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "doorscommand"
     },
@@ -3319,7 +3319,7 @@
       "_origin": "ast",
       "id": "src_commands_help",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "help.ts"
     },
     {
@@ -3330,7 +3330,7 @@
       "_origin": "ast",
       "id": "src_commands_help_usagefor",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "usagefor()"
     },
     {
@@ -3341,7 +3341,7 @@
       "_origin": "ast",
       "id": "src_commands_help_topics",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "topics"
     },
     {
@@ -3352,7 +3352,7 @@
       "_origin": "ast",
       "id": "src_commands_help_run",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "run()"
     },
     {
@@ -3363,7 +3363,7 @@
       "_origin": "ast",
       "id": "src_commands_help_helpcommand",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "helpcommand"
     },
     {
@@ -3374,7 +3374,7 @@
       "_origin": "ast",
       "id": "src_commands_index",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "index.ts"
     },
     {
@@ -3385,7 +3385,7 @@
       "_origin": "ast",
       "id": "src_commands_index_commands",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "commands"
     },
     {
@@ -3527,8 +3527,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_repos",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "repos.ts"
     },
     {
@@ -3538,8 +3538,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_commands_repos_execfilep",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "execfilep"
     },
     {
@@ -3549,8 +3549,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_commands_repos_reposlist",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "reposlist()"
     },
     {
@@ -3560,8 +3560,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "src_commands_repos_repossync",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "repossync()"
     },
     {
@@ -3571,8 +3571,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "src_commands_repos_reposcommand",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "reposcommand"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_seed",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "seed.ts"
     },
     {
@@ -3593,8 +3593,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_commands_seed_namesome",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "namesome()"
     },
     {
@@ -3604,8 +3604,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_commands_seed_deploystacks",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "deploystacks()"
     },
     {
@@ -3615,8 +3615,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_commands_seed_openquestions",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "openquestions()"
     },
     {
@@ -3626,8 +3626,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "src_commands_seed_runseed",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "runseed()"
     },
     {
@@ -3637,8 +3637,8 @@
       "source_location": "L146",
       "_origin": "ast",
       "id": "src_commands_seed_seed",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "seed"
     },
     {
@@ -3648,7 +3648,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_verify",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "verify.ts"
     },
@@ -3659,7 +3659,7 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "src_commands_verify_state_order",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "state_order"
     },
@@ -3670,7 +3670,7 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "src_commands_verify_paint",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "paint()"
     },
@@ -3681,8 +3681,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "src_commands_verify_openchangeclaims",
-      "community": 1,
-      "community_name": "file.ts",
+      "community": 114,
+      "community_name": "verify.ts",
       "norm_label": "openchangeclaims()"
     },
     {
@@ -3692,7 +3692,7 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "src_commands_verify_fmtage",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "fmtage()"
     },
@@ -3703,7 +3703,7 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "src_commands_verify_diagnostic",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "diagnostic"
     },
@@ -3714,7 +3714,7 @@
       "source_location": "L104",
       "_origin": "ast",
       "id": "src_commands_verify_stalenesslines",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "stalenesslines()"
     },
@@ -3725,7 +3725,7 @@
       "source_location": "L161",
       "_origin": "ast",
       "id": "src_commands_verify_verifyscope",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "verifyscope"
     },
@@ -3736,7 +3736,7 @@
       "source_location": "L167",
       "_origin": "ast",
       "id": "src_commands_verify_evaluateopts",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "evaluateopts"
     },
@@ -3747,7 +3747,7 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "src_commands_verify_reposource",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "reposource"
     },
@@ -3758,7 +3758,7 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "src_commands_verify_short",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "short()"
     },
@@ -3769,7 +3769,7 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "src_commands_verify_worktreeat",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "worktreeat()"
     },
@@ -3780,7 +3780,7 @@
       "source_location": "L207",
       "_origin": "ast",
       "id": "src_commands_verify_braindrift",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "braindrift()"
     },
@@ -3791,7 +3791,7 @@
       "source_location": "L234",
       "_origin": "ast",
       "id": "src_commands_verify_resolvesources",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "resolvesources()"
     },
@@ -3802,8 +3802,8 @@
       "source_location": "L321",
       "_origin": "ast",
       "id": "src_commands_verify_findmount",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "findmount()"
     },
     {
@@ -3813,7 +3813,7 @@
       "source_location": "L349",
       "_origin": "ast",
       "id": "src_commands_verify_findstalemount",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "findstalemount()"
     },
@@ -3824,7 +3824,7 @@
       "source_location": "L362",
       "_origin": "ast",
       "id": "src_commands_verify_normurl",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "normurl()"
     },
@@ -3835,7 +3835,7 @@
       "source_location": "L375",
       "_origin": "ast",
       "id": "src_commands_verify_resolverepokey",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "resolverepokey()"
     },
@@ -3846,7 +3846,7 @@
       "source_location": "L414",
       "_origin": "ast",
       "id": "src_commands_verify_leggates",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "leggates()"
     },
@@ -3857,7 +3857,7 @@
       "source_location": "L425",
       "_origin": "ast",
       "id": "src_commands_verify_evaluated",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "evaluated"
     },
@@ -3868,7 +3868,7 @@
       "source_location": "L442",
       "_origin": "ast",
       "id": "src_commands_verify_evaluatecore",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "evaluatecore()"
     },
@@ -3890,7 +3890,7 @@
       "source_location": "L556",
       "_origin": "ast",
       "id": "src_commands_verify_runverify",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "runverify()"
     },
@@ -3901,8 +3901,8 @@
       "source_location": "L727",
       "_origin": "ast",
       "id": "src_commands_verify_verify",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 136,
+      "community_name": "scope.test.ts",
       "norm_label": "verify"
     },
     {
@@ -3912,8 +3912,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_block",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 5,
+      "community_name": "doors.ts",
       "norm_label": "block.ts"
     },
     {
@@ -3923,8 +3923,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_doors_block_renderblock",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 5,
+      "community_name": "doors.ts",
       "norm_label": "renderblock()"
     },
     {
@@ -3934,8 +3934,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "src_doors_block_findmarker",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 5,
+      "community_name": "doors.ts",
       "norm_label": "findmarker()"
     },
     {
@@ -3945,8 +3945,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "src_doors_block_applymanagedblock",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 5,
+      "community_name": "doors.ts",
       "norm_label": "applymanagedblock()"
     },
     {
@@ -3956,8 +3956,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_brain",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "brain.ts"
     },
     {
@@ -3967,7 +3967,7 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_doors_brain_countactiveinvariants",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "countactiveinvariants()"
     },
@@ -3978,8 +3978,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_doors_brain_projectlawlines",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "projectlawlines()"
     },
     {
@@ -3989,8 +3989,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "src_doors_brain_grapherlines",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "grapherlines()"
     },
     {
@@ -4000,8 +4000,8 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "src_doors_brain_renderbraindoor",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 7,
+      "community_name": "sdd.ts",
       "norm_label": "renderbraindoor()"
     },
     {
@@ -4011,8 +4011,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_consumer",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 5,
+      "community_name": "doors.ts",
       "norm_label": "consumer.ts"
     },
     {
@@ -4022,7 +4022,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_doors_consumer_renderconsumerdoor",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "renderconsumerdoor()"
     },
@@ -4033,8 +4033,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_settings",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 137,
+      "community_name": "settings.ts",
       "norm_label": "settings.ts"
     },
     {
@@ -4044,8 +4044,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_doors_settings_json",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 137,
+      "community_name": "settings.ts",
       "norm_label": "json"
     },
     {
@@ -4055,8 +4055,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_doors_settings_refreshhookcmd",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 137,
+      "community_name": "settings.ts",
       "norm_label": "refreshhookcmd()"
     },
     {
@@ -4066,8 +4066,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "src_doors_settings_ourentry",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 137,
+      "community_name": "settings.ts",
       "norm_label": "ourentry()"
     },
     {
@@ -4077,8 +4077,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "src_doors_settings_ensureevent",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 137,
+      "community_name": "settings.ts",
       "norm_label": "ensureevent()"
     },
     {
@@ -4088,8 +4088,8 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "src_doors_settings_mergeclaudesettings",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 137,
+      "community_name": "settings.ts",
       "norm_label": "mergeclaudesettings()"
     },
     {
@@ -4099,7 +4099,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_hooks_install",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "install.ts"
     },
@@ -4110,7 +4110,7 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_hooks_install_execfilep",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "execfilep"
     },
@@ -4121,7 +4121,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "src_hooks_install_hook_names",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "hook_names"
     },
@@ -4132,7 +4132,7 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_hooks_install_hookname",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "hookname"
     },
@@ -4143,7 +4143,7 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_hooks_install_manager_configs",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "manager_configs"
     },
@@ -4154,7 +4154,7 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "src_hooks_install_hooksreport",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "hooksreport"
     },
@@ -4165,7 +4165,7 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "src_hooks_install_findrunner",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "findrunner()"
     },
@@ -4176,7 +4176,7 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "src_hooks_install_precommitgate",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "precommitgate"
     },
@@ -4187,7 +4187,7 @@
       "source_location": "L126",
       "_origin": "ast",
       "id": "src_hooks_install_shim",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "shim()"
     },
@@ -4198,7 +4198,7 @@
       "source_location": "L169",
       "_origin": "ast",
       "id": "src_hooks_install_verifyargs",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "verifyargs()"
     },
@@ -4209,7 +4209,7 @@
       "source_location": "L173",
       "_origin": "ast",
       "id": "src_hooks_install_gitconfig",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "gitconfig()"
     },
@@ -4220,7 +4220,7 @@
       "source_location": "L187",
       "_origin": "ast",
       "id": "src_hooks_install_githooksdir",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "githooksdir()"
     },
@@ -4231,7 +4231,7 @@
       "source_location": "L198",
       "_origin": "ast",
       "id": "src_hooks_install_chainedhooks",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "chainedhooks()"
     },
@@ -4242,7 +4242,7 @@
       "source_location": "L217",
       "_origin": "ast",
       "id": "src_hooks_install_installalongside",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "installalongside()"
     },
@@ -4253,7 +4253,7 @@
       "source_location": "L259",
       "_origin": "ast",
       "id": "src_hooks_install_installhooks",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "installhooks()"
     },
@@ -4352,8 +4352,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_config_configerror",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "configerror"
     },
     {
@@ -4407,7 +4407,7 @@
       "source_location": "L60",
       "_origin": "ast",
       "id": "src_lib_config_channelref",
-      "community": 0,
+      "community": 8,
       "community_name": "doctor.ts",
       "norm_label": "channelref()"
     },
@@ -4528,7 +4528,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_git",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "git.ts"
     },
@@ -4539,7 +4539,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_git_execfilep",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "execfilep"
     },
@@ -4550,7 +4550,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_lib_git_ambient_git_env",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "ambient_git_env"
     },
@@ -4561,7 +4561,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_lib_git_cleanenv",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "cleanenv()"
     },
@@ -4572,8 +4572,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_lib_git_gitfailure",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "gitfailure()"
     },
     {
@@ -4594,7 +4594,7 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "src_lib_git_lsfiles",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "lsfiles()"
     },
@@ -4605,8 +4605,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "src_lib_git_unmergedfiles",
-      "community": 85,
-      "community_name": "git.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "unmergedfiles()"
     },
     {
@@ -4616,7 +4616,7 @@
       "source_location": "L102",
       "_origin": "ast",
       "id": "src_lib_git_untrackedfiles",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "untrackedfiles()"
     },
@@ -4627,7 +4627,7 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "src_lib_git_lstree",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "lstree()"
     },
@@ -4638,7 +4638,7 @@
       "source_location": "L120",
       "_origin": "ast",
       "id": "src_lib_git_catfileblobs",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "catfileblobs()"
     },
@@ -4649,7 +4649,7 @@
       "source_location": "L164",
       "_origin": "ast",
       "id": "src_lib_git_headsha",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "headsha()"
     },
@@ -4660,7 +4660,7 @@
       "source_location": "L169",
       "_origin": "ast",
       "id": "src_lib_git_revparse",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "revparse()"
     },
@@ -4671,7 +4671,7 @@
       "source_location": "L174",
       "_origin": "ast",
       "id": "src_lib_git_currentbranch",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "currentbranch()"
     },
@@ -4682,7 +4682,7 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "src_lib_git_remotetrackingref",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "remotetrackingref()"
     },
@@ -4693,7 +4693,7 @@
       "source_location": "L198",
       "_origin": "ast",
       "id": "src_lib_git_lastfetchage",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "lastfetchage()"
     },
@@ -4704,7 +4704,7 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "src_lib_git_lstreegitlink",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "lstreegitlink()"
     },
@@ -4726,7 +4726,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_glob",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "glob.ts"
     },
@@ -4737,7 +4737,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_lib_glob_opts",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "opts"
     },
@@ -4748,7 +4748,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_lib_glob_excludeglobs",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "excludeglobs()"
     },
@@ -4759,8 +4759,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_lib_glob_makematcher",
-      "community": 0,
-      "community_name": "doctor.ts",
+      "community": 112,
+      "community_name": "evaluate.ts",
       "norm_label": "makematcher()"
     },
     {
@@ -4770,7 +4770,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "src_lib_glob_filterfiles",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "filterfiles()"
     },
@@ -4781,7 +4781,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_out",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "out.ts"
     },
@@ -4792,7 +4792,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_lib_out_wrap",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "wrap()"
     },
@@ -4803,7 +4803,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_out_red",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "red"
     },
@@ -4814,7 +4814,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_lib_out_green",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "green"
     },
@@ -4825,7 +4825,7 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_lib_out_yellow",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "yellow"
     },
@@ -4836,7 +4836,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_lib_out_dim",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "dim"
     },
@@ -4847,7 +4847,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_lib_out_bold",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "bold"
     },
@@ -4858,8 +4858,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_lib_out_say",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "say()"
     },
     {
@@ -4869,8 +4869,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_lib_out_warn",
-      "community": 2,
-      "community_name": "say",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "warn()"
     },
     {
@@ -4880,8 +4880,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_paths",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "paths.ts"
     },
     {
@@ -4891,8 +4891,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_paths_realpath",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "realpath()"
     },
     {
@@ -4902,8 +4902,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_lib_paths_samepath",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 83,
+      "community_name": "count.ts",
       "norm_label": "samepath()"
     },
     {
@@ -4914,7 +4914,7 @@
       "_origin": "ast",
       "id": "src_lib_regex",
       "community": 16,
-      "community_name": "regex.ts",
+      "community_name": "parse.ts",
       "norm_label": "regex.ts"
     },
     {
@@ -4925,7 +4925,7 @@
       "_origin": "ast",
       "id": "src_lib_regex_regexdialecterror",
       "community": 16,
-      "community_name": "regex.ts",
+      "community_name": "parse.ts",
       "norm_label": "regexdialecterror"
     },
     {
@@ -4936,7 +4936,7 @@
       "_origin": "ast",
       "id": "src_lib_regex_escape_hints",
       "community": 16,
-      "community_name": "regex.ts",
+      "community_name": "parse.ts",
       "norm_label": "escape_hints"
     },
     {
@@ -4947,7 +4947,7 @@
       "_origin": "ast",
       "id": "src_lib_regex_posix_classes",
       "community": 16,
-      "community_name": "regex.ts",
+      "community_name": "parse.ts",
       "norm_label": "posix_classes"
     },
     {
@@ -4957,7 +4957,7 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_lib_regex_compileanchorregex",
-      "community": 59,
+      "community": 112,
       "community_name": "evaluate.ts",
       "norm_label": "compileanchorregex()"
     },
@@ -4968,8 +4968,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_ritual",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "ritual.ts"
     },
     {
@@ -4979,8 +4979,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_lib_ritual_ritualchecklist",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "ritualchecklist()"
     },
     {
@@ -4990,8 +4990,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_seed_inventory",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "inventory.ts"
     },
     {
@@ -5001,8 +5001,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_seed_inventory_opts",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "opts"
     },
     {
@@ -5012,8 +5012,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_seed_inventory_excludes",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "excludes"
     },
     {
@@ -5023,8 +5023,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_seed_inventory_category",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "category"
     },
     {
@@ -5034,8 +5034,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_seed_inventory_categories",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "categories"
     },
     {
@@ -5045,8 +5045,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "src_seed_inventory_excluded",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "excluded"
     },
     {
@@ -5056,8 +5056,8 @@
       "source_location": "L181",
       "_origin": "ast",
       "id": "src_seed_inventory_matchers",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "matchers"
     },
     {
@@ -5067,8 +5067,8 @@
       "source_location": "L191",
       "_origin": "ast",
       "id": "src_seed_inventory_classify",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 61,
+      "community_name": "git.ts",
       "norm_label": "classify()"
     },
     {
@@ -5078,8 +5078,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_types",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 20,
+      "community_name": "types.ts",
       "norm_label": "types.ts"
     },
     {
@@ -5089,8 +5089,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_types_mode",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 20,
+      "community_name": "types.ts",
       "norm_label": "mode"
     },
     {
@@ -5100,8 +5100,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_types_legstate",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 20,
+      "community_name": "types.ts",
       "norm_label": "legstate"
     },
     {
@@ -5111,8 +5111,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_types_grapherdecl",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "grapherdecl"
     },
     {
@@ -5122,8 +5122,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_types_repoentry",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 20,
+      "community_name": "types.ts",
       "norm_label": "repoentry"
     },
     {
@@ -5133,8 +5133,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "src_types_config",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 5,
+      "community_name": "doors.ts",
       "norm_label": "config"
     },
     {
@@ -5144,8 +5144,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "src_types_exclusion",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 112,
+      "community_name": "evaluate.ts",
       "norm_label": "exclusion"
     },
     {
@@ -5155,8 +5155,8 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "src_types_anchor",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "anchor"
     },
     {
@@ -5166,7 +5166,7 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "src_types_legresult",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "legresult"
     },
@@ -5177,7 +5177,7 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "src_types_claimresult",
-      "community": 7,
+      "community": 114,
       "community_name": "verify.ts",
       "norm_label": "claimresult"
     },
@@ -5199,8 +5199,8 @@
       "source_location": "L149",
       "_origin": "ast",
       "id": "src_types_commandcontext",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 20,
+      "community_name": "types.ts",
       "norm_label": "commandcontext"
     },
     {
@@ -5211,7 +5211,7 @@
       "_origin": "ast",
       "id": "src_types_command",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "command"
     },
     {
@@ -5222,7 +5222,7 @@
       "_origin": "ast",
       "id": "src_types_command_run",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": ".run()"
     },
     {
@@ -5232,7 +5232,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_anchor_normalize_test",
-      "community": 62,
+      "community": 59,
       "community_name": "normalize.ts",
       "norm_label": "normalize.test.ts"
     },
@@ -5243,8 +5243,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_anchor_parse_test",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "parse.test.ts"
     },
     {
@@ -5254,7 +5254,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_apply_base_test",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "apply-base.test.ts"
     },
@@ -5265,7 +5265,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "test_change_apply_base_test_git",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "git()"
     },
@@ -5276,7 +5276,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "test_change_apply_base_test_capture",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "capture()"
     },
@@ -5287,7 +5287,7 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "test_change_apply_base_test_brainwithstaleremote",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "brainwithstaleremote()"
     },
@@ -5298,7 +5298,7 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "test_change_apply_base_test_wt",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "wt()"
     },
@@ -5309,7 +5309,7 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "test_change_apply_base_test_blockworktree",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "blockworktree()"
     },
@@ -5320,7 +5320,7 @@
       "source_location": "L64",
       "_origin": "ast",
       "id": "test_change_apply_base_test_declare",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "declare()"
     },
@@ -5331,7 +5331,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_change_test",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "change.test.ts"
     },
@@ -5342,7 +5342,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "test_change_change_test_tmp",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "tmp"
     },
@@ -5353,7 +5353,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "test_change_change_test_eco",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "eco"
     },
@@ -5364,7 +5364,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "test_change_change_test_ctx",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "ctx"
     },
@@ -5375,7 +5375,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "test_change_change_test_svc",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "svc"
     },
@@ -5386,7 +5386,7 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "test_change_change_test_gitout",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "gitout()"
     },
@@ -5397,7 +5397,7 @@
       "source_location": "L76",
       "_origin": "ast",
       "id": "test_change_change_test_wt",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "wt()"
     },
@@ -5408,7 +5408,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_concurrency_test",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "concurrency.test.ts"
     },
@@ -5419,7 +5419,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "test_change_concurrency_test_tmp",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "tmp"
     },
@@ -5430,7 +5430,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "test_change_concurrency_test_eco",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "eco"
     },
@@ -5441,7 +5441,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "test_change_concurrency_test_ctx",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "ctx"
     },
@@ -5452,7 +5452,7 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "test_change_concurrency_test_gitout",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "gitout()"
     },
@@ -5463,7 +5463,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "test_change_concurrency_test_wt",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "wt()"
     },
@@ -5474,7 +5474,7 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "test_change_concurrency_test_declare",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "declare()"
     },
@@ -5518,7 +5518,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_grapher_refresh_test",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "grapher-refresh.test.ts"
     },
@@ -5529,7 +5529,7 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "test_change_grapher_refresh_test_git",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "git()"
     },
@@ -5540,7 +5540,7 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "test_change_grapher_refresh_test_capture",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "capture()"
     },
@@ -5551,7 +5551,7 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "test_change_grapher_refresh_test_makebrain",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "makebrain()"
     },
@@ -5562,7 +5562,7 @@
       "source_location": "L75",
       "_origin": "ast",
       "id": "test_change_grapher_refresh_test_makegrapherbin",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "makegrapherbin()"
     },
@@ -5573,7 +5573,7 @@
       "source_location": "L85",
       "_origin": "ast",
       "id": "test_change_grapher_refresh_test_landedchange",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "landedchange()"
     },
@@ -5584,7 +5584,7 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "test_change_grapher_refresh_test_withpath",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "withpath()"
     },
@@ -5595,7 +5595,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "lifecycle-polish.test.ts"
     },
@@ -5606,7 +5606,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_git",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "git()"
     },
@@ -5617,7 +5617,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_wt",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "wt()"
     },
@@ -5628,7 +5628,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_capture",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "capture()"
     },
@@ -5639,7 +5639,7 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_brain",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "brain()"
     },
@@ -5650,7 +5650,7 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_declare",
-      "community": 61,
+      "community": 24,
       "community_name": "loadChange",
       "norm_label": "declare()"
     },
@@ -5661,8 +5661,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_ritual_test",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "ritual.test.ts"
     },
     {
@@ -5672,8 +5672,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "test_change_ritual_test_tmp",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "tmp()"
     },
     {
@@ -5683,8 +5683,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "test_change_ritual_test_capture",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "capture()"
     },
     {
@@ -5694,8 +5694,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "test_change_ritual_test_landedchange",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 1,
+      "community_name": "file.ts",
       "norm_label": "landedchange()"
     },
     {
@@ -5838,7 +5838,7 @@
       "_origin": "ast",
       "id": "test_cli_count_test",
       "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community_name": "fixture.ts",
       "norm_label": "count.test.ts"
     },
     {
@@ -5849,7 +5849,7 @@
       "_origin": "ast",
       "id": "test_cli_count_test_eco",
       "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community_name": "fixture.ts",
       "norm_label": "eco()"
     },
     {
@@ -5860,7 +5860,7 @@
       "_origin": "ast",
       "id": "test_cli_count_test_commitfile",
       "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community_name": "fixture.ts",
       "norm_label": "commitfile()"
     },
     {
@@ -5871,7 +5871,7 @@
       "_origin": "ast",
       "id": "test_cli_count_test_run",
       "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community_name": "fixture.ts",
       "norm_label": "run()"
     },
     {
@@ -5882,7 +5882,7 @@
       "_origin": "ast",
       "id": "test_cli_help_test",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "help.test.ts"
     },
     {
@@ -5893,7 +5893,7 @@
       "_origin": "ast",
       "id": "test_cli_help_test_run",
       "community": 20,
-      "community_name": "index.ts",
+      "community_name": "types.ts",
       "norm_label": "run()"
     },
     {
@@ -5903,8 +5903,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doctor_adapters_test",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "adapters.test.ts"
     },
     {
@@ -5914,8 +5914,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "test_doctor_adapters_test_tmp",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "tmp"
     },
     {
@@ -5925,8 +5925,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "test_doctor_adapters_test_emptydir",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "emptydir"
     },
     {
@@ -5936,8 +5936,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "test_doctor_adapters_test_withpath",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "withpath()"
     },
     {
@@ -5947,8 +5947,8 @@
       "source_location": "L35",
       "_origin": "ast",
       "id": "test_doctor_adapters_test_acme",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 12,
+      "community_name": "detect.ts",
       "norm_label": "acme"
     },
     {
@@ -5958,7 +5958,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doctor_doctor_test",
-      "community": 112,
+      "community": 113,
       "community_name": "fixture.ts",
       "norm_label": "doctor.test.ts"
     },
@@ -5969,7 +5969,7 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "test_doctor_doctor_test_line",
-      "community": 112,
+      "community": 113,
       "community_name": "fixture.ts",
       "norm_label": "line()"
     },
@@ -5980,8 +5980,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doors_block_test",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 5,
+      "community_name": "doors.ts",
       "norm_label": "block.test.ts"
     },
     {
@@ -5991,7 +5991,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doors_doors_test",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "doors.test.ts"
     },
@@ -6002,7 +6002,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "test_doors_doors_test_eco",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "eco"
     },
@@ -6013,7 +6013,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "test_doors_doors_test_read",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "read()"
     },
@@ -6024,7 +6024,7 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "test_doors_doors_test_rundoors",
-      "community": 43,
+      "community": 5,
       "community_name": "doors.ts",
       "norm_label": "rundoors()"
     },
@@ -6035,8 +6035,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doors_registry_test",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "registry.test.ts"
     },
     {
@@ -6046,8 +6046,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "test_doors_registry_test_eco",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "eco"
     },
     {
@@ -6057,8 +6057,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "test_doors_registry_test_names",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "names"
     },
     {
@@ -6068,8 +6068,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "test_doors_registry_test_rundoors",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "rundoors()"
     },
     {
@@ -6079,8 +6079,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "test_doors_registry_test_snapshot",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "snapshot()"
     },
     {
@@ -6090,8 +6090,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "test_doors_registry_test_order",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 13,
+      "community_name": "registry.ts",
       "norm_label": "order"
     },
     {
@@ -6101,8 +6101,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doors_settings_test",
-      "community": 43,
-      "community_name": "doors.ts",
+      "community": 137,
+      "community_name": "settings.ts",
       "norm_label": "settings.test.ts"
     },
     {
@@ -6112,7 +6112,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_helpers_fixture",
-      "community": 112,
+      "community": 113,
       "community_name": "fixture.ts",
       "norm_label": "fixture.ts"
     },
@@ -6123,8 +6123,8 @@
       "source_location": "L8",
       "_origin": "ast",
       "id": "test_helpers_fixture_scratchecosystem",
-      "community": 24,
-      "community_name": "scope.test.ts",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "scratchecosystem"
     },
     {
@@ -6134,7 +6134,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "test_helpers_fixture_git",
-      "community": 112,
+      "community": 113,
       "community_name": "fixture.ts",
       "norm_label": "git()"
     },
@@ -6145,8 +6145,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "test_helpers_fixture_gitinit",
-      "community": 112,
-      "community_name": "fixture.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "gitinit()"
     },
     {
@@ -6156,7 +6156,7 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "test_helpers_fixture_publishrepo",
-      "community": 112,
+      "community": 113,
       "community_name": "fixture.ts",
       "norm_label": "publishrepo()"
     },
@@ -6167,7 +6167,7 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "test_helpers_fixture_initrepo",
-      "community": 112,
+      "community": 113,
       "community_name": "fixture.ts",
       "norm_label": "initrepo()"
     },
@@ -6179,7 +6179,7 @@
       "_origin": "ast",
       "id": "test_helpers_fixture_makescratchecosystem",
       "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community_name": "fixture.ts",
       "norm_label": "makescratchecosystem()"
     },
     {
@@ -6190,7 +6190,7 @@
       "_origin": "ast",
       "id": "test_helpers_regex_test",
       "community": 16,
-      "community_name": "regex.ts",
+      "community_name": "parse.ts",
       "norm_label": "regex.test.ts"
     },
     {
@@ -6200,7 +6200,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_helpers_scaffold_test",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "scaffold.test.ts"
     },
@@ -6211,7 +6211,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "test_helpers_scaffold_test_eco",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "eco"
     },
@@ -6244,7 +6244,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_init_coexist_test",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "coexist.test.ts"
     },
@@ -6255,7 +6255,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "test_init_coexist_test_tmp",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "tmp()"
     },
@@ -6266,7 +6266,7 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "test_init_coexist_test_capture",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "capture()"
     },
@@ -6277,7 +6277,7 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "test_init_coexist_test_git",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "git()"
     },
@@ -6288,7 +6288,7 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "test_init_coexist_test_isignored",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "isignored()"
     },
@@ -6299,7 +6299,7 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "test_init_coexist_test_line",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "line()"
     },
@@ -6310,7 +6310,7 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "test_init_coexist_test_runhook",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "runhook()"
     },
@@ -6321,7 +6321,7 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "test_init_coexist_test_saleorhooks",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "saleorhooks()"
     },
@@ -6332,7 +6332,7 @@
       "source_location": "L210",
       "_origin": "ast",
       "id": "test_init_coexist_test_stubprecommit",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "stubprecommit()"
     },
@@ -6343,7 +6343,7 @@
       "source_location": "L219",
       "_origin": "ast",
       "id": "test_init_coexist_test_withpath",
-      "community": 19,
+      "community": 108,
       "community_name": "coexist.test.ts",
       "norm_label": "withpath()"
     },
@@ -6354,8 +6354,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_init_hook_shim_test",
-      "community": 5,
-      "community_name": "install.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "hook-shim.test.ts"
     },
     {
@@ -6365,8 +6365,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "test_init_hook_shim_test_fixture",
-      "community": 5,
-      "community_name": "install.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "fixture()"
     },
     {
@@ -6376,8 +6376,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "test_init_hook_shim_test_fake",
-      "community": 5,
-      "community_name": "install.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "fake()"
     },
     {
@@ -6387,8 +6387,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "test_init_hook_shim_test_runhook",
-      "community": 5,
-      "community_name": "install.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "runhook()"
     },
     {
@@ -6398,7 +6398,7 @@
       "source_location": "L49",
       "_origin": "ast",
       "id": "test_init_hook_shim_test_runnerwith",
-      "community": 5,
+      "community": 43,
       "community_name": "install.ts",
       "norm_label": "runnerwith()"
     },
@@ -6458,6 +6458,28 @@
       "norm_label": "legacybrain()"
     },
     {
+      "label": "changelog.test.ts",
+      "file_type": "code",
+      "source_file": "test/invariants/changelog.test.ts",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "test_invariants_changelog_test",
+      "community": 135,
+      "community_name": "changelog.test.ts",
+      "norm_label": "changelog.test.ts"
+    },
+    {
+      "label": "entries()",
+      "file_type": "code",
+      "source_file": "test/invariants/changelog.test.ts",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "test_invariants_changelog_test_entries",
+      "community": 135,
+      "community_name": "changelog.test.ts",
+      "norm_label": "entries()"
+    },
+    {
       "label": "deps.test.ts",
       "file_type": "code",
       "source_file": "test/invariants/deps.test.ts",
@@ -6486,7 +6508,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_invariants_site_version_test",
-      "community": 83,
+      "community": 141,
       "community_name": "site-version.test.ts",
       "norm_label": "site-version.test.ts"
     },
@@ -6519,7 +6541,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_lib_git_env_test",
-      "community": 85,
+      "community": 61,
       "community_name": "git.ts",
       "norm_label": "git-env.test.ts"
     },
@@ -6530,8 +6552,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_lib_unmerged_test",
-      "community": 85,
-      "community_name": "git.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "unmerged.test.ts"
     },
     {
@@ -6541,8 +6563,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "test_lib_unmerged_test_git",
-      "community": 85,
-      "community_name": "git.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "git()"
     },
     {
@@ -6552,8 +6574,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "test_lib_unmerged_test_conflicted",
-      "community": 85,
-      "community_name": "git.ts",
+      "community": 116,
+      "community_name": "gitInit",
       "norm_label": "conflicted()"
     },
     {
@@ -6607,8 +6629,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_repos_sync_test",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "sync.test.ts"
     },
     {
@@ -6618,8 +6640,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "test_repos_sync_test_tmp",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "tmp"
     },
     {
@@ -6629,8 +6651,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "test_repos_sync_test_src",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "src"
     },
     {
@@ -6640,8 +6662,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "test_repos_sync_test_remote",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "remote"
     },
     {
@@ -6651,8 +6673,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "test_repos_sync_test_makebrain",
-      "community": 20,
-      "community_name": "index.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "makebrain()"
     },
     {
@@ -6662,8 +6684,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_seed_seed_test",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "seed.test.ts"
     },
     {
@@ -6673,8 +6695,8 @@
       "source_location": "L178",
       "_origin": "ast",
       "id": "test_seed_seed_test_brainfor",
-      "community": 13,
-      "community_name": "seed.ts",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "brainfor()"
     },
     {
@@ -6684,8 +6706,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_skill_test",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "skill.test.ts"
     },
     {
@@ -6695,8 +6717,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "test_skill_test_root",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "root"
     },
     {
@@ -6706,8 +6728,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "test_skill_test_skill_dir",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "skill_dir"
     },
     {
@@ -6717,8 +6739,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "test_skill_test_files",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "files"
     },
     {
@@ -6728,8 +6750,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "test_skill_test_packcontents",
-      "community": 7,
-      "community_name": "verify.ts",
+      "community": 16,
+      "community_name": "parse.ts",
       "norm_label": "packcontents"
     },
     {
@@ -6739,8 +6761,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_verify_consumer_test",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 138,
+      "community_name": "consumer.test.ts",
       "norm_label": "consumer.test.ts"
     },
     {
@@ -6750,8 +6772,8 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "test_verify_consumer_test_git",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 138,
+      "community_name": "consumer.test.ts",
       "norm_label": "git()"
     },
     {
@@ -6761,8 +6783,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "test_verify_consumer_test_header",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 138,
+      "community_name": "consumer.test.ts",
       "norm_label": "header"
     },
     {
@@ -6772,8 +6794,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "test_verify_consumer_test_mountedeco",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 138,
+      "community_name": "consumer.test.ts",
       "norm_label": "mountedeco()"
     },
     {
@@ -6783,8 +6805,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "test_verify_consumer_test_runverify",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 138,
+      "community_name": "consumer.test.ts",
       "norm_label": "runverify()"
     },
     {
@@ -6794,8 +6816,8 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "test_verify_consumer_test_captured",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 138,
+      "community_name": "consumer.test.ts",
       "norm_label": "captured()"
     },
     {
@@ -6805,8 +6827,8 @@
       "source_location": "L57",
       "_origin": "ast",
       "id": "test_verify_consumer_test_law",
-      "community": 113,
-      "community_name": "makeScratchEcosystem",
+      "community": 138,
+      "community_name": "consumer.test.ts",
       "norm_label": "law"
     },
     {
@@ -6816,7 +6838,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_verify_each_test",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "each.test.ts"
     },
@@ -6827,7 +6849,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "test_verify_each_test_eco",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "eco()"
     },
@@ -6838,7 +6860,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "test_verify_each_test_git",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "git()"
     },
@@ -6849,7 +6871,7 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "test_verify_each_test_commitfile",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "commitfile()"
     },
@@ -6860,7 +6882,7 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "test_verify_each_test_header",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "header"
     },
@@ -6871,7 +6893,7 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "test_verify_each_test_setlaw",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "setlaw()"
     },
@@ -6882,7 +6904,7 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "test_verify_each_test_captured",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "captured()"
     },
@@ -6893,7 +6915,7 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "test_verify_each_test_manifest",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "manifest()"
     },
@@ -6904,7 +6926,7 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "test_verify_each_test_manifests",
-      "community": 108,
+      "community": 134,
       "community_name": "each.test.ts",
       "norm_label": "manifests()"
     },
@@ -6915,7 +6937,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_verify_scope_test",
-      "community": 24,
+      "community": 136,
       "community_name": "scope.test.ts",
       "norm_label": "scope.test.ts"
     },
@@ -6926,7 +6948,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "test_verify_scope_test_git",
-      "community": 24,
+      "community": 136,
       "community_name": "scope.test.ts",
       "norm_label": "git()"
     },
@@ -6937,7 +6959,7 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "test_verify_scope_test_header",
-      "community": 24,
+      "community": 136,
       "community_name": "scope.test.ts",
       "norm_label": "header"
     },
@@ -6948,7 +6970,7 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "test_verify_scope_test_commitall",
-      "community": 24,
+      "community": 136,
       "community_name": "scope.test.ts",
       "norm_label": "commitall()"
     },
@@ -6959,7 +6981,7 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "test_verify_scope_test_parkedeco",
-      "community": 24,
+      "community": 136,
       "community_name": "scope.test.ts",
       "norm_label": "parkedeco()"
     },
@@ -6970,7 +6992,7 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "test_verify_scope_test_captured",
-      "community": 24,
+      "community": 136,
       "community_name": "scope.test.ts",
       "norm_label": "captured()"
     },
@@ -6981,7 +7003,7 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "test_verify_scope_test_tombstone",
-      "community": 24,
+      "community": 136,
       "community_name": "scope.test.ts",
       "norm_label": "tombstone"
     },
@@ -6992,7 +7014,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_verify_verify_test",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "verify.test.ts"
     },
@@ -7003,7 +7025,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "test_verify_verify_test_eco",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "eco()"
     },
@@ -7014,7 +7036,7 @@
       "source_location": "L14",
       "_origin": "ast",
       "id": "test_verify_verify_test_git",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "git()"
     },
@@ -7025,7 +7047,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "test_verify_verify_test_commitfile",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "commitfile()"
     },
@@ -7036,7 +7058,7 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "test_verify_verify_test_header",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "header"
     },
@@ -7047,7 +7069,7 @@
       "source_location": "L33",
       "_origin": "ast",
       "id": "test_verify_verify_test_setlaw",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "setlaw()"
     },
@@ -7058,7 +7080,7 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "test_verify_verify_test_runverify",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "runverify()"
     },
@@ -7069,7 +7091,7 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "test_verify_verify_test_captured",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "captured()"
     },
@@ -7080,7 +7102,7 @@
       "source_location": "L280",
       "_origin": "ast",
       "id": "test_verify_verify_test_staleeco",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "staleeco()"
     },
@@ -7091,7 +7113,7 @@
       "source_location": "L366",
       "_origin": "ast",
       "id": "test_verify_verify_test_writechange",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "writechange()"
     },
@@ -7102,7 +7124,7 @@
       "source_location": "L481",
       "_origin": "ast",
       "id": "test_verify_verify_test_agrees",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "agrees()"
     },
@@ -7113,7 +7135,7 @@
       "source_location": "L544",
       "_origin": "ast",
       "id": "test_verify_verify_test_summaryvsmarkers",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "summaryvsmarkers()"
     },
@@ -7124,7 +7146,7 @@
       "source_location": "L628",
       "_origin": "ast",
       "id": "test_verify_verify_test_readmeswithpin",
-      "community": 116,
+      "community": 62,
       "community_name": "verify.test.ts",
       "norm_label": "readmeswithpin()"
     },
@@ -9588,8 +9610,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_each_scope_verifies_its_own",
-      "community": 118,
-      "community_name": "each-scope-verifies-its-own.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "each-scope-verifies-its-own.md"
     },
     {
@@ -9599,8 +9621,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_each_scope_verifies_its_own_each_scope_verifies_what_it_is_responsible_for",
-      "community": 118,
-      "community_name": "each-scope-verifies-its-own.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "each scope verifies what it is responsible for"
     },
     {
@@ -10116,7 +10138,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_refreshes_itself",
-      "community": 121,
+      "community": 133,
       "community_name": "the-graph-refreshes-itself.md",
       "norm_label": "the-graph-refreshes-itself.md"
     },
@@ -10127,7 +10149,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_refreshes_itself_the_graph_refreshes_itself",
-      "community": 121,
+      "community": 133,
       "community_name": "the-graph-refreshes-itself.md",
       "norm_label": "the graph refreshes itself"
     },
@@ -10138,8 +10160,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ledger_keeps_itself",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 140,
+      "community_name": "the-ledger-keeps-itself.md",
       "norm_label": "the-ledger-keeps-itself.md"
     },
     {
@@ -10149,8 +10171,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ledger_keeps_itself_the_ledger_keeps_itself",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 140,
+      "community_name": "the-ledger-keeps-itself.md",
       "norm_label": "the ledger keeps itself"
     },
     {
@@ -10160,8 +10182,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_mount_explains_itself",
-      "community": 133,
-      "community_name": "the-mount-explains-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-mount-explains-itself.md"
     },
     {
@@ -10171,8 +10193,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_mount_explains_itself_the_mount_explains_itself",
-      "community": 133,
-      "community_name": "the-mount-explains-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the mount explains itself"
     },
     {
@@ -10468,7 +10490,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_ls_files_counts_each_file_once",
-      "community": 93,
+      "community": 121,
       "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "ls-files-counts-each-file-once.md"
     },
@@ -10479,7 +10501,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_ls_files_counts_each_file_once_ls_files_counts_each_file_once",
-      "community": 93,
+      "community": 121,
       "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "ls-files counts each file once"
     },
@@ -10490,7 +10512,7 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "multivac_changes_ls_files_counts_each_file_once_and_the_ignore_rule_that_let_a_symlink_through",
-      "community": 93,
+      "community": 121,
       "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "and the ignore rule that let a symlink through"
     },
@@ -10671,6 +10693,72 @@
       "norm_label": "what changes"
     },
     {
+      "label": "the-release-says-what-changed.md",
+      "file_type": "document",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "multivac_changes_the_release_says_what_changed",
+      "community": 118,
+      "community_name": "The release says what changed",
+      "norm_label": "the-release-says-what-changed.md"
+    },
+    {
+      "label": "The release says what changed",
+      "file_type": "document",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L19",
+      "_origin": "ast",
+      "id": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
+      "community": 118,
+      "community_name": "The release says what changed",
+      "norm_label": "the release says what changed"
+    },
+    {
+      "label": "The rule",
+      "file_type": "document",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L32",
+      "_origin": "ast",
+      "id": "multivac_changes_the_release_says_what_changed_the_rule",
+      "community": 118,
+      "community_name": "The release says what changed",
+      "norm_label": "the rule"
+    },
+    {
+      "label": "Why a test again",
+      "file_type": "document",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L42",
+      "_origin": "ast",
+      "id": "multivac_changes_the_release_says_what_changed_why_a_test_again",
+      "community": 118,
+      "community_name": "The release says what changed",
+      "norm_label": "why a test again"
+    },
+    {
+      "label": "Scope",
+      "file_type": "document",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L51",
+      "_origin": "ast",
+      "id": "multivac_changes_the_release_says_what_changed_scope",
+      "community": 118,
+      "community_name": "The release says what changed",
+      "norm_label": "scope"
+    },
+    {
+      "label": "Found while doing it",
+      "file_type": "document",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L58",
+      "_origin": "ast",
+      "id": "multivac_changes_the_release_says_what_changed_found_while_doing_it",
+      "community": 118,
+      "community_name": "The release says what changed",
+      "norm_label": "found while doing it"
+    },
+    {
       "label": "the-sdd-arrives-with-its-own-scaffold.md",
       "file_type": "document",
       "source_file": ".multivac/changes/the-sdd-arrives-with-its-own-scaffold.md",
@@ -10743,7 +10831,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_the_site_quotes_the_version_the_package_declares",
-      "community": 114,
+      "community": 139,
       "community_name": "the-site-quotes-the-version-the-package-declares.md",
       "norm_label": "the-site-quotes-the-version-the-package-declares.md"
     },
@@ -10754,7 +10842,7 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
-      "community": 114,
+      "community": 139,
       "community_name": "the-site-quotes-the-version-the-package-declares.md",
       "norm_label": "the site quotes the version the package declares"
     },
@@ -10765,7 +10853,7 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "multivac_changes_the_site_quotes_the_version_the_package_declares_why_this_is_a_test_not_an_anchor",
-      "community": 114,
+      "community": 139,
       "community_name": "the-site-quotes-the-version-the-package-declares.md",
       "norm_label": "why this is a test, not an anchor"
     },
@@ -11670,6 +11758,50 @@
       "community": 105,
       "community_name": "CLAUDE.md",
       "norm_label": "multivac \u2014 brain door"
+    },
+    {
+      "label": "CHANGELOG.md",
+      "file_type": "document",
+      "source_file": "CHANGELOG.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "changelog",
+      "community": 85,
+      "community_name": "Changelog",
+      "norm_label": "changelog.md"
+    },
+    {
+      "label": "Changelog",
+      "file_type": "document",
+      "source_file": "CHANGELOG.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "changelog_changelog",
+      "community": 85,
+      "community_name": "Changelog",
+      "norm_label": "changelog"
+    },
+    {
+      "label": "0.1.1 \u2014 2026-08-16",
+      "file_type": "document",
+      "source_file": "CHANGELOG.md",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "changelog_0_1_1_2026_08_16",
+      "community": 85,
+      "community_name": "Changelog",
+      "norm_label": "0.1.1 \u2014 2026-08-16"
+    },
+    {
+      "label": "0.1.0 \u2014 2026-08-16",
+      "file_type": "document",
+      "source_file": "CHANGELOG.md",
+      "source_location": "L47",
+      "_origin": "ast",
+      "id": "changelog_0_1_0_2026_08_16",
+      "community": 85,
+      "community_name": "Changelog",
+      "norm_label": "0.1.0 \u2014 2026-08-16"
     },
     {
       "label": "CODE_OF_CONDUCT.md",
@@ -14763,15 +14895,81 @@
       "norm_label": "reporting a run to a human"
     },
     {
-      "label": "plan.md",
+      "label": "001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "001-the-project-document-is-gated-on-existing/checklists/requirements.md"
+    },
+    {
+      "label": "Specification Quality Checklist: The project document is gated on existing",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_specification_quality_checklist_the_project_document_is_gated_on_existing",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "specification quality checklist: the project document is gated on existing"
+    },
+    {
+      "label": "Content Quality",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L7",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_content_quality",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "content quality"
+    },
+    {
+      "label": "Requirement Completeness",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_requirement_completeness",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "requirement completeness"
+    },
+    {
+      "label": "Feature Readiness",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_feature_readiness",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "feature readiness"
+    },
+    {
+      "label": "Notes",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L32",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_notes",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "notes"
+    },
+    {
+      "label": "001-the-project-document-is-gated-on-existing/plan.md",
       "file_type": "document",
       "source_file": "specs/001-the-project-document-is-gated-on-existing/plan.md",
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
-      "norm_label": "plan.md"
+      "norm_label": "001-the-project-document-is-gated-on-existing/plan.md"
     },
     {
       "label": "Implementation Plan: [FEATURE]",
@@ -14780,7 +14978,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan_implementation_plan_feature",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
       "norm_label": "implementation plan: [feature]"
     },
@@ -14791,7 +14989,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan_summary",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
       "norm_label": "summary"
     },
@@ -14802,7 +15000,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan_technical_context",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
       "norm_label": "technical context"
     },
@@ -14813,7 +15011,7 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan_constitution_check",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
       "norm_label": "constitution check"
     },
@@ -14824,7 +15022,7 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan_project_structure",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
       "norm_label": "project structure"
     },
@@ -14835,7 +15033,7 @@
       "source_location": "L47",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan_documentation_this_feature",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
       "norm_label": "documentation (this feature)"
     },
@@ -14846,7 +15044,7 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan_source_code_repository_root",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
       "norm_label": "source code (repository root)"
     },
@@ -14857,9 +15055,592 @@
       "source_location": "L106",
       "_origin": "ast",
       "id": "specs_001_the_project_document_is_gated_on_existing_plan_complexity_tracking",
-      "community": 8,
+      "community": 93,
       "community_name": "Implementation Plan: [FEATURE]",
       "norm_label": "complexity tracking"
+    },
+    {
+      "label": "001-the-project-document-is-gated-on-existing/spec.md",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "001-the-project-document-is-gated-on-existing/spec.md"
+    },
+    {
+      "label": "Feature Specification: The project document is gated on existing",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_feature_specification_the_project_document_is_gated_on_existing",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "feature specification: the project document is gated on existing"
+    },
+    {
+      "label": "User Scenarios & Testing *(mandatory)*",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_user_scenarios_testing_mandatory",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "user scenarios & testing *(mandatory)*"
+    },
+    {
+      "label": "User Story 1 - The missing document stops the work that depends on it (Priority: P1)",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_user_story_1_the_missing_document_stops_the_work_that_depends_on_it_priority_p1",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "user story 1 - the missing document stops the work that depends on it (priority: p1)"
+    },
+    {
+      "label": "User Story 2 - A document nobody has written yet does not count as written (Priority: P2)",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_user_story_2_a_document_nobody_has_written_yet_does_not_count_as_written_priority_p2",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "user story 2 - a document nobody has written yet does not count as written (priority: p2)"
+    },
+    {
+      "label": "User Story 3 - Nothing else starts refusing (Priority: P3)",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L75",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_user_story_3_nothing_else_starts_refusing_priority_p3",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "user story 3 - nothing else starts refusing (priority: p3)"
+    },
+    {
+      "label": "Edge Cases",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L106",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_edge_cases",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "edge cases"
+    },
+    {
+      "label": "Requirements *(mandatory)*",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L122",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_requirements_mandatory",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "requirements *(mandatory)*"
+    },
+    {
+      "label": "Functional Requirements",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L124",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_functional_requirements",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "functional requirements"
+    },
+    {
+      "label": "Key Entities",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L151",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_key_entities",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "key entities"
+    },
+    {
+      "label": "Success Criteria *(mandatory)*",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L164",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_success_criteria_mandatory",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "success criteria *(mandatory)*"
+    },
+    {
+      "label": "Measurable Outcomes",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L166",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_measurable_outcomes",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "measurable outcomes"
+    },
+    {
+      "label": "Assumptions",
+      "file_type": "document",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L182",
+      "_origin": "ast",
+      "id": "specs_001_the_project_document_is_gated_on_existing_spec_assumptions",
+      "community": 0,
+      "community_name": "Specification Quality Checklist: The project document is gated on existing",
+      "norm_label": "assumptions"
+    },
+    {
+      "label": "002-the-release-says-what-changed/checklists/requirements.md",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_checklists_requirements",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "002-the-release-says-what-changed/checklists/requirements.md"
+    },
+    {
+      "label": "Specification Quality Checklist: The release says what changed",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_checklists_requirements_specification_quality_checklist_the_release_says_what_changed",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "specification quality checklist: the release says what changed"
+    },
+    {
+      "label": "Content Quality",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L7",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_checklists_requirements_content_quality",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "content quality"
+    },
+    {
+      "label": "Requirement Completeness",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L14",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_checklists_requirements_requirement_completeness",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "requirement completeness"
+    },
+    {
+      "label": "Feature Readiness",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_checklists_requirements_feature_readiness",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "feature readiness"
+    },
+    {
+      "label": "Notes",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L32",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_checklists_requirements_notes",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "notes"
+    },
+    {
+      "label": "002-the-release-says-what-changed/plan.md",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "002-the-release-says-what-changed/plan.md"
+    },
+    {
+      "label": "Implementation Plan: The release says what changed",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_implementation_plan_the_release_says_what_changed",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "implementation plan: the release says what changed"
+    },
+    {
+      "label": "Summary",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L17",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_summary",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "summary"
+    },
+    {
+      "label": "Technical Context",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_technical_context",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "technical context"
+    },
+    {
+      "label": "Constitution Check",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L37",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_constitution_check",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "constitution check"
+    },
+    {
+      "label": "Project Structure",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L52",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_project_structure",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "project structure"
+    },
+    {
+      "label": "Documentation (this feature)",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L54",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_documentation_this_feature",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "documentation (this feature)"
+    },
+    {
+      "label": "Source Code (repository root)",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L65",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_source_code_repository_root",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "source code (repository root)"
+    },
+    {
+      "label": "Design decisions",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L80",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_design_decisions",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "design decisions"
+    },
+    {
+      "label": "Mount, not copy",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L82",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_mount_not_copy",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "mount, not copy"
+    },
+    {
+      "label": "Entry format",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L106",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_entry_format",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "entry format"
+    },
+    {
+      "label": "What is deliberately not built",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L113",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_what_is_deliberately_not_built",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "what is deliberately not built"
+    },
+    {
+      "label": "Complexity Tracking",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L119",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_plan_complexity_tracking",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "complexity tracking"
+    },
+    {
+      "label": "002-the-release-says-what-changed/spec.md",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "002-the-release-says-what-changed/spec.md"
+    },
+    {
+      "label": "Feature Specification: The release says what changed",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_feature_specification_the_release_says_what_changed",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "feature specification: the release says what changed"
+    },
+    {
+      "label": "User Scenarios & Testing *(mandatory)*",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L11",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_user_scenarios_testing_mandatory",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "user scenarios & testing *(mandatory)*"
+    },
+    {
+      "label": "User Story 1 - Someone deciding whether to upgrade can find out what changed (Priority: P1)",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L13",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_user_story_1_someone_deciding_whether_to_upgrade_can_find_out_what_changed_priority_p1",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "user story 1 - someone deciding whether to upgrade can find out what changed (priority: p1)"
+    },
+    {
+      "label": "User Story 2 - The two surfaces cannot silently disagree (Priority: P2)",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L43",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_user_story_2_the_two_surfaces_cannot_silently_disagree_priority_p2",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "user story 2 - the two surfaces cannot silently disagree (priority: p2)"
+    },
+    {
+      "label": "User Story 3 - A release with no entry is caught (Priority: P3)",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L68",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_user_story_3_a_release_with_no_entry_is_caught_priority_p3",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "user story 3 - a release with no entry is caught (priority: p3)"
+    },
+    {
+      "label": "Edge Cases",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L93",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_edge_cases",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "edge cases"
+    },
+    {
+      "label": "Requirements *(mandatory)*",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L107",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_requirements_mandatory",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "requirements *(mandatory)*"
+    },
+    {
+      "label": "Functional Requirements",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L109",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_functional_requirements",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "functional requirements"
+    },
+    {
+      "label": "Key Entities",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L128",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_key_entities",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "key entities"
+    },
+    {
+      "label": "Success Criteria *(mandatory)*",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L139",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_success_criteria_mandatory",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "success criteria *(mandatory)*"
+    },
+    {
+      "label": "Measurable Outcomes",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L141",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_measurable_outcomes",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "measurable outcomes"
+    },
+    {
+      "label": "Assumptions",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L154",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_spec_assumptions",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "assumptions"
+    },
+    {
+      "label": "tasks.md",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_tasks",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "tasks.md"
+    },
+    {
+      "label": "Tasks: The release says what changed",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_tasks_tasks_the_release_says_what_changed",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "tasks: the release says what changed"
+    },
+    {
+      "label": "Phase 1: The source document",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L10",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_tasks_phase_1_the_source_document",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "phase 1: the source document"
+    },
+    {
+      "label": "Phase 2: The second surface",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L25",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_tasks_phase_2_the_second_surface",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "phase 2: the second surface"
+    },
+    {
+      "label": "Phase 3: The checks",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L39",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_tasks_phase_3_the_checks",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "phase 3: the checks"
+    },
+    {
+      "label": "Phase 4: The law",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L51",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_tasks_phase_4_the_law",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "phase 4: the law"
+    },
+    {
+      "label": "Dependencies",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L61",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_tasks_dependencies",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "dependencies"
+    },
+    {
+      "label": "Not done here",
+      "file_type": "document",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L67",
+      "_origin": "ast",
+      "id": "specs_002_the_release_says_what_changed_tasks_not_done_here",
+      "community": 19,
+      "community_name": "Implementation Plan: The release says what changed",
+      "norm_label": "not done here"
     }
   ],
   "links": [
@@ -33694,6 +34475,17 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "test/invariants/changelog.test.ts",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "test_invariants_changelog_test",
+      "target": "test_invariants_changelog_test_entries",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "test/invariants/skill-copy.test.ts",
       "source_location": "L15",
       "weight": 1.0,
@@ -37430,6 +38222,72 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_the_release_says_what_changed",
+      "target": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/invariants.md",
+      "source_location": "L541",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_invariants",
+      "target": "multivac_changes_the_release_says_what_changed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L58",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
+      "target": "multivac_changes_the_release_says_what_changed_found_while_doing_it",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L51",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
+      "target": "multivac_changes_the_release_says_what_changed_scope",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
+      "target": "multivac_changes_the_release_says_what_changed_the_rule",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/the-release-says-what-changed.md",
+      "source_location": "L42",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_the_release_says_what_changed_the_release_says_what_changed",
+      "target": "multivac_changes_the_release_says_what_changed_why_a_test_again",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/the-sdd-arrives-with-its-own-scaffold.md",
       "source_location": "L19",
       "weight": 1.0,
@@ -38349,6 +39207,39 @@
       "_origin": "ast",
       "source": "claude",
       "target": "claude_multivac_brain_door",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CHANGELOG.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "changelog",
+      "target": "changelog_changelog",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CHANGELOG.md",
+      "source_location": "L47",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "changelog_changelog",
+      "target": "changelog_0_1_0_2026_08_16",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CHANGELOG.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "changelog_changelog",
+      "target": "changelog_0_1_1_2026_08_16",
       "confidence_score": 1.0
     },
     {
@@ -41258,6 +42149,72 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements",
+      "target": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_specification_quality_checklist_the_project_document_is_gated_on_existing",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_specification_quality_checklist_the_project_document_is_gated_on_existing",
+      "target": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_content_quality",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_specification_quality_checklist_the_project_document_is_gated_on_existing",
+      "target": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_feature_readiness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_specification_quality_checklist_the_project_document_is_gated_on_existing",
+      "target": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_notes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/checklists/requirements.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_specification_quality_checklist_the_project_document_is_gated_on_existing",
+      "target": "specs_001_the_project_document_is_gated_on_existing_checklists_requirements_requirement_completeness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": "specs/001-the-project-document-is-gated-on-existing/plan.md",
       "source_location": "L1",
       "weight": 1.0,
@@ -41342,8 +42299,580 @@
       "source": "specs_001_the_project_document_is_gated_on_existing_plan_project_structure",
       "target": "specs_001_the_project_document_is_gated_on_existing_plan_source_code_repository_root",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_feature_specification_the_project_document_is_gated_on_existing",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L182",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_feature_specification_the_project_document_is_gated_on_existing",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_assumptions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L122",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_feature_specification_the_project_document_is_gated_on_existing",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_requirements_mandatory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L164",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_feature_specification_the_project_document_is_gated_on_existing",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_success_criteria_mandatory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_feature_specification_the_project_document_is_gated_on_existing",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_user_scenarios_testing_mandatory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L106",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_user_scenarios_testing_mandatory",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_edge_cases",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_user_scenarios_testing_mandatory",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_user_story_1_the_missing_document_stops_the_work_that_depends_on_it_priority_p1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L46",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_user_scenarios_testing_mandatory",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_user_story_2_a_document_nobody_has_written_yet_does_not_count_as_written_priority_p2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L75",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_user_scenarios_testing_mandatory",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_user_story_3_nothing_else_starts_refusing_priority_p3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L124",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_requirements_mandatory",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_functional_requirements",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L151",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_requirements_mandatory",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_key_entities",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/001-the-project-document-is-gated-on-existing/spec.md",
+      "source_location": "L166",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_001_the_project_document_is_gated_on_existing_spec_success_criteria_mandatory",
+      "target": "specs_001_the_project_document_is_gated_on_existing_spec_measurable_outcomes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_checklists_requirements",
+      "target": "specs_002_the_release_says_what_changed_checklists_requirements_specification_quality_checklist_the_release_says_what_changed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_checklists_requirements",
+      "target": "specs_002_the_release_says_what_changed_spec",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L7",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_checklists_requirements_specification_quality_checklist_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_checklists_requirements_content_quality",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_checklists_requirements_specification_quality_checklist_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_checklists_requirements_feature_readiness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_checklists_requirements_specification_quality_checklist_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_checklists_requirements_notes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/checklists/requirements.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_checklists_requirements_specification_quality_checklist_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_checklists_requirements_requirement_completeness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan",
+      "target": "specs_002_the_release_says_what_changed_plan_implementation_plan_the_release_says_what_changed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan",
+      "target": "specs_002_the_release_says_what_changed_spec",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks",
+      "target": "specs_002_the_release_says_what_changed_plan",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L119",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_implementation_plan_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_plan_complexity_tracking",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L37",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_implementation_plan_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_plan_constitution_check",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L80",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_implementation_plan_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_plan_design_decisions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_implementation_plan_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_plan_project_structure",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_implementation_plan_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_plan_summary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_implementation_plan_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_plan_technical_context",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L54",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_project_structure",
+      "target": "specs_002_the_release_says_what_changed_plan_documentation_this_feature",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L65",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_project_structure",
+      "target": "specs_002_the_release_says_what_changed_plan_source_code_repository_root",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L106",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_design_decisions",
+      "target": "specs_002_the_release_says_what_changed_plan_entry_format",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L82",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_design_decisions",
+      "target": "specs_002_the_release_says_what_changed_plan_mount_not_copy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/plan.md",
+      "source_location": "L113",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_plan_design_decisions",
+      "target": "specs_002_the_release_says_what_changed_plan_what_is_deliberately_not_built",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec",
+      "target": "specs_002_the_release_says_what_changed_spec_feature_specification_the_release_says_what_changed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L4",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks",
+      "target": "specs_002_the_release_says_what_changed_spec",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L154",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_feature_specification_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_spec_assumptions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L107",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_feature_specification_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_spec_requirements_mandatory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L139",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_feature_specification_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_spec_success_criteria_mandatory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_feature_specification_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_spec_user_scenarios_testing_mandatory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L93",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_user_scenarios_testing_mandatory",
+      "target": "specs_002_the_release_says_what_changed_spec_edge_cases",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_user_scenarios_testing_mandatory",
+      "target": "specs_002_the_release_says_what_changed_spec_user_story_1_someone_deciding_whether_to_upgrade_can_find_out_what_changed_priority_p1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L43",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_user_scenarios_testing_mandatory",
+      "target": "specs_002_the_release_says_what_changed_spec_user_story_2_the_two_surfaces_cannot_silently_disagree_priority_p2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L68",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_user_scenarios_testing_mandatory",
+      "target": "specs_002_the_release_says_what_changed_spec_user_story_3_a_release_with_no_entry_is_caught_priority_p3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L109",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_requirements_mandatory",
+      "target": "specs_002_the_release_says_what_changed_spec_functional_requirements",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L128",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_requirements_mandatory",
+      "target": "specs_002_the_release_says_what_changed_spec_key_entities",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/spec.md",
+      "source_location": "L141",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_spec_success_criteria_mandatory",
+      "target": "specs_002_the_release_says_what_changed_spec_measurable_outcomes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks",
+      "target": "specs_002_the_release_says_what_changed_tasks_tasks_the_release_says_what_changed",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L61",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks_tasks_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_tasks_dependencies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L67",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks_tasks_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_tasks_not_done_here",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L10",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks_tasks_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_tasks_phase_1_the_source_document",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L25",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks_tasks_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_tasks_phase_2_the_second_surface",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L39",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks_tasks_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_tasks_phase_3_the_checks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "specs/002-the-release-says-what-changed/tasks.md",
+      "source_location": "L51",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "specs_002_the_release_says_what_changed_tasks_tasks_the_release_says_what_changed",
+      "target": "specs_002_the_release_says_what_changed_tasks_phase_4_the_law",
+      "confidence_score": 1.0
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "79c4be52bc7004d76316236fcbd77f079e762626"
+  "built_at_commit": "038f91a5a184e769ffe0655244d2f8727dfb262b"
 }

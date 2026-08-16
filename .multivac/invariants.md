@@ -538,4 +538,10 @@ checks them on every commit.
 <!-- @anchor MV-77 brain:test/invariants/site-version.test.ts /is the version the package declares/ -->
 <!-- @anchor MV-77 brain:site/content/_index.md /<span>v[0-9]+\.[0-9]+\.[0-9]+ · npx multivac init<\/span>/ unique -->
 <!-- @anchor MV-77 brain:package.json /"version": "[0-9]+\.[0-9]+\.[0-9]+"/ unique -->
+| MV-78 | **The changelog is one file with two surfaces, and a released version has an entry in it.** Two versions shipped saying nothing about what they contained: `changes/archive/` is the brain's ledger, written for the people changing multivac, and organised by decision rather than by release. `CHANGELOG.md` at the repo root is the only copy — the site MOUNTS it (`source: ../CHANGELOG.md`) rather than keeping a second one, so the two surfaces cannot disagree because there is no second file to forget. Declaring that mount replaces Hugo's default content mount, so `content → content` is restated beside it and losing that line empties the site rather than one page. Entries are `## <semver> — <date>`, newest first, and the version `package.json` declares has one: a release nobody wrote a line for is not released, it escaped. That last check is a test, not a leg — a leg pinned to the literal current version would need editing by the same hand that forgot the entry. | open | proposed | 2026-08-16 | [changes/the-release-says-what-changed.md](changes/the-release-says-what-changed.md) |
+<!-- @anchor MV-78 brain:site/hugo.yaml /source: \.\.\/CHANGELOG\.md/ unique -->
+<!-- @anchor MV-78 brain:site/hugo.yaml /target: content\/docs\/changelog\.md/ unique -->
+<!-- @anchor MV-78 brain:CHANGELOG.md /^## [0-9]+\.[0-9]+\.[0-9]+ — [0-9]{4}-[0-9]{2}-[0-9]{2}$/ -->
+<!-- @anchor MV-78 brain:test/invariants/changelog.test.ts /has an entry for the version the package declares/ -->
+<!-- @anchor MV-78 brain:test/invariants/changelog.test.ts /mounts the changelog rather than copying it/ -->
 
