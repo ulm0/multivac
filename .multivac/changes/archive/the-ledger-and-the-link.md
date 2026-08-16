@@ -1,9 +1,9 @@
 ---
 slug: the-ledger-and-the-link
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -18,15 +18,15 @@ invariants:
   retires: []
 claims:
   - id: MV-63
-    statement: "A step whose tool keeps a ledger of its own work is gated on that ledger, so an escape hatch cannot finish a step over the tool's own objection."
+    statement: A step whose tool keeps a ledger of its own work is gated on that ledger, so an escape hatch cannot finish a step over the tool's own objection.
   - id: MV-64
-    statement: "Archiving a change repoints every law row that cited it, so no source link in the table resolves to a missing file."
+    statement: Archiving a change repoints every law row that cited it, so no source link in the table resolves to a missing file.
   - id: MV-65
-    statement: "A gated artifact that is empty, or byte-identical to the template it was copied from, is refused as if it were missing."
+    statement: A gated artifact that is empty, or byte-identical to the template it was copied from, is refused as if it were missing.
   - id: MV-66
-    statement: "A gate whose validator binary cannot be found refuses and names it, instead of passing on artifact existence alone."
+    statement: A gate whose validator binary cannot be found refuses and names it, instead of passing on artifact existence alone.
   - id: MV-67
-    statement: "close refuses what plan and apply refuse, and --abandon gives back the id of a change that landed nothing."
+    statement: close refuses what plan and apply refuse, and --abandon gives back the id of a change that landed nothing.
 ---
 
 # The ledger and the link

@@ -1,9 +1,9 @@
 ---
 slug: ls-files-counts-each-file-once
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -13,7 +13,7 @@ invariants:
   retires: []
 claims:
   - id: MV-71
-    statement: "Enumeration yields each tracked file exactly once, and a tree mid-merge is named on the read line." 
+    statement: Enumeration yields each tracked file exactly once, and a tree mid-merge is named on the read line.
 ---
 
 # ls-files counts each file once

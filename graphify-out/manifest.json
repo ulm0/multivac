@@ -30,13 +30,13 @@
     "semantic_hash": ""
   },
   "src/adapters/registry.ts": {
-    "mtime": 1786861034.4627912,
-    "ast_hash": "dbaff1897ac640281743912c0ad6b41b",
+    "mtime": 1786922565.736201,
+    "ast_hash": "6b4eaa067727c73908a1a5f84c87217b",
     "semantic_hash": ""
   },
   "src/adapters/sdd.ts": {
-    "mtime": 1786858670.6347158,
-    "ast_hash": "5f999adf60a69e123dde8b0a56137f3c",
+    "mtime": 1786922565.7364082,
+    "ast_hash": "c588039b85d65d76b3324ba79935a234",
     "semantic_hash": ""
   },
   "src/anchor/evaluate.ts": {
@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "src/commands/change.ts": {
-    "mtime": 1786861034.4631855,
-    "ast_hash": "101e6b7a54d041007b33b27021524c53",
+    "mtime": 1786904730.4942272,
+    "ast_hash": "02a70ba5c082a467aba0555b3b438dfc",
     "semantic_hash": ""
   },
   "src/commands/count.ts": {
@@ -85,13 +85,13 @@
     "semantic_hash": ""
   },
   "src/commands/doctor.ts": {
-    "mtime": 1786861034.4634645,
-    "ast_hash": "7c2151245a38046e941d400b8c429016",
+    "mtime": 1786922565.7366252,
+    "ast_hash": "c49b149d6b321a7d4929817026a1018a",
     "semantic_hash": ""
   },
   "src/commands/doors.ts": {
-    "mtime": 1786861034.4637198,
-    "ast_hash": "a6ab853080ba95cd3c3f1d1abf00d473",
+    "mtime": 1786904679.9556391,
+    "ast_hash": "98a11d249a6907b4ddd459a19d885be4",
     "semantic_hash": ""
   },
   "src/commands/help.ts": {
@@ -130,8 +130,8 @@
     "semantic_hash": ""
   },
   "src/doors/brain.ts": {
-    "mtime": 1786865559.2227407,
-    "ast_hash": "02c4aa715e0b20a800dab56d598f374f",
+    "mtime": 1786922565.7368102,
+    "ast_hash": "13971147b56009c20bddd9933bb0d2f8",
     "semantic_hash": ""
   },
   "src/doors/consumer.ts": {
@@ -140,8 +140,8 @@
     "semantic_hash": ""
   },
   "src/doors/settings.ts": {
-    "mtime": 1786834495.8341098,
-    "ast_hash": "4291503b29e5e9e018c7710740565cc3",
+    "mtime": 1786904679.9559808,
+    "ast_hash": "67180bef31ca20523f5e2f16cb17aaba",
     "semantic_hash": ""
   },
   "src/hooks/install.ts": {
@@ -245,8 +245,8 @@
     "semantic_hash": ""
   },
   "test/change/sdd-gates.test.ts": {
-    "mtime": 1786858670.6363974,
-    "ast_hash": "3c32329995d506b645117205c9e08a99",
+    "mtime": 1786922565.737027,
+    "ast_hash": "e1c02d0b1152c3cbe438e08c82382f1a",
     "semantic_hash": ""
   },
   "test/cli/count.test.ts": {
@@ -265,8 +265,8 @@
     "semantic_hash": ""
   },
   "test/doctor/doctor.test.ts": {
-    "mtime": 1786834495.8361409,
-    "ast_hash": "4283975073ca2afc22a6066b8f649b1d",
+    "mtime": 1786922565.7373116,
+    "ast_hash": "7d74377365ff6fc3cd03ff190eca3c6c",
     "semantic_hash": ""
   },
   "test/doors/block.test.ts": {
@@ -275,18 +275,18 @@
     "semantic_hash": ""
   },
   "test/doors/doors.test.ts": {
-    "mtime": 1786834495.8363948,
-    "ast_hash": "4e56dc08593d2253a764417d7ce58db5",
+    "mtime": 1786922565.7374432,
+    "ast_hash": "0273815280e9b3dd0abbb5ea00da2711",
     "semantic_hash": ""
   },
   "test/doors/registry.test.ts": {
-    "mtime": 1786861034.4648054,
-    "ast_hash": "448202d829c5740ee41b612777afd0d4",
+    "mtime": 1786904679.0602973,
+    "ast_hash": "3fa01cb167e334210b909d1c1f7a6c5c",
     "semantic_hash": ""
   },
   "test/doors/settings.test.ts": {
-    "mtime": 1786820668.836485,
-    "ast_hash": "b1d62c00045d1c90f3e4c60481be6461",
+    "mtime": 1786904679.9570105,
+    "ast_hash": "86fd4a1f91f52dbd7820fdf8f9f2b66d",
     "semantic_hash": ""
   },
   "test/helpers/fixture.ts": {
@@ -624,39 +624,14 @@
     "ast_hash": "d5f63b1b54ba19ad83d07738b7d27ced",
     "semantic_hash": ""
   },
-  ".multivac/changes/every-command-shows-its-flags.md": {
-    "mtime": 1786863678.03868,
-    "ast_hash": "326e4d98198666a49cbc418d4400decd",
-    "semantic_hash": ""
-  },
-  ".multivac/changes/ls-files-counts-each-file-once.md": {
-    "mtime": 1786863678.038838,
-    "ast_hash": "1b1ea6aef46023d758a39d1279f49b6a",
-    "semantic_hash": ""
-  },
-  ".multivac/changes/no-mention-what-is-not-supported.md": {
-    "mtime": 1786863678.0389626,
-    "ast_hash": "fb6ce7aa675a35f30311df1f9f33c8d8",
-    "semantic_hash": ""
-  },
-  ".multivac/changes/the-first-release.md": {
-    "mtime": 1786863678.0390744,
-    "ast_hash": "42c679af1d25e1fee4288662758cec87",
-    "semantic_hash": ""
-  },
-  ".multivac/changes/the-ledger-and-the-link.md": {
-    "mtime": 1786863678.039181,
-    "ast_hash": "d365a5dbaab4daabf00e4fbc817d95b3",
-    "semantic_hash": ""
-  },
   ".multivac/config.yml": {
     "mtime": 1786865559.2183738,
     "ast_hash": "ebf1f81f0881b97d2bdd7d8b386e09f5",
     "semantic_hash": ""
   },
   ".multivac/invariants.md": {
-    "mtime": 1786893884.7260005,
-    "ast_hash": "38c194d1861150046d4ee076c25c15fa",
+    "mtime": 1786922785.8665867,
+    "ast_hash": "e8a80e907da92ea2f8665c576693d4d9",
     "semantic_hash": ""
   },
   ".multivac/ritual.md": {
@@ -665,8 +640,8 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1786865559.2194316,
-    "ast_hash": "21202447b95dc665c540ed31040f600b",
+    "mtime": 1786922565.7348995,
+    "ast_hash": "98cba79a76cdd8c84270d48121bd7246",
     "semantic_hash": ""
   },
   "CODE_OF_CONDUCT.md": {
@@ -680,8 +655,8 @@
     "semantic_hash": ""
   },
   "DESIGN.md": {
-    "mtime": 1786861034.4607608,
-    "ast_hash": "e01515db983267168cd1fd2233139987",
+    "mtime": 1786922565.7352161,
+    "ast_hash": "068274a049b31db707475ed8ef01852d",
     "semantic_hash": ""
   },
   "README.md": {
@@ -700,7 +675,7 @@
     "semantic_hash": ""
   },
   "site/content/docs/_index.md": {
-    "mtime": 1786893947.2586274,
+    "mtime": 1786904679.0332084,
     "ast_hash": "de61c50a0912fc153441e589f725bce4",
     "semantic_hash": ""
   },
@@ -785,18 +760,18 @@
     "semantic_hash": ""
   },
   "site/content/docs/reference/graphers-and-sdd.md": {
-    "mtime": 1786858670.6341062,
-    "ast_hash": "2884425a8de176d11061bca525cb8eb6",
+    "mtime": 1786922565.7353878,
+    "ast_hash": "a46e5d78b44d37f27fca1b74e43fe292",
     "semantic_hash": ""
   },
   "site/content/docs/reference/hooks.md": {
-    "mtime": 1786858670.6342647,
-    "ast_hash": "bf79aae5415471771f35735a8e22226d",
+    "mtime": 1786904679.9549408,
+    "ast_hash": "2f35fbde4ab3c3336e6c2bac34e8b38b",
     "semantic_hash": ""
   },
   "site/content/docs/reference/integrations.md": {
-    "mtime": 1786861034.4625125,
-    "ast_hash": "6204923af2439b21db0860ccabd7e0f2",
+    "mtime": 1786904700.465725,
+    "ast_hash": "9057d17d6b452704e022a26cfb60393d",
     "semantic_hash": ""
   },
   "site/hugo.yaml": {
@@ -820,8 +795,8 @@
     "semantic_hash": ""
   },
   "skills/multivac/references/change.md": {
-    "mtime": 1786843733.124498,
-    "ast_hash": "fa7ce11f6264f7628601821ace94a21d",
+    "mtime": 1786922565.7355192,
+    "ast_hash": "ee3fb336d021202311ee014e18d8d96c",
     "semantic_hash": ""
   },
   "skills/multivac/references/discovery.md": {
@@ -910,8 +885,8 @@
     "semantic_hash": ""
   },
   ".claude/skills/multivac/references/change.md": {
-    "mtime": 1786865559.2167902,
-    "ast_hash": "fa7ce11f6264f7628601821ace94a21d",
+    "mtime": 1786922565.7329524,
+    "ast_hash": "ee3fb336d021202311ee014e18d8d96c",
     "semantic_hash": ""
   },
   ".claude/skills/multivac/references/discovery.md": {
@@ -930,33 +905,13 @@
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1786865559.2194316,
-    "ast_hash": "21202447b95dc665c540ed31040f600b",
+    "mtime": 1786922565.7348995,
+    "ast_hash": "98cba79a76cdd8c84270d48121bd7246",
     "semantic_hash": ""
   },
   ".multivac/changes/archive/built-with-itself-includes-the-door.md": {
     "mtime": 1786865838.935008,
     "ast_hash": "a1bacd089c08458027e03e09ae96ff52",
-    "semantic_hash": ""
-  },
-  ".multivac/changes/doors-prunes-what-it-projects.md": {
-    "mtime": 1786866195.0323408,
-    "ast_hash": "1aed95179a1272a616402e5dcdb3e1c0",
-    "semantic_hash": ""
-  },
-  ".multivac/changes/the-merge-keeps-what-it-did-not-write.md": {
-    "mtime": 1786865914.348994,
-    "ast_hash": "1e47d34f3d32865632fc4402c7130ef1",
-    "semantic_hash": ""
-  },
-  ".multivac/changes/the-project-document-is-gated-on-existing.md": {
-    "mtime": 1786866165.901046,
-    "ast_hash": "e8bb3e22aeda2dfa13b49fa385baffb6",
-    "semantic_hash": ""
-  },
-  ".multivac/changes/the-sdd-arrives-with-its-own-scaffold.md": {
-    "mtime": 1786866389.3763187,
-    "ast_hash": "14c6d78abac9a98f504b7dbaf763df95",
     "semantic_hash": ""
   },
   ".specify/init-options.json": {
@@ -1070,8 +1025,8 @@
     "semantic_hash": ""
   },
   ".specify/memory/constitution.md": {
-    "mtime": 1786867189.7410083,
-    "ast_hash": "a913dac1147a7a45990c2f7bf4ad25b3",
+    "mtime": 1786922565.7347968,
+    "ast_hash": "bc89c48b41c2fbdc4e0e28ca744f8f83",
     "semantic_hash": ""
   },
   ".specify/templates/checklist-template.md": {
@@ -1115,8 +1070,8 @@
     "semantic_hash": ""
   },
   "specs/001-the-project-document-is-gated-on-existing/plan.md": {
-    "mtime": 1786868795.4392946,
-    "ast_hash": "311db0670c3d19d2f5b781de97529b79",
+    "mtime": 1786922565.7357633,
+    "ast_hash": "a7d76d310b5a544b556333338d881c30",
     "semantic_hash": ""
   },
   "specs/002-the-release-says-what-changed/spec.md": {
@@ -1165,13 +1120,123 @@
     "semantic_hash": ""
   },
   "site/content/docs/concepts/adoption.md": {
-    "mtime": 1786893910.8799763,
+    "mtime": 1786904679.033474,
     "ast_hash": "c6357c9ba03bc9be0df16d06eb0f64ae",
     "semantic_hash": ""
   },
   "site/content/docs/concepts/composition.md": {
-    "mtime": 1786893966.8233047,
+    "mtime": 1786904679.0337017,
     "ast_hash": "cdfcbb84492afc7c3d95a619d883f806",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/doors-prunes-what-it-projects.md": {
+    "mtime": 1786922766.6758113,
+    "ast_hash": "a99d5f288676bec58e771feb4c683d2c",
+    "semantic_hash": ""
+  },
+  "specs/001-the-project-document-is-gated-on-existing/tasks.md": {
+    "mtime": 1786922565.735966,
+    "ast_hash": "a49f402964fc459d5088997df55041fe",
+    "semantic_hash": ""
+  },
+  "specs/003-doors-prunes-what-it-projects/checklists/requirements.md": {
+    "mtime": 1786904679.0587533,
+    "ast_hash": "bd6c2b4c9ea1df2200ef77bb3b171e7c",
+    "semantic_hash": ""
+  },
+  "specs/003-doors-prunes-what-it-projects/plan.md": {
+    "mtime": 1786904679.0588298,
+    "ast_hash": "1972e985164acdecf22dd986fe42dfa0",
+    "semantic_hash": ""
+  },
+  "specs/003-doors-prunes-what-it-projects/spec.md": {
+    "mtime": 1786904679.058905,
+    "ast_hash": "950704385000464d6c82a5a21687c203",
+    "semantic_hash": ""
+  },
+  "specs/003-doors-prunes-what-it-projects/tasks.md": {
+    "mtime": 1786904679.0589726,
+    "ast_hash": "89eb0b2f9956f21f22a502dacea115d7",
+    "semantic_hash": ""
+  },
+  "specs/003-the-merge-keeps-what-it-did-not-write/checklists/requirements.md": {
+    "mtime": 1786904679.9552357,
+    "ast_hash": "cec348f6bd966691e194c45ef4a41e61",
+    "semantic_hash": ""
+  },
+  "specs/003-the-merge-keeps-what-it-did-not-write/plan.md": {
+    "mtime": 1786904679.9553328,
+    "ast_hash": "4f7b387c86203e5cfcdc6989eccc1842",
+    "semantic_hash": ""
+  },
+  "specs/003-the-merge-keeps-what-it-did-not-write/spec.md": {
+    "mtime": 1786904679.955425,
+    "ast_hash": "d64174ffd5aed2cce2ad1ec3d90548cf",
+    "semantic_hash": ""
+  },
+  "specs/003-the-merge-keeps-what-it-did-not-write/tasks.md": {
+    "mtime": 1786904679.9555151,
+    "ast_hash": "42891bcca9a1a8b2d7683a295f139b03",
+    "semantic_hash": ""
+  },
+  "specs/003-the-sdd-arrives-with-its-own-scaffold/checklists/requirements.md": {
+    "mtime": 1786904730.4928746,
+    "ast_hash": "ce0ffe1b610ad9a7f41116e25521a4fb",
+    "semantic_hash": ""
+  },
+  "specs/003-the-sdd-arrives-with-its-own-scaffold/plan.md": {
+    "mtime": 1786904730.4929996,
+    "ast_hash": "6685158624904628b151f0b196b907a9",
+    "semantic_hash": ""
+  },
+  "specs/003-the-sdd-arrives-with-its-own-scaffold/spec.md": {
+    "mtime": 1786904730.4931264,
+    "ast_hash": "1ab4a6ce53762b4687137536bda406d7",
+    "semantic_hash": ""
+  },
+  "specs/003-the-sdd-arrives-with-its-own-scaffold/tasks.md": {
+    "mtime": 1786904730.4932313,
+    "ast_hash": "82402838d7a25acea7c9a0feae1f9c72",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/the-merge-keeps-what-it-did-not-write.md": {
+    "mtime": 1786922768.336615,
+    "ast_hash": "9a306be5fa66b91b0f4d4b7c3f991da9",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/the-sdd-arrives-with-its-own-scaffold.md": {
+    "mtime": 1786922769.8694837,
+    "ast_hash": "867b2ef9e3745d7a99408966ab6c8255",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/the-project-document-is-gated-on-existing.md": {
+    "mtime": 1786922771.381132,
+    "ast_hash": "21d2a1dca6fe4b4a5c1fc44d79423329",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/every-command-shows-its-flags.md": {
+    "mtime": 1786922779.7637863,
+    "ast_hash": "40809e6c132a89b82704c9bbd7ab278c",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/ls-files-counts-each-file-once.md": {
+    "mtime": 1786922781.2828038,
+    "ast_hash": "8e6a24813f45b48bb5799895b25505c2",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/no-mention-what-is-not-supported.md": {
+    "mtime": 1786922782.8067834,
+    "ast_hash": "13ac2d463a0b1fef37117444eb9a9fa3",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/the-first-release.md": {
+    "mtime": 1786922784.3404236,
+    "ast_hash": "29ed510c35dcf22b735e73bb5bd22ed1",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/the-ledger-and-the-link.md": {
+    "mtime": 1786922785.865902,
+    "ast_hash": "7ababb3205a51bf3f2207bdefa0ec8f2",
     "semantic_hash": ""
   }
 }

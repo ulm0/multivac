@@ -1,9 +1,9 @@
 ---
 slug: every-command-shows-its-flags
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -14,9 +14,9 @@ invariants:
   retires: []
 claims:
   - id: MV-69
-    statement: "Every command declares its own usage and --help prints it; registry-backed flags list what the tool ships."
+    statement: Every command declares its own usage and --help prints it; registry-backed flags list what the tool ships.
   - id: MV-70
-    statement: "init projects the harnesses it declares, and agents is never a --provider value." 
+    statement: init projects the harnesses it declares, and agents is never a --provider value.
 ---
 
 # Every command shows its flags
