@@ -18,6 +18,7 @@ import {
   lastFetchAge,
   lsTreeGitlink,
   revParse,
+  unmergedFiles,
   run as git,
 } from '../lib/git.js';
 import { samePath } from '../lib/paths.js';
@@ -244,13 +245,23 @@ async function resolveSources(
       continue;
     }
     const wt = await worktreeAt(dir);
+    // A tree mid-merge is not a tree anyone will commit: some files are one
+    // side, some the other. Say it on the read line, because every verdict
+    // below it is about that half-state — and because the miscount this used
+    // to cause arrived dressed as a content problem, advising a ratchet.
+    const unmerged = await unmergedFiles(dir);
+    const conflicted =
+      unmerged.length === 0
+        ? ''
+        : ` · ${unmerged.length} path(s) MID-MERGE (${unmerged.slice(0, 2).join(', ')}${unmerged.length > 2 ? ', …' : ''}) — resolve the merge before trusting any verdict here`;
     if (e.isBrain) {
       out.push({
         key,
         dir,
         line:
           `${key}: working tree ${wt.text} — brain==code, the commit this run gates` +
-          (await brainDrift(dir, channelRef(cfg, e), wt.head)),
+          (await brainDrift(dir, channelRef(cfg, e), wt.head)) +
+          conflicted,
       });
       continue;
     }
@@ -266,7 +277,7 @@ async function resolveSources(
           ? `channel ${channel} does not resolve here (no remote, or never fetched) — FELL BACK to the working tree`
           : '--worktree: local state, not the channel';
       const drift = sha !== null && off ? `; OFF channel ${channel} @ ${short(sha)}` : '';
-      out.push({ key, dir, line: `${key}: working tree ${wt.text} — ${why}${drift}` });
+      out.push({ key, dir, line: `${key}: working tree ${wt.text} — ${why}${drift}${conflicted}` });
       continue;
     }
     // "As published" is only as true as the last fetch: a remote-tracking ref
@@ -281,16 +292,21 @@ async function resolveSources(
       line:
         `${key}: ${channel} @ ${short(sha)} — the channel, as published ` +
         `${age === null ? '(never fetched here)' : `(last fetch ${fmtAge(age)} ago)`}` +
-        (off ? ` (this checkout is parked ${wt.text}, not read)` : ''),
+        (off ? ` (this checkout is parked ${wt.text}, not read)` : '') +
+        conflicted,
     });
   }
   const bw = await worktreeAt(brainDir);
+  const bu = await unmergedFiles(brainDir);
   out.push({
     key: 'brain',
     dir: brainDir,
     line:
       `brain: working tree ${bw.text} — the brain's own repo, the commit this run gates` +
-      (await brainDrift(brainDir, cfg.channel ?? DEFAULT_CHANNEL, bw.head)),
+      (await brainDrift(brainDir, cfg.channel ?? DEFAULT_CHANNEL, bw.head)) +
+      (bu.length === 0
+        ? ''
+        : ` · ${bu.length} path(s) MID-MERGE (${bu.slice(0, 2).join(', ')}${bu.length > 2 ? ', …' : ''}) — resolve the merge before trusting any verdict here`),
   });
   return out;
 }
