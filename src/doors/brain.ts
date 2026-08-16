@@ -1,7 +1,7 @@
 // Brain door: the block AGENTS.md carries at the brain's root.
 
 import type { Config } from '../types.js';
-import { sddSpec } from '../adapters/registry.js';
+import { grapherSpec, sddSpec } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
 
 /**
@@ -47,6 +47,43 @@ export function projectLawLines(sdd: string): string[] {
   return lines;
 }
 
+/**
+ * The grapher, as door lines: the artifact, and the verbs that READ it.
+ *
+ * The refresh half of a grapher was already automatic — a post-edit hook keeps
+ * the artifact current whether or not anyone mentions it. What was missing is
+ * the half that pays for it: an agent reading this door had no idea a graph
+ * existed, so it grepped. The lines below name the tool's own query verbs,
+ * never a paraphrase, because the verbs are not interchangeable —
+ * `graphify query` takes a question and `codegraph query` takes a symbol.
+ *
+ * A tool with no query surface gets a line saying exactly that. Silence there
+ * would read as "no graph"; an invented verb would be worse.
+ */
+export function grapherLines(config: Config): string[] {
+  const name = config.grapher;
+  if (name === undefined) return [];
+  // Unverified: `doors` already prints the full declare-it-yourself notice —
+  // repeating a guess in the door is the one thing MV-59 forbids.
+  const spec = grapherSpec(name, config.graphers);
+  if (!spec) return [];
+  const lines = [
+    `- A code graph is kept fresh for you by \`${name}\` at \`${spec.artifacts[0]}\` — ` +
+      'refreshed after your edits, never committed.',
+  ];
+  if (spec.queries && spec.queries.length > 0) {
+    lines.push(
+      '  ASK IT BEFORE READING THE TREE RAW. It answers in one call what grep takes many, and it is this tool\'s verbs, not a generic one:',
+    );
+    for (const q of spec.queries) lines.push(`  - \`${q.run}\` — ${q.answers}`);
+  } else {
+    lines.push(
+      `  - \`${name}\` has NO query command: the artifact is written but nothing reads it back. Do not invent one.`,
+    );
+  }
+  return lines;
+}
+
 /** Render the brain door block body (no markers). */
 export function renderBrainDoor(config: Config, activeInvariants: number): string {
   const entries = Object.entries(config.repos);
@@ -66,6 +103,7 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     '- Every ecosystem decision enters as a change: see `.multivac/changes/` and run `multivac change`.',
     '- The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.',
     '- Check the law against the code before acting: `multivac verify`.',
+    ...grapherLines(config),
   ];
   if (config.sdd) {
     const spec = sddSpec(config.sdd);

@@ -120,11 +120,16 @@ editing the config.
 | example | `grapher: graphify` |
 
 The code-graph tool for the brain, and the fallback for every repo that does
-not override it. The name must be one multivac has **verified** (`graphify`,
-`codegraph`, `code-review-graph`, `axon`, `dependency-cruiser`,
-`scip-typescript`) or one you declare yourself under
-[`graphers`](#graphers) — multivac no longer derives an artifact path or a
-refresh command from a name, because inventing either is inventing a fact.
+not override it. The name must be one multivac **speaks** — `graphify` or
+`codegraph` — or one you declare yourself under [`graphers`](#graphers).
+multivac never derives an artifact path or a refresh command from a name,
+because inventing either is inventing a fact.
+
+Two, deliberately. Speaking a grapher means knowing what it can *answer*, so
+the brain door can tell an agent which verb to reach for; that is earned one
+tool at a time, not scaled by adding rows. Any other tool still works through
+[`graphers`](#graphers) with no merge request against multivac — it simply
+gets no query lines in the door, because multivac does not know its verbs.
 
 **Without it:** no `grapher` lines in `doctor`, no refresh hint at the end of
 `change close`. A newborn brain is two content files; graphing that is noise,

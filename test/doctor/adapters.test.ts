@@ -115,41 +115,51 @@ test('a declaration states the binary when it is not the first word', () => {
   assert.equal(spec!.installHint, 'npm i -g weirdgraph');
 });
 
-test('the four verified entries carry their real contracts', () => {
-  const crg = grapherSpec('code-review-graph')!;
-  assert.deepEqual(crg.artifacts, ['.code-review-graph']);
-  assert.equal(crg.create, 'code-review-graph build');
-  assert.equal(crg.refresh, 'code-review-graph update');
-  // Published in the project's own README; UNVERIFIED here was a gap that
-  // was not one, and it sent the reader off to look up what this states.
-  assert.equal(crg.installHint, 'pipx install code-review-graph');
+test('the table speaks two graphers, and everything else is UNVERIFIED', () => {
+  // Narrowed on purpose. The four that went — code-review-graph, axon,
+  // dependency-cruiser, scip-typescript — were verified but never exercised,
+  // so their entries described a build and a refresh and nothing a reader
+  // could ask the graph. They stay reachable through `graphers:` in config.
+  assert.deepEqual(grapherNames, ['graphify', 'codegraph']);
+  for (const gone of ['code-review-graph', 'axon', 'dependency-cruiser', 'scip-typescript']) {
+    assert.equal(grapherSpec(gone), null, `${gone} must not resolve from the table`);
+    assert.match(unverifiedGrapher(gone), /is not verified/);
+  }
+});
 
-  const axon = grapherSpec('axon')!;
-  assert.deepEqual(axon.artifacts, ['.axon']);
-  // No update verb: build and refresh are the same idempotent command.
-  assert.equal(axon.create, 'axon analyze .');
-  assert.equal(axon.refresh, 'axon analyze .');
-  // The distribution name is not the adapter name — PyPI's `axon` is an
-  // unrelated project, which is exactly why the line has to be stated.
-  assert.equal(axon.installHint, 'pip install axoniq');
-  assert.doesNotMatch(axon.installHint, /\baxon\b(?!iq)/);
+test('a grapher states its own query verbs — they are not interchangeable', () => {
+  // The whole point of the narrowing: the door tells the agent what to ASK.
+  // graphify takes a QUESTION and walks the graph; codegraph takes a SYMBOL.
+  // Paraphrasing either into "query the graph" is wrong for the other.
+  const g = grapherSpec('graphify')!;
+  assert.deepEqual(
+    g.queries?.map((q) => q.run),
+    ['graphify query "<question>"', 'graphify explain "<node>"', 'graphify path "<A>" "<B>"'],
+  );
+  assert.match(g.queries![0].answers, /question in plain words/);
 
-  const dc = grapherSpec('dependency-cruiser')!;
-  assert.deepEqual(dc.binaries, ['depcruise']); // NOT the adapter name
-  assert.match(dc.refresh, /^depcruise /);
-  // Caller-chosen output: the note has to say the path is multivac's.
-  assert.match(dc.note ?? '', /multivac's choice/);
-  // ...and the choice has to be one the shipped command can actually write:
-  // --output-to creates no directories, so the artifact is a root-level file
-  // and the refresh names that same path.
-  assert.deepEqual(dc.artifacts, ['dependency-cruiser-graph.json']);
-  assert.doesNotMatch(dc.artifacts[0], /\//);
-  assert.match(dc.refresh, /--output-to dependency-cruiser-graph\.json\b/);
+  const cg = grapherSpec('codegraph')!;
+  assert.deepEqual(
+    cg.queries?.map((q) => q.run),
+    ['codegraph query <symbol>'],
+  );
+  assert.match(cg.queries![0].answers, /symbol search by name/);
 
-  const scip = grapherSpec('scip-typescript')!;
-  assert.deepEqual(scip.artifacts, ['index.scip']);
-  assert.equal(scip.create, undefined); // build and refresh are one command
-  assert.equal(scip.refresh, 'scip-typescript index');
+  // A config-declared grapher has no query surface multivac can know about.
+  const declared = grapherSpec('acmegraph', {
+    acmegraph: { artifact: 'acmegraph-out/graph.json', refresh: 'acmegraph update .' },
+  })!;
+  assert.equal(declared.queries, undefined);
+});
+
+test('codegraph names its telemetry, because the refresh runs on every edit', () => {
+  // The contract above the table says "no model and no network inside it".
+  // codegraph ships telemetry ON by default, so the entry has to say so and
+  // give the opt-out — a refresh fired from a post-edit hook would otherwise
+  // phone home on every keystroke-sized change without the operator knowing.
+  const cg = grapherSpec('codegraph')!;
+  assert.match(cg.note ?? '', /TELEMETRY IS ON BY DEFAULT/);
+  assert.match(cg.note ?? '', /codegraph telemetry off/);
 });
 
 test('graphify itself is stated, not derived — the npm line was wrong', () => {

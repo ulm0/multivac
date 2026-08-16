@@ -418,18 +418,30 @@ checks them on every commit.
 <!-- @anchor MV-59 brain:src/adapters/refresh.ts /unverifiedGrapher\(name\)/ -->
 <!-- @anchor MV-59 brain:test/doctor/adapters.test.ts /an unknown grapher is UNVERIFIED — nothing is derived from the name/ -->
 <!-- @anchor MV-59 brain:test/doctor/adapters.test.ts /a config-declared grapher is usable without a registry MR/ -->
-<!-- @anchor MV-59 brain:test/doctor/adapters.test.ts /the four verified entries carry their real contracts/ -->
+<!-- @anchor MV-59 brain:test/doctor/adapters.test.ts /the table speaks two graphers, and everything else is UNVERIFIED/ -->
 <!-- @anchor MV-59 brain:test/change/grapher-refresh.test.ts /an unverified grapher refuses at close/ -->
 <!-- @anchor MV-59 brain:site/content/docs/reference/graphers-and-sdd.md /There is no generic contract/ -->
 <!-- @anchor MV-59 brain:site/content/docs/reference/configuration.md /### `graphers`/ -->
-<!-- @anchor MV-59 brain:src/adapters/registry.ts /installHint: 'pip install axoniq'/ unique -->
-<!-- @anchor MV-59 brain:src/adapters/registry.ts /installHint: 'pipx install code-review-graph'/ unique -->
-<!-- @anchor MV-59 brain:src/adapters/registry.ts /'dependency-cruiser-graph\.json'/ unique -->
-<!-- @anchor MV-59 brain:src/adapters/registry.ts /--output-to dependency-cruiser-graph\.json src/ unique -->
 | MV-60 | Every finding line names the repo it was found in. A leg's matches, the files that fail an `each`, and the candidate files of an ambiguous self-heal all print as `<repoKey>:<file>[:<line>]`, whether the leg is anchored to one repo or to `*` — an unprefixed `src/cli.ts:42` is ambiguous the moment a second repo is declared. | specified | active | 2026-08-15 | [changes/the-small-lies-and-the-shared-lock.md](changes/the-small-lies-and-the-shared-lock.md) |
 <!-- @anchor MV-60 brain:src/anchor/evaluate.ts /Every hit says which repo it came from/ -->
 <!-- @anchor MV-60 brain:src/anchor/evaluate.ts /const at = \(key: string, file: string\): string/ unique -->
 <!-- @anchor MV-60 brain:src/anchor/evaluate.ts /\$\{star \? `\$\{/ absent -->
 <!-- @anchor MV-60 brain:test/verify/each.test.ts /pattern .+api:k8s/ -->
 <!-- @anchor MV-60 brain:test/verify/scope.test.ts /pattern .+api:src/ -->
+| MV-61 | A grapher multivac ships is one whose **query verbs** it knows, not merely one whose artifact it can rebuild. Every entry in `knownGraphers` carries `queries` — each verb exactly as the agent types it, with one line saying what it answers — and the brain door prints them under the artifact, telling the agent to ask the graph before reading the tree raw. The verbs are printed **verbatim per tool and never paraphrased into a common one**: `graphify query` takes a question in words, `codegraph query` takes a symbol by name, and a door saying "query the graph" is wrong for one of them with no way for the agent to tell which. A tool with no query verb carries no `queries`, and the door states that the artifact is written but nothing reads it back — silence there reads as "no graph", and an invented verb is worse than both. A verb enters the table only after being RUN against the shipped binary, never read off `--help`: graphify's `query` is absent from its own help output and is the most useful verb it has. A grapher declared in config gets no query lines at all, because multivac does not know its verbs and will not guess them. | specified | active | 2026-08-16 | [changes/two-graphers-and-what-each-one-answers.md](changes/two-graphers-and-what-each-one-answers.md) |
+<!-- @anchor MV-61 brain:src/adapters/registry.ts /export interface GrapherQuery/ unique -->
+<!-- @anchor MV-61 brain:src/adapters/registry.ts /never be paraphrased into a/ -->
+<!-- @anchor MV-61 brain:src/adapters/registry.ts /queries\?: GrapherQuery\[\]/ unique -->
+<!-- @anchor MV-61 brain:src/adapters/registry.ts /absent from `graphify --help`/ -->
+<!-- @anchor MV-61 brain:src/adapters/registry.ts /graphify query "<question>"/ unique -->
+<!-- @anchor MV-61 brain:src/adapters/registry.ts /codegraph query <symbol>/ unique -->
+<!-- @anchor MV-61 brain:src/doors/brain.ts /export function grapherLines/ unique -->
+<!-- @anchor MV-61 brain:src/doors/brain.ts /ASK IT BEFORE READING THE TREE RAW/ unique -->
+<!-- @anchor MV-61 brain:src/doors/brain.ts /has NO query command/ unique -->
+<!-- @anchor MV-61 brain:test/doctor/adapters.test.ts /a grapher states its own query verbs — they are not interchangeable/ -->
+<!-- @anchor MV-61 brain:site/content/docs/reference/graphers-and-sdd.md /### What the graph answers/ -->
+| MV-62 | A shipped grapher entry names any network its refresh performs, because that refresh runs from a post-edit hook on every edit. `codegraph` sends anonymous telemetry by default, so its note says so, states what the vendor documents as never collected, and gives the opt-out verbatim. The table's contract — a path in the repo, one command safe to re-run, no model and no network — is a claim about what the entry has been made to be, not a hope; where a tool is only offline after an opt-out, the entry says which command makes it true. | specified | active | 2026-08-16 | [changes/two-graphers-and-what-each-one-answers.md](changes/two-graphers-and-what-each-one-answers.md) |
+<!-- @anchor MV-62 brain:src/adapters/registry.ts /TELEMETRY IS ON BY DEFAULT/ unique -->
+<!-- @anchor MV-62 brain:src/adapters/registry.ts /codegraph telemetry off/ unique -->
+<!-- @anchor MV-62 brain:test/doctor/adapters.test.ts /codegraph names its telemetry, because the refresh runs on every edit/ -->
 
