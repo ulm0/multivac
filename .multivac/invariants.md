@@ -502,4 +502,13 @@ checks them on every commit.
 <!-- @anchor MV-70 brain:src/commands/init.ts /never a --provider value/ unique -->
 <!-- @anchor MV-70 brain:test/init/init.test.ts /init with no provider writes only the canonical door/ -->
 <!-- @anchor MV-70 brain:src/commands/init.ts /'--agent'/ absent -->
+| MV-71 | **Enumeration yields each tracked file exactly once, and a tree mid-merge says so.** git keeps three index entries for a conflicted path — base, ours, theirs — and `ls-files` prints one line per stage, so every match inside such a file was counted three times: a `count=2` leg reported `found 6` and advised "revert the new occurrence, or ratchet to count=6". Advice that, followed, writes a corrupted number into the law over a merge unrelated to the claim — a miscount arriving with confident advice is worse than a crash. `lsFiles` deduplicates, and every `read` line names any path still unresolved, because a verdict taken mid-merge is about a tree nobody will commit: some files one side, some the other. | specified | active | 2026-08-16 | [changes/ls-files-counts-each-file-once.md](changes/ls-files-counts-each-file-once.md) |
+<!-- @anchor MV-71 brain:src/lib/git.ts /'--deduplicate'\]/ unique -->
+<!-- @anchor MV-71 brain:src/lib/git.ts /one line per stage/ unique -->
+<!-- @anchor MV-71 brain:src/lib/git.ts /export async function unmergedFiles/ unique -->
+<!-- @anchor MV-71 brain:src/commands/verify.ts /MID-MERGE/ count=2 -->
+<!-- @anchor MV-71 brain:test/lib/unmerged.test.ts /a conflicted file is listed once, not once per merge stage/ -->
+<!-- @anchor MV-71 brain:test/lib/unmerged.test.ts /the mid-merge state is reported, not silently judged/ -->
+<!-- @anchor MV-71 brain:node_modules /./ absent -->
+<!-- @anchor MV-71 brain:.gitignore /^node_modules$/ unique -->
 

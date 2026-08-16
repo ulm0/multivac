@@ -62,10 +62,36 @@ export async function run(repo: string, args: string[]): Promise<string> {
   }
 }
 
-/** Tracked files, repo-relative, /-separated. */
+/**
+ * Tracked files, repo-relative, /-separated, each exactly once.
+ *
+ * The dedupe is not tidiness. During an unresolved merge git keeps three index
+ * entries for every conflicted path — base, ours, theirs — and `ls-files`
+ * prints one line per stage. Every match inside such a file was therefore
+ * counted three times, so a `count=2` leg reported `found 6` and advised
+ * "revert the new occurrence, or ratchet to count=6". Following that would
+ * have written a corrupted number into the law, over a merge that had nothing
+ * to do with the claim. A miscount that arrives with confident advice is worse
+ * than a crash.
+ *
+ * `--deduplicate` is git's own answer, there since 2.31; the Set behind it
+ * costs nothing and keeps this correct on older git.
+ */
 export async function lsFiles(repo: string): Promise<string[]> {
-  const out = await run(repo, ['ls-files', '-z']);
-  return out.split('\0').filter(Boolean);
+  const out = await run(repo, ['ls-files', '-z', '--deduplicate']);
+  return [...new Set(out.split('\0').filter(Boolean))];
+}
+
+/**
+ * Paths with unresolved merge conflicts, repo-relative. Empty is the norm.
+ *
+ * A verdict taken mid-merge is about a tree that does not exist yet: some
+ * files are one side, some the other, and none of it is what will be
+ * committed. verify says so instead of quietly judging it.
+ */
+export async function unmergedFiles(repo: string): Promise<string[]> {
+  const out = await run(repo, ['diff', '--name-only', '--diff-filter=U', '-z']).catch(() => '');
+  return [...new Set(out.split('\0').filter(Boolean))];
 }
 
 /**
