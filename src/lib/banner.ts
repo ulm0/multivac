@@ -7,7 +7,8 @@
 // this tool exists to prevent. It is the logo, not a report.
 //
 // Printed by `init` alone. `verify`, `doctor`, `doors` and `change` run inside
-// git hooks and in CI, where a banner is noise and verify has a sub-second
+// git hooks and harness hooks, where a banner is noise and verify has a
+// sub-second
 // budget to spend on anchors.
 
 type Lamp = 'lit' | 'unlit' | 'flight';
