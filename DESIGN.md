@@ -1177,9 +1177,16 @@ Three normative rules, applying to the brain and to every declared repo:
   instead of passing quietly; where a tool ships its own validator its
   **verdict is reused** (`openspec validate --json`), never reimplemented —
   the lifecycle shells out for validation only, never to fake an agent-run
-  step; and the project-level document is **reported, never gated** — `doctor`
-  calls it missing, present, or STALE against the law's newest row, because a
-  constitution's content cannot be machine-judged, and BOTH doors carry the
+  step; and the project-level document is **gated on existing, never on its
+  content** (owner decision, 2026-08-16) — `doctor` calls it missing, present,
+  or STALE against the law's newest row, and **`change plan` refuses while it
+  is missing or unreadable, empty, or still carrying the tool's own template
+  tokens**, because whether the file was written is a machine question while
+  whether its principles are any good is not. That was one rule until it was
+  split: "reported, never gated" drew the wider conclusion from the narrower
+  reason, and four lifecycle commands ran green beside a door printing CREATE
+  IT IF ABSENT in capitals. STALE stays a report — the law moving is not proof
+  the principles must. BOTH doors carry the
   instruction to write it — `init`'s scaffolded door as well as the brain door
   `doors` renders, since `doors` is a second command and a constitution the
   agent hears about only on the second command is one nobody writes.

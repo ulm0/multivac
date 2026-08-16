@@ -118,11 +118,17 @@ repos:
 });
 
 /**
- * The project-level document: reported, never gated. Missing names the command
+ * The project-level document, as `doctor` sees it. Missing names the command
  * that writes it; present-but-older-than-the-law's-newest-row is STALE — the
  * product's law moved while its constitution did not.
+ *
+ * `doctor` NEVER gates on any of it, and that is what the name says now: it
+ * used to say "never gated" flat, which stopped being true when MV-76 made
+ * `change plan` refuse over the first two states. What survives here is
+ * doctor's own exit code — 0 through absent, template, STALE and fresh alike.
+ * The gate is `test/change/sdd-gates.test.ts`'s business.
  */
-test('doctor: the constitution is reported present, missing and stale — never gated', async () => {
+test('doctor: the constitution is reported present, missing and stale — doctor never gates', async () => {
   const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-const-')));
   writeFileSync(
     join(eco.brain, '.multivac/config.yml'),
@@ -143,6 +149,9 @@ test('doctor: the constitution is reported present, missing and stale — never 
   const missing = await sddLines();
   assert.match(missing, /project law — \.specify\/memory\/constitution\.md missing → run \/speckit\.constitution/);
   assert.match(missing, /project law — revisit: once at start, then on every principle change/);
+  // The state `change plan` REFUSES over (MV-76) is the state doctor still
+  // exits 0 on: doctor reports, and gating is somebody else's job.
+  assert.equal((await doctorReport(eco.brain)).exit, 0);
 
   // Scaffolded is not written: spec-kit installs constitution.md as its own
   // unfilled template, so "present" would be a lie an untouched repo earns.

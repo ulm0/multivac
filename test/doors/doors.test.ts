@@ -214,7 +214,14 @@ test('brain door carries the SDD flow when one is declared', () => {
   const speckit = renderBrainDoor({ ...cfg, sdd: 'speckit' }, 1);
   assert.match(speckit, /project law `\.specify\/memory\/constitution\.md`/);
   assert.match(speckit, /run \/speckit\.constitution in your agent/);
-  assert.match(speckit, /CREATE IT IF ABSENT/);
+  // …and the half that makes the imperative worth printing: the door names
+  // what REFUSES, exactly as every per-change step line names its proof
+  // (MV-76). Capitals alone are the discipline-nothing-verifies this tool
+  // exists to end, and this line was that for as long as it existed.
+  assert.match(
+    speckit,
+    /CREATE IT IF ABSENT — `change plan` refuses while it is missing, empty or still the template\./,
+  );
   assert.match(speckit, /revisit: once at start, then on every principle change/);
   assert.match(speckit, /`change plan` → run \/speckit\.tasks in your agent/);
   // no close step at all: spec-kit has no archive equivalent to print
