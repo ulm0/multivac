@@ -9,7 +9,9 @@ well. An **SDD** tool (spec-driven development) runs its own propose / apply /
 archive workflow alongside multivac's change lifecycle.
 
 multivac never installs either one. It reads what they leave on disk and, when
-you ask, invokes what they put on `PATH`.
+you ask, invokes what they put on `PATH`. Installing the tool stays yours;
+running the tool's own `init` **in this repository**, once, is the lifecycle's
+— see [the scaffold](#the-scaffold-declaring-a-tool-that-has-never-run-here).
 
 ```yaml
 sdd:     opsx
@@ -268,6 +270,66 @@ For OpenSpec, the terminal CLI is `init` / `update` / `list` / `show` /
 `validate`; `propose`, `apply` and `archive` are the `/opsx:` commands your
 agent runs in chat. That is why multivac never shells the steps out: it prints
 the instruction, the agent runs it, and the gate checks what it left behind.
+{{< /callout >}}
+
+### The scaffold: declaring a tool that has never run here
+
+Declaring `sdd: speckit` in a repo where spec-kit has never run used to be a
+deadlock. `change plan` refuses without `specs/*<slug>*/spec.md`; that file
+comes from `/speckit.specify`; that chat command does not exist until
+`specify init` has run — and `specify init` was what the blocked change was
+going to do. The only exits were `--no-sdd` and `sdd_auto: false`, both of
+which turn the gate off to fix the reason it fired.
+
+So an adapter also declares its **scaffold**: the artifact whose absence means
+"this tool has never run here", and the vendor's own init command, verbatim.
+
+| key | scaffold artifact | the tool's own init |
+| --- | --- | --- |
+| `speckit` | `.specify` | `specify init --here --integration claude --force` |
+| `opsx` | — | **unverified — not recorded, and never guessed** |
+
+`change new`, `change plan`, `change apply` and `change close` run it when the
+artifact is missing, print it first, and skip it entirely when it is there:
+
+```txt
+sdd speckit: .specify is in none of brain, api — running the tool's own init in brain: `specify init --here --integration claude --force`
+sdd speckit: scaffolded — brain:.specify is there now; its steps are runnable
+```
+
+`verify`, `doctor` and `doors` **never** run it: the init downloads templates,
+and those three make no network calls. `doctor` reports the state and names the
+command instead:
+
+```txt
+sdd        speckit: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force`, doctor never does (it reaches the network) · binary ok · sdd_auto on …
+```
+
+Five outcomes, all of them said out loud:
+
+| state | what happens |
+| --- | --- |
+| artifact present anywhere | nothing runs, nothing is printed |
+| no init recorded for that tool | the gap is stated with the install line; **nothing is executed** |
+| binary not on `PATH` | the install hint; nothing is executed |
+| ran, artifact now there | `scaffolded` |
+| ran, artifact still missing | the tool's own stderr, the command handed back, and the gate that follows still refuses on its own terms |
+
+The last row is the honest one: an exit code is the tool's claim, the artifact
+is the fact, and the gates look for the artifact.
+
+Only the brain is scaffolded, and the message names every repo that was
+searched — a sibling checkout is yours to `init`. `--no-sdd` and
+`sdd_auto: false` turn the scaffold off with everything else; there is no
+separate switch.
+
+{{< callout >}}
+A scaffold is **not a step**. It is the tool's own terminal command, run once
+per repo; the steps stay chat commands your agent runs, and nothing about the
+scaffold satisfies one. `specify init` writes `.specify/memory/constitution.md`
+as the *unfilled template* — writing the constitution is still
+`/speckit.constitution`'s job, and multivac's own check treats a file identical
+to the template as missing.
 {{< /callout >}}
 
 ### Each tool's own flow, not a fixed triple

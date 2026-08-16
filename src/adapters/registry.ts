@@ -168,6 +168,35 @@ export interface SddProjectStep {
 }
 
 /**
+ * The tool's OWN init, and the artifact that says it has already run here.
+ *
+ * The one command in this file multivac runs ITSELF. Every `SddStep` is a chat
+ * command an agent runs and the lifecycle only prints (MV-51); a scaffold is a
+ * terminal command with a vendor behind it, so it lives in its own field rather
+ * than as a step nothing could tell apart at the point steps are printed.
+ *
+ * It exists because declaring an SDD in a repo where it has never run was a
+ * deadlock: `plan` refuses without an artifact, the artifact comes from a chat
+ * command, and the chat command does not exist until the tool's own init has
+ * run — the change that would install it being the change its own gate refused.
+ *
+ * Both fields are STATED, never derived: not from the adapter's name, and not
+ * from `artifacts[0]` even where the two coincide, because a default is how one
+ * tool's layout silently becomes the answer for a tool whose init writes
+ * somewhere else. An init nobody has run gets no entry at all (MV-59's rule),
+ * and the lifecycle says so instead of guessing a command to run on someone
+ * else's machine.
+ */
+export interface SddScaffold {
+  /** Repo-relative path whose absence means "this tool has never run here". */
+  artifact: string;
+  /** The vendor's own init command, verbatim. Runs in the brain, not per-slug. */
+  run: string;
+  /** What running it actually wrote, and how that was established. */
+  note: string;
+}
+
+/**
  * One question a grapher can answer about the code, once the graph exists.
  *
  * This is the half of a grapher multivac used to ignore. Build and refresh
@@ -228,6 +257,13 @@ export interface AdapterSpec {
    * is stated, never papered over with an invented file.
    */
   projectSteps?: SddProjectStep[];
+  /**
+   * SDD only: the tool's own init, run by the LIFECYCLE when its artifact is
+   * missing — never by `verify`, `doctor` or `doors`, which MV-01 keeps
+   * offline. Optional because an init nobody verified by running it is a gap
+   * this registry states rather than fills.
+   */
+  scaffold?: SddScaffold;
   /**
    * Grapher only: the tool's own query surface, in its own verbs. Absent ⇒ the
    * tool has none, and the door says that rather than inventing one.
@@ -329,6 +365,13 @@ const sdd: Record<string, AdapterSpec> = {
     installHint: 'npm i -g @fission-ai/openspec',
     refresh: 'openspec update',
     automation: 'sdd_auto',
+    // NO `scaffold`. `openspec init` is in the CLI list the note below records,
+    // but what it writes — and which flags a non-interactive run needs — was
+    // never verified by running it, and MV-59 forbids a contract nobody read
+    // from a primary source. A declared-but-absent opsx therefore gets the
+    // stated gap and the install line; a guessed init command would run on
+    // someone else's repo, which is the one place a guess costs more than a
+    // wrong printout. Three verified lines close this whenever someone runs it.
     // OpenSpec has NO project-level document. `openspec/config.yaml`'s
     // `context:` is the nearest thing and it ships commented out, unvalidated
     // and never required — declaring it as a constitution would be a lie.
@@ -383,6 +426,17 @@ const sdd: Record<string, AdapterSpec> = {
     installHint: 'uv tool install specify-cli',
     refresh: 'specify check',
     automation: 'sdd_auto',
+    scaffold: {
+      artifact: '.specify',
+      run: 'specify init --here --integration claude --force',
+      // Verified by running it in a scratch repo, not read off a README: it
+      // writes `.specify/**` — scripts, templates, and memory/constitution.md
+      // as the UNFILLED template — plus ten .claude/skills/speckit-*/SKILL.md,
+      // and it leaves .claude/settings.json alone. `--here` initializes the
+      // current directory instead of creating a new one, and `--force` lets it
+      // write into a directory that already has files (every real repo).
+      note: 'The selecting flag is `--integration`, not `--ai`; the integration name is what installs the harness\'s copy of the steps, and on Claude they land as hyphenated skills (/speckit-specify). It downloads its templates, so only the change lifecycle runs it. It writes the constitution as the unfilled template and nothing else claims to author it: the scaffold makes the steps runnable, the agent writes the document.',
+    },
     projectSteps: [
       {
         run: 'run /speckit.constitution in your agent to write the project principles — spec-kit ships .specify/memory/constitution.md as an unfilled template, so an untouched repo has no constitution, only a placeholder',

@@ -27,7 +27,15 @@ import {
   type LifecyclePoint,
   type SddStep,
 } from './registry.js';
-import { artifactHit, onPath, sddRoots, type SddRoot } from './detect.js';
+import {
+  artifactHit,
+  artifactPresent,
+  onPath,
+  pathExists,
+  sddRoots,
+  type SddRoot,
+} from './detect.js';
+import { say, warn } from '../lib/out.js';
 
 const execFileP = promisify(execFile);
 
@@ -161,6 +169,95 @@ async function toolVerdict(cmd: string, cwd: string): Promise<Verdict> {
       raw.split('\n').filter(Boolean).slice(0, 3).join(' ') || err.message.split('\n')[0];
     return { kind: 'failed', message };
   }
+}
+
+/**
+ * Run the declared tool's OWN init, once, when it has never run here.
+ *
+ * Printing is this module's rule, and this is its second exception:
+ * the scaffold is what makes the steps runnable, so it is the one command
+ * multivac spawns on the tool's behalf besides the tool's own validator.
+ *
+ * Declaring
+ * an SDD in a repo where it has never run used to be a deadlock: `plan` refuses
+ * without an artifact, that artifact comes from a chat command, and the chat
+ * command does not exist until the tool's init has run — so the only exits were
+ * `--no-sdd` and `sdd_auto: false`, each turning the gate off to fix the very
+ * absence that fired it.
+ *
+ * This changes nothing about MV-51. The STEPS stay chat commands the agent
+ * runs; the scaffold is a terminal command with a vendor behind it, declared in
+ * the registry and quoted verbatim. It never satisfies a step and is never
+ * printed as one.
+ *
+ * Five outcomes, all of them said out loud:
+ *   - artifact present in any root  -> silent, nothing runs;
+ *   - no scaffold declared          -> the gap, stated: no init is guessed;
+ *   - binary absent                 -> the install hint, nothing runs;
+ *   - ran and the artifact is there -> scaffolded;
+ *   - ran and it is not             -> the tool's own words, command handed
+ *                                      back, and the gate that follows still
+ *                                      refuses on its own terms.
+ *
+ * Never throws: a foreign tool's failure is never the lifecycle's failure.
+ * It reaches the network, so only the change lifecycle calls it — `verify`,
+ * `doctor` and `doors` are bound offline by MV-01.
+ */
+export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): Promise<void> {
+  if (!cfg.sdd || !cfg.sddAuto || noSdd) return;
+  const spec = sddSpec(cfg.sdd);
+  // An unknown adapter already gets the known-names line from the gate and the
+  // instructions; a second copy here would only repeat it.
+  if (!spec) return;
+  const sc = spec.scaffold;
+  const roots = await sddRoots(brain, cfg);
+  // Presence is asked the same way the gates ask it, over the same roots. With
+  // no scaffold declared there is no artifact to name, so "has this tool left
+  // anything here" is the registry's own read-capability probe.
+  const present = (dir: string): Promise<boolean> =>
+    sc ? pathExists(join(dir, sc.artifact)) : artifactPresent(spec, dir);
+  for (const root of roots) {
+    if (await present(root.dir)) return; // installed here: silence, not a line
+  }
+  const where = roots.map((r) => r.scope).join(', ');
+  if (!sc) {
+    warn(
+      `sdd ${cfg.sdd}: declared, and nothing of it is in ${where} — multivac does not know this tool's ` +
+        `init command and will not guess one. Install it (${spec.installHint}) and run its own init ` +
+        'there yourself, then re-run this command',
+    );
+    return;
+  }
+  // Printed BEFORE it runs: it downloads templates and writes into the tree.
+  // Only the brain is scaffolded — a sibling checkout is the operator's to
+  // init, which is why every root that was searched is named.
+  const scope = roots[0].scope;
+  say(
+    `sdd ${cfg.sdd}: ${sc.artifact} is in none of ${where} — running the tool's own init in ` +
+      `${scope}: \`${sc.run}\``,
+  );
+  const verdict = await toolVerdict(sc.run, roots[0].dir);
+  if (verdict.kind === 'missing') {
+    warn(
+      `sdd ${cfg.sdd}: \`${verdict.bin}\` is not on PATH, so \`${sc.run}\` cannot be run — ` +
+        `install it: ${spec.installHint}`,
+    );
+    return;
+  }
+  // The artifact decides, not the exit code. A tool that returns 0 without
+  // writing what the gates look for has not scaffolded anything, and saying it
+  // did is the quiet lie this whole module is built to avoid.
+  if (await present(roots[0].dir)) {
+    say(`sdd ${cfg.sdd}: scaffolded — ${scope}:${sc.artifact} is there now; its steps are runnable`);
+    return;
+  }
+  warn(
+    `sdd ${cfg.sdd}: \`${sc.run}\` left no ${sc.artifact} in ${scope}` +
+      (verdict.kind === 'failed'
+        ? ` — it said: ${verdict.message}`
+        : ' — it exited 0 and wrote nothing there') +
+      ` — run it in ${scope} by hand; until then the gates refuse on their own terms`,
+  );
 }
 
 /**
