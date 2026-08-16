@@ -1,16 +1,16 @@
 # Graph Report - multivac  (2026-08-16)
 
 ## Corpus Check
-- 218 files · ~211,327 words
+- 220 files · ~213,092 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1407 nodes · 2372 edges · 141 communities (105 shown, 36 thin omitted)
+- 1419 nodes · 2384 edges · 141 communities (105 shown, 36 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 13 edges (avg confidence: 0.55)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e83e238c`
+- Built from commit: `a0be9dd0`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -20,22 +20,22 @@
 - reserve.ts
 - package.json
 - multivac — design
-- doors.ts
+- ritual.test.ts
 - init.ts
-- sdd.ts
+- doors.ts
 - doctor.ts
 - common.sh
 - commands.md
 - The SDD arrives with its own scaffold
-- detect.ts
-- registry.ts
+- adoption.md
+- index.ts
 - .multivac/invariants.md
 - sync-fetches-the-channel.md
 - parse.ts
 - Top-level keys
 - SDD adapters
 - Implementation Plan: The release says what changed
-- types.ts
+- detect.ts
 - Tasks: [FEATURE NAME]
 - Contributor Covenant Code of Conduct
 - integrations.md
@@ -45,7 +45,7 @@
 - Built with itself includes the door
 - Existing ecosystem: seed → questions → interview → law
 - tsconfig.test.json
-- docs/_index.md
+- brain-driven-development.md
 - claims-and-anchors.md
 - writing-anchors.md
 - hooks.md
@@ -76,8 +76,8 @@
 - The gate cannot lie
 - normalize.ts
 - Five defects the prover found
-- git.ts
-- verify.test.ts
+- sdd.ts
+- registry.ts
 - apply-git-robustness.md
 - brain-first-class.md
 - c2-mit-license.md
@@ -98,7 +98,7 @@
 - test-branch-determinism.md
 - Discovery: seed an existing ecosystem
 - the-door-for-contributors.md
-- count.ts
+- types.ts
 - the-gate-names-its-room.md
 - README.md
 - Reading `mvac verify`
@@ -123,7 +123,7 @@
 - fixture.ts
 - verify.ts
 - Feature Specification: [FEATURE NAME]
-- gitInit
+- count.ts
 - speckit-plan/SKILL.md
 - ls-files-counts-each-file-once.md
 - the-ramp-is-part-of-the-road.md
@@ -141,10 +141,10 @@
 - speckit-taskstoissues/SKILL.md
 - [CHECKLIST TYPE] Checklist: [FEATURE NAME]
 - the-project-document-is-gated-on-existing.md
-- each.test.ts
-- scope.test.ts
 - settings.ts
-- consumer.test.ts
+- composition.md
+- skill.test.ts
+- docs/_index.md
 - the-chain-arms-either-way.md
 
 ## God Nodes (most connected - your core abstractions)
@@ -181,8 +181,8 @@ Cohesion: 0.11
 Nodes (17): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: The project document is gated on existing, Assumptions, Edge Cases, Feature Specification: The project document is gated on existing (+9 more)
 
 ### Community 1 - "file.ts"
-Cohesion: 0.11
-Nodes (23): archiveChange(), ChangeClaim, ChangeError, ChangeFile, closeGate(), frontmatterError(), normalizeChange(), parseChange() (+15 more)
+Cohesion: 0.15
+Nodes (19): archiveChange(), ChangeClaim, ChangeError, ChangeFile, closeGate(), frontmatterError(), normalizeChange(), parseChange() (+11 more)
 
 ### Community 2 - "reserve.ts"
 Cohesion: 0.28
@@ -196,21 +196,21 @@ Nodes (44): bin, multivac, mvac, bugs, url, dependencies, picomatch, yaml (+36 m
 Cohesion: 0.05
 Nodes (44): Anchor to contracts, not implementations, Artifact ≠ binary, Asymmetric severity, Automation by default (owner decision, 2026-08-13), Branching is local-first, and says what it did, Build plan, CLI, Coverage, not completeness (+36 more)
 
-### Community 5 - "doors.ts"
-Cohesion: 0.17
-Nodes (16): doorsCommand, installHookConfig(), installSkill(), KNOWN_TARGETS, linkDoor(), packageRoot(), projectInto(), readOrNull() (+8 more)
+### Community 5 - "ritual.test.ts"
+Cohesion: 0.38
+Nodes (3): scaffoldChange(), ritualChecklist(), landedChange()
 
 ### Community 6 - "init.ts"
-Cohesion: 0.07
-Nodes (44): ensureVisibleToGit(), exists(), Flags, init, isRepoRoot(), migrateLegacy(), parseFlags(), renderConfig() (+36 more)
+Cohesion: 0.05
+Nodes (67): detectAdapters(), cmdNew(), commitBookkeeping(), ensureVisibleToGit(), exists(), Flags, init, isRepoRoot() (+59 more)
 
-### Community 7 - "sdd.ts"
+### Community 7 - "doors.ts"
 Cohesion: 0.19
-Nodes (21): artifactHit(), sddRoots(), sddSpec(), copiedFrom(), execFileP, flowLines(), GateResult, openItems() (+13 more)
+Nodes (17): sddSpec(), doorsCommand, installHookConfig(), installSkill(), KNOWN_TARGETS, linkDoor(), packageRoot(), projectInto() (+9 more)
 
 ### Community 8 - "doctor.ts"
-Cohesion: 0.27
-Nodes (18): artifactPresent(), pathExists(), branchesLine(), buildCritical(), doctorReport(), doorState(), fmtAge(), grapherLines() (+10 more)
+Cohesion: 0.24
+Nodes (16): collectBrainAnchors(), branchesLine(), buildCritical(), doctorReport(), doorState(), fmtAge(), graphStale(), label() (+8 more)
 
 ### Community 9 - "common.sh"
 Cohesion: 0.08
@@ -224,25 +224,25 @@ Nodes (22): `--abandon`, `apply`, `change <sub> <slug> [args]`, `close`, `count 
 Cohesion: 0.33
 Nodes (5): Order, Running it, not just naming it, The SDD arrives with its own scaffold, What an adapter should declare, What this does NOT automate
 
-### Community 12 - "detect.ts"
-Cohesion: 0.15
-Nodes (18): AdapterStatus, binaryPresent(), detect(), detectAdapters(), Detected, policy, SddRoot, execFileP (+10 more)
+### Community 12 - "adoption.md"
+Cohesion: 0.33
+Nodes (5): Next, The arc, What changes per case, and what does not, What each phase buys, Where you start
 
-### Community 13 - "registry.ts"
+### Community 13 - "index.ts"
 Cohesion: 0.12
-Nodes (16): DoorKind, DoorTarget, doorTargets, GatePoint, GrapherEntry, GrapherQuery, knownGraphers, LifecyclePoint (+8 more)
+Nodes (24): main(), usage(), version(), doctorCommand, helpCommand, run(), TOPICS, usageFor() (+16 more)
 
 ### Community 14 - ".multivac/invariants.md"
 Cohesion: 0.07
 Nodes (15): Close keeps used reservations, Each scope verifies what it is responsible for, seed finds the contracts, The gaps that were not gaps, The graph follows the agent, The graph refreshes itself, The ledger keeps itself, The mount explains itself (+7 more)
 
 ### Community 16 - "parse.ts"
-Cohesion: 0.16
-Nodes (14): ClaimRow, collectBrainAnchors(), nibble(), parseAnchors(), ParseResult, readClaimRows(), ESCAPE_HINTS, POSIX_CLASSES (+6 more)
+Cohesion: 0.26
+Nodes (8): ClaimRow, ParseResult, readClaimRows(), compileAnchorRegex(), ESCAPE_HINTS, POSIX_CLASSES, RegexDialectError, Anchor
 
 ### Community 17 - "Top-level keys"
-Cohesion: 0.12
-Nodes (15): `authorities`, `blocking`, `channel`, `doors`, Errors are exit 2, `grapher`, `graphers`, Layout (+7 more)
+Cohesion: 0.15
+Nodes (13): `authorities`, `blocking`, `channel`, `doors`, `grapher`, `graphers`, `mount`, `repos` (+5 more)
 
 ### Community 18 - "SDD adapters"
 Cohesion: 0.12
@@ -252,9 +252,9 @@ Nodes (15): Artifact ≠ binary, Automatic refresh, Detection at init, Each tool
 Cohesion: 0.05
 Nodes (36): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: The release says what changed, Complexity Tracking, Constitution Check, Design decisions (+28 more)
 
-### Community 20 - "types.ts"
-Cohesion: 0.18
-Nodes (15): main(), usage(), version(), doctorCommand, helpCommand, run(), TOPICS, usageFor() (+7 more)
+### Community 20 - "detect.ts"
+Cohesion: 0.15
+Nodes (20): AdapterStatus, artifactPresent(), binaryPresent(), detect(), Detected, policy, SddRoot, execFileP (+12 more)
 
 ### Community 21 - "Tasks: [FEATURE NAME]"
 Cohesion: 0.07
@@ -292,9 +292,9 @@ Nodes (9): 1. Seed, 2. Read by category, not by repo, 3. Take the open questions
 Cohesion: 0.22
 Nodes (8): test, ./tsconfig.json, compilerOptions, outDir, rootDir, extends, include, src
 
-### Community 30 - "docs/_index.md"
-Cohesion: 0.22
-Nodes (7): Enforcement: the ladder, Entry from anywhere, one protocol, The session is home, Three layers, The four jobs, Three sections, Where to start
+### Community 30 - "brain-driven-development.md"
+Cohesion: 0.40
+Nodes (4): Enforcement: the ladder, Entry from anywhere, one protocol, The session is home, Three layers
 
 ### Community 31 - "claims-and-anchors.md"
 Cohesion: 0.22
@@ -342,11 +342,11 @@ Nodes (6): Amending and retiring, apply — a worktree per repo, or create, clos
 
 ### Community 42 - "change.ts"
 Cohesion: 0.16
-Nodes (37): changeRel(), landingPlan(), anchoredClaimIds(), baseNames(), blockedPaths(), BranchBase, clone(), cmdApply() (+29 more)
+Nodes (33): changeRel(), landingPlan(), anchoredClaimIds(), baseNames(), blockedPaths(), BranchBase, bump(), clone() (+25 more)
 
 ### Community 43 - "install.ts"
-Cohesion: 0.22
-Nodes (18): onPath(), alongsideParts(), hooksLine(), chainedHooks(), execFileP, findRunner(), gitConfig(), gitHooksDir() (+10 more)
+Cohesion: 0.18
+Nodes (20): onPath(), pathExists(), alongsideParts(), hooksLine(), chainedHooks(), execFileP, findRunner(), gitConfig() (+12 more)
 
 ### Community 44 - "Bug.md"
 Cohesion: 0.33
@@ -412,13 +412,13 @@ Nodes (3): 1. `doctor` must fail when the gate is disarmed (MV-47), 2. `count` m
 Cohesion: 0.53
 Nodes (4): dollarTag(), endOfQuoted(), SqlStatement, sqlStatements()
 
-### Community 61 - "git.ts"
-Cohesion: 0.13
-Nodes (18): deployStacks(), nameSome(), openQuestions(), runSeed(), AMBIENT_GIT_ENV, cleanEnv(), execFileP, headSha() (+10 more)
+### Community 61 - "sdd.ts"
+Cohesion: 0.19
+Nodes (19): artifactHit(), sddRoots(), GatePoint, SddStep, copiedFrom(), execFileP, flowLines(), GateResult (+11 more)
 
-### Community 62 - "verify.test.ts"
-Cohesion: 0.23
-Nodes (7): commitFile(), eco(), git(), HEADER, readmesWithPin(), setLaw(), staleEco()
+### Community 62 - "registry.ts"
+Cohesion: 0.14
+Nodes (13): DoorKind, DoorTarget, doorTargets, GrapherEntry, GrapherQuery, knownGraphers, LifecyclePoint, sdd (+5 more)
 
 ### Community 66 - "Anchors: the writing manual"
 Cohesion: 0.22
@@ -432,9 +432,9 @@ Nodes (8): close — the gate, new — declare before you touch anything, plan /
 Cohesion: 0.22
 Nodes (8): 1. Run the seeder, 2. Read the inventory BY CATEGORY, not by repo, 3. Take the open questions to a human, 4. Draft the map and the proposed law, 5. File everything as proposed, 6. Validate in blast-radius batches, 7. Project the doors, Discovery: seed an existing ecosystem
 
-### Community 83 - "count.ts"
-Cohesion: 0.33
-Nodes (7): count, run(), USAGE, findMount(), ConfigError, realPath(), samePath()
+### Community 83 - "types.ts"
+Cohesion: 0.19
+Nodes (11): ParseDiagnostic, Evaluated, makeMatcher(), OPTS, ClaimResult, Exclusion, LegResult, LegState (+3 more)
 
 ### Community 85 - "README.md"
 Cohesion: 0.20
@@ -469,24 +469,24 @@ Cohesion: 0.12
 Nodes (15): 1. Initialize Convergence Context, 2. Load Artifacts (Progressive Disclosure), 3. Build the Intent Inventory, 4. Assess the Codebase and Classify Findings, 5. Assign Severity, 6. Present the In-Session Findings Summary, 7. Append Convergence Tasks (or report converged), 8. Provide Next Actions (Handoff) (+7 more)
 
 ### Community 112 - "evaluate.ts"
-Cohesion: 0.13
-Nodes (24): evalLeg(), evaluateAnchors(), EvaluateOptions, RANK, RepoHandle, rewriteGlob(), TaggedMatch, Target (+16 more)
+Cohesion: 0.16
+Nodes (20): evalLeg(), evaluateAnchors(), EvaluateOptions, RANK, RepoHandle, rewriteGlob(), TaggedMatch, Target (+12 more)
 
 ### Community 113 - "fixture.ts"
-Cohesion: 0.24
-Nodes (8): seed, eco(), git(), initRepo(), makeScratchEcosystem(), publishRepo(), ScratchEcosystem, brainFor()
+Cohesion: 0.07
+Nodes (32): count, verify, eco(), git(), gitInit(), initRepo(), makeScratchEcosystem(), publishRepo() (+24 more)
 
 ### Community 114 - "verify.ts"
-Cohesion: 0.12
-Nodes (32): ParseDiagnostic, brainDrift(), Diagnostic, evaluateCore(), Evaluated, EvaluateOpts, findStaleMount(), fmtAge() (+24 more)
+Cohesion: 0.15
+Nodes (24): brainDrift(), Diagnostic, evaluate(), evaluateCore(), EvaluateOpts, findStaleMount(), fmtAge(), legGates() (+16 more)
 
 ### Community 115 - "Feature Specification: [FEATURE NAME]"
 Cohesion: 0.15
 Nodes (12): Assumptions, Edge Cases, Feature Specification: [FEATURE NAME], Functional Requirements, Key Entities *(include if feature involves data)*, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)* (+4 more)
 
-### Community 116 - "gitInit"
-Cohesion: 0.31
-Nodes (5): unmergedFiles(), gitInit(), fixture(), conflicted(), git()
+### Community 116 - "count.ts"
+Cohesion: 0.36
+Nodes (7): nibble(), parseAnchors(), run(), USAGE, findMount(), realPath(), samePath()
 
 ### Community 117 - "speckit-plan/SKILL.md"
 Cohesion: 0.18
@@ -540,41 +540,41 @@ Nodes (4): Outline, Post-Execution Checks, Pre-Execution Checks, User Input
 Cohesion: 0.40
 Nodes (4): [Category 1], [Category 2], [CHECKLIST TYPE] Checklist: [FEATURE NAME], Notes
 
-### Community 134 - "each.test.ts"
-Cohesion: 0.31
-Nodes (6): commitFile(), eco(), git(), HEADER, manifest(), manifests()
-
-### Community 136 - "scope.test.ts"
-Cohesion: 0.36
-Nodes (6): verify, commitAll(), git(), HEADER, parkedEco(), TOMBSTONE
-
-### Community 137 - "settings.ts"
+### Community 134 - "settings.ts"
 Cohesion: 0.52
 Nodes (5): ensureEvent(), Json, mergeClaudeSettings(), ourEntry(), refreshHookCmd()
 
-### Community 138 - "consumer.test.ts"
+### Community 136 - "composition.md"
 Cohesion: 0.33
-Nodes (4): git(), HEADER, LAW, mountedEco()
+Nodes (5): Neither is required, Next, Not competing is a rule here, not a posture, Why a grapher helps, Why an SDD tool is recommended
+
+### Community 137 - "skill.test.ts"
+Cohesion: 0.40
+Nodes (4): FILES, packContents, ROOT, SKILL_DIR
+
+### Community 138 - "docs/_index.md"
+Cohesion: 0.29
+Nodes (5): The four jobs, Three sections, and the changelog, Where to start, Errors are exit 2, Layout
 
 ## Knowledge Gaps
-- **670 isolated node(s):** `common.sh script`, `name`, `version`, `description`, `license` (+665 more)
+- **680 isolated node(s):** `common.sh script`, `name`, `version`, `description`, `license` (+675 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **36 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `loadConfig()` connect `init.ts` to `doors.ts`, `doctor.ts`, `change.ts`, `verify.ts`, `count.ts`, `git.ts`?**
+- **Why does `loadConfig()` connect `init.ts` to `doors.ts`, `doctor.ts`, `change.ts`, `index.ts`, `verify.ts`, `count.ts`?**
   _High betweenness centrality (0.007) - this node is a cross-community bridge._
-- **Why does `makeScratchEcosystem()` connect `fixture.ts` to `file.ts`, `doors.ts`, `init.ts`, `each.test.ts`, `scope.test.ts`, `consumer.test.ts`, `registry.ts`, `loadChange`, `git.ts`, `verify.test.ts`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
+- **Why does `makeScratchEcosystem()` connect `fixture.ts` to `ritual.test.ts`, `init.ts`, `doors.ts`, `loadChange`, `registry.ts`?**
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **Why does `multivac — design` connect `multivac — design` to `README.md`?**
   _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **What connects `common.sh script`, `name`, `version` to the rest of the system?**
-  _670 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _680 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Specification Quality Checklist: The project document is gated on existing` be split into smaller, more focused modules?**
   _Cohesion score 0.10526315789473684 - nodes in this community are weakly interconnected._
 - **Should `file.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.1103448275862069 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.1471861471861472 - nodes in this community are weakly interconnected._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
