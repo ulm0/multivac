@@ -534,4 +534,8 @@ checks them on every commit.
 <!-- @anchor MV-76 brain:src/commands/change.ts /gateProjectLaw/ -->
 <!-- @anchor MV-76 brain:test/change/sdd-gates.test.ts /plan refuses while the project document is absent or still the template/ -->
 <!-- @anchor MV-76 brain:test/change/sdd-gates.test.ts /a stale project document still reports, never gates/ -->
+| MV-77 | **The version the site advertises is the version the package declares.** MV-68 pins the tag to the manifest; the site was the third corner and nothing held it, so the home badge said v0.1.0 while npm was already serving 0.1.1 — this repo stating a published fact wrongly, on its first release. No anchor can catch it: a stale badge is perfectly well-formed, and a leg pinned to the literal current version would need editing by the same hand that forgot the badge. The comparison is therefore a test, in the shape MV-02, MV-22 and MV-72 already use; the legs below prove only that the test still says what it was written to say and that the badge still has the shape the test parses. | open | proposed | 2026-08-16 | [changes/the-site-quotes-the-version-the-package-declares.md](changes/the-site-quotes-the-version-the-package-declares.md) |
+<!-- @anchor MV-77 brain:test/invariants/site-version.test.ts /is the version the package declares/ -->
+<!-- @anchor MV-77 brain:site/content/_index.md /<span>v[0-9]+\.[0-9]+\.[0-9]+ · npx multivac init<\/span>/ unique -->
+<!-- @anchor MV-77 brain:package.json /"version": "[0-9]+\.[0-9]+\.[0-9]+"/ unique -->
 
