@@ -655,8 +655,8 @@
     "semantic_hash": ""
   },
   ".multivac/invariants.md": {
-    "mtime": 1786865586.3041844,
-    "ast_hash": "23763959fc7b3970e113f51d2294f2ac",
+    "mtime": 1786866187.549281,
+    "ast_hash": "4174fae77f50034afd5e107cc45cb2d1",
     "semantic_hash": ""
   },
   ".multivac/ritual.md": {
@@ -890,7 +890,7 @@
     "semantic_hash": ""
   },
   ".claude/settings.json": {
-    "mtime": 1786865559.2145884,
+    "mtime": 1786866618.6310577,
     "ast_hash": "114a147e88053fbb6769228bcc606377",
     "semantic_hash": ""
   },
@@ -935,8 +935,173 @@
     "semantic_hash": ""
   },
   ".multivac/changes/archive/built-with-itself-includes-the-door.md": {
-    "mtime": 1786865586.3037553,
+    "mtime": 1786865838.935008,
     "ast_hash": "a1bacd089c08458027e03e09ae96ff52",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/doors-prunes-what-it-projects.md": {
+    "mtime": 1786866195.0323408,
+    "ast_hash": "1aed95179a1272a616402e5dcdb3e1c0",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/the-merge-keeps-what-it-did-not-write.md": {
+    "mtime": 1786865914.348994,
+    "ast_hash": "1e47d34f3d32865632fc4402c7130ef1",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/the-project-document-is-gated-on-existing.md": {
+    "mtime": 1786866165.901046,
+    "ast_hash": "e8bb3e22aeda2dfa13b49fa385baffb6",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/the-sdd-arrives-with-its-own-scaffold.md": {
+    "mtime": 1786866389.3763187,
+    "ast_hash": "14c6d78abac9a98f504b7dbaf763df95",
+    "semantic_hash": ""
+  },
+  ".specify/init-options.json": {
+    "mtime": 1786866618.6520607,
+    "ast_hash": "c1bfb54802ec19d8af2f54411b323566",
+    "semantic_hash": ""
+  },
+  ".specify/integration.json": {
+    "mtime": 1786866618.6323338,
+    "ast_hash": "a748fb3c12c5bd5c17c9e7034b87f5a1",
+    "semantic_hash": ""
+  },
+  ".specify/integrations/claude.manifest.json": {
+    "mtime": 1786866618.6316276,
+    "ast_hash": "455a126d1ba3f9548b4f5e49c1e725f3",
+    "semantic_hash": ""
+  },
+  ".specify/integrations/speckit.manifest.json": {
+    "mtime": 1786866618.6437278,
+    "ast_hash": "81ca2752e4df941b6d30c31348f0442b",
+    "semantic_hash": ""
+  },
+  ".specify/memory/.constitution-template.json": {
+    "mtime": 1786866618.6533093,
+    "ast_hash": "7e3332a78cec1722b4351c6bf52dfc51",
+    "semantic_hash": ""
+  },
+  ".specify/scripts/bash/check-prerequisites.sh": {
+    "mtime": 1786866618.6393845,
+    "ast_hash": "e8f1e7d868ab35e0fa68e6a7aa50f707",
+    "semantic_hash": ""
+  },
+  ".specify/scripts/bash/common.sh": {
+    "mtime": 1786866618.6373854,
+    "ast_hash": "047f4eb5725671079d617c3b2935a4f6",
+    "semantic_hash": ""
+  },
+  ".specify/scripts/bash/create-new-feature.sh": {
+    "mtime": 1786866618.6404257,
+    "ast_hash": "bd3d0b837199f0f6f9f5b33a0693a6e9",
+    "semantic_hash": ""
+  },
+  ".specify/scripts/bash/resolve-template.sh": {
+    "mtime": 1786866618.6399283,
+    "ast_hash": "8e3dfe574895c76bb9cd555fea0ce54d",
+    "semantic_hash": ""
+  },
+  ".specify/scripts/bash/setup-plan.sh": {
+    "mtime": 1786866618.6380773,
+    "ast_hash": "918d00539c8114c53e6360f5871c61c8",
+    "semantic_hash": ""
+  },
+  ".specify/scripts/bash/setup-tasks.sh": {
+    "mtime": 1786866618.6386962,
+    "ast_hash": "30ec558a29cb7cee770f6a1238a6e68b",
+    "semantic_hash": ""
+  },
+  ".specify/workflows/workflow-registry.json": {
+    "mtime": 1786866618.6515148,
+    "ast_hash": "27d5dcd86c3e8846f4dfa833cf5e7e84",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-analyze/SKILL.md": {
+    "mtime": 1786866618.614778,
+    "ast_hash": "748bc4b996db5a14fcea2b180cc785bc",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-checklist/SKILL.md": {
+    "mtime": 1786866618.6254451,
+    "ast_hash": "5a3798aad248142f7afe86d8a7576aeb",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-clarify/SKILL.md": {
+    "mtime": 1786866618.6169703,
+    "ast_hash": "cd6dcde2d9a858a31e8ef8e1ea26d69c",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-constitution/SKILL.md": {
+    "mtime": 1786866618.6184468,
+    "ast_hash": "813093ef57eb2ad7e2fb00d0ca4ed569",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-converge/SKILL.md": {
+    "mtime": 1786866618.6217332,
+    "ast_hash": "ce36831edce65042751f553bfb1d6d85",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-implement/SKILL.md": {
+    "mtime": 1786866618.620151,
+    "ast_hash": "943970d34988ee7024ad47c52e0ae1ac",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-plan/SKILL.md": {
+    "mtime": 1786866618.623125,
+    "ast_hash": "d70abeb773ad1113e2366d216b12018f",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-specify/SKILL.md": {
+    "mtime": 1786866618.6275885,
+    "ast_hash": "70939fcfcb1ed426f79ff2791f702abd",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-tasks/SKILL.md": {
+    "mtime": 1786866618.6293151,
+    "ast_hash": "f9d898aa15929f7135151399c30b1ce4",
+    "semantic_hash": ""
+  },
+  ".claude/skills/speckit-taskstoissues/SKILL.md": {
+    "mtime": 1786866618.6305168,
+    "ast_hash": "da7abd9c441d06a69924a17fedf7e766",
+    "semantic_hash": ""
+  },
+  ".specify/memory/constitution.md": {
+    "mtime": 1786866727.4010544,
+    "ast_hash": "a913dac1147a7a45990c2f7bf4ad25b3",
+    "semantic_hash": ""
+  },
+  ".specify/templates/checklist-template.md": {
+    "mtime": 1786866618.641409,
+    "ast_hash": "5af23404f7e1314e93fab2bcfcfa5c23",
+    "semantic_hash": ""
+  },
+  ".specify/templates/constitution-template.md": {
+    "mtime": 1786866618.6409242,
+    "ast_hash": "dcefb6b60e7cb3db2e966977b6f02f18",
+    "semantic_hash": ""
+  },
+  ".specify/templates/plan-template.md": {
+    "mtime": 1786866618.6428187,
+    "ast_hash": "311db0670c3d19d2f5b781de97529b79",
+    "semantic_hash": ""
+  },
+  ".specify/templates/spec-template.md": {
+    "mtime": 1786866618.642301,
+    "ast_hash": "45ac8538bc1220324c9f0d610145b53f",
+    "semantic_hash": ""
+  },
+  ".specify/templates/tasks-template.md": {
+    "mtime": 1786866618.6419573,
+    "ast_hash": "f8b4f62d384defa0a559bdbbaacb0540",
+    "semantic_hash": ""
+  },
+  ".specify/workflows/speckit/workflow.yml": {
+    "mtime": 1786722497.0,
+    "ast_hash": "06fd89e478bb8e0e668917a5f02f9055",
     "semantic_hash": ""
   }
 }
