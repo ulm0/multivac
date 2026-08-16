@@ -34,6 +34,7 @@ menu:
         type: search
 
 params:
+  externalLinkDecoration: true
   navbar:
     displayTitle: true
     displayLogo: true
