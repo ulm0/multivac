@@ -56,6 +56,14 @@ Which harness door targets `doors` projects, and which ones `doctor` reports
 on. Names must exist in the shipped registry; see
 [Agent integrations](../integrations) for the eight entries.
 
+**`doors` and `--provider` are not the same list**, which is why the flag adds
+to this key rather than being it. `--provider` answers *which coding agents do
+you use* — `claude`, `cursor`, `copilot`. `doors` records *which doors are
+projected*, and the first one always is `agents`: the canonical `AGENTS.md`,
+which is not an agent anyone installs but the format the others project from.
+Naming this key `providers` would put a non-provider at the head of every
+list.
+
 **Without it:** `doors` still writes the canonical `AGENTS.md` into the brain
 and every present repo, because that write is unconditional — but no symlink,
 no stub, no skill, no harness hook is installed for any vendor. `doctor` says
