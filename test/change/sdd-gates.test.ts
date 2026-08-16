@@ -552,11 +552,21 @@ test('a declared SDD that is not installed scaffolds itself', async () => {
 test('a scaffolded repo is left alone — the init runs once, not on every command', async () => {
   // `specify init` downloads templates and can overwrite them; a lifecycle that
   // re-ran it on every command would be worse than the hole it fills.
-  forgetSpecifyRuns();
+  //
+  // BOTH halves, in one test and in this order: "it did not run" only means
+  // something next to a run that did happen, on the same command, under the
+  // same config — otherwise a lifecycle that scaffolds nothing at all passes.
   await declareBrain('scaffold-a');
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0);
+  const first = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.match(first.out, /running the tool's own init/);
+  assert.equal(specifyRuns().length, 1, 'an absent .specify must run the init exactly once');
+
   const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
   assert.equal(c.code, 1); // no spec.md yet — that gate is unaffected
-  assert.equal(specifyRuns().length, 0, 'a present .specify must run nothing');
+  assert.equal(specifyRuns().length, 1, 'a present .specify must run nothing');
   assert.doesNotMatch(c.out, /running the tool's own init/);
   assert.doesNotMatch(c.out, /scaffolded/);
 });
@@ -627,6 +637,15 @@ test('--no-sdd and sdd_auto: false turn the scaffold off with everything else', 
   unscaffold();
   forgetSpecifyRuns();
   stubSpecify(0);
+  // The control the two silences are measured against: same repo, same absent
+  // artifact, both switches on — it runs. Without this line "nothing ran" is
+  // equally true of a lifecycle that never scaffolds at all.
+  const on = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+  assert.match(on.out, /running the tool's own init/);
+  assert.equal(specifyRuns().length, 1);
+
+  unscaffold();
+  forgetSpecifyRuns();
   const off = await capture(() => change.run(['plan', 'scaffold-a', '--no-sdd'], ctx));
   assert.equal(off.code, 0);
   assert.doesNotMatch(off.out, /sdd speckit/);
