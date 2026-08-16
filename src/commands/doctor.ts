@@ -595,7 +595,7 @@ async function untrackedLine(brain: string, cfg: Config): Promise<string> {
 /**
  * Build the full report. Bare `doctor` exits 1 only when the config/law is
  * invalid. Under `strict`, a disarmed enforcement gate is also exit 1: the
- * CI-usable assertion that the floor is actually armed, not merely described.
+ * assertion that the floor is actually armed, not merely described.
  */
 export async function doctorReport(
   brainDir: string,
@@ -648,7 +648,7 @@ export const doctorCommand: Command = {
     'exit 0 even when degraded; exit 1 only when the config/law is invalid.',
     '--strict also exits 1 when the enforcement gate is disarmed — the shim',
     "  missing, core.hooksPath not multivac's with no shim chained, or no",
-    '  runnable multivac — so `mvac doctor --strict` is a CI-usable assertion',
+    '  runnable multivac — so `mvac doctor --strict` is an assertion',
     '  that the gate is armed, not just a report that describes it.',
   ],
   async run(argv, ctx) {

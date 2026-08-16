@@ -713,7 +713,7 @@ export const verify: Command = {
   help: 'check anchors against the declared repos (deterministic, offline)',
   usage: [
     'usage: multivac verify [dir] [--strict] [--check] [--worktree] [--repo <key>]',
-    '  --strict      broken present/unique legs also exit 1 (the CI policy)',
+    '  --strict      broken present/unique legs also exit 1, not just tombstones',
     '  --check       never writes: a moved leg is reported, not self-healed',
     '  --worktree    read every declared repo\'s working tree instead of its',
     '                channel ref — local state across the ecosystem, on purpose',
