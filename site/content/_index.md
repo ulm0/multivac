@@ -5,7 +5,7 @@ layout: hextra-home
 
 {{< hextra/hero-badge link="docs/guide/install" >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>Early build · build from source</span>
+  <span>0.1.0 · npx multivac init</span>
   {{< icon name="arrow-circle-right" attributes="height=14" >}}
 {{< /hextra/hero-badge >}}
 
@@ -78,7 +78,7 @@ believe is still true. CLI alias: `mvac`.
 Where this is
 {{< /hextra/hero-section >}}
 
-An early build, pre-release, not on npm — you build it from source. It is its
+An early build: **0.1.0**, pre-release, `npx multivac init` away. It is its
 own first user: multivac's law lives in this repo, and every change to it is
 held by the same hooks you would install, running `mvac verify --strict`.
 The design was validated against a real

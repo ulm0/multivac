@@ -1,6 +1,7 @@
 stages:
   - test
   - deploy
+  - publish
 
 test:
   stage: test
@@ -57,3 +58,38 @@ pages:
       - public
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+# Releasing multivac, which is not the same thing as using it: multivac itself
+# runs in the agent session and the docs say so. What a pipeline is for here is
+# putting a tarball on a registry, and doing it without a long-lived token.
+#
+# Trusted publishing (OIDC): npm mints a short-lived credential from the token
+# GitLab issues for this exact project + ref, so no long-lived publish token
+# exists to leak, rotate, or paste into a chat. Configure the other half at
+# npmjs.com -> multivac -> Settings -> Trusted publisher:
+#   namespace: ulm0 · project: multivac · CI file path: .gitlab-ci.yml
+#
+# Tag-driven, and the tag must match the version in package.json — a release is
+# a decision somebody makes on purpose, never a side effect of a merge.
+publish:
+  stage: publish
+  image: node:24
+  id_tokens:
+    NPM_ID_TOKEN:
+      aud: "npm:registry.npmjs.org"
+    SIGSTORE_ID_TOKEN:
+      aud: sigstore
+  before_script:
+    - corepack enable
+    - corepack prepare --activate
+    # npm's OIDC support landed in 11.5.1; node:24 ships older.
+    - npm install -g npm@latest
+  script:
+    - pnpm install --frozen-lockfile
+    - pnpm test
+    - node dist/cli.js verify --strict
+    # The tag is the authority on what is being released.
+    - test "v$(node -p 'require("./package.json").version')" = "$CI_COMMIT_TAG"
+    - npm publish --access public
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'

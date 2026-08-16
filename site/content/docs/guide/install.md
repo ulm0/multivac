@@ -3,46 +3,70 @@ title: Install
 weight: 1
 ---
 
-multivac is **not published to npm yet**. The name is reserved, nothing is
-released under it — `npm i -g multivac` today does not install this tool.
-Build from source.
+```sh
+npx multivac init
+```
+
+That is the whole thing. No install, no clone, no global.
 
 ## Requirements
 
 | requirement | why |
 | --- | --- |
 | **Node.js ≥ 24** | declared in `engines`; the CLI is ESM and uses modern `node:` APIs |
-| **pnpm** | the repo pins it — `preinstall` runs `only-allow pnpm`, so `npm install` and `yarn` **fail on purpose** |
 | **git** | `verify` shells out to `git ls-files`; the brain and every repo are git-native |
 
 Nothing else. Two runtime dependencies, `picomatch` and `yaml`, and that
 count is itself law — a third is a design change, not a convenience.
 
-## Build from source
+## Try it, then keep it
+
+`npx` fetches and runs without installing anything, which is the right shape
+for the first command you ever run against a repo:
+
+```sh
+npx multivac doctor        # what it would find here
+npx multivac init          # write the brain
+```
+
+Once you know you want it, put it on your `PATH` so the hooks find it too:
+
+```sh
+npm i -g multivac
+# or: pnpm add -g multivac
+```
+
+**The hooks care which one you did.** The shims try `mvac` on `PATH` first,
+then `npx --no-install multivac`, then a repo-local build. `npx --no-install`
+resolves a package already present in the project, not one it has to fetch —
+so a global install, or multivac as a devDependency of the brain, both arm the
+floor. `npx multivac` typed by hand does not, because nothing persists.
+
+An early build: **0.1.0**, pre-release. The CLI surface below is what ships
+today, and the parts still moving say so where they appear.
+
+## Or from source
+
+For working on multivac itself, or to run an unreleased commit:
 
 ```sh
 git clone https://gitlab.com/ulm0/multivac
 cd multivac
-pnpm install
+corepack pnpm install
 pnpm run build
+pnpm link --global      # optional; every command also works as `node /path/to/multivac/dist/cli.js`
 ```
 
-That produces `dist/cli.js`. To get it on your `PATH`:
-
-```sh
-pnpm link --global
-```
-
-`pnpm install` fails loudly if you reach for the wrong package manager:
+The repo develops with pnpm and says so if you reach for another one:
 
 ```txt
 $ npm install
-ERROR: Use "pnpm install" for installation in this project.
+multivac develops with pnpm — run: corepack pnpm install
 ```
 
-If you would rather not link globally, every command in these docs works
-with an explicit path — `node /path/to/multivac/dist/cli.js verify` — which
-is also the last runner the hook shims try.
+That guard is scoped to the repo. Installing the published package with `npm`
+or `npx` is entirely fine — a tool that refused its own users' package manager
+would be a tool nobody installs.
 
 ## Two names, one binary
 
