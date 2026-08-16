@@ -21,8 +21,14 @@ core, no API key required; git is the enforcement floor.
 and tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the
 `change` lifecycle — and multivac develops itself with it: this repo is its
 own brain, its rules are anchored invariants, and CI re-verifies them on every
-push. It is not on npm yet, and it has not yet been run against a multi-repo
-ecosystem — the shape it was designed for. Build from source:
+push. Published as **0.1.0**; it has not yet been run against a multi-repo
+ecosystem — the shape it was designed for.
+
+```sh
+npx multivac init
+```
+
+Or from source, to work on it:
 
 ```sh
 git clone git@gitlab.com:ulm0/multivac.git && cd multivac

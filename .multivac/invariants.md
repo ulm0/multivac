@@ -29,8 +29,10 @@ checks them on every commit.
 <!-- @anchor MV-06 brain:src/commands/verify.ts /gating\.size > 0/ -->
 | MV-07 | The tombstone cannot be unblocked: config refuses a `blocking:` list without `absent`. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-07 brain:src/lib/config.ts /must include "absent"/ -->
-| MV-08 | Installs are pnpm-only, guarded at preinstall. | specified | active | 2026-08-13 | [package.json](../package.json) |
-<!-- @anchor MV-08 brain:package.json /only-allow pnpm/ -->
+| MV-08 | **Development** is pnpm-only, guarded at preinstall — and the guard never reaches a consumer. It fires only when this package is itself the project being installed (`INIT_CWD` equals the package directory), so `npm i -g multivac` and `npx multivac` install normally while `npm install` inside the repo is refused with the pnpm line. The check is inline and offline: the previous guard shelled out to `npx only-allow pnpm`, which hit the registry on every install AND ran on every consumer's machine, refusing the install of a tool whose whole first instruction is `npx multivac init`. A tool that rejects its users' package manager is a tool nobody installs. | specified | active | 2026-08-16 | [changes/the-first-release.md](changes/the-first-release.md) |
+<!-- @anchor MV-08 brain:package.json /INIT_CWD===process\.cwd\(\)/ unique -->
+<!-- @anchor MV-08 brain:package.json /only-allow/ absent -->
+<!-- @anchor MV-08 brain:site/content/docs/guide/install.md /That guard is scoped to the repo/ -->
 | MV-09 | Verify in a repo without `.multivac/config.yml` resolves the brain through the mount, scopes to that repo's anchors plus `*` anchors, same exit matrix. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-09 brain:src/commands/verify.ts /findMount/ -->
 <!-- @anchor MV-09 brain:src/commands/verify.ts /resolveRepoKey/ -->
@@ -482,4 +484,10 @@ checks them on every commit.
 <!-- @anchor MV-67 brain:src/change/file.ts /Archived is not missing/ unique -->
 <!-- @anchor MV-67 brain:test/change/sdd-gates.test.ts /close refuses a repo key that plan and apply already refuse/ -->
 <!-- @anchor MV-67 brain:test/change/sdd-gates.test.ts /--abandon gives the reservation back; the refusal points at it/ -->
+| MV-68 | **The published tarball carries the tool and nothing else**, by an allowlist rather than by whatever `.gitignore` happens to exclude. `files` is `dist` and `skills`; npm adds `package.json`, `README.md` and `LICENSE`. `skills` ships because `doors` reads the packaged skill at runtime and says so when it is absent — it is code, not documentation. What must NEVER ship: `.multivac/` (this repo's own brain — its law, its open changes, its archive), `site/`, `test/`, `DESIGN.md`, `.gitlab/`. Before the allowlist a publish would have carried 214 files and 1.4MB of exactly that. **Releases are published by trusted publishing (OIDC), never a token**: GitLab mints a short-lived credential for this project and ref, so no long-lived publish token exists to leak or rotate. The job runs on a `v<semver>` tag only, and refuses unless the tag equals `package.json`'s version — a release is a decision somebody makes, never a side effect of a merge. | specified | active | 2026-08-16 | [changes/the-first-release.md](changes/the-first-release.md) |
+<!-- @anchor MV-68 brain:package.json /"files":/ unique -->
+<!-- @anchor MV-68 brain:.gitlab-ci.yml /aud: "npm:registry\.npmjs\.org"/ unique -->
+<!-- @anchor MV-68 brain:.gitlab-ci.yml /CI_COMMIT_TAG =~/ unique -->
+<!-- @anchor MV-68 brain:.gitlab-ci.yml /never a side effect of a merge/ -->
+<!-- @anchor MV-68 brain:.gitlab-ci.yml /NPM_TOKEN/ absent -->
 

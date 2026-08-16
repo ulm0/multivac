@@ -86,3 +86,20 @@ rhythm is always `mvac change new → plan → apply → land → close`
 | interview for a from-scratch brain | `references/interview.md` |
 | write or repair an anchor, pick a mode | `references/anchors.md` |
 | run new/plan/apply/land/close, amend or retire an invariant | `references/change.md` |
+| read a verify run — `moved`, `broken`, what gates, where it read from | `references/verify.md` |
+
+## Ask the graph before you read the tree
+
+If the door names a grapher, a code graph is being kept current for you after
+every edit. Use it to orient before grepping — one call answers what a search
+takes many — and use **that tool's own verbs**, which are not interchangeable:
+
+| grapher | ask |
+| --- | --- |
+| `graphify` | `graphify query "<question>"` — a question in words, returns the subgraph that answers it; `explain "<node>"` for one node and its neighbours; `path "<A>" "<B>"` for how A reaches B |
+| `codegraph` | `codegraph query <symbol>` — symbol lookup by name; `--kind function\|class` narrows, `--json` for machine output |
+
+Hand `codegraph` a sentence and you get nothing; hand `graphify` a bare
+identifier and you have thrown away what it is for. The door prints the exact
+verbs for the grapher this brain declares — read them there rather than
+guessing, and if it says the tool has no query command, believe it and grep.

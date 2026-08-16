@@ -1,8 +1,7 @@
 {
   "name": "multivac",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Brain-driven development CLI",
+  "version": "0.1.0",
+  "description": "Brain-driven development CLI: one brain repo of claims, law and ritual, from which an ecosystem of code repos is developed. Deterministic verification, no model in the path.",
   "license": "MIT",
   "type": "module",
   "engines": {
@@ -12,10 +11,31 @@
     "multivac": "dist/cli.js",
     "mvac": "dist/cli.js"
   },
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://gitlab.com/ulm0/multivac.git"
+  },
+  "homepage": "https://multivac.ulm0.com",
+  "bugs": {
+    "url": "https://gitlab.com/ulm0/multivac/-/issues"
+  },
+  "keywords": [
+    "agents",
+    "agentic",
+    "spec-driven-development",
+    "monorepo",
+    "invariants",
+    "knowledge-graph",
+    "cli"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "test": "npm run build && node --test \"dist-test/**/*.test.js\"",
-    "preinstall": "npx only-allow pnpm"
+    "preinstall": "node -e \"if(process.env.INIT_CWD===process.cwd()&&!(process.env.npm_config_user_agent||'').startsWith('pnpm')){console.error('multivac develops with pnpm — run: corepack pnpm install');process.exit(1)}\""
   },
   "dependencies": {
     "picomatch": "^4.0.2",
