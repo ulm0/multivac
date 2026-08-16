@@ -3,7 +3,7 @@ slug: doors-prunes-what-it-projects
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
