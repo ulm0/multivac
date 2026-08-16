@@ -249,9 +249,10 @@ Whether `doors` writes the pre-push shim as `mvac verify --strict` instead of
 `mvac verify`.
 
 **Without it:** both hooks run the default policy. Turning it on keeps
-commits permissive and makes pushes gate like CI. It only takes effect the
-next time `doors` (or `init`) rewrites the shims. See
-[Hooks](../hooks).
+commits permissive and makes a push gate on the presence and uniqueness legs
+as well — the last hop out of the machine held to a harder bar than a commit
+anyone can still amend. It only takes effect the next time `doors` (or
+`init`) rewrites the shims. See [Hooks](../hooks).
 
 ### `channel`
 

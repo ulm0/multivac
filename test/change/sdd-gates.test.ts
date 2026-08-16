@@ -12,12 +12,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { initRepo } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
+import { sddSpec } from '../../src/adapters/registry.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -230,14 +231,14 @@ test('speckit: apply gates on plan.md AND tasks.md, and its steps are ungateable
   assert.match(passed.out, /run \/speckit\.converge[^\n]*invisible to the filesystem/);
 });
 
-test('speckit: close is not gated — the missing archive step is stated, not faked', async () => {
+test('speckit: close still has no archive step, but its task ledger is read', async () => {
+  // spec-kit genuinely has no archive equivalent, so nothing here proves a
+  // close step RAN — that gap stays stated. What close can read is the task
+  // list implement keeps: every box ticked passes, an open one refuses.
   assert.equal(await change.run(['land', 'gate-b', '--landed', 'brain'], ctx), 0);
   const c = await capture(() => change.run(['close', 'gate-b'], ctx));
   assert.equal(c.code, 0);
-  assert.match(
-    c.out,
-    /sdd speckit: `change close` is not gated — this tool declares no step whose artifact could prove it/,
-  );
+  assert.match(c.out, /tasks\.md — nothing left open/);
   assert.match(c.out, /sdd speckit: close — this tool has no agent-run close step; nothing to run/);
   commitAll();
 });
@@ -320,4 +321,171 @@ test('undeclared sdd prints nothing and gates nothing', async () => {
   const p = await capture(() => change.run(['plan', 'quiet-e'], ctx));
   assert.equal(p.code, 0);
   assert.doesNotMatch(p.out, /^sdd /m);
+});
+
+// --- the tool's own ledger, read where its escape hatch would slip through ---
+
+test('opsx: close refuses when the archived change still has open tasks', async () => {
+  // `openspec archive --yes` prints `Warning: N incomplete task(s) found.
+  // Continuing due to --yes flag.` and archives regardless — so the archived
+  // directory proves the archive ran and nothing more. close reads the task
+  // list openspec itself just moved.
+  const spec = sddSpec('opsx')!;
+  const led = spec.steps!.find((s) => s.unfinished)!.unfinished!;
+  assert.equal(led.gate, 'close');
+  const re = new RegExp(led.pattern);
+  assert.ok(re.test('- [ ] 1.2 Backfill existing rows'));
+  assert.ok(re.test('  - [ ] nested still counts'));
+  assert.ok(!re.test('- [x] 1.1 Add the expiry column'));
+  assert.ok(!re.test('## 1. Implementation'));
+});
+
+test('speckit: the ledger is checked even though implement stays ungateable', async () => {
+  // Two different questions about the same step. "Did implement run" is
+  // unprovable — it is why the step carries `ungateable`. "Does its own task
+  // list still have open boxes" is a fact on disk, so it gates at close.
+  const spec = sddSpec('speckit')!;
+  const step = spec.steps!.find((s) => s.run.includes('/speckit.implement'))!;
+  assert.ok(step.ungateable, 'implement must stay ungateable for existence');
+  assert.equal(step.artifact, undefined);
+  assert.equal(step.unfinished?.gate, 'close');
+  assert.match(step.unfinished!.artifact, /tasks\.md$/);
+});
+
+// --- a gate that cannot be evaluated refuses; it never passes quietly ---
+
+/** A fresh opsx change with both gated artifacts already on disk. */
+async function readyChange(slug: string): Promise<void> {
+  config(['doors: [agents]', 'sdd: opsx', 'repos:', '  brain: .']);
+  await change.run(['new', slug, `Binary ${slug}`], ctx);
+  await declareBrain(slug);
+  artifact(`openspec/changes/${slug}/proposal.md`);
+  artifact(`openspec/changes/${slug}/tasks.md`, '- [ ] 1.1 do it\n');
+}
+
+test('a validator that is not installed REFUSES, naming the binary and the install line', async () => {
+  // The regression this pins: toolVerdict used to return null when the binary
+  // was absent, so the gate stood on artifact existence alone — green on a
+  // machine that could not check anything. Reverting that change used to leave
+  // the whole suite passing, which is the same hole one level up.
+  await readyChange('gate-bin');
+  const savedPath = process.env.PATH;
+  process.env.PATH = '/usr/bin:/bin'; // git stays reachable; openspec does not
+  try {
+    const c = await capture(() => change.run(['apply', 'gate-bin'], ctx));
+    assert.equal(c.code, 1);
+    assert.match(c.out, /`openspec` is not on PATH/);
+    assert.match(c.out, /install it: npm i -g @fission-ai\/openspec/);
+    // NOT "drop `sdd:`": that key also renders the SDD flow into the brain
+    // door, so removing it would delete the agent's instructions with the gate.
+    assert.match(c.out, /--no-sdd/);
+    assert.match(c.out, /sdd_auto: false/);
+    assert.doesNotMatch(c.out, /drop `sdd:`/);
+  } finally {
+    process.env.PATH = savedPath;
+  }
+  commitAll();
+});
+
+test('a locally-installed validator is found in node_modules/.bin, not refused', async () => {
+  // `npm i -D @fission-ai/openspec` never touches $PATH. Refusing that shape
+  // would push the operator to a global install or to turning the gate off,
+  // for a validator sitting right there.
+  await readyChange('gate-localbin');
+  const localBin = join(brain, 'node_modules', '.bin');
+  mkdirSync(localBin, { recursive: true });
+  writeFileSync(join(localBin, 'openspec'), '#!/bin/sh\nexit 0\n');
+  chmodSync(join(localBin, 'openspec'), 0o755);
+  const savedPath = process.env.PATH;
+  process.env.PATH = '/usr/bin:/bin'; // git stays reachable; openspec does not
+  try {
+    const c = await capture(() => change.run(['apply', 'gate-localbin'], ctx));
+    assert.equal(c.code, 0);
+    assert.doesNotMatch(c.out, /is not on PATH/);
+  } finally {
+    process.env.PATH = savedPath;
+    rmSync(join(brain, 'node_modules'), { recursive: true, force: true });
+  }
+  commitAll();
+});
+
+// --- close is no weaker than its siblings, and has an exit for abandonment ---
+
+test('close refuses a repo key that plan and apply already refuse', async () => {
+  // Counting keys is not having repos: one invented name satisfied the
+  // empty-map check while `plan` and `apply` both reject it, which left close
+  // the weakest of the three doors.
+  config(['doors: [agents]', 'repos:', '  brain: .']); // no sdd — this is about repos
+  commitAll();
+  await change.run(['new', 'ghost', 'Ghost'], ctx);
+  const parsed = await loadChange(brain, 'ghost');
+  parsed.change.repos = { 'totally-not-a-repo': { status: 'landed' } };
+  parsed.change.landing_order = [['totally-not-a-repo']];
+  parsed.change.invariants.adds = [];
+  await saveChange(brain, parsed);
+
+  const c = await capture(() => change.run(['close', 'ghost'], ctx));
+  assert.equal(c.code, 1);
+  assert.match(c.out, /repo "totally-not-a-repo" not declared/);
+  assert.equal(existsSync(join(brain, '.multivac/changes/archive/ghost.md')), false);
+  commitAll();
+});
+
+test('--abandon gives the reservation back; the refusal points at it', async () => {
+  // `change new` reserves before anything is declared, and close is the only
+  // caller of releaseUnused — so gating close on repos closed the only door
+  // out. An abandoned change would leak its id forever, or force a false
+  // `status: landed` to get through.
+  const c1 = await capture(() => change.run(['new', 'regret', 'Regret'], ctx));
+  assert.match(c1.out, /reserves/);
+  const reserved = /reserves (\S+)/.exec(c1.out)![1];
+  assert.match(readFileSync(join(brain, '.multivac/invariants.md'), 'utf8'), /RESERVED by change regret/);
+
+  const refused = await capture(() => change.run(['close', 'regret'], ctx));
+  assert.equal(refused.code, 1);
+  assert.match(refused.out, /--abandon/);
+
+  const done = await capture(() => change.run(['close', 'regret', '--abandon'], ctx));
+  assert.equal(done.code, 0);
+  assert.match(done.out, new RegExp(reserved));
+  assert.match(done.out, /nothing was verified, nothing landed/);
+  // Only THIS change's row leaves — other open changes keep theirs.
+  assert.doesNotMatch(
+    readFileSync(join(brain, '.multivac/invariants.md'), 'utf8'),
+    /RESERVED by change regret/,
+  );
+  commitAll();
+});
+
+// --- a present artifact that proves nothing is treated as missing ---
+
+test('an artifact byte-identical to its template, or empty, is refused', async () => {
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  commitAll(); // the lifecycle refuses to open a change over dirty bookkeeping
+  await change.run(['new', 'tmpl', 'Template'], ctx);
+  await declareBrain('tmpl');
+  artifact('specs/001-tmpl/spec.md', '# Real spec\n');
+
+  // 1. What setup-plan.sh actually does: write the resolved template into place.
+  const template = '# Implementation Plan: [FEATURE]\n\n**Branch**: `[###-feature-name]`\n';
+  artifact('.specify/templates/plan-template.md', template);
+  artifact('specs/001-tmpl/plan.md', template);
+  artifact('specs/001-tmpl/tasks.md', '- [x] T001 done\n');
+  const copied = await capture(() => change.run(['apply', 'tmpl'], ctx));
+  assert.equal(copied.code, 1);
+  assert.match(copied.out, /byte-identical to \.specify\/templates\/plan-template\.md/);
+
+  // 2. setup-plan.sh's own fallback when it cannot resolve a template:
+  //    `rm -f` then `touch`, leaving nothing at all.
+  artifact('specs/001-tmpl/plan.md', '   \n');
+  const empty = await capture(() => change.run(['apply', 'tmpl'], ctx));
+  assert.equal(empty.code, 1);
+  assert.match(empty.out, /plan\.md is empty/);
+
+  // 3. A real plan passes — including one that KEEPS the template's heading,
+  //    which spec-kit never asks anyone to change.
+  artifact('specs/001-tmpl/plan.md', `${template}\n## Summary\n\nA real plan.\n`);
+  const real = await capture(() => change.run(['apply', 'tmpl'], ctx));
+  assert.equal(real.code, 0);
+  commitAll();
 });

@@ -259,12 +259,14 @@ not to archive it.
 
 ## Where it runs
 
-**Home is the agent session, not CI.** The consumer of the output is an agent
-about to write code, not a pipeline painting red for someone to look at
-tomorrow. Design consequences, not presentation ones:
+**Home is the agent session.** The consumer of the output is an agent about to
+write code — it reads the run, decides, and edits in the same turn, which is
+the only moment where being told a claim is false still changes what gets
+written. Design consequences, not presentation ones:
 
 - **The message is the product, not the exit code.** Output says what is wrong
-  *and what to do*. Exit codes remain for optional CI use.
+  *and what to do*. The exit code is what the invoking hook reads; the text is
+  what the agent reads.
 - **Self-healing is the normal mode.** In a session the agent is already
   editing and reviews the diff on the spot; `moved` is not a special case.
 - **Hard latency budget: under one second.** A hook that fires on every
@@ -282,14 +284,19 @@ privileged harness. That forbids putting enforcement in any one harness's
 hook API. The universal choke point is not the harness: **it is git**. Every
 agent — and the human — funnels through the commit.
 
-The application ladder:
+The application ladder — one layer that asks, two that do not:
 
 | layer | mechanism | coverage | strength |
 | --- | --- | --- | --- |
 | 0 | the door instructs: "run `multivac verify` before acting" | any agent that reads `AGENTS.md` | weak — obedience |
 | 1 | **git hooks**: `pre-commit` and `pre-push` run `verify` (default policy: only blocking modes gate) | **universal** — everything that commits | strong |
 | 2 | harness hooks (session start, post-edit) | per harness, **as data** in `targets.yml` | best UX: catches before the commit |
-| 3 | CI | repos where humans commit | outer net |
+
+Two enforcing layers and no third is the design, not a gap. Both fire inside
+the session, while the agent that caused the drift is still there to fix it;
+anything that runs later reports a lie to whoever reads it next, after the
+code on top of it is already written. The floor and the ceiling are the whole
+ladder.
 
 Layers 1 and 2 catch **different failure modes**, which is why neither
 replaces the other:
@@ -650,7 +657,10 @@ One exit matrix, no second answer:
 
 Who invokes what: git hooks (`pre-commit`, `pre-push`) and harness hooks run
 the **default** policy — only blocking modes gate, so a mid-refactor commit
-never dies on a moved presence check. CI runs `--strict`.
+never dies on a moved presence check. `--strict` adds the presence and
+uniqueness legs to the gating set, and `strict_pre_push: true` is where it
+belongs: a commit is cheap to amend, a push is the last hop out of the
+machine, so a team that wants that hop held to the harder bar arms it there.
 
 ```
 $ npx multivac verify
@@ -667,8 +677,10 @@ $ npx multivac verify
 `moved` rewrites the anchor and **exits 0**. The diff lands in the same PR as
 the refactor. A tool that fixes instead of accusing is what buys adoption.
 
-Writing: rewrite locally, propose in CI (`--check` never writes). The
-`prettier` pattern; nobody argues with it.
+Writing: the rewrite happens in the working tree, where a human reads the
+diff, and nowhere else — `--check` never writes, it reports the `moved` leg
+for any run that has nothing to commit to. The `prettier` pattern; nobody
+argues with it.
 
 ### Coverage, not completeness
 
@@ -1309,11 +1321,11 @@ drawing with its ink pinned.
 
 In the terminal the panel is drawn in box characters by **`init`, and by no
 other command**. `verify`, `doctor`, `doors` and `change` run inside git hooks
-and in CI, where a banner is noise and `verify` has a sub-second budget to
-spend on anchors. `--quiet` drops it with the rest of init's report, a pipe
-drops it, and `NO_COLOR` keeps the drawing while dropping the colour — the
-lamps fall back to `#` lit, `.` unlit, `*` in flight, because without ANSI the
-amber lamp would be indistinguishable from a lit one.
+and harness hooks, where a banner is noise and `verify` has a sub-second
+budget to spend on anchors. `--quiet` drops it with the rest of init's
+report, a pipe drops it, and `NO_COLOR` keeps the drawing while dropping the
+colour — the lamps fall back to `#` lit, `.` unlit, `*` in flight, because
+without ANSI the amber lamp would be indistinguishable from a lit one.
 
 **The lamp pattern is fixed.** `init` runs before there is anything to verify:
 no law, no anchors, no claims. A banner that pretended to report the state of
@@ -1364,8 +1376,9 @@ Resolved 2026-08-13:
   wants to be dropped into other people's ecosystems, so copyleft would buy
   nothing and cost adoption. This unblocks publishing the real package — the
   `0.0.1` name placeholder went out as `UNLICENSED` deliberately.
-- The tool lives in the **agent session**, CI as an optional net. Pitch:
-  "your agent verifies its own context before acting."
+- The tool lives in the **agent session** — that is the whole of where it
+  runs, not its preferred half. Pitch: "your agent verifies its own context
+  before acting."
 - **Agent-agnostic, `AGENTS.md` canonical, no privileged second adapter.**
   Enforcement lives in **git hooks** (universal choke point); harness hooks
   are a required day-1 layer, per-harness in presence, shipped as

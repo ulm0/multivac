@@ -76,17 +76,77 @@ export interface SddStep {
   /** Lifecycle command that refuses while `artifact` is missing. */
   gate?: GatePoint;
   /**
+   * Template files this artifact is COPIED FROM when the step begins. An
+   * artifact byte-identical to any of them was written by the scaffolding,
+   * not by the agent, and the gate refuses.
+   *
+   * Existence is the weakest possible proof and some tools hand it out for
+   * free: spec-kit's `setup-plan.sh` runs
+   * `resolve_template_content "plan-template" > "$IMPL_PLAN"` as part of
+   * STARTING the step, so the gate went green on a file nobody had touched.
+   * Its sibling `setup-tasks.sh` only writes the template to stdout, which is
+   * why the tasks gate was honest by accident.
+   *
+   * Byte-identity rather than a placeholder regex, and the reason is a
+   * measurement: the obvious pin — the template's own `# Implementation Plan:
+   * [FEATURE]` heading — is a line spec-kit NEVER asks anyone to change.
+   * Neither its plan skill nor the template's two ACTION REQUIRED markers
+   * mention the title, so a complete, real plan keeps it and would have been
+   * refused forever. Comparing whole files instead has no false positives at
+   * all: a written plan is never byte-identical to the template it came from.
+   *
+   * Listing the override path too follows spec-kit's own documented stack
+   * (`common.sh`: "Priority 1: Project overrides (always replace)"). What this
+   * does NOT catch is stated rather than hidden: an agent that edits one line
+   * and stops, or a preset resolving a template from outside these paths.
+   */
+  untouched?: string[];
+  /**
    * Why this step can never be proven from the filesystem. Required whenever
    * `artifact` is absent: an ungateable step is STATED, never faked green.
    */
   ungateable?: string;
   /**
    * The tool's OWN validator for this artifact, `<slug>` interpolated. Run for
-   * its verdict only — never to fake an agent-run step — and only when its
-   * binary is present. Reusing the tool's verdict beats reimplementing rules
-   * that would drift away from it.
+   * its verdict only — never to fake an agent-run step. Reusing the tool's
+   * verdict beats reimplementing rules that would drift away from it.
+   *
+   * A validator whose binary cannot be found is a REFUSAL, not a pass. The
+   * gate would otherwise stand on artifact existence alone wherever the tool
+   * is not installed — the same command green on a machine that cannot check
+   * anything, which is the quietest way this registry could lie.
    */
   validate?: string;
+  /**
+   * A ledger the TOOL ITSELF keeps, which can say the work is not finished.
+   *
+   * Distinct from `validate`, which asks the vendor's binary, and from
+   * `artifact`, which only proves a step ran. Every SDD tool here ships an
+   * escape hatch letting a step complete over its own objection — OpenSpec's
+   * `openspec archive --yes` prints `Warning: 4 incomplete task(s) found` and
+   * archives anyway — and gating on the artifact alone accepts that silently.
+   * Reading the ledger is not reimplementing the tool's rules: the tool wrote
+   * the file and already decided what the marker means.
+   *
+   * This proves the tool's own book does not say UNDONE. It does not prove the
+   * work happened — `- [x]` is still a character an agent types about itself,
+   * which is why the step that does the work stays `ungateable`.
+   */
+  unfinished?: {
+    /** Repo-relative ledger path; `<slug>` interpolated, one `*` segment allowed. */
+    artifact: string;
+    /** ERE matching a line that means "not done". */
+    pattern: string;
+    /** What a match means, printed in the refusal. */
+    why: string;
+    /**
+     * Lifecycle command that refuses while the ledger says UNDONE. Carried
+     * here rather than reusing the step's own `gate` so an ungateable step
+     * can still be checked: whether `/speckit.implement` RAN is unprovable,
+     * but whether its task list still has open boxes is a fact on disk.
+     */
+    gate: GatePoint;
+  };
 }
 
 /**
@@ -303,6 +363,16 @@ const sdd: Record<string, AdapterSpec> = {
         run: 'run /opsx:archive <slug> in your agent to merge the spec deltas into openspec/specs/ and archive the change',
         artifact: 'openspec/changes/archive/*-<slug>',
         gate: 'close',
+        // `openspec archive --yes` prints `Warning: N incomplete task(s)
+        // found. Continuing due to --yes flag.` and archives regardless. The
+        // archived directory therefore proves the archive ran and nothing
+        // else, so close reads the task list openspec itself just moved.
+        unfinished: {
+          artifact: 'openspec/changes/archive/*-<slug>/tasks.md',
+          pattern: '^\\s*- \\[ \\]',
+          why: 'openspec archived this change with tasks still unchecked — `--yes` continues over its own warning',
+          gate: 'close',
+        },
       },
     ],
     note: 'The terminal CLI is init/update/list/show/validate; propose, apply and archive are the /opsx: commands your agent runs in chat. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool\'s own escape hatches — multivac gates on what landed on disk, not on how it got there.',
@@ -345,6 +415,15 @@ const sdd: Record<string, AdapterSpec> = {
         run: 'run /speckit.plan in your agent to design <slug> (Constitution Check, research, data model, contracts)',
         artifact: 'specs/*<slug>*/plan.md',
         gate: 'apply',
+        // setup-plan.sh writes the resolved template straight into plan.md
+        // before /speckit.plan writes a byte, so existence proves the script
+        // ran, not that anyone planned. The override path is spec-kit's own
+        // documented precedence, so a project that customizes its template is
+        // still checked against the file it actually copied.
+        untouched: [
+          '.specify/templates/plan-template.md',
+          '.specify/templates/overrides/plan-template.md',
+        ],
       },
       {
         at: 'plan',
@@ -361,6 +440,15 @@ const sdd: Record<string, AdapterSpec> = {
       {
         at: 'apply',
         run: 'run /speckit.implement in your agent to build <slug>',
+        // Whether implement RAN is unprovable; whether its own task list still
+        // has open boxes is a fact on disk. Same hole opsx's `--yes` opens,
+        // reached the other way — implement simply stopping early.
+        unfinished: {
+          artifact: 'specs/*<slug>*/tasks.md',
+          pattern: '^\\s*- \\[ \\]',
+          why: 'spec-kit\'s own task list still has unchecked tasks — implement did not finish, or stopped without saying so',
+          gate: 'close',
+        },
         ungateable:
           'implement\'s only claim of completion is every task marked [X] in tasks.md — the agent grading its own homework, not evidence the code exists or works',
       },

@@ -1,10 +1,11 @@
 // .multivac/changes/<slug>.md — the change file: YAML frontmatter + body.
 // Parse/serialize/validate, load/save/archive, landing-order plan, close gate.
 
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse, stringify } from 'yaml';
-import { CHANGES_DIR } from '../lib/config.js';
+import { CHANGES_DIR, LAW_PATH } from '../lib/config.js';
 import type { VerifyReport } from '../types.js';
 
 export class ChangeError extends Error {}
@@ -237,6 +238,16 @@ export async function loadChange(brain: string, slug: string): Promise<ParsedCha
   try {
     text = await readFile(file, 'utf8');
   } catch {
+    // Archived is not missing, and the difference matters: telling someone to
+    // `change new` a slug that already closed scaffolds a duplicate and burns
+    // a second reserved id.
+    const archived = join(changesDir(brain), 'archive', `${slug}.md`);
+    if (existsSync(archived)) {
+      throw new ChangeError(
+        `${slug} is already archived at ${CHANGES_DIR}/archive/${slug}.md — this change is closed; ` +
+          `start a new one with a new slug, or read it there`,
+      );
+    }
     throw new ChangeError(
       `no ${changeRel(slug)} — run \`multivac change new ${slug} "<title>"\` first`,
     );
@@ -258,6 +269,40 @@ export async function saveChange(brain: string, parsed: ParsedChange): Promise<v
   );
 }
 
+/**
+ * Repoint every law row whose source column cites this change at its archived
+ * path. Returns how many links moved.
+ *
+ * A row written while its change was open cites `changes/<slug>.md`, and the
+ * moment that change closes the file is somewhere else — so the table ends up
+ * disagreeing with its own schema: rows written after an archive already use
+ * `changes/archive/<slug>.md`, rows written before it point at nothing. The
+ * law is this tool's whole claim to being checkable, and a citation that
+ * resolves to a missing file is exactly the rot anchors exist to prevent.
+ *
+ * Only the change being archived is rewritten, and only the `changes/<slug>`
+ * form — an already-archived link is left alone, so this is idempotent.
+ */
+export async function repointLawLinks(brain: string, slug: string): Promise<number> {
+  const law = join(brain, LAW_PATH);
+  let md: string;
+  try {
+    md = await readFile(law, 'utf8');
+  } catch {
+    return 0; // no law file yet: a newborn brain archives nothing to repoint
+  }
+  // The link target as it is WRITTEN, which is relative to invariants.md's own
+  // directory — `changes/<slug>.md`, not the brain-relative CHANGES_DIR. Only
+  // inside `(...)`: the body of a row may legitimately name the change in
+  // prose without citing it, and prose must not be rewritten.
+  const from = `(changes/${slug}.md)`;
+  const to = `(changes/archive/${slug}.md)`;
+  const moved = md.split(from).length - 1;
+  if (moved === 0) return 0;
+  await writeFile(law, md.split(from).join(to));
+  return moved;
+}
+
 /** Archive: status -> archived, file moves to <changes>/archive/<slug>.md. Returns dest path. */
 export async function archiveChange(brain: string, parsed: ParsedChange): Promise<string> {
   parsed.change.status = 'archived';
@@ -266,6 +311,8 @@ export async function archiveChange(brain: string, parsed: ParsedChange): Promis
   const dest = join(dir, `${parsed.change.slug}.md`);
   await writeFile(dest, serializeChange(parsed.change, parsed.body));
   await unlink(changePath(brain, parsed.change.slug));
+  // The move is only half the archive: the law still cites the old path.
+  await repointLawLinks(brain, parsed.change.slug);
   return dest;
 }
 

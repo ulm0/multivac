@@ -43,11 +43,13 @@ parser assumes English headings.
 
 ## The session is home
 
-The consumer of the output is an agent about to write code, not a CI pipeline
-painting red for tomorrow. Design consequences:
+The consumer of the output is an agent about to write code, reading the run
+in the same turn it will edit in — the last moment where being told a claim
+is false still changes what gets written. Design consequences:
 
 - **The message is the product, not the exit code.** Output says what is
-  wrong *and what to do*. Exit codes remain for optional CI use.
+  wrong *and what to do*. The exit code is what the invoking hook reads; the
+  text is what the agent reads.
 - **Self-healing is the normal mode.** The agent is already editing and
   reviews the diff on the spot; `moved` is not a special case.
 - **Hard latency budget: under one second.** A hook that takes five seconds
@@ -67,9 +69,13 @@ the commit.
 | 0 | the door instructs: run `multivac verify` before acting | any agent that reads `AGENTS.md` | weak — obedience |
 | 1 | **git hooks**: `pre-commit` / `pre-push` run `verify` (default policy: only blocking modes gate) | **universal** — everything that commits | strong |
 | 2 | harness hooks (session start, post-edit), shipped as data per harness | per harness | best UX — catches before the commit |
-| 3 | CI | repos where humans commit | outer net |
 
-Layers 1 and 2 catch different failure modes:
+One rung asks and two enforce; there is no third, on purpose. Both enforcing
+rungs fire inside the session, while the agent that broke the claim is still
+there to fix it — a check that runs after the session has ended reports the
+lie to whoever reads it next, with the code already written on top of it.
+
+The two are not redundant; they catch different failure modes:
 
 - **Harness hooks are the read side.** Session start catches a stale pin or a
   lying brain before the agent conceives code on top of it.

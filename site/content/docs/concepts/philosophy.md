@@ -116,7 +116,8 @@ parser learns to lie.
 ## What follows from all this
 
 - **Deterministic or nothing.** `verify` uses `git ls-files` and a regex
-  engine. Same answer on your laptop, in the pre-commit hook, and in CI.
+  engine. Same answer on your laptop, in the pre-commit hook, and in your
+  teammate's clone.
 - **The message is the product, not the exit code.** A red leg says which
   file, which line, and what to do about it. The consumer is an agent about
   to act, not a dashboard someone checks tomorrow.

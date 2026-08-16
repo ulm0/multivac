@@ -182,8 +182,11 @@ One exit matrix, no second answer:
 | moved (self-healed) | exit 0 | exit 0 |
 
 Git hooks and harness hooks run the default policy — only blocking modes
-gate, so a mid-refactor commit never dies on a moved presence check. CI runs
-`--strict`.
+gate, so a mid-refactor commit never dies on a moved presence check.
+`--strict` adds the presence and uniqueness legs to the gating set;
+`strict_pre_push: true` arms it on the pre-push shim, for a team that wants
+the last hop out of the machine held to a harder bar than a commit anyone can
+still amend.
 
 ```txt
 $ mvac verify
@@ -203,8 +206,9 @@ exit 1.
 
 `moved` rewrites the anchor and exits 0; the diff lands in the same PR as
 the refactor. A tool that fixes instead of accusing is what buys adoption.
-Writing follows the `prettier` pattern: rewrite locally, propose in CI —
-`--check` never writes.
+Writing follows the `prettier` pattern: the rewrite lands in the working
+tree, where a human reads the diff, and `--check` reports the `moved` leg
+instead for any run that has nothing to commit to.
 
 ## Coverage, not completeness
 
