@@ -35,10 +35,6 @@ capabilities, and only the missing half turns off:
 | `speckit` | `.specify` | `specify` | `specify check` |
 | `graphify` | `graphify-out/graph.json` | `graphify` | `graphify update .` |
 | `codegraph` | `.codegraph` | `codegraph` | `codegraph sync` (build: `codegraph init`) |
-| `code-review-graph` | `.code-review-graph` | `code-review-graph` | `code-review-graph update` (build: `… build`) |
-| `axon` | `.axon` | `axon` | `axon analyze .` (build: the same command) |
-| `dependency-cruiser` | `dependency-cruiser-graph.json` | **`depcruise`** | `depcruise --output-type json --output-to …` |
-| `scip-typescript` | `index.scip` | `scip-typescript` | `scip-typescript index` (build: the same command) |
 | *any other grapher* | **unverified — you declare it** (see below) | | |
 
 If you cloned a repo that already has the artifact committed, the read half
@@ -98,6 +94,32 @@ Stale means the artifact's mtime is older than the repo's last commit — the
 graph describes code that has since moved. It is a `doctor` warning and never
 a `verify` failure.
 
+### What the graph answers
+
+Keeping an artifact fresh is the cheap half. The half that pays for it is the
+agent asking the graph instead of grepping the tree — so the brain door names
+the tool's **own query verbs**, and multivac never paraphrases them into a
+generic "query the graph". They are not the same verb wearing two names:
+
+| | `graphify` | `codegraph` |
+| --- | --- | --- |
+| shape | a **question** in words | a **symbol** by name |
+| ask | `graphify query "<question>"` | `codegraph query <symbol>` |
+| also | `explain "<node>"`, `path "<A>" "<B>"` | `--kind`, `--limit`, `--json` |
+
+Hand `codegraph` a sentence and you get nothing useful; hand `graphify` a bare
+identifier and you have thrown away what it is for. A door that said "query
+the graph" would be wrong for one of them, and an agent cannot tell which.
+
+This is what "multivac speaks a grapher" means, and why the table is short:
+the verbs have to be run before they can be written down. `graphify query` is
+in the table because it was run — it is **absent from `graphify --help`**, so
+reading the help output alone would have dropped the most useful verb it has.
+
+A declared grapher gets no query lines. multivac does not know your tool's
+verbs and will not guess them; the refresh still runs, the door simply says
+the graph is there without telling the agent how to ask it.
+
 ### There is no generic contract
 
 multivac used to derive an unknown grapher's spec from its name —
@@ -131,10 +153,12 @@ graphers:
 path. A declaration also overrides a registry entry, for when you know your
 install better than the table does.
 
-Some good tools have no artifact path of their own: dependency-cruiser writes
-wherever `--output-to` points. For those the path is **multivac's choice**, and
-the registry entry says so in its note rather than dressing it up as a vendor
-convention.
+Some good tools have no artifact path of their own — dependency-cruiser writes
+wherever `--output-to` points, for instance. For those the path is **your**
+choice, and it has to be one the command can actually write: `--output-to`
+creates no directories, so a nested path fails with `ENOENT` in any repo that
+never made it by hand. A chosen path the command cannot write is the invented
+path again, one layer down.
 
 Where build and refresh differ, `doctor` names the right one for the situation:
 

@@ -111,6 +111,28 @@ export interface SddProjectStep {
   placeholder?: string;
 }
 
+/**
+ * One question a grapher can answer about the code, once the graph exists.
+ *
+ * This is the half of a grapher multivac used to ignore. Build and refresh
+ * keep an artifact current; `queries` is what makes the artifact worth
+ * keeping — the agent asks the graph instead of grepping the tree. The verbs
+ * are NOT interchangeable between tools and must never be paraphrased into a
+ * common one: `graphify query` takes a question in words and walks outward
+ * from the nodes matching it, while `codegraph query` is a symbol lookup by
+ * name. A door telling an agent to "query the graph" without naming the tool
+ * would be wrong for at least one of them.
+ *
+ * A tool with no query verb carries no `queries`, and the door says so. That
+ * is a real state — an artifact nothing reads back — not a gap to paper over.
+ */
+export interface GrapherQuery {
+  /** Exactly what the agent types. Placeholders are the agent's to fill. */
+  run: string;
+  /** What it answers, one line, printed in the door under `run`. */
+  answers: string;
+}
+
 /** One sdd/grapher adapter: what to detect and what automation it carries. */
 export interface AdapterSpec {
   kind: 'sdd' | 'grapher';
@@ -150,6 +172,11 @@ export interface AdapterSpec {
    * is stated, never papered over with an invented file.
    */
   projectSteps?: SddProjectStep[];
+  /**
+   * Grapher only: the tool's own query surface, in its own verbs. Absent ⇒ the
+   * tool has none, and the door says that rather than inventing one.
+   */
+  queries?: GrapherQuery[];
   /** What the tool's own docs say, where it matters. */
   note?: string;
   /** Vendor doc this entry was verified against. */
@@ -362,7 +389,17 @@ export function sddSpec(name: string): AdapterSpec | undefined {
 type GrapherEntry = Omit<AdapterSpec, 'kind' | 'automation' | 'steps' | 'projectSteps'>;
 
 /**
- * The graphers multivac has VERIFIED, each field read from a primary source.
+ * The graphers multivac SPEAKS: two, each field read from a primary source and
+ * each verb run against the shipped binary before it was written down.
+ *
+ * Two on purpose. The table once held six, and the extra four were verified
+ * but not USED: nobody had run them in anger, so their entries described a
+ * build and a refresh and stopped there — which is precisely the half of a
+ * grapher that does not matter. Supporting a tool means knowing what it can
+ * ANSWER (see `queries`), and that knowledge is earned per tool, not scaled by
+ * adding rows. A short table nobody has to distrust beats a long one where the
+ * reader cannot tell which entries were exercised. Everything dropped stays
+ * reachable through `graphers:` in config, with no MR against multivac.
  *
  * There is no generic contract to fall back on, and the reason is measured:
  * `<name>-out/graph.json` + `<name> update .` + `npm i -g <name>` was derived
@@ -390,65 +427,49 @@ const knownGraphers: Record<string, GrapherEntry> = {
     refresh: 'graphify update .',
     // No separate create: `graphify extract` is the full AST+LLM build, which
     // a close hook must not run. `update .` builds and refreshes, AST-only.
-    note: 'Python tool, published as `graphifyy`. Writes graphify-out/graph.json; `graphify update .` is AST-only (no model, no network), which is what makes it safe in a close hook — `graphify extract` is the LLM path and is deliberately not wired here.',
+    // `query` is REAL and absent from `graphify --help`, which lists only
+    // install/uninstall/path/explain/diagnose/clone/merge-driver. It was run
+    // against the shipped 0.9.29 binary and returns a BFS subgraph; taking the
+    // help output as the whole surface would have dropped the one verb that
+    // matters most.
+    queries: [
+      {
+        run: 'graphify query "<question>"',
+        answers:
+          'a question in plain words — returns the subgraph that answers it, walked outward from the best-matching nodes',
+      },
+      {
+        run: 'graphify explain "<node>"',
+        answers: 'one node and its neighbours, described in prose',
+      },
+      {
+        run: 'graphify path "<A>" "<B>"',
+        answers: 'the shortest path between two nodes — how A actually reaches B',
+      },
+    ],
+    note: 'Python tool, published as `graphifyy`. Writes graphify-out/graph.json; `graphify update .` is AST-only (no model, no network), which is what makes it safe in a close hook — `graphify extract` is the LLM path and is deliberately not wired here. Its query surface is question-shaped, and `query` is undocumented in the tool\'s own --help.',
     source: 'https://github.com/Graphify-Labs/graphify',
   },
   codegraph: {
     artifacts: ['.codegraph'],
     binaries: ['codegraph'],
     installHint: 'npm i -g @colbymchenry/codegraph',
+    // `sync` is incremental (changes since the last index); `index` is the full
+    // rebuild. The hook wants the cheap one — it fires on every edit.
     refresh: 'codegraph sync',
     create: 'codegraph init',
-    note: 'Indexes into .codegraph/, not <name>-out/; `codegraph init` builds it, `codegraph sync` refreshes it.',
+    // Symbol lookup, NOT a question. Handing this a sentence returns nothing
+    // useful, which is exactly why the door names the tool's own verb instead
+    // of telling the agent to "query the graph".
+    queries: [
+      {
+        run: 'codegraph query <symbol>',
+        answers:
+          'symbol search by name — `--kind function|class` narrows it, `--limit N` bounds it, `--json` makes it machine-readable',
+      },
+    ],
+    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — anonymous usage stats (commands run, languages, file counts, platform), and the vendor documents that source code, file paths, repository URLs and symbol names are never collected. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or DO_NOT_TRACK=1, which it honors) is what makes the contract above literally true. It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP.',
     source: 'https://github.com/colbymchenry/codegraph',
-  },
-  'code-review-graph': {
-    artifacts: ['.code-review-graph'],
-    binaries: ['code-review-graph'],
-    // Published, not guessed: the README gives `pip install code-review-graph`
-    // and `pipx install code-review-graph`, and PyPI serves the project under
-    // its own name. pipx is the one that puts the binary on PATH.
-    installHint: 'pipx install code-review-graph',
-    create: 'code-review-graph build',
-    refresh: 'code-review-graph update',
-    note: 'SQLite tree-sitter graph in .code-review-graph/. Explicit build and update verbs. Offline by default; cloud embeddings are opt-in behind CRG_ACCEPT_CLOUD_EMBEDDINGS=1, so leave that unset to keep the refresh deterministic.',
-    source: 'https://github.com/tirth8205/code-review-graph',
-  },
-  axon: {
-    artifacts: ['.axon'],
-    binaries: ['axon'],
-    // The PyPI name is NOT the adapter name, and getting that wrong is the
-    // graphify trap again: PyPI's `axon` is an unrelated library for talking
-    // to visionmedia's axon. `axoniq` is this project.
-    installHint: 'pip install axoniq',
-    create: 'axon analyze .',
-    refresh: 'axon analyze .',
-    note: 'Published on PyPI as `axoniq`; the binary is `axon`. Embedded KuzuDB under .axon/ (plus .axon/meta.json). No separate update verb — the refresh IS a re-run of analyze; `--full` forces a rebuild. Young project; treat the entry as thin.',
-    source: 'https://github.com/harshkedia177/axon',
-  },
-  'dependency-cruiser': {
-    // multivac's path, not the vendor's: depcruise writes wherever
-    // --output-to points, so the entry has to CHOOSE one and say that it did.
-    // A FILE at the root, not `<dir>/graph.json`: --output-to does not create
-    // directories, so a nested choice died with ENOENT on every first run in
-    // a repo that had never made the directory by hand.
-    artifacts: ['dependency-cruiser-graph.json'],
-    binaries: ['depcruise'],
-    installHint: 'npm i -g dependency-cruiser',
-    create: 'depcruise --init',
-    refresh:
-      'depcruise --output-type json --output-to dependency-cruiser-graph.json src',
-    note: 'Binary is `depcruise`, not the adapter name. JS/TS only and module-level (imports, cycles, orphans) — not symbols. The artifact path is multivac\'s choice, not a vendor convention: the tool emits wherever --output-to points, and the refresh above is what makes that path true — a root-level file, because --output-to writes no directories and a nested path fails with ENOENT until somebody mkdirs it. `depcruise --init` writes .dependency-cruiser.mjs (interactively) and the refresh needs it. The `src` argument is the default source root — change it in your own graphers: entry if yours differs.',
-    source: 'https://github.com/sverweij/dependency-cruiser',
-  },
-  'scip-typescript': {
-    artifacts: ['index.scip'],
-    binaries: ['scip-typescript'],
-    installHint: 'npm i -g @sourcegraph/scip-typescript',
-    // Build and refresh are one command: there is no incremental verb.
-    refresh: 'scip-typescript index',
-    note: 'Compiler-accurate, artifact default `index.scip` verified in the tool\'s own CommandLineOptions. Build and refresh are the same command — a full re-typecheck, which is heavy for a close hook on a large repo. The output is protobuf: unreadable without the separate `scip` CLI, whose only query surface is an EXPERIMENTAL conversion. Needs node_modules installed to run offline.',
-    source: 'https://github.com/sourcegraph/scip-typescript',
   },
 };
 
