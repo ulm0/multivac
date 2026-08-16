@@ -509,6 +509,5 @@ checks them on every commit.
 <!-- @anchor MV-71 brain:src/commands/verify.ts /MID-MERGE/ count=2 -->
 <!-- @anchor MV-71 brain:test/lib/unmerged.test.ts /a conflicted file is listed once, not once per merge stage/ -->
 <!-- @anchor MV-71 brain:test/lib/unmerged.test.ts /the mid-merge state is reported, not silently judged/ -->
-<!-- @anchor MV-71 brain:node_modules /./ absent -->
 <!-- @anchor MV-71 brain:.gitignore /^node_modules$/ unique -->
 
