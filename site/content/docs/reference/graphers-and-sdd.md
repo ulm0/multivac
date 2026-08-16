@@ -300,7 +300,13 @@ command refuses without it:
 | --- | --- | --- | --- |
 | `change plan` | the propose-equivalent exists | `openspec/changes/<slug>/proposal.md` | `specs/*<slug>*/spec.md` |
 | `change apply` | the plan/tasks artifact exists | `openspec/changes/<slug>/tasks.md` | `specs/*<slug>*/plan.md`, `specs/*<slug>*/tasks.md` |
-| `change close` | the archive-equivalent happened | `openspec/changes/archive/*-<slug>` | *not gated — spec-kit has no archive* |
+| `change close` | the archive-equivalent happened | `openspec/changes/archive/*-<slug>` | *no archive step exists — but see the ledger below* |
+
+Beyond the artifact, `change close` also reads the task list each tool keeps —
+the archived `tasks.md` for opsx, `specs/*<slug>*/tasks.md` for spec-kit — and
+refuses while either still has open boxes. That is [the tool's own
+ledger](#the-tools-own-ledger), and it is why spec-kit's close is checked at all
+despite having no archive step to prove.
 
 The refusal names the command, the path, and the repos it looked in, so the fix
 is on the line above the error:
@@ -342,6 +348,79 @@ sdd opsx: `change apply add-user-auth` refused — `openspec validate add-user-a
 
 Shelling out happens for **validation only**. A step itself is never faked by
 running something that looks like it.
+
+**A gate that cannot be evaluated refuses.** When the validator's binary is not
+found, the gate does not quietly fall back to "the file is there, good enough" —
+that is the same command going green on a machine that can check nothing:
+
+```txt
+sdd opsx: `change apply add-user-auth` refused — `openspec` is not on PATH, so `openspec validate add-user-auth --json --no-interactive` cannot be run
+  install it: npm i -g @fission-ai/openspec
+  or skip the gates without losing the door: `--no-sdd` for one run, `sdd_auto: false` in .multivac/config.yml for good
+```
+
+It looks in `node_modules/.bin` beside the artifact as well as on `PATH`, so a
+project-local `npm i -D` is found. And it never tells you to remove `sdd:` —
+that key also renders the whole flow into the brain door, so dropping it would
+delete the agent's instructions along with the check.
+
+### Existence is the weakest proof
+
+A file being there does not mean anyone wrote it. Two ways a present artifact
+proves nothing, both refused exactly as a missing one is.
+
+**Empty.** No declaration needed — a step's artifact is never legitimately
+empty, whatever the tool. spec-kit's `setup-plan.sh` falls back to `rm -f` then
+`touch` when it cannot resolve a template, which used to sail through.
+
+**Byte-identical to the template it was copied from.** `setup-plan.sh` runs
+`resolve_template_content "plan-template" > "$IMPL_PLAN"` as part of *starting*
+the step, so `plan.md` exists in full before the agent writes a word:
+
+```txt
+sdd speckit: `change apply add-user-auth` refused — brain:specs/003-add-user-auth/plan.md is byte-identical to .specify/templates/plan-template.md: the scaffolding wrote it, nobody has
+```
+
+Whole files are compared, never a guessed placeholder, and the reason is worth
+stating because the obvious approach is wrong. The tempting pin is the
+template's own `# Implementation Plan: [FEATURE]` heading — but nothing in
+spec-kit ever asks anyone to change that line, so a finished, real plan keeps
+it and a regex on it would refuse honest work forever. Equality has no false
+positives at all: a written plan is never byte-identical to its template. It
+also follows spec-kit's documented override stack, so a project with its own
+`plan-template.md` is checked against the file it actually copied.
+
+What this does **not** catch is said rather than hidden: an agent that edits one
+line and stops.
+
+### The tool's own ledger
+
+Every SDD tool ships a way to finish a step over its own objection.
+`openspec archive --yes` prints `Warning: 4 incomplete task(s) found.
+Continuing due to --yes flag.` and archives anyway — so the archived directory
+proves the archive ran and nothing more. `close` reads the task list the tool
+itself just moved:
+
+```txt
+sdd opsx: `change close add-user-auth` refused — brain:openspec/changes/archive/2026-08-16-add-user-auth/tasks.md has 3 open item(s) — openspec archived this change with tasks still unchecked
+    - [ ] 1.2 Backfill existing rows
+    - [ ] 1.3 Wire the nightly job
+    - [ ] 1.4 Tell the customer
+  finish them in the tool, then re-run: multivac change close add-user-auth
+```
+
+This is not reimplementing the tool's rules. The tool wrote the file and
+already decided what the marker means; multivac only declines to ignore it.
+
+The ledger check carries its **own** lifecycle point, separate from the step's,
+and that is the whole design. spec-kit's implement stays ungateable — whether
+it *ran* leaves no trace and never will — while whether its task list still has
+open boxes is a fact on disk. Two different questions about one step, with
+different honest answers.
+
+It still does not prove the work happened. `- [x]` is a character an agent types
+about its own work. It proves the tool's own book does not say UNDONE, which is
+strictly more than the artifact proved before.
 
 ### Ungateable steps are stated, never faked
 

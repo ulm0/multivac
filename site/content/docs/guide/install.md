@@ -42,7 +42,7 @@ ERROR: Use "pnpm install" for installation in this project.
 
 If you would rather not link globally, every command in these docs works
 with an explicit path — `node /path/to/multivac/dist/cli.js verify` — which
-is also what CI does.
+is also the last runner the hook shims try.
 
 ## Two names, one binary
 
@@ -90,25 +90,14 @@ package is `private: true` and unreleased. Treat the build you cloned as the
 identity, not that number.
 {{< /callout >}}
 
-## In CI
+## Every machine needs its own runner
 
-The brain repo needs the same build before it can verify. multivac's own
-pipeline is the reference:
-
-```yaml
-selfverify:
-  image: node:24
-  before_script:
-    - corepack enable
-    - corepack prepare pnpm@10.20.0 --activate
-  script:
-    - pnpm install --frozen-lockfile
-    - pnpm run build
-    - node dist/cli.js verify --strict
-```
-
-`--strict` is the CI policy: presence and uniqueness failures gate too, not
-just tombstones. See the [exit matrix](../../reference/commands#verify-dir---strict---check---repo-key).
+The hooks travel with the clone — `core.hooksPath` points at a versioned
+`.multivac/hooks/` — but the binary does not. On a machine where none of the
+three runners resolves, the shim prints one warning to stderr and exits 0:
+the commit lands, unverified. That is deliberate, and it is why the install
+above is per machine and why `multivac doctor` names the runner it found, or
+says `INACTIVE`. See [Hooks](../../reference/hooks).
 
 ## Next
 

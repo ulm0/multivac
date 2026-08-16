@@ -694,10 +694,45 @@ async function cmdClose(
   cfg: Config,
   slug: string,
   noSdd: boolean,
+  abandon = false,
 ): Promise<number> {
+  // Abandoning is the other ending, and it needs its own door: `change new`
+  // reserves an ID before anything is declared, so a change dropped before it
+  // touched a repo can never satisfy the gates below — and close is the only
+  // caller of releaseUnused. Without this the ID leaks forever, or the author
+  // writes a false `status: landed` to get past a check. Nothing is verified
+  // here on purpose: an abandoned change made no claims to verify.
+  if (abandon) {
+    const parsed = await loadChange(brain, slug);
+    if (parsed.change.claims.length > 0) {
+      warn(`${changeRel(slug)} declares ${parsed.change.claims.length} claim(s) — --abandon is for a change that made none`);
+      warn('  drop the claims first, or close it properly');
+      return 1;
+    }
+    const dest = await archiveChange(brain, parsed);
+    const freed = await releaseUnused(brain, slug, new Set<string>());
+    for (const l of freed) say(l);
+    say(`abandoned -> ${relative(brain, dest)} — nothing was verified, nothing landed`);
+    return 0;
+  }
   // The archive-equivalent has to have HAPPENED — not been printed at.
   if (!(await gateSdd(brain, cfg, 'close', slug, noSdd))) return 1;
   const parsed = await loadChange(brain, slug);
+  // A change declaring nothing lands nothing, and `unlanded` over an empty map
+  // is empty — so close used to sail past the very check that stops `plan` and
+  // `apply`, archiving a change that never named a repo and releasing its
+  // reservation. The gate is on the declaration, not on its leftovers.
+  const closing = Object.keys(parsed.change.repos);
+  if (closing.length === 0) {
+    warn(`${changeRel(slug)} declares no repos — declare them, then re-run close`);
+    warn('  repos: { <key>: { status: landed } }   # every repo this change touched');
+    warn(`  or give the reservation back: multivac change close ${slug} --abandon`);
+    return 1;
+  }
+  // ...and counting keys is not the same as having repos. One invented name
+  // satisfied the check above while `plan` and `apply` both refuse it, which
+  // left close the weakest door of the three. Same resolution they use.
+  for (const key of closing) repoEntryOf(cfg, key);
   const unlanded = Object.entries(parsed.change.repos).filter(([, r]) => r.status !== 'landed');
   if (unlanded.length > 0) {
     for (const [k, r] of unlanded) {
@@ -803,7 +838,8 @@ function usage(): void {
   say('  apply <slug>           worktree per repo (greenfield repos get created)');
   say('  land <slug>            landing-order report; --landed <repo> records a merge');
   say(`  close <slug>           verify claims, archive the change, print ${RITUAL_PATH}`);
-  say('flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only)');
+  say('flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only),');
+  say('       --abandon (close only: drop a change that landed nothing, give its id back)');
 }
 
 export const change: Command = {
@@ -812,10 +848,12 @@ export const change: Command = {
   async run(argv, ctx): Promise<number> {
     const pos: string[] = [];
     let noSdd = false;
+    let abandon = false;
     let landed: string | undefined;
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
       if (a === '--no-sdd') noSdd = true;
+      else if (a === '--abandon') abandon = true;
       else if (a === '--landed') landed = argv[++i];
       else if (a.startsWith('--')) {
         warn(`unknown flag ${a} — run \`multivac change\` for usage`);
@@ -853,7 +891,7 @@ export const change: Command = {
         case 'land':
           return await cmdLand(brain, cfg, slug, landed, noSdd);
         default:
-          return await cmdClose(brain, cfg, slug, noSdd);
+          return await cmdClose(brain, cfg, slug, noSdd, abandon);
       }
     } catch (e) {
       if (e instanceof ChangeError) {

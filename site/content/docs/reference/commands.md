@@ -66,9 +66,9 @@ The banner is the mark: lit lamps are verified claims, unlit ones unanchored,
 the amber one the claim in flight. The pattern is a fixed drawing, never a
 reading — `init` runs before there is anything to verify. `init` is the only
 command that prints it; `verify`, `doctor`, `doors` and `change` run inside
-hooks and in CI, where it would be noise. It is skipped when stdout is not a
-terminal, and `NO_COLOR` keeps the drawing while dropping the colour (`#` lit,
-`.` unlit, `*` in flight).
+git and harness hooks, where it would be noise. It is skipped when stdout is
+not a terminal, and `NO_COLOR` keeps the drawing while dropping the colour
+(`#` lit, `.` unlit, `*` in flight).
 
 Both `--flag value` and `--flag=value` work. A flag with no value, or an
 unknown flag, is refused:
@@ -188,7 +188,7 @@ $ mvac verify
 
 | flag | effect |
 | --- | --- |
-| `--strict` | broken `present`/`unique` legs also exit 1. The CI policy. |
+| `--strict` | broken `present`/`unique` legs join the gating set and exit 1 too, not just the tombstones. Armed on the pre-push shim by `strict_pre_push`. |
 | `--check` | never writes: a `moved` leg is reported instead of self-healed. |
 | `--worktree` | read every declared repo's **working tree** instead of its channel ref — local state across the whole ecosystem, on purpose. |
 | `--repo <key>` | scope to one declared repo. **Only meaningful from a consumer repo** — from a brain it is ignored with a warning. |
@@ -528,13 +528,13 @@ Bare `doctor` exits 0 in every degraded state above; its only exit 1 is a
 config or law that does not load — detection of a disarmed gate depends on a
 human reading the report.
 
-**`doctor --strict` is the CI-usable assertion.** It adds one condition and
-otherwise prints the same report.
+**`doctor --strict` turns that report into an assertion.** It adds one
+condition and otherwise prints the same thing.
 It exits 1 when the enforcement gate is disarmed — the shim missing,
 `core.hooksPath` not multivac's with no shim chained alongside, or no runnable
-multivac so the shim no-ops. So a CI step `mvac doctor --strict` fails the
-build the moment the floor is not armed, instead of passing green while
-nothing is enforced:
+multivac so the shim no-ops. Run it where a machine is being set up, or from
+a session-start hook — it fails the moment the floor is down instead of
+staying quiet while nothing is enforced:
 
 ```txt
 $ git config --unset core.hooksPath && mvac doctor --strict; echo $?
@@ -603,10 +603,11 @@ multivac change <sub> <slug> [args]
   apply <slug>           worktree per repo (greenfield repos get created)
   land <slug>            landing-order report; --landed <repo> records a merge
   close <slug>           verify claims, archive the change, print .multivac/ritual.md
-flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only)
+flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only),
+       --abandon (close only: drop a change that landed nothing, give its id back)
 ```
 
-Exactly two flags, both listed above. An unknown one exits 2:
+Exactly three flags, all listed above. An unknown one exits 2:
 
 ```txt
 unknown flag --force — run `multivac change` for usage
@@ -782,7 +783,18 @@ A repo with no `origin` is told to land locally instead of to push:
 
 ### `close`
 
-The gate. Refuses while any repo is unlanded:
+The gate. Refuses a change that declared no repos, or that names one the config
+does not — the same two refusals `plan` and `apply` make, because a door that
+is weaker than the two before it is not a gate:
+
+```txt
+$ mvac change close points-expire
+.multivac/changes/points-expire.md declares no repos — declare them, then re-run close
+  repos: { <key>: { status: landed } }   # every repo this change touched
+  or give the reservation back: multivac change close points-expire --abandon
+```
+
+Refuses while any repo is unlanded:
 
 ```txt
 $ mvac change close points-expire
@@ -815,6 +827,24 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] tell support before the flag flips
   - [ ] the public site ships before the backend
 ```
+
+#### `--abandon`
+
+The other ending. `change new` reserves an invariant id before anything is
+declared, so a change you drop before it touches a repo can never satisfy the
+gates above — and `close` is the only thing that gives a reservation back.
+Without a door, an abandoned change leaks its id forever, or you write a false
+`status: landed` to get through:
+
+```txt
+$ mvac change close points-expire --abandon
+INV-07
+abandoned -> .multivac/changes/archive/points-expire.md — nothing was verified, nothing landed
+```
+
+Nothing is verified, on purpose: an abandoned change made no claims to verify.
+A change that *did* declare claims is refused — drop them first, or close it
+properly.
 
 The printed commit is **scoped to the closing change's paths** — the archived
 file, the old change path, and the law table when a reservation was released —

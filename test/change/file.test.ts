@@ -9,6 +9,10 @@ import {
   scaffoldChange,
   serializeChange,
 } from '../../src/change/file.js';
+import { repointLawLinks } from '../../src/change/file.js';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { VerifyReport } from '../../src/types.js';
 
 const sample: ChangeFile = {
@@ -160,4 +164,41 @@ test('closeGate: green and moved pass, broken and unanchored refuse', () => {
   const unanchored = closeGate(report({ 'CLM-1': 'ok' }), ['CLM-1', 'CLM-9']);
   assert.equal(unanchored.ok, false);
   assert.ok(unanchored.lines.some((l) => l.includes('CLM-9') && l.includes('add an anchor')));
+});
+
+// --- archiving repoints the law at the file it just moved ---
+
+test('archiving rewrites every law row that cited the open change', async () => {
+  const brain = mkdtempSync(join(tmpdir(), 'mvac-repoint-'));
+  mkdirSync(join(brain, '.multivac', 'changes'), { recursive: true });
+  // Two rows citing the change, one citing a different one, and the slug in
+  // prose — only the link targets of THIS change may move.
+  writeFileSync(
+    join(brain, '.multivac', 'invariants.md'),
+    [
+      '| MV-1 | rule one | specified | active | 2026-08-16 | [changes/points.md](changes/points.md) |',
+      '| MV-2 | rule two | specified | active | 2026-08-16 | [changes/points.md](changes/points.md) |',
+      '| MV-3 | other    | specified | active | 2026-08-16 | [changes/other.md](changes/other.md) |',
+      '| MV-4 | prose naming changes/points.md without citing it | open | proposed | 2026-08-16 | — |',
+    ].join('\n'),
+  );
+  writeFileSync(join(brain, '.multivac', 'changes', 'points.md'), '---\nslug: points\n---\n');
+
+  const moved = await repointLawLinks(brain, 'points');
+  assert.equal(moved, 2);
+  const law = readFileSync(join(brain, '.multivac', 'invariants.md'), 'utf8');
+  assert.equal(law.split('(changes/archive/points.md)').length - 1, 2);
+  assert.match(law, /\(changes\/other\.md\)/); // untouched
+  // Prose is prose: only `(...)` link targets move.
+  assert.match(law, /prose naming changes\/points\.md without citing it/);
+
+  // Idempotent: a second archive of the same slug finds nothing left to move.
+  assert.equal(await repointLawLinks(brain, 'points'), 0);
+  rmSync(brain, { recursive: true, force: true });
+});
+
+test('repointing a brain with no law file is a no-op, never a crash', async () => {
+  const brain = mkdtempSync(join(tmpdir(), 'mvac-repoint-none-'));
+  assert.equal(await repointLawLinks(brain, 'whatever'), 0);
+  rmSync(brain, { recursive: true, force: true });
 });

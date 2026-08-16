@@ -1,9 +1,9 @@
 ---
 slug: two-graphers-and-what-each-one-answers
-status: open
+status: archived
 repos:
   brain:
-    status: planned
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -15,9 +15,9 @@ invariants:
   retires: []
 claims:
   - id: MV-61
-    statement: "Every shipped grapher carries its own query verbs, printed verbatim in the brain door; a tool without one says so, and nothing is guessed for a declared grapher."
+    statement: Every shipped grapher carries its own query verbs, printed verbatim in the brain door; a tool without one says so, and nothing is guessed for a declared grapher.
   - id: MV-62
-    statement: "A shipped grapher entry names any network its refresh performs, and gives the command that makes the offline contract true."
+    statement: A shipped grapher entry names any network its refresh performs, and gives the command that makes the offline contract true.
 ---
 
 # Two graphers, and what each one answers

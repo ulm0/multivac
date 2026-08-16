@@ -3,21 +3,25 @@ title: Hooks
 weight: 5
 ---
 
-Enforcement is a ladder, not a switch. Each rung catches the lie at a
-different moment, and the rungs are deliberately unequal in reach and in
+Enforcement is a ladder of two rungs, not a switch. Each catches the lie at a
+different moment, and the two are deliberately unequal in reach and in
 strictness.
 
 | rung | reach | when it fires | policy |
 | --- | --- | --- | --- |
 | **git hooks** | **universal** — every repo `doors` touches, every harness, no harness at all | `pre-commit`, `pre-push` | default (`--strict` on push, optionally) |
 | **harness hooks** | only harnesses that have them — today, `claude` | session start, after every edit | default |
-| **CI** | wherever you configure it | on push / MR | `--strict` |
 
 The floor is universal and late. The ceiling is narrow and early. Neither
 replaces the other: the harness hook catches a lying brain **before** the
 agent conceives code on top of it, and the git hook catches everyone else —
 a human typing `git commit`, a script, an agent in a harness with no hook
 support.
+
+Both fire while the session that broke the claim is still open — the only
+window in which the answer still changes what gets written. There is no rung
+after that, deliberately: a check that runs once everyone has gone home
+reports the lie to its next reader, with the code already written on top.
 
 ## Git hooks — the universal floor
 
@@ -132,9 +136,10 @@ hooks      core.hooksPath ok · pre-commit installed · pre-commit chains .git/h
 Bare `doctor` reports every one of these states and exits 0 — including the
 disarmed ones (`core.hooksPath` unset, a shim missing, no runnable multivac).
 That is a report, and a human has to read it. **`doctor --strict` turns the
-floor into an assertion**: it exits 1 when the gate is not armed, so a CI step
-`mvac doctor --strict` fails the build the moment the floor is down instead of
-passing green while nothing is enforced. See [`doctor --strict`](../commands/#doctor---strict).
+floor into an assertion**: it exits 1 when the gate is not armed, so a setup
+step or a session-start hook running `mvac doctor --strict` fails the moment
+the floor is down instead of staying quiet while nothing is enforced. See
+[`doctor --strict`](../commands/#doctor---strict).
 
 ### A repo that already has hooks
 
@@ -174,8 +179,10 @@ it — and with none of them it prints one warning to stderr and exits 0.
 
 That is deliberate and it is the difference between a guard people keep and a
 guard people delete. Enforcement **degrades**; it does not lock out. The cost
-is that a machine with no runner gets no checking at all, which is what CI is
-for — and why `doctor` names the runner it found, or says `INACTIVE`.
+is real and it is paid knowingly: a machine with no runner gets no checking at
+all, and nothing downstream will catch what it let through — which is why
+`doctor` names the runner it found, or says `INACTIVE`, and why
+`doctor --strict` exists to make that state fail out loud.
 
 Repo-local counts only when it can actually run: a `dist/` with no
 `node_modules` beside it is not a runner, because node exits 1 on its first
@@ -225,7 +232,7 @@ brain: notice: .claude/settings.json is not valid JSON — fix it, then rerun `m
 Every rung runs the same `verify`, so the policy is the same everywhere:
 **which anchor mode broke** decides whether the exit code gates.
 
-| leg outcome | default (hooks) | `--strict` (push with `strict_pre_push`, CI) |
+| leg outcome | default (hooks) | `--strict` (the push, with `strict_pre_push`) |
 | --- | --- | --- |
 | broken/vacuous `absent` — a tombstone | **blocks** | blocks |
 | broken/vacuous `count` | **blocks** | blocks |
@@ -251,19 +258,23 @@ notices by hand.
 ```yaml
 # .multivac/config.yml
 blocking: [absent, count, each]   # the default: tombstones and universals gate, renames do not
-strict_pre_push: true       # pushes gate like CI, commits stay permissive
+strict_pre_push: true             # the push gates on present/unique too, the commit stays permissive
 ```
 
-and in CI:
+A commit is cheap to amend, so it should not die on a presence check the next
+edit will fix anyway. A push is the last hop out of the machine, and that is
+the one worth holding to the harder bar.
+
+For a run that must not write — a read-only checkout, a pass over a branch
+you are only reviewing — add `--check`:
 
 ```sh
 mvac verify --strict --check
 ```
 
-`--check` makes CI report a `moved` leg instead of rewriting the glob — the
-propose-in-CI half of the pattern. The rewrite belongs in the working tree
-where a human can read the diff, not in a pipeline that has nowhere to commit
-it.
+`--check` reports a `moved` leg instead of rewriting the glob. The rewrite
+belongs in a working tree where a human can read the diff, not somewhere with
+nowhere to commit it.
 
 ## Nothing here commits
 

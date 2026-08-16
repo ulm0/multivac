@@ -13,6 +13,9 @@
 // A step is never faked by shelling out something that looks like it.
 
 import { execFile } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { Config } from '../types.js';
 import { CONFIG_PATH } from '../lib/config.js';
@@ -28,6 +31,48 @@ import { artifactHit, onPath, sddRoots, type SddRoot } from './detect.js';
 
 const execFileP = promisify(execFile);
 
+/**
+ * Lines of `file` matching `pattern`, or none when it cannot be read.
+ *
+ * POSIX ERE, the same dialect anchors take, so a registry entry never has to
+ * learn a second regex language. Unreadable is empty, not an error: this check
+ * hardens a gate, it must never become a new way for the lifecycle to crash.
+ */
+async function openItems(file: string, pattern: string): Promise<string[]> {
+  const text = await readText(file);
+  if (text === null) return [];
+  const re = new RegExp(pattern);
+  return text.split('\n').filter((l) => re.test(l));
+}
+
+/** File contents, or null when it cannot be read. Unreadable is never a crash. */
+async function readText(file: string): Promise<string | null> {
+  try {
+    return await readFile(file, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The declared template `body` was copied from verbatim, or null.
+ *
+ * Whole-file equality, not a heuristic: a written artifact is never
+ * byte-identical to the template it came from, so this has no false
+ * positives — and a project that overrides its template is checked against
+ * the file it actually copied, not against the vendor default.
+ */
+async function copiedFrom(
+  root: string,
+  templates: string[] | undefined,
+  body: string,
+): Promise<string | null> {
+  for (const rel of templates ?? []) {
+    if ((await readText(join(root, rel))) === body) return rel;
+  }
+  return null;
+}
+
 export const withSlug = (text: string, slug: string): string =>
   text.replaceAll('<slug>', slug);
 
@@ -38,6 +83,10 @@ export const stepsAt = (spec: AdapterSpec, at: LifecyclePoint): SddStep[] =>
 /** Steps this lifecycle command refuses without, in declared order. */
 export const stepsGating = (spec: AdapterSpec, gate: GatePoint): SddStep[] =>
   (spec.steps ?? []).filter((s) => s.gate === gate && s.artifact);
+
+/** Steps whose tool-kept ledger this lifecycle command reads, in declared order. */
+export const stepsLedgered = (spec: AdapterSpec, gate: GatePoint): SddStep[] =>
+  (spec.steps ?? []).filter((s) => s.unfinished?.gate === gate);
 
 /** What a step leaves behind, or why it can never leave anything. */
 export function proofOf(step: SddStep, slug = '<slug>'): string {
@@ -58,18 +107,39 @@ export interface GateResult {
   lines: string[];
 }
 
+type Verdict =
+  /** The tool ran and was satisfied. */
+  | { kind: 'ok' }
+  /** The tool is not installed here, so the gate has nothing to ask. */
+  | { kind: 'missing'; bin: string }
+  /** The tool ran and objected, in its own words. */
+  | { kind: 'failed'; message: string };
+
 /**
  * Reuse the tool's own verdict. Its rules are its own — reimplementing them
  * here would guarantee drift — so the validator runs in the root that holds
- * the artifact and its message is quoted back verbatim. A validator whose
- * binary is missing is not a failure: the gate already passed on the artifact.
+ * the artifact and its message is quoted back verbatim.
+ *
+ * A MISSING BINARY IS A FAILURE, not a pass. It used to return null and let
+ * the gate stand on artifact existence alone, which is the quietest way this
+ * tool could lie: the strongest half of the check silently absent, the same
+ * command green on a machine that cannot run it. A gate that cannot be
+ * evaluated says so and refuses.
  */
-async function toolVerdict(cmd: string, cwd: string): Promise<string | null> {
+async function toolVerdict(cmd: string, cwd: string): Promise<Verdict> {
   const [bin, ...args] = cmd.split(' ');
-  if (!(await onPath(bin))) return null;
+  // `npm i -D @fission-ai/openspec` is an ordinary way to install a project's
+  // own tooling, and it never touches $PATH — the binary lands in the repo's
+  // node_modules/.bin. Refusing that install shape would push the operator
+  // toward a global install or toward turning the gate off, for a validator
+  // that is right there. $PATH first, then the local bin dir beside the
+  // artifact; anything else is genuinely absent.
+  const local = join(cwd, 'node_modules', '.bin', bin);
+  const exe = (await onPath(bin)) ? bin : existsSync(local) ? local : null;
+  if (exe === null) return { kind: 'missing', bin };
   try {
-    await execFileP(bin, args, { cwd });
-    return null;
+    await execFileP(exe, args, { cwd });
+    return { kind: 'ok' };
   } catch (e) {
     const err = e as { stdout?: string; stderr?: string; message: string };
     const raw = `${err.stdout ?? ''}${err.stderr ?? ''}`.trim();
@@ -83,11 +153,13 @@ async function toolVerdict(cmd: string, cwd: string): Promise<string | null> {
         .filter((i) => i.level !== 'INFO')
         .map((i) => i.message)
         .filter(Boolean);
-      if (issues.length > 0) return issues.join('; ');
+      if (issues.length > 0) return { kind: 'failed', message: issues.join('; ') };
     } catch {
       /* not JSON — fall through to the raw text */
     }
-    return raw.split('\n').filter(Boolean).slice(0, 3).join(' ') || err.message.split('\n')[0];
+    const message =
+      raw.split('\n').filter(Boolean).slice(0, 3).join(' ') || err.message.split('\n')[0];
+    return { kind: 'failed', message };
   }
 }
 
@@ -115,7 +187,8 @@ export async function sddGate(
     };
   }
   const gating = stepsGating(spec, gate);
-  if (gating.length === 0) {
+  const ledgered = stepsLedgered(spec, gate);
+  if (gating.length === 0 && ledgered.length === 0) {
     // Never faked: a tool with no step to prove at this point is SAID to have
     // none. spec-kit has no archive equivalent, so `close` is simply not gated.
     return {
@@ -151,16 +224,94 @@ export async function sddGate(
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
     }
+    // Existence is the weakest proof, and some tools give it away. Two ways
+    // a present artifact still proves nothing, both refused as if it were
+    // missing, because that is what they are.
+    const body = await readText(join(found.root.dir, found.rel));
+    //   1. Empty. spec-kit's setup-plan.sh falls back to `rm -f` + `touch`
+    //      when it cannot resolve a template, leaving a 0-byte file. No
+    //      declaration needed for this: a step's artifact is never legitimately
+    //      empty, whatever the tool.
+    if (body !== null && body.trim() === '') {
+      ok = false;
+      lines.push(
+        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${found.root.scope}:${found.rel} is empty`,
+      );
+      lines.push(`  ${withSlug(step.run, slug)}`);
+      lines.push(`  then re-run: multivac change ${gate} ${slug}`);
+      continue;
+    }
+    //   2. Byte-identical to the template it was copied from — the scaffolding
+    //      wrote it, not the agent.
+    const from = body === null ? null : await copiedFrom(found.root.dir, step.untouched, body);
+    if (from !== null) {
+      ok = false;
+      lines.push(
+        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${found.root.scope}:${found.rel} is byte-identical to ${from}: the scaffolding wrote it, nobody has`,
+      );
+      lines.push(`  ${withSlug(step.run, slug)}`);
+      lines.push(`  then re-run: multivac change ${gate} ${slug}`);
+      continue;
+    }
     lines.push(`sdd ${cfg.sdd}: ${found.root.scope}: ${found.rel} ok`);
     if (!step.validate) continue;
     const verdict = await toolVerdict(withSlug(step.validate, slug), found.root.dir);
-    if (verdict !== null) {
+    if (verdict.kind === 'missing') {
+      // Not a pass. The artifact is on disk and the tool that judges it is
+      // not here, so the strongest half of this gate cannot run — say which
+      // binary, and how to get it, instead of going green without it.
       ok = false;
       lines.push(
-        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — \`${withSlug(step.validate, slug)}\` says: ${verdict}`,
+        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — \`${verdict.bin}\` is not on PATH, so \`${withSlug(step.validate, slug)}\` cannot be run`,
+      );
+      lines.push(`  install it: ${spec.installHint}`);
+      // NOT "drop `sdd:`": that key also renders the whole SDD flow into the
+      // brain door, so removing it deletes the agent's instructions along with
+      // the gate. Only the two switches actually scoped to gating.
+      lines.push(
+        `  or skip the gates without losing the door: \`--no-sdd\` for one run, \`sdd_auto: false\` in ${CONFIG_PATH} for good`,
+      );
+    } else if (verdict.kind === 'failed') {
+      ok = false;
+      lines.push(
+        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — \`${withSlug(step.validate, slug)}\` says: ${verdict.message}`,
       );
       lines.push(`  fix it in the tool, then re-run: multivac change ${gate} ${slug}`);
     }
+  }
+  // The ledger pass. Separate from the artifact loop on purpose: these steps
+  // may have no artifact of their own (spec-kit's implement leaves none), and
+  // the question is different. The artifact asks "did this run"; the ledger
+  // asks "does the tool's own book still say the work is open". Both SDD tools
+  // ship a way to finish a step over their own objection, and gating only on
+  // the artifact accepts that silently.
+  for (const step of ledgered) {
+    const led = step.unfinished!;
+    const want = withSlug(led.artifact, slug);
+    let hit: { root: SddRoot; rel: string } | null = null;
+    for (const root of roots) {
+      const rel = await artifactHit(root.dir, want);
+      if (rel) {
+        hit = { root, rel };
+        break;
+      }
+    }
+    // No ledger: the artifact gate above already refuses if this step was
+    // supposed to leave one. Absence here is not evidence of completion, so
+    // it is neither pass nor fail — it is simply nothing to read.
+    if (!hit) continue;
+    const open = await openItems(join(hit.root.dir, hit.rel), led.pattern);
+    if (open.length === 0) {
+      lines.push(`sdd ${cfg.sdd}: ${hit.root.scope}: ${hit.rel} — nothing left open`);
+      continue;
+    }
+    ok = false;
+    lines.push(
+      `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${hit.root.scope}:${hit.rel} has ${open.length} open item(s) — ${led.why}`,
+    );
+    for (const l of open.slice(0, 3)) lines.push(`    ${l.trim()}`);
+    if (open.length > 3) lines.push(`    …and ${open.length - 3} more`);
+    lines.push(`  finish them in the tool, then re-run: multivac change ${gate} ${slug}`);
   }
   if (!ok) {
     lines.push(

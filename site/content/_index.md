@@ -36,7 +36,7 @@ layout: hextra-home
   >}}
   {{< hextra/feature-card
     title="Deterministic verify"
-    subtitle="`mvac verify` checks every anchor against the declared repos. No LLM, no API key, no network — the same answer on your laptop, in the hook, and in CI."
+    subtitle="`mvac verify` checks every anchor against the declared repos. No LLM, no API key, no network — the same answer on your laptop, in the hook, and in your teammate's clone."
     link="docs/reference/commands"
   >}}
   {{< hextra/feature-card
@@ -79,7 +79,8 @@ Where this is
 {{< /hextra/hero-section >}}
 
 An early build, pre-release, not on npm — you build it from source. It is its
-own first user: multivac's law lives in this repo and CI gates every commit
-with `mvac verify --strict`. The design was validated against a real
+own first user: multivac's law lives in this repo, and every change to it is
+held by the same hooks you would install, running `mvac verify --strict`.
+The design was validated against a real
 production ecosystem before the code existed — 82 invariants collected by
 hand, 95.1% of them anchorable.
