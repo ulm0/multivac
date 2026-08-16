@@ -169,9 +169,16 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
     }
   }
   const binary = await binaryPresent(spec);
+  // A declared tool that has never run here is a state worth reporting, and
+  // reporting is all doctor may do: the init downloads templates and MV-01
+  // keeps this command offline. It names the command; the lifecycle runs it.
+  const sc = spec.scaffold;
   const art = artifact
     ? 'artifact ok'
-    : `artifact missing (looked for ${spec.artifacts.join(', ')})`;
+    : `artifact missing (looked for ${spec.artifacts.join(', ')})` +
+      (sc
+        ? ` — declared but never run here; \`change new\` runs the tool's own \`${sc.run}\`, doctor never does (it reaches the network)`
+        : '');
   const bin = binary ? 'binary ok' : `binary missing → ${spec.installHint}`;
   const auto = !cfg.sddAuto
     ? 'sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself'
