@@ -16,7 +16,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { gitInit, makeScratchEcosystem } from '../helpers/fixture.js';
-import { doorsCommand } from '../../src/commands/doors.js';
+import { doorsCommand, installSkill } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
 import { countActiveInvariants, renderBrainDoor } from '../../src/doors/brain.js';
 import type { Config } from '../../src/types.js';
@@ -343,6 +343,34 @@ test('sibling skills under the same parent survive — the prune never walks the
   assert.equal(read(skills, 'README.md'), '# what lives in this directory\n');
   // and the door's own AGENTS.md, one level further out again, is untouched
   assert.match(read(eco.repos.api, 'AGENTS.md'), /consumer door|multivac:begin/);
+});
+
+// The other half of the mirror: a run with nothing to mirror FROM. `files:` in
+// package.json could stop shipping `skills`, an install could be half
+// unpacked — and a prune that ran anyway would empty a user's skill directory
+// over a broken install of multivac, this tool doing the damage it reports.
+// `installSkill` takes the source so the branch is reachable here; the suite
+// itself always runs out of a tree that has the skill.
+test('a missing packaged skill leaves the projected directory alone', async () => {
+  await doorsWithSkills();
+  assert.deepEqual(tree(projected), tree(SKILL_SRC));
+  writeFileSync(join(projected, 'USER.md'), '# mine\n');
+
+  const notices: string[] = [];
+  installSkill(
+    eco.repos.api,
+    '.claude/skills/multivac/SKILL.md',
+    notices,
+    join(eco.brain, 'no-such-install/skills/multivac'),
+  );
+
+  assert.deepEqual(tree(projected), [...tree(SKILL_SRC), 'USER.md'].sort());
+  assert.equal(read(projected, 'SKILL.md'), read(SKILL_SRC, 'SKILL.md'));
+  assert.match(notices.join('\n'), /packaged skill skills\/multivac missing/);
+
+  // and a run that DOES have the source mirrors again, USER.md included
+  await doorsWithSkills();
+  assert.deepEqual(tree(projected), tree(SKILL_SRC));
 });
 
 test('no grapher declared: no refresh entry at all', async () => {

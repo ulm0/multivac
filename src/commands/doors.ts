@@ -110,20 +110,38 @@ function mirror(src: string, dest: string): void {
   cpSync(src, dest, { recursive: true });
 }
 
-/** Mirror the packaged skill into where the target's `skill` path says it
- *  lives — written, and pruned back to what the package still ships. */
-function installSkill(dir: string, skill: string, notices: string[]): void {
+/** Where this install's packaged skill tree would be. It may not be there:
+ *  `files` could have dropped it, an install could be half-unpacked, and the
+ *  caller has to answer for that case rather than assume it away. */
+function packagedSkill(): string {
   const root = packageRoot();
-  const skillSrc = root ? join(root, 'skills', 'multivac') : null;
-  if (skillSrc && existsSync(skillSrc)) {
-    mirror(skillSrc, join(dir, dirname(skill)));
-  } else {
-    // No source, no mirror: emptying a user's skill directory over a broken
-    // install of multivac would be this tool doing the damage it reports.
+  return root === null ? '' : join(root, 'skills', 'multivac');
+}
+
+/**
+ * Mirror the packaged skill into where the target's `skill` path says it
+ * lives — written, and pruned back to what the package still ships.
+ *
+ * `src` is a parameter because the missing-source branch is otherwise
+ * unreachable from a test: the suite runs out of a tree that HAS the skill,
+ * and a branch nothing can enter is a branch nothing pins.
+ */
+export function installSkill(
+  dir: string,
+  skill: string,
+  notices: string[],
+  src: string = packagedSkill(),
+): void {
+  // No source is not an empty source. Mirroring from nothing would delete
+  // every file under the projected directory — this tool doing, over a broken
+  // install of itself, exactly the damage it exists to report.
+  if (!existsSync(src)) {
     notices.push(
       'packaged skill skills/multivac missing — reinstall multivac to get it',
     );
+    return;
   }
+  mirror(src, join(dir, dirname(skill)));
 }
 
 /** Merge multivac's harness entries — verify, and the graph refresh — into
