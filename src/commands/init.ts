@@ -6,6 +6,8 @@
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
+import { doorTargets, grapherNames, sddNames } from '../adapters/registry.js';
+import { doorsCommand } from './doors.js';
 import {
   BRAIN_PATHS,
   CHANGES_DIR,
@@ -70,7 +72,7 @@ function parseFlags(argv: string[]): Flags {
       return v;
     };
     switch (key) {
-      case '--agent':
+      case '--provider':
         f.agents.push(...val().split(',').filter(Boolean));
         break;
       case '--sdd':
@@ -85,7 +87,7 @@ function parseFlags(argv: string[]): Flags {
       default:
         if (a.startsWith('-')) {
           throw new Error(
-            `init: unknown flag ${a} — known: --agent <a,b>, --sdd <name>, --grapher <name>, --quiet`,
+            `init: unknown flag ${a} — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet`,
           );
         }
         f.dir = a;
@@ -382,6 +384,16 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     warn(`init: ${r.path} exists and does not run multivac — NOT touched; ${r.fix}`);
   }
 
+  // Project what was just declared. `init` already writes AGENTS.md and arms
+  // the git hooks, so "flags configure, they never perform" was only ever half
+  // true — and the half that was missing is the half a first-time user sees:
+  // `init --provider claude` wrote `claude` into doors: and then told them to
+  // load a skill it had not installed. `doors` is idempotent and is the one
+  // code path that knows how to project every target, so call it rather than
+  // grow a second one here. Nothing to project (`doors: [agents]` alone) is
+  // the ordinary case and it is a no-op.
+  if (f.agents.length > 0) await doorsCommand.run([], { cwd: dir });
+
   report('init: done — load the multivac skill to fill the brain (see AGENTS.md)');
   return 0;
 }
@@ -389,5 +401,19 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
 export const init: Command = {
   name: 'init',
   help: 'scaffold the brain: everything multivac owns under .multivac/',
+  usage: [
+    'usage: multivac init [dir] [--provider a,b] [--sdd <name>] [--grapher <name>] [--quiet]',
+    '  dir                the brain; defaults to the working directory',
+    `  --provider a,b     comma-separated coding agents to project the door for —`,
+    `                     ${Object.keys(doorTargets).filter((k) => k !== 'agents').join(', ')}`,
+    `  --sdd <name>       spec-driven-development adapter — ${sddNames.join(', ')}`,
+    `  --grapher <name>   code-graph tool — ${grapherNames.join(', ')}, or one you declare in graphers:`,
+    '  --quiet            no banner',
+    'AGENTS.md is always written and is never a --provider value: agents.md is the',
+    'open format every door projects FROM, not a tool you could have installed.',
+    'Whatever you name here is projected right away — the door, the skill and the',
+    "harness hooks — so init leaves nothing owed. `multivac doors` re-runs that",
+    'projection after you edit doors: or grapher: by hand.',
+  ],
   run: runInit,
 };

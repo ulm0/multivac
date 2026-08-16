@@ -35,12 +35,12 @@ API key, and `verify`, `doctor` and `doors` never touch the network. `seed`
 and the interview only draft what a human then enacts; the drafting agent is
 yours, not multivac's.
 
-## `init [dir] [--agent a,b] [--sdd name] [--grapher name] [--quiet]`
+## `init [dir] [--provider a,b] [--sdd name] [--grapher name] [--quiet]`
 
 Scaffolds the brain in `dir` (default `.`).
 
 ```txt
-$ mvac init . --agent claude,cursor --grapher graphify
+$ mvac init . --provider claude,cursor --grapher graphify
   ╭───────────────╮
   │  ●   ●   ○    │   multivac
   │  ○   ◍   ●    │   brain-driven development
@@ -57,7 +57,7 @@ init: done — load the multivac skill to fill the brain (see AGENTS.md)
 
 | flag | takes | effect |
 | --- | --- | --- |
-| `--agent a,b` | comma-separated registry names | appended to `doors:` in the config (`agents` is always included) |
+| `--provider a,b` | comma-separated registry names | appended to `doors:` in the config (`agents` is always included) |
 | `--sdd name` | `opsx` \| `speckit` | written as `sdd:` in the config |
 | `--grapher name` | any tool name | written as `grapher:` in the config |
 | `--quiet` | — | no report, no banner; refusals still go to stderr |
@@ -74,11 +74,18 @@ Both `--flag value` and `--flag=value` work. A flag with no value, or an
 unknown flag, is refused:
 
 ```txt
-init: unknown flag --agents — known: --agent <a,b>, --sdd <name>, --grapher <name>, --quiet
+init: unknown flag --providers — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet
 ```
 
-**Flags configure; they do not perform.** `--agent claude` writes `claude`
-into `doors:`; it is `mvac doors` that projects the file.
+**Flags configure AND project.** `--provider claude` writes `claude` into
+`doors:` and projects it in the same run — the door, the skill, the harness
+hooks. It used to stop at the config and end by telling you to load a skill it
+had not installed. `mvac doors` re-runs that projection after you edit
+`doors:` or `grapher:` by hand.
+
+`agents` is never a `--provider` value. [agents.md](https://agents.md/) is the
+open format every other door projects *from*, not a tool anyone could install,
+and `AGENTS.md` is written unconditionally.
 
 Side effects, completely:
 

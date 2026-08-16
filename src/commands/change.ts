@@ -845,6 +845,19 @@ function usage(): void {
 export const change: Command = {
   name: 'change',
   help: 'new/plan/apply/land/close — the ecosystem change lifecycle',
+  usage: [
+    'usage: multivac change <sub> <slug> [args]',
+    '  new "<title>"          scaffold the change file + reserve the next invariant id',
+    '  new <slug> "<title>"   same, with an explicit slug',
+    '  plan <slug>            resolve repos, landing graph, reserve declared ids, claims',
+    '  apply <slug>           a git worktree per repo (greenfield repos get created)',
+    '  land <slug>            landing-order report; --landed <repo> records a merge',
+    '  close <slug>           verify the declared claims, archive, print the ritual',
+    'flags:',
+    '  --no-sdd               skip the SDD steps AND their gates, for one run',
+    '  --landed <repo>        land only: record that repo as merged',
+    '  --abandon              close only: drop a change that landed nothing, give its id back',
+  ],
   async run(argv, ctx): Promise<number> {
     const pos: string[] = [];
     let noSdd = false;

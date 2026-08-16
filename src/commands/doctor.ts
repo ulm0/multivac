@@ -71,7 +71,6 @@ async function doorState(brain: string, name: string): Promise<string> {
   }
   // A harness that reads AGENTS.md itself needs no projection: its state is
   // the canonical door's state, and `init` is what writes that.
-  if (t.kind === 'unsupported') return `${name}: no door — ${t.reason}`;
   const readsCanonical = t.kind === 'canonical' || t.kind === 'native';
   const p = join(brain, t.door);
   const st = await lstat(p).catch(() => null);

@@ -146,5 +146,11 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
 export const seed: Command = {
   name: 'seed',
   help: `deterministic boundary inventory -> ${REPORT_PATH}`,
+  usage: [
+    'usage: multivac seed [dir]',
+    '  dir   the brain; defaults to the working directory',
+    'No flags. Reads every declared repo and writes the inventory; it proposes',
+    'nothing and decides nothing — the open questions go to a human.',
+  ],
   run: runSeed,
 };

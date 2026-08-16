@@ -97,6 +97,13 @@ export async function reposSync(
 export const reposCommand: Command = {
   name: 'repos',
   help: 'list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest',
+  usage: [
+    'usage: multivac repos [sync] [--shallow]',
+    '  (no sub)    list every declared repo: present or missing, and its path',
+    '  sync        clone the missing ones, fetch the rest so the channel ref is current',
+    '  --shallow   sync only: --depth 1, for a repo you will read but never land in',
+    'verify never fetches, so a channel ref is only as current as the last sync.',
+  ],
   async run(argv, ctx) {
     const sub = argv[0];
     if (sub === undefined || sub === 'list') {

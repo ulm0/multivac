@@ -49,7 +49,7 @@ function snapshot(dir: string, prefix = ''): Map<string, string> {
 
 test('init scaffolds the enumerated side effects and nothing more', async () => {
   const dir = tmp();
-  assert.equal(await init.run(['--agent', 'claude'], { cwd: dir }), 0);
+  assert.equal(await init.run(['--provider', 'claude'], { cwd: dir }), 0);
 
   // git repo created, hooks path pointed at versioned hooks
   execFileSync('git', ['-C', dir, 'rev-parse', '--git-dir']);
@@ -79,7 +79,22 @@ test('init scaffolds the enumerated side effects and nothing more', async () => 
   assert.ok(inv.includes('| --- | --- | --- | --- | --- | --- |'));
   statSync(join(dir, '.multivac/changes/.gitkeep'));
 
-  // AGENTS.md is the one exception: everything else multivac owns is in .multivac/
+  // Everything multivac owns lives in .multivac/, except the doors themselves:
+  // AGENTS.md always, plus whatever the declared harnesses read. `--provider
+  // claude` PROJECTS claude — it does not merely write the name into config and
+  // leave the user to discover that a second command was owed. init used to
+  // end by telling you to load a skill it had not installed.
+  const roots = readdirSync(dir).filter((n) => n !== '.git');
+  assert.deepEqual(roots.sort(), ['.claude', '.multivac', 'AGENTS.md', 'CLAUDE.md']);
+  statSync(join(dir, '.claude/skills/multivac/SKILL.md'));
+  statSync(join(dir, '.claude/skills/multivac/references/verify.md'));
+});
+
+test('init with no provider writes only the canonical door — nothing to project', async () => {
+  // The other half of the same rule: projecting is what was DECLARED, so a
+  // bare init stays exactly as small as it was.
+  const dir = tmp();
+  assert.equal(await init.run([], { cwd: dir }), 0);
   const roots = readdirSync(dir).filter((n) => n !== '.git');
   assert.deepEqual(roots.sort(), ['.multivac', 'AGENTS.md']);
 });
@@ -234,9 +249,9 @@ test('doctor names the migration command for a legacy brain', async () => {
 
 test('init is idempotent: second run is a zero-diff', async () => {
   const dir = tmp();
-  await init.run(['--agent', 'claude', '--sdd', 'openspec'], { cwd: dir });
+  await init.run(['--provider', 'claude', '--sdd', 'openspec'], { cwd: dir });
   const first = snapshot(dir);
-  assert.equal(await init.run(['--agent', 'claude', '--sdd', 'openspec'], { cwd: dir }), 0);
+  assert.equal(await init.run(['--provider', 'claude', '--sdd', 'openspec'], { cwd: dir }), 0);
   assert.deepEqual(snapshot(dir), first);
 });
 
@@ -305,6 +320,6 @@ test('init keeps an existing config.yml untouched', async () => {
   const dir = tmp();
   await init.run(['--sdd', 'openspec'], { cwd: dir });
   const before = readFileSync(join(dir, '.multivac/config.yml'), 'utf8');
-  await init.run(['--sdd', 'other', '--agent', 'cursor'], { cwd: dir });
+  await init.run(['--sdd', 'other', '--provider', 'cursor'], { cwd: dir });
   assert.equal(readFileSync(join(dir, '.multivac/config.yml'), 'utf8'), before);
 });

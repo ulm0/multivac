@@ -135,12 +135,13 @@ checks them on every commit.
 <!-- @anchor MV-27 brain:src/commands/change.ts /ritualChecklist\(brain\)/ -->
 <!-- @anchor MV-27 brain:src/commands/init.ts /RITUAL_TEMPLATE/ -->
 <!-- @anchor MV-27 brain:test/change/ritual.test.ts /prints nothing/ -->
-| MV-28 | Every harness multivac integrates with is a registry entry in `src/adapters/registry.ts`: `doors` and `doctor` dispatch on the entry's `kind`, never on its name, a `native` entry projects nothing beyond the canonical `AGENTS.md`, and an `unsupported` entry is refused with the reason recorded in the data. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
+| MV-28 | Every harness multivac integrates with is a registry entry in `src/adapters/registry.ts`: `doors` and `doctor` dispatch on the entry's `kind`, never on its name, and a `native` entry projects nothing beyond the canonical `AGENTS.md`. **Every entry is one multivac can actually own** — there is no `unsupported` kind. A harness whose door cannot be written gets no entry, because an entry is how this tool says "supported": it appears in `--provider`'s legal values, in the reference table, and in the count of what multivac integrates with. `aider` sat there as `unsupported`, carrying a note that explained at length why none of it applied, and read as support to everyone who did not open it. An unknown name already gets the list of what IS supported, which is the answer that helps. | specified | active | 2026-08-16 | [changes/no-mention-what-is-not-supported.md](changes/no-mention-what-is-not-supported.md) |
 <!-- @anchor MV-28 brain:src/commands/doors.ts /target === '[a-z]+'/ absent -->
-<!-- @anchor MV-28 brain:src/commands/doors.ts /t.kind === 'unsupported'/ unique -->
 <!-- @anchor MV-28 brain:src/commands/doctor.ts /t.kind === 'native'/ -->
-<!-- @anchor MV-28 brain:src/adapters/registry.ts /kind: 'unsupported'/ -->
-<!-- @anchor MV-28 brain:test/doors/registry.test.ts /at least one honest gap/ -->
+<!-- @anchor MV-28 brain:src/adapters/registry.ts /a named tool reads as a supported one/ unique -->
+<!-- @anchor MV-28 brain:src/adapters/registry.ts /^[[:space:]]+kind: 'unsupported',/ absent -->
+<!-- @anchor MV-28 brain:src/adapters/registry.ts /\| 'unsupported'/ absent -->
+<!-- @anchor MV-28 brain:test/doors/registry.test.ts /every entry is one multivac can actually own/ -->
 | MV-29 | The site names no flag the binary does not accept. `doors` takes no flags at all — `--no-symlink` was documentation-only and never parsed — so the string appears nowhere in the site or the source. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-29 brain:site/content/** /no-symlink/ absent -->
 <!-- @anchor MV-29 brain:src/** /no-symlink/ absent -->
@@ -151,7 +152,7 @@ checks them on every commit.
 | MV-31 | The reference section documents the whole surface: one heading per shipped command, one per configuration key the loader reads, and one per harness entry in the registry — including the entries marked unsupported. | specified | active | 2026-08-13 | [DESIGN.md](../DESIGN.md) |
 <!-- @anchor MV-31 brain:site/content/docs/reference/commands.md /^## `(init|seed|verify|count|doors|doctor|repos|change|help)/ count=9 -->
 <!-- @anchor MV-31 brain:site/content/docs/reference/configuration.md /^### `(doors|sdd|sdd_auto|grapher|authorities|blocking|staleness|strict_pre_push|channel|mount|repos)`$/ count=11 -->
-<!-- @anchor MV-31 brain:site/content/docs/reference/integrations.md /^## `(agents|claude|cursor|opencode|codex|windsurf|gemini|copilot|aider)`/ count=9 -->
+<!-- @anchor MV-31 brain:site/content/docs/reference/integrations.md /^## `(agents|claude|cursor|opencode|codex|windsurf|gemini|copilot)`/ count=8 -->
 <!-- @anchor MV-31 brain:site/content/docs/concepts/philosophy.md /A paraphrase ages silently/ unique -->
 <!-- @anchor MV-31 brain:site/content/docs/reference/hooks.md /universal floor/ -->
 <!-- @anchor MV-31 brain:site/content/docs/guide/install.md /^  (count|help)[[:space:]]{2}/ count=2 -->
@@ -490,4 +491,15 @@ checks them on every commit.
 <!-- @anchor MV-68 brain:.gitlab-ci.yml /CI_COMMIT_TAG =~/ unique -->
 <!-- @anchor MV-68 brain:.gitlab-ci.yml /never a side effect of a merge/ -->
 <!-- @anchor MV-68 brain:.gitlab-ci.yml /NPM_TOKEN/ absent -->
+| MV-69 | **Every command declares its own `usage`**, and `--help` prints it. A one-line description is a name, not documentation: `multivac init --help` printed nothing about `[dir]`, `--provider`, `--sdd`, `--grapher` or `--quiet`, and five of nine commands were the same. The dispatcher already answered `--help` before running anything; what was missing was data, so the fix is data. Where a flag's legal values come from the registry they are rendered FROM the registry — `--provider`, `--sdd` and `--grapher` list what the tool actually ships, so a new adapter cannot leave the help behind. The rule is enforced as an `each` leg over `src/commands/*.ts`, which is what that mode is for: the next command physically cannot ship without one. | specified | active | 2026-08-16 | [changes/every-command-shows-its-flags.md](changes/every-command-shows-its-flags.md) |
+<!-- @anchor MV-69 brain:src/commands/*.ts !brain:src/commands/index.ts /^  usage:/ each -->
+<!-- @anchor MV-69 brain:src/types.ts /usage\?: string\[\]/ unique -->
+<!-- @anchor MV-69 brain:src/commands/init.ts /grapherNames\.join/ unique -->
+<!-- @anchor MV-69 brain:test/cli/help.test.ts /every command prints its own flags and arguments/ -->
+| MV-70 | **`init` projects what it declares.** A harness named with `--provider` gets its door, its skill and its harness hooks written in the same run — not a name in `doors:` and a second command the user has to discover. The old split ended with `init` printing "load the multivac skill" after installing no skill, which is the tool contradicting itself in its own last line. `init` already wrote AGENTS.md and armed the git hooks, so "flags configure, they never perform" described nothing that was true. It calls the same `doors` code path rather than growing a second one, and with nothing declared beyond the canonical door it does nothing. **`agents` is never a `--provider` value**: agents.md is the open format every door projects FROM, not a tool anyone could install, and AGENTS.md is written unconditionally. | specified | active | 2026-08-16 | [changes/every-command-shows-its-flags.md](changes/every-command-shows-its-flags.md) |
+<!-- @anchor MV-70 brain:src/commands/init.ts /Project what was just declared/ unique -->
+<!-- @anchor MV-70 brain:src/commands/init.ts /await doorsCommand\.run/ unique -->
+<!-- @anchor MV-70 brain:src/commands/init.ts /never a --provider value/ unique -->
+<!-- @anchor MV-70 brain:test/init/init.test.ts /init with no provider writes only the canonical door/ -->
+<!-- @anchor MV-70 brain:src/commands/init.ts /'--agent'/ absent -->
 

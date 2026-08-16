@@ -131,10 +131,6 @@ async function projectInto(
       );
       continue;
     }
-    if (t.kind === 'unsupported') {
-      notices.push(`${target}: no door written — ${t.reason}`);
-      continue;
-    }
     // canonical and native both read AGENTS.md, already written above.
     if (t.kind === 'symlink') {
       const linkNotice = linkDoor(dir, t.door);
@@ -217,5 +213,12 @@ async function run(_argv: string[], ctx: CommandContext): Promise<number> {
 export const doorsCommand: Command = {
   name: 'doors',
   help: 'project doors + install git hooks into the brain and declared repos',
+  usage: [
+    'usage: multivac doors',
+    'No arguments. Runs in the brain and acts on it plus every declared repo',
+    'present on disk: writes AGENTS.md, projects it per declared door, installs',
+    'the git hooks, and wires the grapher refresh into every harness that has a',
+    'post-edit hook. Re-run it after editing doors: or grapher: in config.yml.',
+  ],
   run,
 };

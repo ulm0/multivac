@@ -994,7 +994,7 @@ every repo, every subsequent decision entering as a `change`.
 ## CLI
 
 ```
-multivac init .   --agent claude,cursor --sdd opsx --grapher graphify
+multivac init .   --provider claude,cursor --sdd opsx --grapher graphify
 multivac verify   # anchors + tombstones + derived numbers. No LLM, no network, deterministic
 multivac count    # dry-run one anchor leg: match count + per-file breakdown, verify's own matcher
 multivac help     # help anchor — the grammar on one screen; help <command> — usage
@@ -1030,7 +1030,7 @@ enacts.
 
 **The default is not `claude`.** If `AGENTS.md` is canonical and the rest are
 projections, the default is **no projection**: `AGENTS.md` alone, already read
-by Codex, opencode, Cursor, and Claude Code. `--agent claude` is what **adds**
+by Codex, opencode, Cursor, and Claude Code. `--provider claude` is what **adds**
 the symlink. In an OSS project, a vendor-named default brands you as that
 vendor's tool on day one.
 

@@ -5,19 +5,19 @@ layout: hextra-home
 
 {{< hextra/hero-badge link="docs/guide/install" >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>0.1.0 · npx multivac init</span>
+  <span>v0.2.0 · npx multivac init</span>
   {{< icon name="arrow-circle-right" attributes="height=14" >}}
 {{< /hextra/hero-badge >}}
 
 <div class="hx:mt-6 hx:mb-6">
 {{< hextra/hero-headline >}}
-  Your agent verifies its context&nbsp;<br class="hx:sm:block hx:hidden" />before it acts on it
+  Ask multivac_
 {{< /hextra/hero-headline >}}
 </div>
 
 <div class="hx:mb-12">
 {{< hextra/hero-subtitle >}}
-  One brain repo — claims, law, ritual — from which an entire&nbsp;<br class="hx:sm:block hx:hidden" />ecosystem of code repos is developed. No model in the verification path.
+  Your agent verifies its context before it acts on it.
 {{< /hextra/hero-subtitle >}}
 </div>
 
@@ -78,7 +78,7 @@ believe is still true. CLI alias: `mvac`.
 Where this is
 {{< /hextra/hero-section >}}
 
-An early build: **0.1.0**, pre-release, `npx multivac init` away. It is its
+An early build, pre-release, `npx multivac init` away. It is its
 own first user: multivac's law lives in this repo, and every change to it is
 held by the same hooks you would install, running `mvac verify --strict`.
 The design was validated against a real

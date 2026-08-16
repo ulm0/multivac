@@ -42,7 +42,7 @@ resolves a package already present in the project, not one it has to fetch —
 so a global install, or multivac as a devDependency of the brain, both arm the
 floor. `npx multivac` typed by hand does not, because nothing persists.
 
-An early build: **0.1.0**, pre-release. The CLI surface below is what ships
+An early build, pre-release. The CLI surface below is what ships
 today, and the parts still moving say so where they appear.
 
 ## Or from source
