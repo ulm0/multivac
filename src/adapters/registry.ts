@@ -147,9 +147,14 @@ export interface SddStep {
 
 /**
  * A project-level document: written once, then AMENDED as the product moves.
- * Not per-change — `doctor` reports it, `init`/`doors` tell the agent to
- * create it if absent, and nothing ever gates on it: a constitution's content
- * cannot be machine-judged.
+ * Not per-change — `doctor` reports it and `init`/`doors` tell the agent to
+ * create it if absent.
+ *
+ * Its CONTENT is never machine-judged: no tool can decide whether a
+ * constitution's principles still fit (MV-57). Its PRESENCE is a different
+ * question with a machine answer, so `change plan` REFUSES while it is missing
+ * (MV-76) — the gate MV-57 used to forbid along with the content check it was
+ * really about.
  */
 export interface SddProjectStep {
   /** What the AGENT runs to create or amend it. */
@@ -163,6 +168,15 @@ export interface SddProjectStep {
    * Some tools scaffold the file unfilled, so its mere existence proves
    * nothing — spec-kit installs `constitution.md` byte-identical to the
    * template. A document still matching this has not been written yet.
+   *
+   * This is the pin MV-65 rejected for a per-step artifact, and it is the
+   * right one here for the reason MV-65 gives: it rejected the pin because
+   * `# Implementation Plan: [FEATURE]` is a line spec-kit never asks anyone to
+   * change, so a finished plan keeps it. These tokens are the opposite —
+   * `/speckit.constitution` explicitly instructs the author to replace
+   * `[PROJECT_NAME]` and every `[PRINCIPLE_N_*]` — so a written document
+   * carries none of them. Unlike whole-file equality it needs no template on
+   * disk, so it cannot fail open when the template is gone.
    */
   placeholder?: string;
 }

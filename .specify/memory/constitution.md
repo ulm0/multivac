@@ -1,5 +1,17 @@
 <!--
 Sync Impact Report
+Version change: 1.0.0 → 1.0.1 (PATCH — a statement of fact corrected, no
+principle added, removed or redefined)
+Modified principles: none
+Modified sections:
+  - Governance / Compliance: this document's presence is no longer only
+    reported. MV-76 gates `change plan` on it, and MV-57 was amended in the
+    same change so its surviving claim is that the CONTENT is never
+    machine-judged. Freshness is still a report and still not a gate.
+Templates requiring update: none — no template states this
+Follow-up TODOs: none
+
+Sync Impact Report
 Version change: none → 1.0.0 (initial ratification)
 Modified principles: none — first constitution for this project
 Added sections:
@@ -137,7 +149,9 @@ project actually works MUST land in the same change as that work.
 principle with no row behind it is aspiration, and adding the row is how a
 principle becomes real. This document's own *content* is deliberately never
 machine-judged — no tool can decide whether a principle still fits — but its
-presence and its freshness are reported, and a version that never moves while
-the law does is a signal to revisit rather than a passing grade.
+PRESENCE is gated per MV-76: `change plan` refuses while this file is absent,
+unreadable, empty, or still carrying the fill-in tokens spec-kit's template
+ships. Its freshness stays a report, per MV-57: a version that never moves
+while the law does is a signal to revisit rather than a failing grade.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-16
+**Version**: 1.0.1 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-16

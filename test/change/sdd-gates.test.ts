@@ -12,11 +12,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { delimiter, dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { initRepo } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
+import { doctorReport } from '../../src/commands/doctor.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { sddSpec } from '../../src/adapters/registry.js';
 
@@ -186,6 +187,11 @@ test('opsx: land prints archive, close REFUSES until the change is archived', as
 
 test('speckit: its own longer flow drives the lifecycle', async () => {
   config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  // spec-kit declares a project-level document, and `plan` gates on it
+  // (MV-76). This test is about the per-change flow, so give it the
+  // constitution a real spec-kit project has; the gate itself is pinned by
+  // its own tests below.
+  artifact('.specify/memory/constitution.md', '# Constitution\n\n## I. Ship it\n');
   const c1 = await capture(() => change.run(['new', 'gate-b', 'Gate b'], ctx));
   assert.equal(c1.code, 0);
   assert.match(c1.out, /run \/speckit\.specify in your agent to write the spec for gate-b/);
@@ -205,6 +211,8 @@ test('speckit: its own longer flow drives the lifecycle', async () => {
   const planned = await capture(() => change.run(['plan', 'gate-b'], ctx));
   assert.equal(planned.code, 0);
   assert.match(planned.out, /specs\/001-gate-b-login\/spec\.md ok/);
+  // The project document is reported by the same gate, in the same shape.
+  assert.match(planned.out, /sdd speckit: brain: \.specify\/memory\/constitution\.md ok/);
   // plan prints TWO steps here — the flow is not a triple.
   assert.match(planned.out, /run \/speckit\.plan in your agent/);
   assert.match(planned.out, /run \/speckit\.tasks in your agent/);
@@ -487,5 +495,95 @@ test('an artifact byte-identical to its template, or empty, is refused', async (
   artifact('specs/001-tmpl/plan.md', `${template}\n## Summary\n\nA real plan.\n`);
   const real = await capture(() => change.run(['apply', 'tmpl'], ctx));
   assert.equal(real.code, 0);
+  commitAll();
+});
+
+// --- the project-level document: gated on existing, never on its content ---
+
+/** Where spec-kit puts the constitution, in the brain fixture. */
+const constitution = join(brain, '.specify/memory/constitution.md');
+
+test('plan refuses while the project document is absent or still the template', async () => {
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  rmSync(constitution, { force: true });
+  commitAll();
+  await change.run(['new', 'proj-doc', 'Project doc'], ctx);
+  await declareBrain('proj-doc');
+  artifact('specs/001-proj-doc/spec.md', '# Real spec\n'); // the per-change gate is satisfied
+
+  // 1. Absent. The door has said CREATE IT IF ABSENT in capitals since the
+  //    beginning and nothing ever refused for it.
+  const absent = await capture(() => change.run(['plan', 'proj-doc'], ctx));
+  assert.equal(absent.code, 1);
+  assert.match(absent.out, /refused — \.specify\/memory\/constitution\.md is missing or unreadable/);
+  assert.match(absent.out, /looked in brain/);
+  assert.match(absent.out, /run \/speckit\.constitution in your agent/);
+  assert.match(absent.out, /then re-run: multivac change plan proj-doc/);
+  assert.match(absent.out, /--no-sdd/);
+
+  // 2. A directory at the document's path. Present to `stat`, and not a
+  //    written document by any reading — refused, and never a crash.
+  mkdirSync(constitution, { recursive: true });
+  const dir = await capture(() => change.run(['plan', 'proj-doc'], ctx));
+  assert.equal(dir.code, 1);
+  assert.match(dir.out, /constitution\.md is missing or unreadable/);
+  rmSync(constitution, { recursive: true, force: true });
+
+  // 3. What `specify init` actually leaves: the template, tokens and all.
+  //    Refused in words of its own — "missing" would be a different problem.
+  artifact('.specify/memory/constitution.md', '# [PROJECT_NAME] Constitution\n\n## [PRINCIPLE_1_NAME]\n');
+  const tmplDoc = await capture(() => change.run(['plan', 'proj-doc'], ctx));
+  assert.equal(tmplDoc.code, 1);
+  assert.match(tmplDoc.out, /constitution\.md is still the unfilled template shipped by the tool \(placeholders remain/);
+  assert.doesNotMatch(tmplDoc.out, /constitution\.md is missing or unreadable/);
+
+  // 4. Empty — the weakest possible evidence anyone wrote one.
+  artifact('.specify/memory/constitution.md', '   \n');
+  const empty = await capture(() => change.run(['plan', 'proj-doc'], ctx));
+  assert.equal(empty.code, 1);
+  assert.match(empty.out, /constitution\.md is empty/);
+
+  // 5. Written. No token left, and nothing else about it is judged — this
+  //    constitution is three lines long and the gate has no opinion on that.
+  artifact('.specify/memory/constitution.md', '# Acme Constitution\n\n## I. Ship it\n');
+  const written = await capture(() => change.run(['plan', 'proj-doc'], ctx));
+  assert.equal(written.code, 0);
+  assert.match(written.out, /sdd speckit: brain: \.specify\/memory\/constitution\.md ok/);
+  commitAll();
+});
+
+test('a stale project document still reports, never gates', async () => {
+  // The law moved and the constitution did not. `doctor` calls that STALE;
+  // the gate says nothing, because the law moving is not proof the principles
+  // must move, and refusing here would block honest work on every unrelated row.
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  artifact('.specify/memory/constitution.md', '# Acme Constitution\n\n## I. Ship it\n');
+  const old = new Date('2020-01-01T00:00:00Z').getTime() / 1000;
+  utimesSync(constitution, old, old);
+  const report = (await doctorReport(brain)).lines.join('\n');
+  assert.match(report, /project law — .*STALE: the law moved while this did not/);
+
+  const planned = await capture(() => change.run(['plan', 'proj-doc'], ctx));
+  assert.equal(planned.code, 0);
+  assert.match(planned.out, /sdd speckit: brain: \.specify\/memory\/constitution\.md ok/);
+
+  // The off switches reach this gate exactly as they reach every other one.
+  rmSync(constitution, { force: true });
+  const off1 = await capture(() => change.run(['plan', 'proj-doc', '--no-sdd'], ctx));
+  assert.equal(off1.code, 0);
+  assert.doesNotMatch(off1.out, /constitution/);
+  config(['doors: [agents]', 'sdd: speckit', 'sdd_auto: false', 'repos:', '  brain: .']);
+  const off2 = await capture(() => change.run(['plan', 'proj-doc'], ctx));
+  assert.equal(off2.code, 0);
+  assert.doesNotMatch(off2.out, /constitution/);
+
+  // And a tool that declares no project document is untouched: opsx's
+  // `projectSteps` is deliberately empty, so there is nothing to gate on.
+  assert.equal(sddSpec('opsx')!.projectSteps!.length, 0);
+  config(['doors: [agents]', 'sdd: opsx', 'repos:', '  brain: .']);
+  artifact('openspec/changes/proj-doc/proposal.md');
+  const opsx = await capture(() => change.run(['plan', 'proj-doc'], ctx));
+  assert.equal(opsx.code, 0);
+  assert.doesNotMatch(opsx.out, /constitution/);
   commitAll();
 });

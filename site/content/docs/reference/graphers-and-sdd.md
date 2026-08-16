@@ -464,6 +464,22 @@ its existence proves nothing. A document still carrying the template's
 sdd        speckit project law — .specify/memory/constitution.md is still the unfilled template shipped by the tool (placeholders remain) → run /speckit.constitution …
 ```
 
+Those two states are also a **gate**. `change plan` refuses while the document
+is missing, unreadable, empty, or still carrying the template's `[ALL_CAPS]`
+tokens — the tokens `/speckit.constitution` explicitly asks the author to
+replace, so a written constitution has none:
+
+```txt
+sdd speckit: `change plan <slug>` refused — .specify/memory/constitution.md is missing or unreadable — looked in brain
+  run /speckit.constitution in your agent to write the project principles …
+  then re-run: multivac change plan <slug>
+```
+
+Only `plan`, and only that: the document is what `/speckit.plan`'s own
+Constitution Check reads, so it is the first point at which its absence changes
+the work. Nothing about the document's content is judged — three real lines
+pass, and so does a constitution nobody agrees with.
+
 Staleness is the interesting half: when the law's newest row is newer than the
 constitution, the product's law moved while its constitution did not.
 

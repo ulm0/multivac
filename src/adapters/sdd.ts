@@ -73,6 +73,18 @@ async function copiedFrom(
   return null;
 }
 
+/**
+ * Where a project-level document is checked. `plan` and only `plan`: it is the
+ * first lifecycle point at which the document's absence changes the outcome —
+ * spec-kit's `/speckit.plan` opens with a Constitution Check that reads it —
+ * and refusing at `new` would block writing a spec that does not depend on it.
+ *
+ * A constant with its reason, not a per-adapter field: this is the lifecycle's
+ * decision and it is the same for every tool, so a field would only ever hold
+ * one value.
+ */
+const PROJECT_DOC_GATE: GatePoint = 'plan';
+
 export const withSlug = (text: string, slug: string): string =>
   text.replaceAll('<slug>', slug);
 
@@ -188,7 +200,11 @@ export async function sddGate(
   }
   const gating = stepsGating(spec, gate);
   const ledgered = stepsLedgered(spec, gate);
-  if (gating.length === 0 && ledgered.length === 0) {
+  // A tool with no project-level document declares none (opsx declares
+  // `projectSteps: []`, because its `context:` key is not one), and is
+  // untouched by this pass.
+  const projectDocs = gate === PROJECT_DOC_GATE ? (spec.projectSteps ?? []) : [];
+  if (gating.length === 0 && ledgered.length === 0 && projectDocs.length === 0) {
     // Never faked: a tool with no step to prove at this point is SAID to have
     // none. spec-kit has no archive equivalent, so `close` is simply not gated.
     return {
@@ -312,6 +328,63 @@ export async function sddGate(
     for (const l of open.slice(0, 3)) lines.push(`    ${l.trim()}`);
     if (open.length > 3) lines.push(`    …and ${open.length - 3} more`);
     lines.push(`  finish them in the tool, then re-run: multivac change ${gate} ${slug}`);
+  }
+  // The project-level document pass — the constitution, for a tool that has
+  // one. Gated on EXISTING, never on its content: whether the principles are
+  // any good is the part no machine can judge (MV-57), and this asks none of
+  // it. What it asks are three facts (MV-76): is the file readable at all, is
+  // there anything in it, and is it still carrying the fill-in tokens the
+  // tool's own template ships.
+  //
+  // NOT `copiedFrom`. That comparison FAILS OPEN when the template cannot be
+  // read — correct for a per-step artifact, and asserted by this file's tests
+  // — but here it would pass a document nobody wrote whenever the template is
+  // gone, which is the hole this pass exists to close. The `placeholder` ERE
+  // needs no second file, so it has no such open door.
+  //
+  // Separate loop, like the ledger pass above: this document is per-project,
+  // not per-change, so it takes no slug and has its own notion of untouched.
+  for (const doc of projectDocs) {
+    // Read, do not probe. A directory, a broken symlink and an unreadable
+    // file are all "not a written document", and reading collapses the three
+    // into one path instead of three special cases.
+    let found: { scope: string; body: string } | null = null;
+    for (const root of roots) {
+      const body = await readText(join(root.dir, doc.artifact));
+      if (body !== null) {
+        found = { scope: root.scope, body };
+        break;
+      }
+    }
+    const refuse = (why: string): void => {
+      ok = false;
+      lines.push(`sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${why}`);
+      lines.push(`  ${doc.run}`);
+      lines.push(`  then re-run: multivac change ${gate} ${slug}`);
+    };
+    if (!found) {
+      refuse(`${doc.artifact} is missing or unreadable — looked in ${where}`);
+      continue;
+    }
+    const at = `${found.scope}:${doc.artifact}`;
+    if (found.body.trim() === '') {
+      refuse(`${at} is empty`);
+      continue;
+    }
+    // Worded apart from "missing" on purpose: the two are different problems
+    // and the second one looks like success from a directory listing. Worded
+    // apart from the artifact loop's template refusal too — MV-65 pins that
+    // sentence to exactly one place, and this is a different check.
+    if (doc.placeholder && new RegExp(doc.placeholder).test(found.body)) {
+      refuse(
+        `${at} is still the unfilled template shipped by the tool (placeholders remain — the tool asks the author to replace them)`,
+      );
+      continue;
+    }
+    // Age is deliberately not read here. `doctor` reports STALE; the law
+    // moving is not proof the principles must, and a gate on it would refuse
+    // honest work on every unrelated row.
+    lines.push(`sdd ${cfg.sdd}: ${found.scope}: ${doc.artifact} ok`);
   }
   if (!ok) {
     lines.push(

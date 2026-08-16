@@ -38,7 +38,12 @@ export function projectLawLines(sdd: string): string[] {
   if (!spec) return [];
   const lines: string[] = [];
   for (const p of spec.projectSteps ?? []) {
-    lines.push(`  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT.`);
+    // The proof half, exactly as every per-change step line carries it: this
+    // line said CREATE IT IF ABSENT in capitals and nothing checked it, which
+    // is the gap MV-76 closes. Now it names what refuses.
+    lines.push(
+      `  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT — \`change plan\` refuses while it is missing, empty or still the template.`,
+    );
     lines.push(`    revisit: ${p.revisit}`);
   }
   if ((spec.projectSteps ?? []).length === 0) {

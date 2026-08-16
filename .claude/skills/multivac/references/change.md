@@ -164,8 +164,11 @@ constitution at all. Both doors say so at session start — `init` writes the
 instruction into the door it scaffolds, `doors` into the brain door — and `doctor`
 reports the document missing, still-a-template, present, or **stale** — older
 than the law's newest row, which is the law moving while the constitution did
-not. It is a report, never a gate: no machine can judge whether a principle
-still fits.
+not. Its CONTENT is never judged (MV-57) — no machine can decide whether a
+principle still fits — but `change plan` REFUSES while the document is absent,
+unreadable, empty, or still carrying the template's `[ALL_CAPS]` tokens
+(MV-76). Staleness stays a report: the law moving is not proof the principles
+must.
 OpenSpec has no such document, and multivac says that rather than inventing one.
 
 `--no-sdd` turns the steps and the gates off for one run; `sdd_auto: false`

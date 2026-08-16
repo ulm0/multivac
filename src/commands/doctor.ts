@@ -96,9 +96,12 @@ async function doorState(brain: string, name: string): Promise<string> {
 
 /**
  * The project-level document — the constitution, for a tool that has one.
- * Reported, never gated: whether its CONTENT still fits the product is a
- * judgement no machine can make. What a machine CAN say is that the law moved
- * and the constitution did not — exactly the drift this tool hunts.
+ * Reported here, never judged: whether its CONTENT still fits the product is a
+ * judgement no machine can make (MV-57). What a machine CAN say is that the law
+ * moved and the constitution did not — exactly the drift this tool hunts — and
+ * that it is absent or still a template, which `change plan` refuses over
+ * (MV-76). This report's own wording is unchanged by that gate: STALE stays a
+ * report here and nowhere refuses.
  */
 async function projectDocLines(
   brain: string,

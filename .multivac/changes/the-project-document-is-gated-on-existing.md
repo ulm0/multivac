@@ -45,11 +45,21 @@ by anything in the tool.
 
 ## What changes
 
-`change plan` refuses while a declared `projectStep`'s artifact is absent, or is
-still byte-identical to the template the tool ships — the same whole-file
-equality MV-65 already uses for step artifacts, and for the same reason: an
-existence check is the weakest proof available, and spec-kit hands the template
-out as part of `init`.
+`change plan` refuses while a declared `projectStep`'s artifact is missing or
+unreadable, empty, or still carrying the fill-in tokens the tool's own template
+ships — its declared `placeholder`, the pattern `doctor` already evaluates.
+
+This paragraph first said "the same whole-file equality MV-65 already uses",
+and building it proved that wrong twice over. `copiedFrom` FAILS OPEN when it
+cannot read the template — deliberately, and eight tests in
+`test/change/sdd-gates.test.ts` hold it there, because a real `plan.md` in a
+repo with no template must pass — so reusing it would let an unwritten
+constitution through exactly when the template is gone. And MV-65 chose
+equality over a placeholder pin for a reason that inverts here: spec-kit's
+`# Implementation Plan: [FEATURE]` heading is a line the tool never asks anyone
+to change, while the constitution template's `[ALL_CAPS]` tokens are ones
+`/speckit.constitution` explicitly instructs the author to replace. Same
+project, opposite artifacts, opposite check. MV-76 states what was built.
 
 Staleness stays a report. The law moving is not proof the principles need to,
 and a gate there would refuse honest work on every unrelated row.
