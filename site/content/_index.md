@@ -5,7 +5,7 @@ layout: hextra-home
 
 {{< hextra/hero-badge link="docs/guide/install" >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>v0.1.0 · npx multivac init</span>
+  <span>v0.1.1 · npx multivac init</span>
   {{< icon name="arrow-circle-right" attributes="height=14" >}}
 {{< /hextra/hero-badge >}}
 
