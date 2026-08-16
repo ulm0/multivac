@@ -118,6 +118,11 @@ anything under `.claude/skills/multivac/` that the package no longer ships —
 including a file you put there yourself, because nothing on disk says who
 wrote it (MV-73). Your own skills live beside it: `doors` never touches a
 sibling under `.claude/skills/`, only the one directory it writes.
+What multivac owns here is the individual command, matched exactly — never an
+entry that merely mentions it. `mvac verify --strict` is your hook and stays
+untouched, commands you add beside multivac's stay in place, and the matcher on
+an entry is yours. The rule and the notice it prints are in
+[hooks](/docs/reference/hooks/#what-preserving-means-here).
 
 If `CLAUDE.md` already exists as a regular file, `doors` refuses to replace
 it and says what to do:
