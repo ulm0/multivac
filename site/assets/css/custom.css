@@ -20,3 +20,24 @@
 ::selection {
   background-color: hsl(var(--primary-hue) var(--primary-saturation) var(--primary-lightness) / 0.3);
 }
+
+/* Ink, not white, wherever the acid becomes a *surface* rather than a mark.
+
+   Hextra hardcodes `text-white` on the two elements that fill themselves with
+   the accent, which is right for the indigo it ships and wrong for any bright
+   hue: white on primary-600 measures 1.32:1, where AA asks 4.5. Ink gets
+   14.35:1 on the button, 12.30:1 on its hover, 14.81:1 on the skip link. This
+   is how a hazard sign behaves — the yellow never carries white text.
+
+   Only these two elements are affected; everywhere else the accent is a mark
+   on the dark ground (links, the badge dot, focus rings) and stays as it is.
+
+   Both selectors are keyed to the *background* class rather than the text one,
+   so if Hextra ever stops painting these surfaces with the accent the override
+   drops out with it. The skip link repeats `hx:sr-only` only to outrank the
+   theme's equally-specific rule without depending on stylesheet order. */
+
+a.hx\:bg-primary-600,
+.hx\:sr-only.hx\:focus-visible\:bg-primary-500:focus-visible {
+  color: #111;
+}
