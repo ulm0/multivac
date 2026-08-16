@@ -113,6 +113,12 @@ and entry it does not own:
 of it; `PostToolUse` re-checks after every edit. Both run the **default**
 policy, not `--strict`.
 
+The skill directory is a **mirror**, not an accretion: every run deletes
+anything under `.claude/skills/multivac/` that the package no longer ships —
+including a file you put there yourself, because nothing on disk says who
+wrote it (MV-73). Your own skills live beside it: `doors` never touches a
+sibling under `.claude/skills/`, only the one directory it writes.
+
 If `CLAUDE.md` already exists as a regular file, `doors` refuses to replace
 it and says what to do:
 
