@@ -5,13 +5,13 @@ layout: hextra-home
 
 {{< hextra/hero-badge link="docs/guide/install" >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>v0.2.0 · npx multivac init</span>
+  <span>v0.1.0 · npx multivac init</span>
   {{< icon name="arrow-circle-right" attributes="height=14" >}}
 {{< /hextra/hero-badge >}}
 
 <div class="hx:mt-6 hx:mb-6">
 {{< hextra/hero-headline >}}
-  Ask multivac_
+  `Ask multivac_`
 {{< /hextra/hero-headline >}}
 </div>
 
