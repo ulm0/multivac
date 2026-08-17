@@ -41,3 +41,154 @@ a.hx\:bg-primary-600,
 .hx\:sr-only.hx\:focus-visible\:bg-primary-500:focus-visible {
   color: #111;
 }
+
+/* ==========================================================================
+   Two voices, and the width axis is the difference (MV-83)
+
+   This site quotes machine material constantly — anchor grammar, `verify`
+   lines, law rows, transcripts — and until now it was set in whatever the
+   reader's machine resolved, indistinguishable from the argument around it.
+
+   Human language is set WIDE and widens as it climbs the hierarchy; machine
+   output is set NARROW, because a readout has a slot to fit. That is the
+   mark's own logic — the console panel, where the master label is the widest
+   stamp on the plate — and it is one rule the reader learns once, so it still
+   holds in a table cell where there is no room for any other signal.
+
+   Both faces are variable and carry a width axis, which is why one file per
+   voice covers display, body, chrome and code without a second family.
+
+   Both files live in this repository and are served from this origin. The
+   tool refuses to touch the network in the commands that gate work (MV-01);
+   a documentation site that fetched its type from a CDN would contradict that
+   on its own front page, and would hand every reader's address to a party
+   they never chose. MV-83 pins it.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Archivo';
+  src: url('/fonts/archivo-latin.woff2') format('woff2');
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-style: normal;
+  font-display: swap;
+  /* Latin only. The pages are English; anything outside this range falls to
+     the system chain, which is present rather than fetched. */
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Martian Mono';
+  src: url('/fonts/martian-mono-latin.woff2') format('woff2');
+  font-weight: 100 800;
+  font-stretch: 75% 112.5%;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* The tokens are the interface: no rule below writes a family name, so the
+   fallback chain has exactly one place to be corrected. Hextra's own
+   --hx-font-sans / --hx-font-mono are repointed at them rather than fought,
+   which carries body, chrome, code and tables in one line each — Tailwind's
+   preflight already routes every element through those two.
+
+   The fallbacks are system faces, chosen for metric adjacency rather than
+   alphabetically: a WOFF2 that fails to arrive must leave the page readable
+   without reflowing it. */
+
+:root {
+  --font-human: 'Archivo', ui-sans-serif, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-machine: 'Martian Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+
+  /* Four steps, and no fifth. A width scale with exceptions in it stops
+     meaning anything. */
+  --wdth-display: 112%;
+  --wdth-heading: 105%;
+  --wdth-body: 100%;
+  --wdth-machine: 85%;
+
+  --hx-font-sans: var(--font-human);
+  --hx-font-mono: var(--font-machine);
+}
+
+/* Human, climbing.
+
+   `.content :where(hN)` is specificity 0,1,0 — :where() contributes nothing —
+   so a plain descendant selector outranks it without !important and without
+   depending on stylesheet order. Sizes are the theme's; only the width and the
+   weight are ours, because the hierarchy should read as stamped rather than
+   merely larger. */
+
+.content h1,
+.hextra-hero-headline {
+  font-stretch: var(--wdth-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.content h2 {
+  font-stretch: var(--wdth-heading);
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.content h3,
+.content h4,
+.content h5,
+.content h6 {
+  font-stretch: var(--wdth-body);
+  font-weight: 650;
+}
+
+/* Machine, narrow.
+
+   Martian Mono's default advance is wide by design — it is a display mono.
+   Condensing it is the axis being used for what it is for, not a workaround:
+   the anchor grammar line is 86 characters and a reader has to take it in
+   whole to learn the grammar. Lines past the fitting width scroll inside
+   their own block; the site's longest is a 310-character `doors` transcript,
+   which is sample output nobody reads character by character. */
+
+.content pre code,
+.content pre {
+  font-family: var(--font-machine);
+  font-stretch: var(--wdth-machine);
+  font-size: 0.7rem;
+  line-height: 1.75;
+}
+
+.content :not(pre) > code,
+.content kbd,
+.content samp {
+  font-family: var(--font-machine);
+  font-stretch: var(--wdth-machine);
+  /* em, not rem: inline code sits on the prose baseline it interrupts, and
+     must scale with whatever size that prose is at. */
+  font-size: 0.8em;
+}
+
+/* A table header is the shape of the record — `| ID | statement | authority |`
+   — and the cells beneath it are sentences. Header machine, cells human. This
+   is the one assignment a reader may find surprising, so it is deliberate. */
+
+.content th {
+  font-family: var(--font-machine);
+  font-stretch: var(--wdth-machine);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* The hero badge carries the version, which is a value read off package.json
+   (MV-77) rather than a phrase. */
+
+.hextra-badge {
+  font-family: var(--font-machine);
+  font-stretch: var(--wdth-machine);
+  font-size: 0.75rem;
+}
