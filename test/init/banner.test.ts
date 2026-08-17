@@ -34,7 +34,7 @@ test('the banner draws the panel on a terminal, in colour', () => {
   const b = banner({ quiet: false, tty: true, color: true });
   assert.ok(b !== null);
   assert.ok(b.includes(LIT) && b.includes('○'), 'lit and unlit lamps');
-  assert.match(b, /\x1b\[33m◍/, 'the lamp in flight is amber');
+  assert.match(b, /\x1b\[38;5;191m◍/, 'the lamp in flight is acid — the site accent');
   assert.ok(b.includes('multivac') && b.includes('brain-driven development'));
 });
 
@@ -47,7 +47,7 @@ test('NO_COLOR drops the colour, not the banner', () => {
   const b = banner({ quiet: false, tty: true, color: false });
   assert.ok(b !== null);
   assert.ok(!b.includes('\x1b'), 'no ANSI anywhere');
-  // Without colour the amber lamp needs a glyph of its own, or it reads as lit.
+  // Without colour the acid lamp needs a glyph of its own, or it reads as lit.
   assert.ok(b.includes('#') && b.includes('.') && b.includes('*'));
   assert.ok(!b.includes(LIT) && !b.includes(FLIGHT));
 });

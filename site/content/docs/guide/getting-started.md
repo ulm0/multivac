@@ -19,8 +19,17 @@ init: wrote AGENTS.md — the door; your agent reads it first
 init: wrote .multivac/invariants.md — the law table, zero rows
 init: wrote .multivac/ritual.md — empty; what you write there, `change close` prints
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
-init: done — load the multivac skill to fill the brain (see AGENTS.md)
+
+init: done — the brain is scaffolded and empty. Session zero fills it:
+init:   1. load the multivac skill in your agent — it carries both protocols
+init:   2. interview — no code here yet, so the law comes from a human, claim by claim
+init:   3. a human enacts each row in .multivac/invariants.md, then `multivac verify`
 ```
+
+Step 2 is the branch [Session zero](../session-zero) turns on, and `init`
+picks it for you: tracked source in the repo means discovery (`mvac seed`,
+then proposed claims drafted off its inventory), an empty repo means the
+interview.
 
 Exactly these files, nothing else:
 
