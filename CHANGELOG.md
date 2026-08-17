@@ -10,7 +10,7 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
-## Unreleased
+## 0.5.0 — 2026-08-17
 
 **Fixed**
 
