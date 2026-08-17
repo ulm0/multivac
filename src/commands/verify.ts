@@ -61,19 +61,36 @@ const paint = (state: LegState, s: string): string =>
         ? dim(s)
         : red(s);
 
+/** What the open change files say, read once per run. */
+interface OpenChanges {
+  /** claim id -> slug of the open change declaring it. */
+  pendingBy: Map<string, string>;
+  /** Slugs whose every declared repo is recorded `landed`. */
+  landed: Set<string>;
+}
+
 /**
  * claim id -> slug of the open change declaring it. Declare-first is the
  * lifecycle's flow, so those claims are pending, not regressions. Only
  * `.multivac/changes/<slug>.md` counts: its `archive/` is closed and confers
  * nothing. A change file that will not parse is `change`'s diagnostic to
  * raise, never a reason for verify to say anything.
+ *
+ * The landing statuses come back from the same parse, because MV-80 needs
+ * them and a second read of the same files would be a second chance to
+ * disagree with this one.
  */
-async function openChangeClaims(brainDir: string): Promise<Map<string, string>> {
+async function openChangeClaims(brainDir: string): Promise<OpenChanges> {
   const dir = changesDir(brainDir);
-  const out = new Map<string, string>();
+  const out: OpenChanges = { pendingBy: new Map(), landed: new Set() };
   let names: string[];
   try {
-    names = readdirSync(dir).filter((n) => n.endsWith('.md'));
+    // Sorted, because the next loop resolves a collision by first-wins: two
+    // open changes declaring the same claim would otherwise be settled by
+    // whatever order the filesystem handed back (MV-80, 2026-08-17).
+    names = readdirSync(dir)
+      .filter((n) => n.endsWith('.md'))
+      .sort();
   } catch {
     return out;
   }
@@ -81,7 +98,13 @@ async function openChangeClaims(brainDir: string): Promise<Map<string, string>> 
     try {
       const { change } = parseChange(await readFile(join(dir, name), 'utf8'), name);
       if (change.status !== 'open') continue;
-      for (const c of change.claims) if (!out.has(c.id)) out.set(c.id, change.slug);
+      for (const c of change.claims) {
+        if (!out.pendingBy.has(c.id)) out.pendingBy.set(c.id, change.slug);
+      }
+      const repos = Object.values(change.repos);
+      if (repos.length > 0 && repos.every((r) => r.status === 'landed')) {
+        out.landed.add(change.slug);
+      }
     } catch {
       continue;
     }
@@ -89,7 +112,47 @@ async function openChangeClaims(brainDir: string): Promise<Map<string, string>> 
   return out;
 }
 
-function fmtAge(ms: number): string {
+/**
+ * Open changes that are **finished, not pending**: every declared claim
+ * resolves, and every declared repo is recorded landed. MV-17's pendency is a
+ * grace for work not yet written; a change in this state is not waiting for
+ * anything, so every claim it still holds is a claim the gate is not
+ * enforcing — and it stays that way until somebody runs `close`.
+ *
+ * Three conditions, and each earns its place (MV-80):
+ *
+ * - **at least one claim.** A universal over the empty set is true, so a
+ *   change scaffolded a minute ago would read as finished by vacuity. That is
+ *   excluded by construction rather than by a guard: `pendingBy` only ever
+ *   holds claims, so a change declaring none never reaches this map. Two
+ *   changes declaring the same claim inherit the same rule — the grace
+ *   attributes it to the FIRST change file in filename order, and the second
+ *   is judged on what is left, so a genuinely finished second change can be
+ *   invisible here. Inherited from MV-17's pendency map and unchanged; this
+ *   gate makes it load-bearing, so the order is at least sorted rather than
+ *   whatever `readdirSync` returned (MV-80, 2026-08-17).
+ * - **every declared claim `ok`.** The grace rewrites every non-`ok` leg of a
+ *   declared claim into `pending`, so `ok` is the only other state reachable
+ *   and this is one comparison. A claim nothing anchors produces no result at
+ *   all, and no result is not a resolution (Principle II).
+ * - **every declared repo landed.** The only thing this gate prints is
+ *   `change close <slug>`, and close refuses a change with a repo outstanding.
+ *   Without this, the gate would fire on the author's own branch the moment
+ *   their tests went green — telling them to run a command that would refuse.
+ */
+function finishedChanges(claims: ClaimResult[], open: OpenChanges): string[] {
+  const declared = new Map<string, string[]>();
+  for (const [id, slug] of open.pendingBy) {
+    declared.set(slug, [...(declared.get(slug) ?? []), id]);
+  }
+  const resolved = new Set(claims.filter((c) => c.state === 'ok').map((c) => c.claimId));
+  return [...declared]
+    .filter(([slug, ids]) => open.landed.has(slug) && ids.every((id) => resolved.has(id)))
+    .map(([slug]) => slug);
+}
+
+/** "2h", "3d", "45m" — how old a ref is, in the words every surface uses. */
+export function fmtAge(ms: number): string {
   const h = Math.round(ms / 3_600_000);
   return h >= 24 ? `${Math.round(h / 24)}d` : h >= 1 ? `${h}h` : `${Math.round(ms / 60_000)}m`;
 }
@@ -288,6 +351,14 @@ export interface EvaluateOpts {
   scope?: VerifyScope;
   /** Brain-scoped only: read every sibling's working tree, the pre-MV-53 way. */
   worktree?: boolean;
+  /**
+   * Read the brain's OWN repo at its channel ref instead of its working tree.
+   * MV-53 makes the brain the deliberate exception — a verify run gates the
+   * commit in that tree — but `land` asks the other question, "is this
+   * published?", and only published bytes answer it (MV-80). `land` is the
+   * only caller; no CLI flag exposes it.
+   */
+  atChannel?: boolean;
 }
 
 /** Which bytes one repo contributed to this run, and how to say it out loud. */
@@ -334,6 +405,34 @@ async function brainDrift(dir: string, channel: string, head: string | null): Pr
 }
 
 /**
+ * The brain read at its own channel, or null when that is not what this run
+ * asked for. MV-53 reads the brain as a working tree on purpose; `land` needs
+ * the published bytes instead, because a squashing forge leaves no commit
+ * containment to test and content is what survives it (MV-80). A channel that
+ * does not resolve returns null and the caller keeps the working-tree read it
+ * already had — the same never-guess rule every other read follows.
+ *
+ * Only `ref` does work here. `line` is the interface's required field and
+ * nothing prints it: `land` is the only caller that sets `atChannel`, and it
+ * goes through `evaluate()`, which returns the report alone. So it stays the
+ * bare sentence — 2026-08-17 removed an unreachable elaboration, the second
+ * `lastFetchAge` subprocess it needed (the age `land` prints comes from
+ * `land`'s own read), and the working tree's mid-merge suffix, which never
+ * belonged on a ref read: a ref has no unmerged paths.
+ */
+async function brainAtChannel(
+  key: string,
+  dir: string,
+  channel: string,
+  atChannel: boolean,
+): Promise<RepoSource | null> {
+  if (!atChannel) return null;
+  const sha = await revParse(dir, channel);
+  if (sha === null) return null;
+  return { key, dir, ref: channel, line: `${key}: ${channel} @ ${short(sha)} — the channel, as published` };
+}
+
+/**
  * THE decision this change exists for: which bytes each declared repo is
  * judged on, and the sentence that says so.
  *
@@ -349,6 +448,7 @@ async function resolveSources(
   brainDir: string,
   cfg: Config,
   worktreeMode: boolean,
+  atChannel = false,
 ): Promise<RepoSource[]> {
   const out: RepoSource[] = [];
   for (const [key, e] of Object.entries(cfg.repos)) {
@@ -369,14 +469,16 @@ async function resolveSources(
         ? ''
         : ` · ${unmerged.length} path(s) MID-MERGE (${unmerged.slice(0, 2).join(', ')}${unmerged.length > 2 ? ', …' : ''}) — resolve the merge before trusting any verdict here`;
     if (e.isBrain) {
-      out.push({
-        key,
-        dir,
-        line:
-          `${key}: working tree ${wt.text} — brain==code, the commit this run gates` +
-          (await brainDrift(dir, channelRef(cfg, e), wt.head)) +
-          conflicted,
-      });
+      out.push(
+        (await brainAtChannel(key, dir, channelRef(cfg, e), atChannel)) ?? {
+          key,
+          dir,
+          line:
+            `${key}: working tree ${wt.text} — brain==code, the commit this run gates` +
+            (await brainDrift(dir, channelRef(cfg, e), wt.head)) +
+            conflicted,
+        },
+      );
       continue;
     }
     const channel = channelRef(cfg, e);
@@ -412,16 +514,21 @@ async function resolveSources(
   }
   const bw = await worktreeAt(brainDir);
   const bu = await unmergedFiles(brainDir);
-  out.push({
-    key: 'brain',
-    dir: brainDir,
-    line:
-      `brain: working tree ${bw.text} — the brain's own repo, the commit this run gates` +
-      (await brainDrift(brainDir, cfg.channel ?? DEFAULT_CHANNEL, bw.head)) +
-      (bu.length === 0
-        ? ''
-        : ` · ${bu.length} path(s) MID-MERGE (${bu.slice(0, 2).join(', ')}${bu.length > 2 ? ', …' : ''}) — resolve the merge before trusting any verdict here`),
-  });
+  const bConflicted =
+    bu.length === 0
+      ? ''
+      : ` · ${bu.length} path(s) MID-MERGE (${bu.slice(0, 2).join(', ')}${bu.length > 2 ? ', …' : ''}) — resolve the merge before trusting any verdict here`;
+  const bChannel = cfg.channel ?? DEFAULT_CHANNEL;
+  out.push(
+    (await brainAtChannel('brain', brainDir, bChannel, atChannel)) ?? {
+      key: 'brain',
+      dir: brainDir,
+      line:
+        `brain: working tree ${bw.text} — the brain's own repo, the commit this run gates` +
+        (await brainDrift(brainDir, bChannel, bw.head)) +
+        bConflicted,
+    },
+  );
   return out;
 }
 
@@ -547,6 +654,8 @@ interface Evaluated {
   gating: Set<LegResult>;
   /** claim id -> open change holding it pending. Empty in a claim-scoped run. */
   pendingBy: Map<string, string>;
+  /** Open changes that are finished, not pending (MV-80). Empty in a partial run. */
+  finished: string[];
   /** What each repo contributed, ref or branch and sha. The report prints it. */
   sources: RepoSource[];
   report: VerifyReport;
@@ -609,17 +718,27 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
             'this checkout, the content about to be committed here',
         },
       ]
-    : await resolveSources(brainDir, cfg, opts.worktree === true);
+    : await resolveSources(brainDir, cfg, opts.worktree === true, opts.atChannel === true);
   const handles: RepoHandle[] = sources.map((s) => ({ key: s.key, dir: s.dir, ref: s.ref }));
 
   // Pendency is a reporting grace, and the close gate is where it ends: a
   // claim-scoped run (change close) asks for the unmasked truth.
-  const pendingBy = opts.claimIds ? new Map<string, string>() : await openChangeClaims(brainDir);
+  const open = opts.claimIds
+    ? { pendingBy: new Map<string, string>(), landed: new Set<string>() }
+    : await openChangeClaims(brainDir);
+  const pendingBy = open.pendingBy;
   const claims = await evaluateAnchors(evalAnchors, handles, {
     brainDir,
     write: opts.write ?? false,
     pendingBy,
   });
+
+  // MV-80. Only a whole-brain run may reach this verdict: a consumer-scoped
+  // run evaluated a subset of the legs, so "every declared claim resolves"
+  // there would be a statement about bytes it never read — the invented pass
+  // this tool exists to catch (Principle II). A claim-scoped run has no grace
+  // to withdraw: `open` is empty above.
+  const finished = opts.scope ? [] : finishedChanges(claims, open);
 
   // Exit matrix — one loop, one predicate. `blockingBroken` is the headline
   // number (blocking modes alone); `gating` is what this run actually gates
@@ -633,7 +752,10 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
       if (legGates(l, rowState, cfg, opts.strict === true)) gating.add(l);
     }
   }
-  const exitCode: 0 | 1 = allDiags.length > 0 || gating.size > 0 ? 1 : 0;
+  const exitCode: 0 | 1 =
+    allDiags.length > 0 || gating.size > 0 || (opts.strict === true && finished.length > 0)
+      ? 1
+      : 0;
 
   const counts: Record<LegState, number> = {
     ok: 0,
@@ -654,6 +776,7 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
     claims,
     gating,
     pendingBy,
+    finished,
     sources,
     report: { claims, counts, blockingBroken, exitCode },
   };
@@ -789,6 +912,23 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
       );
     }
   }
+  // MV-80. Pendency is a grace for work not yet written; a change whose every
+  // declared claim resolves, with every declared repo landed, is not waiting
+  // for anything. Under --strict that stops the run, because the alternative
+  // is this line scrolling past on every commit — which is exactly what
+  // happened for weeks while fourteen claims sat unenforced. Closing stays the
+  // operator's: the archive commit goes on a branch that belongs to them.
+  const finishedBlocking = strict ? ev.finished.length : 0;
+  for (const slug of ev.finished) {
+    const held = [...ev.pendingBy.values()].filter((s) => s === slug).length;
+    say(
+      `  ${paint(strict ? 'broken' : 'pending', 'finished'.padEnd(9))} ${slug} — ` +
+        `every declared claim resolves and every declared repo is landed ` +
+        `(${held} claim${held > 1 ? 's' : ''} whose failure this run would not gate); ` +
+        `finished, not pending — close it: multivac change close ${slug}` +
+        (strict ? ' · blocking' : ' · reported only — this run is not --strict'),
+    );
+  }
   // Staleness compares mounts across the whole ecosystem — brain-checkout
   // concern, meaningless relative to a mounted brain's own paths.
   let staleBlocking = 0;
@@ -814,7 +954,7 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   // different arguments. `blockingBroken` answers a different question (blocking
   // modes alone, --strict ignored) and printing it here made `--strict` runs say
   // "0 blocking broken · exit 1" under a line marked blocking.
-  const blocking = gating.size + staleBlocking + (enact.gates ? 1 : 0);
+  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0);
   // A pending claim is a real failure a change file is holding back: exit 0 is
   // the grace, silence is not. Name what is masked and who masks it.
   const masking = [
@@ -825,6 +965,9 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
     `${blocking} blocking broken · exit ${finalExit}` +
       (allDiags.length ? ` · ${allDiags.length} anchor parse errors` : '') +
       (staleBlocking ? ` · ${staleBlocking} stale pin${staleBlocking > 1 ? 's' : ''} blocking` : '') +
+      (finishedBlocking
+        ? ` · ${finishedBlocking} finished change${finishedBlocking > 1 ? 's' : ''} unclosed`
+        : '') +
       (enact.gates ? ' · enactment refused' : ''),
   );
   if (masking.length > 0) {
@@ -854,7 +997,9 @@ export const verify: Command = {
   help: 'check anchors against the declared repos (deterministic, offline)',
   usage: [
     'usage: multivac verify [dir] [--strict] [--check] [--worktree] [--repo <key>]',
-    '  --strict      broken present/unique legs also exit 1, not just tombstones',
+    '  --strict      broken present/unique legs also exit 1, not just tombstones;',
+    '                and a finished change — every declared claim resolving,',
+    '                every declared repo landed — is refused as unclosed',
     '  --check       never writes: a moved leg is reported, not self-healed',
     '  --worktree    read every declared repo\'s working tree instead of its',
     '                channel ref — local state across the ecosystem, on purpose',

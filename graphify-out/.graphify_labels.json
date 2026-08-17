@@ -115,10 +115,12 @@
   "113": "fixture.ts",
   "114": "count.ts",
   "115": "Feature Specification: [FEATURE NAME]",
+  "116": "Design decisions",
   "117": "speckit-plan/SKILL.md",
   "118": "doors.ts",
   "119": "types.ts",
   "120": "The merge keeps what it did not write",
+  "121": "ritual.test.ts",
   "122": "speckit-specify/SKILL.md",
   "123": "speckit-tasks/SKILL.md",
   "124": "Core Principles",
@@ -137,5 +139,8 @@
   "137": "ls-files-counts-each-file-once.md",
   "138": "doors prunes what it projects",
   "139": "sync-fetches-the-channel.md",
-  "141": "site-version.test.ts"
+  "140": "git.ts",
+  "141": "site-version.test.ts",
+  "142": "change.test.ts",
+  "143": "normalize.ts"
 }
