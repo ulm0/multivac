@@ -32,7 +32,7 @@ By default a stale pin **reports**. Set `staleness: block` and a pin behind
 its channel becomes a blocking failure — exit 1, with the fix in the line:
 
 ```txt
-stale     api: pin 35 behind origin/main · last fetch 6d ago — blocking (staleness: block); run `multivac repos sync`
+stale     api: pin 35 behind origin/main · last fetch 6d ago — blocking (staleness: block); git -C ../api submodule update --remote .brain
 ```
 
 Offline by construction: staleness compares the pin against the locally

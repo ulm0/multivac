@@ -53,8 +53,10 @@ with push rights who decides to skip it.
 
 An invariant is **never relaxed in code** — it is changed in the law first.
 A change declares "amends INV-xx", updates the row (dated) in that change,
-and the code follows in the same change. `change close` checks law and code
-ended up consistent.
+and the code follows in the same change. Declare the amended row as one of the
+change's **claims** and `change close` re-runs verify over it before it will
+archive; listed only under `touches`, it is checked by the hook on every commit
+rather than by `close`.
 
 ## Retire
 

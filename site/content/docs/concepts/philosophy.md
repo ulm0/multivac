@@ -100,7 +100,9 @@ gate passes:
 $ mvac change close points-expire
 INV-07: ok
 archived -> .multivac/changes/archive/points-expire.md
-archived — commit this: git -C ~/eco/brain add -A .multivac/changes && git commit -m "Archive the points-expire change"
+archived — commit this on a branch; nothing lands on main directly:
+  git -C ~/eco/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
+  then open MR close-points-expire -> main
 
 ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
   - [ ] The branch is pushed and an MR is open — nothing lands on main directly.

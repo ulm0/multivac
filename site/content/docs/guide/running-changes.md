@@ -111,8 +111,10 @@ claims:
     statement: Expired points are excluded from every balance read.
 ```
 
-If an SDD adapter is declared, `new` also runs its propose step —
-see [Graphers and SDD](../../reference/graphers-and-sdd). `--no-sdd` skips it once.
+If an SDD adapter is declared, `new` **prints** that tool's propose step for you
+to run in your agent, and names the artifact that will prove it ran — it invokes
+nothing itself. See [Graphers and SDD](../../reference/graphers-and-sdd).
+`--no-sdd` skips the printing and the later gate, once.
 
 ## plan — resolve the declaration against reality
 

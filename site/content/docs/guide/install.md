@@ -37,13 +37,14 @@ npm i -g multivac@latest
 ```
 
 **The hooks care which one you did.** The shims try `mvac` on `PATH` first,
-then `npx --no-install multivac@latest`, then a repo-local build. `npx --no-install`
+then `npx --no-install multivac`, then a repo-local build. `npx --no-install`
 resolves a package already present in the project, not one it has to fetch —
 so a global install, or multivac as a devDependency of the brain, both arm the
 floor. `npx multivac@latest` typed by hand does not, because nothing persists.
 
-An early build, pre-release. The CLI surface below is what ships
-today, and the parts still moving say so where they appear.
+Published on npm, MIT, and small enough to read: `npx multivac@latest` fetches
+the current release. The CLI surface below is what ships today, and the parts
+still moving say so where they appear.
 
 ## Or from source
 
@@ -91,8 +92,11 @@ See [Hooks](../../reference/hooks).
 
 ```txt
 $ mvac --version
-1.0.0
 ```
+
+It prints the version in the package you installed. The site says the same
+number one page up, because a test holds the two equal (MV-77) and a release
+cannot publish under a tag that disagrees with the manifest (MV-68).
 
 ```txt
 $ mvac --help
@@ -110,10 +114,10 @@ commands:
   help       help <topic|command> — `help anchor` prints the anchor grammar on one screen
 ```
 
-{{< callout type="warning" >}}
-The version string is the `package.json` version, which is `1.0.0` while the
-package is `private: true` and unreleased. Treat the build you cloned as the
-identity, not that number.
+{{< callout >}}
+Built from source rather than installed? Then the version string is whatever
+`package.json` said at the commit you cloned, and the commit is the identity —
+a build between releases carries the previous release's number.
 {{< /callout >}}
 
 ## Every machine needs its own runner

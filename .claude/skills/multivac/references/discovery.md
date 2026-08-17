@@ -86,7 +86,10 @@ Anchor grammar, one leg per line, in an HTML comment under the row
   `!<repo-key>:<glob>` bites in that one repo only.
 - Dialect is POSIX ERE with `[[:space:]]`-style classes. `\s` `\b` `\d`
   `\w` are rejected at parse time.
-- Modes: `present` (default), `absent`, `unique`, `count=N`.
+- Modes: `present` (default), `absent`, `unique`, `count=N`, `each`, `each!`.
+  A property that must hold across files is `each`/`each!`, never `count=N` —
+  `count` is a deletion ratchet over the whole file set and a new file that
+  omits the pattern leaves it satisfied.
 - Anchor to the contract site you just inventoried (the migration, the
   schema, the route table) — that is both what you read and what moves
   least.

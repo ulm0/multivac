@@ -21,7 +21,7 @@ doors: [agents, claude, cursor, opencode, codex, windsurf, gemini, copilot]
 
 Then `mvac doors`. That is the whole adoption step — never re-run `init`.
 
-## The five kinds
+## The four kinds
 
 | kind | what `doors` writes | entries |
 | --- | --- | --- |

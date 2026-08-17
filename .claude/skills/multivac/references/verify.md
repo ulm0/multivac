@@ -7,7 +7,7 @@ Verify answers exactly one question: **is what the law claims still true of
 the code?** It runs no tests, lints nothing, compiles nothing, and calls no
 model. Every line it prints is about a claim, never about quality.
 
-## The four outcomes
+## The outcomes
 
 | line | means | what you do |
 | --- | --- | --- |
@@ -15,6 +15,12 @@ model. Every line it prints is about a claim, never about quality.
 | `moved` | the pattern is gone from the declared glob but found elsewhere, and the anchor was rewritten to point there | **review it like any other edit** — see below |
 | `broken` | the pattern is not where the claim says, and not anywhere the self-heal would accept | decide: fix the code, or amend the law |
 | `pending` | a claim declared by an open change whose code is not written yet | nothing — this is the intended order |
+| `vacuous` | the glob matched no tracked file, so the leg asserted nothing | fix the glob — a leg over nothing is not a passing leg |
+| `unevaluated` | a declared repo is not on disk, so its legs were not read | `multivac repos sync`, then re-read |
+
+Six states, not four. `vacuous` and `unevaluated` are the two that look like
+silence: neither is a pass, and the summary counts them separately so that a
+run judging nothing cannot be mistaken for a run judging everything.
 
 `pending` is not a failure and never gates. Declaring the claims before the
 code exists is the flow, not a mistake: `close` is what refuses until they

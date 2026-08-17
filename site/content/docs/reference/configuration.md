@@ -113,7 +113,7 @@ adapter declared — `doctor` still reports it — while running its steps by
 hand:
 
 ```txt
-sdd        opsx: artifact ok · binary ok · sdd_auto: false — workflow manual
+sdd        opsx: artifact ok · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
 ```
 
 `--no-sdd` on a single `change` invocation does the same thing once, without

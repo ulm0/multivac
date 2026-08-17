@@ -71,10 +71,12 @@ The file also carries per-repo status
   Where git cannot make
   a worktree, apply branches in place and refuses outright if the tree holds
   someone else's uncommitted work — commit or stash it, then re-run.
-- **land** opens the MRs respecting the graph: roots first, an edge's
-  target only after its source lands. Parallel where no edge says
-  otherwise. Each MR description cites the change file and its position in
-  the order.
+- **land** prints the landing plan in graph order — roots first, an edge's
+  target only after its source lands, parallel where no edge says otherwise —
+  and for each ready repo hands you the push and the MR to open. It opens
+  nothing itself: multivac has no forge integration, so the merge request and
+  its description are yours. `land --landed <repo>` is you telling it one
+  merged; it reads the channel ref to offer a conclusion, never to record one.
 
 ## close — the gate
 

@@ -53,8 +53,11 @@ is false still changes what gets written. Design consequences:
 - **Self-healing is the normal mode.** The agent is already editing and
   reviews the diff on the spot; `moved` is not a special case.
 - **Hard latency budget: under one second.** A hook that takes five seconds
-  gets uninstalled. Hence `git ls-files` + `ripgrep`, never walking the tree,
-  with a commit-sha-keyed cache in `.multivac/cache/`.
+  gets uninstalled. Hence `git ls-files` rather than walking the tree, and
+  matching in process — one `RegExp` compiled from the anchor's POSIX ERE, run
+  over the enumerated files. No subprocess per leg, no external matcher, and
+  nothing cached: at this size the read is cheaper than the bookkeeping a cache
+  would need to stay honest across a rebase.
 
 ## Enforcement: the ladder
 

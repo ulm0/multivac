@@ -512,7 +512,7 @@ grapher    graphify @ api: artifact missing → run `graphify update .` there
 repos      1/2 present · payments missing → `multivac repos sync` (git clone git@example.com:acme/payments.git ../payments)
 branches   brain: on main @ abc1234 — brain==code, verify reads this working tree; 2 behind its own channel origin/main @ def5678 → git -C . pull · api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
 pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain) · payments: not cloned
-hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac)
+hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac on PATH)
 untracked  nothing build-critical untracked
 ```
 
@@ -882,7 +882,7 @@ archived -> .multivac/changes/archive/points-expire.md
 archived — commit this: git -C /home/you/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/api)
 payments: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/payments)
-graph: refresh with `graphify update .` in the changed repos
+graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
 
 ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
   - [ ] tell support before the flag flips
