@@ -52,8 +52,24 @@ init: wrote AGENTS.md — the door; your agent reads it first
 init: wrote .multivac/invariants.md — the law table, zero rows
 init: wrote .multivac/ritual.md — empty; what you write there, `change close` prints
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
-init: done — load the multivac skill to fill the brain (see AGENTS.md)
+brain: door + hooks updated
+
+init: done — the brain is scaffolded and empty. Session zero fills it:
+init:   1. load the multivac skill in your agent — it carries both protocols
+init:   2. interview — no code here yet, so the law comes from a human, claim by claim
+init:   3. a human enacts each row in .multivac/invariants.md, then `multivac verify`
 ```
+
+On a terminal the report is dim and the `init: done` line is acid — the
+scaffolding lines are a receipt, the call to action is the only thing you
+have to act on. Piped output and `NO_COLOR` get the same text with no ANSI.
+
+The last three lines are the call to action, and step 2 is decided, not
+asked: run `init` where tracked source already exists and step 2 reads
+`discovery — multivac seed inventories this code, then draft proposed claims
+from it` instead. Code to read means discovery; an empty repo means
+the law has to come out of a human. Both protocols live in the skill —
+`init` points at them and restates neither.
 
 | flag | takes | effect |
 | --- | --- | --- |
@@ -63,7 +79,7 @@ init: done — load the multivac skill to fill the brain (see AGENTS.md)
 | `--quiet` | — | no report, no banner; refusals still go to stderr |
 
 The banner is the mark: lit lamps are verified claims, unlit ones unanchored,
-the amber one the claim in flight. The pattern is a fixed drawing, never a
+the acid one the claim in flight. The pattern is a fixed drawing, never a
 reading — `init` runs before there is anything to verify. `init` is the only
 command that prints it; `verify`, `doctor`, `doors` and `change` run inside
 git and harness hooks, where it would be noise. It is skipped when stdout is

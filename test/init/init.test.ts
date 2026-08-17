@@ -316,6 +316,24 @@ test('init carries the sdd project law into the door it writes', async () => {
   assert.doesNotMatch(readFileSync(join(bare, 'AGENTS.md'), 'utf8'), /project law/);
 });
 
+test('init closes on the session-zero call to action, its branch already decided', async () => {
+  // Nothing tracked: no ecosystem to read, so the law has to come from a human.
+  const bare = await capture(() => init.run([], { cwd: tmp() }));
+  assert.match(bare.out, /init: done — the brain is scaffolded and empty/);
+  assert.match(bare.out, /1\. load the multivac skill/);
+  assert.match(bare.out, /2\. interview/);
+  assert.doesNotMatch(bare.out, /discovery/);
+
+  // Tracked source: there is an ecosystem to inventory, so `seed` leads.
+  const code = tmp();
+  gitInit(code);
+  writeFileSync(join(code, 'index.ts'), 'export const one = 1;\n');
+  execFileSync('git', ['add', 'index.ts'], { cwd: code });
+  const seeded = await capture(() => init.run([], { cwd: code }));
+  assert.match(seeded.out, /2\. discovery — `multivac seed`/);
+  assert.doesNotMatch(seeded.out, /interview/);
+});
+
 test('init keeps an existing config.yml untouched', async () => {
   const dir = tmp();
   await init.run(['--sdd', 'openspec'], { cwd: dir });

@@ -20,7 +20,7 @@ import {
 } from '../lib/config.js';
 import { RITUAL_TEMPLATE } from '../lib/ritual.js';
 import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
-import { say, warn } from '../lib/out.js';
+import { acid, bold, dim, say, warn } from '../lib/out.js';
 import { banner } from '../lib/banner.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { projectLawLines } from '../doors/brain.js';
@@ -284,7 +284,15 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     throw e;
   }
   // --quiet: the whole report goes, banner included. Refusals stay on stderr.
-  const report: Report = f.quiet ? () => {} : say;
+  //
+  // Two voices. The scaffolding lines are a receipt — true, and read once —
+  // so they go dim; the closing call to action is the only thing on screen a
+  // reader has to act on, so it keeps full ink. Colour is never spliced into
+  // the middle of a line: whole-line wrapping leaves every substring intact
+  // for anything grepping this output, ANSI or not, and `dim`/`acid` are
+  // already no-ops when stdout is not a TTY or NO_COLOR is set.
+  const emit: Report = f.quiet ? () => {} : say;
+  const report: Report = (l) => emit(l === '' ? l : dim(l));
   const dir = resolve(ctx.cwd, f.dir ?? '.');
   await mkdir(dir, { recursive: true });
 
@@ -322,11 +330,13 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   await writeIfMissing(join(dir, '.multivac', '.gitignore'), 'cache/\nworktrees/\n');
   await stamp(dir);
   const cfgPath = join(dir, '.multivac', 'config.yml');
+  // Tracked source already here = the brain is its own code repo. Decided
+  // before the config branch because the closing call to action needs it too:
+  // it is what picks discovery over the interview.
+  const brainIsCode = (await lsFiles(dir).catch(() => [])).length > 0;
   if (await exists(cfgPath)) {
     report('init: .multivac/config.yml kept — edit it directly, then `multivac doors`');
   } else {
-    // Tracked source already here = the brain is its own code repo.
-    const brainIsCode = (await lsFiles(dir).catch(() => [])).length > 0;
     await writeFile(cfgPath, renderConfig(f, await detectAdapters(dir), brainIsCode));
     report(
       brainIsCode
@@ -421,7 +431,22 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // the ordinary case and it is a no-op.
   if (f.agents.length > 0) await doorsCommand.run([], { cwd: dir });
 
-  report('init: done — load the multivac skill to fill the brain (see AGENTS.md)');
+  // The last word is a call to action, not a full stop. init leaves a brain
+  // that is scaffolded and empty, and "load the skill" alone left the reader
+  // to discover session zero — that there are two flows and which one is
+  // theirs — from the door. Both are named here, and the branch is decided,
+  // not asked: tracked source means there is an ecosystem to read, an empty
+  // repo means there is one to invent. The steps stay pointers into the
+  // skill; init does not restate a protocol that lives there.
+  emit('');
+  emit(bold(acid('init: done — the brain is scaffolded and empty. Session zero fills it:')));
+  emit('init:   1. load the multivac skill in your agent — it carries both protocols');
+  emit(
+    brainIsCode
+      ? 'init:   2. discovery — `multivac seed` inventories this code, then draft proposed claims from it'
+      : 'init:   2. interview — no code here yet, so the law comes from a human, claim by claim',
+  );
+  emit('init:   3. a human enacts each row in .multivac/invariants.md, then `multivac verify`');
   return 0;
 }
 

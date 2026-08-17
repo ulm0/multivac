@@ -1351,9 +1351,14 @@ verifies is documentation that lies about the code you already have.
 ## The mark
 
 **The console panel.** A rounded frame of lamps: **lit** is a verified claim,
-**unlit** is one nothing anchors yet, and the single **amber** lamp is the
+**unlit** is one nothing anchors yet, and the single **acid** lamp is the
 claim in flight. The product's whole model in one drawing — a status board you
 read at a glance, which is what a brain is for.
+
+One accent, everywhere: `#c3f53c`, hazard-sign lime. The svgs carry the hex;
+the terminal carries 256-colour index 191, the nearest index every terminal
+renders — 24-bit would hit the hex exactly and is silently wrong where it is
+unsupported, which is a worse trade for one lamp.
 
 It ships three ways, all under `site/static/`: `mark.svg` (six lamps,
 `currentColor`, so a page's own ink drives it), `favicon.svg` (four lamps,
@@ -1370,7 +1375,7 @@ and harness hooks, where a banner is noise and `verify` has a sub-second
 budget to spend on anchors. `--quiet` drops it with the rest of init's
 report, a pipe drops it, and `NO_COLOR` keeps the drawing while dropping the
 colour — the lamps fall back to `#` lit, `.` unlit, `*` in flight, because
-without ANSI the amber lamp would be indistinguishable from a lit one.
+without ANSI the acid lamp would be indistinguishable from a lit one.
 
 **The lamp pattern is fixed.** `init` runs before there is anything to verify:
 no law, no anchors, no claims. A banner that pretended to report the state of
