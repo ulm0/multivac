@@ -2,16 +2,11 @@
 // Hand-rolled dispatch over the Command[] registry. No framework, on purpose.
 
 import { realpathSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { commands, usageFor } from './commands/index.js';
 import { warn, say } from './lib/out.js';
-
-function version(): string {
-  const pkg = JSON.parse(
-    readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
-  ) as { version: string };
-  return pkg.version;
-}
+import { paint, selfVersion as version, versionNotice } from './lib/version.js';
 
 function usage(): void {
   say('multivac <command> [args]');
@@ -35,6 +30,21 @@ export async function main(argv: string[], cwd: string): Promise<number> {
   if (first === '--version' || first === '-v') {
     say(version());
     return 0;
+  }
+  // MV-86, once and from here rather than in each command: nine call sites is
+  // nine chances to forget, which is exactly how MV-85 happened. Before the
+  // command runs, so a slow one still prints it up front. Never changes an exit
+  // code, never writes.
+  // The whole block is guarded: a NOTICE must never be able to take down the
+  // command it decorates. Found by its own test, which runs from dist-test/
+  // where `version()` cannot find package.json and threw for every command.
+  try {
+    const raw = readFileSync(join(cwd, '.multivac/config.yml'), 'utf8');
+    const n = versionNotice(cwd, version(), raw);
+    if (n) warn(paint(n));
+  } catch {
+    // Not a brain, or the version is unreadable. Either way there is nothing
+    // to say, and saying nothing is correct — never a crash, never a guess.
   }
   const cmd = commands.find((c) => c.name === first);
   if (!cmd) {

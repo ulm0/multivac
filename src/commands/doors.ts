@@ -18,6 +18,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Command, CommandContext, Config } from '../types.js';
 import { undeclared } from '../lib/args.js';
+import { PROJECTED_PATH, recordBody, selfVersion } from '../lib/version.js';
 import { ConfigError, LAW_PATH, loadConfig } from '../lib/config.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
@@ -233,7 +234,7 @@ async function projectInto(
 async function run(argv: string[], ctx: CommandContext): Promise<number> {
   // MV-85: doors declares no arguments and used to take `_argv` — anything you
   // passed was discarded in silence. Before loadConfig, before any write.
-  const bad = undeclared('doors', argv, {});
+  const bad = undeclared('doors', argv, { flags: ['--adopt'] });
   if (bad) {
     warn(bad);
     return 2;
@@ -281,6 +282,16 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     // doctor and `change close`.
     report(key, await projectInto(dir, consumerBody, config, entry.grapher ?? config.grapher));
   }
+  // MV-86. Bare `doors` re-projects and leaves the record alone, ON PURPOSE:
+  // people run it after editing doors: or grapher:, and if that restamped, the
+  // stale-version notice would vanish for a reason that has nothing to do with
+  // the upgrade — quiet, and looking resolved. --adopt is somebody saying they
+  // have taken this version.
+  if (argv.includes('--adopt')) {
+    const v = selfVersion();
+    await writeFile(join(brainDir, PROJECTED_PATH), recordBody(v));
+    say(`brain: adopted ${v} — recorded in ${PROJECTED_PATH}`);
+  }
   return 0;
 }
 
@@ -288,8 +299,12 @@ export const doorsCommand: Command = {
   name: 'doors',
   help: 'project doors + install git hooks into the brain and declared repos',
   usage: [
-    'usage: multivac doors',
-    'No arguments. Runs in the brain and acts on it plus every declared repo',
+    'usage: multivac doors [--adopt]',
+    '  --adopt  also record this version as the one this brain was brought to,',
+    '           in .multivac/projected.yml — the stale-version notice stops.',
+    '           Bare `doors` re-projects and leaves the record alone, so the',
+    '           notice survives a run made for an unrelated reason.',
+    'Runs in the brain and acts on it plus every declared repo',
     'present on disk: writes AGENTS.md, projects it per declared door, installs',
     'the git hooks, and wires the grapher refresh into every harness that has a',
     'post-edit hook. Re-run it after editing doors: or grapher: in config.yml.',

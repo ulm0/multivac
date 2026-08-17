@@ -7,7 +7,9 @@ repos:
 landing_order:
   - - brain
 invariants:
-  touches: []
+  touches:
+    - MV-29
+    - MV-85
   adds:
     - MV-86
   retires: []
