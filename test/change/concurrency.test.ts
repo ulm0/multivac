@@ -230,3 +230,33 @@ test('close releases a reservation the change never used', async () => {
   const law = readFileSync(join(eco.brain, '.multivac/invariants.md'), 'utf8');
   assert.ok(!law.includes(`| ${id} |`), 'an unused, unanchored reservation goes back to the pool');
 });
+
+// MV-45. `--abandon` used to release against an EMPTY anchor set, and to
+// archive before reading it — so the row's condition ("no anchor names its
+// ID") was never evaluated on that path. It refuses a change with claims,
+// which makes an anchor on the reserved id unlikely, not impossible: one
+// written by hand would send that id back to the pool with a live reference
+// pointing at it, and the next `change new` would hand it to somebody else.
+test('--abandon will not release a reservation an anchor names (MV-45)', async () => {
+  // Its own ecosystem: the tests above share one brain and leave it mid-flight,
+  // and this assertion is about a reservation's fate, not about surviving them.
+  const solo = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-abandon-')));
+  const soloCtx = { cwd: solo.brain };
+  assert.equal(await change.run(['new', 'gamma', 'Gamma'], soloCtx), 0);
+
+  const law = join(solo.brain, '.multivac/invariants.md');
+  // The scratch ecosystem numbers its rows INV-nn, not MV-nn: read the prefix
+  // from the table rather than assuming this repo's.
+  const id = readFileSync(law, 'utf8').match(/\| ([A-Z]+-\d+) \| RESERVED by change gamma/)![1];
+
+  // Somebody anchored the reserved id by hand. No claim was declared, so
+  // --abandon is still willing to run — and used to release the id against an
+  // EMPTY anchor set, sending it back to the pool with a live reference to it.
+  writeFileSync(law, `${readFileSync(law, 'utf8')}\n<!-- @anchor ${id} brain:AGENTS.md /multivac/ -->\n`);
+
+  assert.equal(await change.run(['close', 'gamma', '--abandon'], soloCtx), 0);
+  assert.ok(
+    readFileSync(law, 'utf8').includes(`| ${id} |`),
+    `${id} was released while an anchor still names it — the next change new would reuse it`,
+  );
+});

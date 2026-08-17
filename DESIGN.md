@@ -272,8 +272,13 @@ written. Design consequences, not presentation ones:
   editing and reviews the diff on the spot; `moved` is not a special case.
 - **Hard latency budget: under one second.** A hook that fires on every
   session start and takes five seconds gets uninstalled. Hence `git ls-files`
-  + `ripgrep`, plus caching keyed by commit sha (in `.multivac/cache/`,
-  gitignored).
+  rather than walking the tree, and matching in process: one `RegExp` compiled
+  from the anchor's POSIX ERE, run over the enumerated files. **No external
+  matcher and no cache** — an earlier draft of this document specified
+  `ripgrep` plus a commit-sha-keyed cache in `.multivac/cache/`, and neither
+  was built: at this size the read is cheaper than the bookkeeping a cache
+  would need to stay honest across a rebase, and a subprocess per leg costs
+  more than the match.
 
 And the point of application is **not the agent's goodwill**. If it only runs
 when the agent remembers, the tool inherits exactly the failure mode it came
@@ -476,9 +481,10 @@ explicit, one leg per line:
   translation hint** (`\s` → `[[:space:]]`,
   `\b` → `(^|[^[:alnum:]_])…([^[:alnum:]_]|$)`), never silently accepted —
   macOS git grep drops both silently, and four anchors in Measurement 1
-  passed vacuously that way. ripgrep and the built-in fallback must
-  implement the same accepted subset, so a passing anchor passes on every
-  machine.
+  passed vacuously that way. The dialect is pinned to that lowest common
+  denominator even though multivac runs **one** matcher of its own, in
+  process, so an anchor stays readable by `git grep` and by the next person
+  and passes the same way on every machine.
 - **A claim may carry several anchor lines — legs. Legs AND together**: the
   claim holds only when every leg holds. On failure the claim inherits the
   **worst failing leg's severity**, and `verify` reports per-leg, never only
@@ -1257,7 +1263,8 @@ reading files.
 
 For large ecosystems the answer is not the language but **never walking the
 tree**: `git ls-files` per repo — respects `.gitignore`, returns instantly —
-and `ripgrep` when on PATH, with a built-in fallback.
+and one in-process `RegExp` per leg over what it returns. No external matcher
+is consulted and none is required to be on PATH.
 
 **English** for code, CLI, docs, and messages. But the brain's content is in
 whatever language the team writes: nothing in the parser may assume English

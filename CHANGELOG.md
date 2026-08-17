@@ -10,6 +10,34 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## Unreleased
+
+**Fixed**
+
+- **`change close --abandon` no longer releases a reserved invariant ID that an
+  anchor names.** It archived the change first and then released against an
+  *empty* anchor set, so the condition the law states — release only when no
+  anchor names the ID — was never evaluated on that path. The ID could return
+  to the pool with a live reference pointing at it, and the next `change new`
+  would hand it out: MV-26's collision by another road. Both close paths now
+  read the anchor set before archiving. (MV-45)
+- No lifecycle command sweeps a tree with `git add -A`. `change apply` did, when
+  creating a greenfield repo — harmless in itself, a repo made seconds earlier
+  holding one file, but the law said *nowhere*, and the leg meant to hold that
+  claim matched only a **comment** saying "never `add -A`" while the real call
+  spelled the flag differently and stayed invisible. (MV-46)
+
+**Documentation**
+
+- Eight claims an external audit found overstating their code are corrected, and
+  the ninth is recorded as examined and accurate. Two moved the code, three
+  withdrew a clause that described something removed, two gained the ceiling
+  they were missing, and two documents stopped contradicting the law:
+  `CONTRIBUTING.md` told contributors to add an entry marked unsupported, which
+  MV-28 forbids, and `DESIGN.md` described a `ripgrep` matching engine and a
+  commit-sha-keyed cache that were designed and never built.
+  (MV-21, MV-31, MV-51, MV-56, MV-57)
+
 ## 0.4.0 — 2026-08-17
 
 **Added**
