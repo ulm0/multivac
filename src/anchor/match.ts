@@ -8,6 +8,7 @@ import { catFileBlobs, lsFiles, lsTree, untrackedFiles } from '../lib/git.js';
 import { excludeGlobs, filterFiles } from '../lib/glob.js';
 import { compileAnchorRegex } from '../lib/regex.js';
 import { sqlStatements } from './normalize.js';
+import { ANCHOR_LINE } from './parse.js';
 import type { Anchor } from '../types.js';
 
 export interface Match {
@@ -78,8 +79,26 @@ export class RepoScanner {
 
 /**
  * Matches of `re` in one file: per-statement for *.sql (normalized),
- * per-line otherwise. Anchor comment lines never match — an anchor's own
- * regex text must not satisfy (or break) another anchor.
+ * per-line otherwise. A line carrying a COMPLETE anchor comment never matches —
+ * an anchor's own regex text must not satisfy (or break) another anchor, and
+ * the law table, the change files, DESIGN.md, the guide page teaching the
+ * grammar and this suite's own fixtures all quote whole anchors.
+ *
+ * MV-82: complete means both halves — the shared `ANCHOR_LINE` opener, the same
+ * pattern `parseAnchors` uses to decide a line is trying to declare a leg, AND
+ * the `-->` terminator that same parser demands before it will accept one. The
+ * skip is never the substring `@anchor`, and never the opener alone: an opener
+ * with no terminator is not an anchor to the reader either — `parseAnchors`
+ * refuses it as `unterminated anchor comment` — so the scanner must not treat
+ * it as one. That gap is what made `// <!-- @anchor` (and `<!--@anchor`, and a
+ * tab, and `<!-- @anchor.`, and the opener inside a plain or template string)
+ * silence a leg on any line of any file type.
+ *
+ * Ceiling, and it is a real one: a FULLY forged `<!-- @anchor ... -->` inside a
+ * source comment or a string literal still hides its line. No test on a line's
+ * shape can tell a forged instruction from a quoted one — the fixtures in
+ * `test/verify/` quote whole anchors inside string literals and MUST stay
+ * hidden, and they are byte-identical in shape to a forgery.
  */
 export function matchesInFile(file: string, text: string, re: RegExp): Match[] {
   const out: Match[] = [];
@@ -91,7 +110,7 @@ export function matchesInFile(file: string, text: string, re: RegExp): Match[] {
   }
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('@anchor')) continue;
+    if (ANCHOR_LINE.test(lines[i]) && lines[i].includes('-->')) continue;
     if (re.test(lines[i])) out.push({ file, line: i + 1 });
   }
   return out;

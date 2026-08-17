@@ -18,6 +18,31 @@ export interface ParseResult {
   diagnostics: ParseDiagnostic[];
 }
 
+/**
+ * The opener of an anchor comment. The ONE definition of that shape,
+ * deliberately shared: `parseAnchors` below uses it to decide a line is trying
+ * to declare a leg, and `matchesInFile` uses it as the first half of deciding a
+ * line contributes no matches. Two private copies of the shape is how MV-82's
+ * defect happened — the scanner tested for the bare substring `@anchor`, so any
+ * line of any file that merely mentioned the word went unscanned and a trailing
+ * comment silenced any tombstone.
+ *
+ * What is shared is the PATTERN, not the verdict, and the difference matters:
+ * this module only ever sees the handful of .md files `collectBrainAnchors`
+ * reads, while the scanner sees every tracked file in every declared repo, so
+ * the set of lines the reader calls anchors is a strict subset of the set the
+ * scanner hides. Sharing the pattern keeps the two from disagreeing about the
+ * SHAPE; it cannot make the two sets equal, and nothing here claims it does.
+ *
+ * Neither caller accepts the opener alone. `parseAnchors` refuses an
+ * unterminated one, and `matchesInFile` requires the same `-->` before it will
+ * hide a line.
+ *
+ * No `g` flag: a stateful literal would make one line's verdict depend on the
+ * line tested before it.
+ */
+export const ANCHOR_LINE = /<!--\s*@anchor\b/;
+
 const GRAMMAR =
   '<!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> ...] /<regex>/[i] [present|absent|unique|count=N|each|each!] -->';
 
@@ -57,7 +82,7 @@ export function parseAnchors(text: string, file: string): ParseResult {
       bad(`anchor is not an HTML comment — write: ${GRAMMAR}`);
       continue;
     }
-    if (!/<!--\s*@anchor\b/.test(raw)) continue;
+    if (!ANCHOR_LINE.test(raw)) continue;
     const cm = raw.match(/<!--\s*@anchor\s+(.*?)\s*-->/);
     if (!cm) {
       bad(`unterminated anchor comment — write it on one line: ${GRAMMAR}`);
