@@ -226,6 +226,21 @@ async function withPath<T>(path: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
+/** Run fn with process.env.HOME pinned, so a `~` config value expands into a
+ *  scratch directory instead of the developer's real home. git reads $HOME
+ *  from the environment of the process we spawn, so this is what makes a tilde
+ *  hooksPath testable at all. */
+async function withHome<T>(home: string, fn: () => Promise<T>): Promise<T> {
+  const orig = process.env.HOME;
+  process.env.HOME = home;
+  try {
+    return await fn();
+  } finally {
+    if (orig === undefined) delete process.env.HOME;
+    else process.env.HOME = orig;
+  }
+}
+
 test('saleor fresh clone: config present, hook absent, binary present — the shim arms the gate itself', async () => {
   const dir = tmp();
   gitInit(dir);
@@ -444,4 +459,241 @@ test('init report and refusal are loud: refusals go to stderr even under --quiet
   } finally {
     console.error = orig;
   }
+});
+
+// ---------------------------------------------------------------------------
+// 3. init vs an ABSOLUTE core.hooksPath (MV-79)
+//
+// git hands core.hooksPath back exactly as configured, and a full path is a
+// legal spelling — the one every git worktree inherits from its main checkout
+// through the shared config. `join(repo, dir)` concatenates an absolute dir
+// onto the repo root instead of replacing it, so the shims used to land in a
+// tree named after the machine's filesystem while the notice printed the
+// absolute path as the place they went. Every shape MV-37 and MV-44 describe
+// is exercised again under that spelling.
+
+/** A hook dir OUTSIDE the repo, named the way git would hand it back. */
+const foreignDir = (): string => join(tmp(), 'githooks');
+
+test('an absolute foreign core.hooksPath: the shims land where git looks, not in a tree built by concatenation', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  const foreign = foreignDir();
+  git(dir, 'config', 'core.hooksPath', foreign);
+
+  const r = await installHooks(dir);
+  assert.equal(r.strategy, 'alongside');
+  assert.equal(r.dir, foreign, 'reported as configured, not rewritten');
+  assert.deepEqual(r.installed, ['pre-commit', 'pre-push']);
+  assert.deepEqual(r.refused, []);
+  assert.equal(git(dir, 'config', 'core.hooksPath'), foreign, 'never repointed');
+
+  for (const name of ['pre-commit', 'pre-push']) {
+    assert.ok(existsSync(join(foreign, name)), `${name} is where git will look`);
+    assert.equal(existsSync(join(dir, foreign, name)), false, 'nothing concatenated');
+  }
+  // not even the first segment of the machine path exists inside the repo
+  assert.equal(existsSync(join(dir, foreign.split('/')[1])), false);
+  assert.equal(existsSync(join(dir, '.multivac/hooks/pre-commit')), false);
+
+  // and it runs: the alongside shim resolves the root through git, not from $0
+  const bin = join(dir, 'fixture-bin');
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'mvac'), '#!/bin/sh\necho "mvac $*"\n');
+  chmodSync(join(bin, 'mvac'), 0o755);
+  const run = runHook(dir, join(foreign, 'pre-commit'), `${bin}:${SYS}`);
+  assert.equal(run.status, 0);
+  assert.equal(run.stdout.trim(), 'mvac verify');
+});
+
+test('a `~` core.hooksPath expands to $HOME: the shims land where git looks, not in a directory named `~`', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  git(dir, 'config', 'user.email', 't@example.invalid');
+  git(dir, 'config', 'user.name', 'T');
+  const home = tmp();
+  const expanded = join(home, 'githooks');
+  // A leading `~` is a legal spelling and git expands it to $HOME before it
+  // resolves anything. Read literally it resolves against the repo root, and
+  // the shims land in a directory named `~` inside the checkout — the
+  // concatenation defect of the absolute spelling, one spelling down (MV-79).
+  git(dir, 'config', 'core.hooksPath', '~/githooks');
+
+  const r = await withHome(home, () => installHooks(dir));
+  assert.equal(r.strategy, 'alongside');
+  assert.deepEqual(r.installed, ['pre-commit', 'pre-push']);
+  assert.deepEqual(r.refused, []);
+  for (const name of ['pre-commit', 'pre-push']) {
+    assert.ok(existsSync(join(expanded, name)), `${name} is where git will look`);
+  }
+  assert.equal(existsSync(join(dir, '~')), false, 'no directory named `~` inside the repo');
+  assert.equal(existsSync(join(dir, '.multivac/hooks/pre-commit')), false);
+  assert.equal(r.dir, expanded, 'reported as git reads it — expanded');
+  assert.equal(git(dir, 'config', 'core.hooksPath'), '~/githooks', 'never repointed');
+
+  // and git agrees: with $HOME pointed here, a commit runs the shim we wrote
+  const bin = join(dir, 'fixture-bin');
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'mvac'), '#!/bin/sh\necho "FIXTURE-MVAC $*" >&2\nexit 9\n');
+  chmodSync(join(bin, 'mvac'), 0o755);
+  writeFileSync(join(dir, 'a.txt'), 'x\n');
+  git(dir, 'add', 'a.txt');
+  const commit = await withHome(home, async () =>
+    spawnSync('git', ['-C', dir, 'commit', '-m', 'x'], {
+      env: { ...process.env, PATH: `${bin}:${SYS}` },
+    }),
+  );
+  assert.notEqual(commit.status, 0, 'the gate git found refused the commit');
+  assert.match(commit.stderr.toString(), /FIXTURE-MVAC verify/);
+
+  // doctor reads the same directory: nothing missing, and --strict passes
+  await withHome(home, () => capture(() => init.run([], { cwd: dir })));
+  mkdirSync(join(dir, 'dist'), { recursive: true });
+  writeFileSync(join(dir, 'dist/cli.js'), '// built\n');
+  mkdirSync(join(dir, 'node_modules'), { recursive: true });
+  const strict = await withHome(home, () => doctorReport(dir, true));
+  const hooks = line(strict.lines, 'hooks');
+  assert.ok(
+    hooks.includes(`core.hooksPath is ${expanded} `),
+    'doctor names the path git will use',
+  );
+  assert.doesNotMatch(hooks, /missing in/, 'a shim that is there is never reported missing');
+  assert.match(hooks, /pre-commit runs multivac/);
+  assert.match(hooks, /pre-push runs multivac/);
+  assert.equal(strict.exit, 0, '--strict passes a gate that is armed');
+});
+
+test('an absolute foreign hooksPath refuses, wires and reports exactly as a relative one does', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  const foreign = foreignDir();
+  mkdirSync(foreign, { recursive: true });
+  const theirs = '#!/bin/sh\nmake lint\n';
+  writeFileSync(join(foreign, 'pre-commit'), theirs);
+  chmodSync(join(foreign, 'pre-commit'), 0o755);
+  git(dir, 'config', 'core.hooksPath', foreign);
+
+  const r = await installHooks(dir);
+  assert.equal(r.strategy, 'alongside');
+  assert.equal(r.refused.length, 1);
+  assert.equal(r.refused[0].path, `${foreign}/pre-commit`);
+  assert.match(r.refused[0].fix, /append this line to .*\/pre-commit: mvac verify \|\| exit 1/);
+  assert.equal(readFileSync(join(foreign, 'pre-commit'), 'utf8'), theirs, 'byte-untouched');
+  assert.deepEqual(r.installed, ['pre-push'], 'the free name still got the shim');
+
+  // doctor names the same state, read from the same directory
+  await capture(() => init.run([], { cwd: dir }));
+  const hooks = line((await doctorReport(dir)).lines, 'hooks');
+  assert.match(hooks, /never repoints/);
+  assert.match(hooks, /pre-commit does not run multivac → append: mvac verify \|\| exit 1/);
+  assert.match(hooks, /pre-push runs multivac/);
+  assert.doesNotMatch(hooks, /pre-push missing/);
+
+  // a taken name already running multivac is wired — no refusal, no rewrite
+  const dir2 = tmp();
+  gitInit(dir2);
+  const wired = foreignDir();
+  mkdirSync(wired, { recursive: true });
+  const ours = '#!/bin/sh\nmake lint\nmvac verify || exit 1\n';
+  writeFileSync(join(wired, 'pre-commit'), ours);
+  git(dir2, 'config', 'core.hooksPath', wired);
+  const r2 = await installHooks(dir2);
+  assert.deepEqual(r2.wired, [`${wired}/pre-commit`]);
+  assert.deepEqual(r2.refused, []);
+  assert.equal(readFileSync(join(wired, 'pre-commit'), 'utf8'), ours);
+
+  // husky's own directory named the long way: its gate is untouched, ours goes
+  // in beside it, and hooksPath stays exactly as configured
+  const dir3 = tmp();
+  gitInit(dir3);
+  mkdirSync(join(dir3, '.husky'));
+  writeFileSync(join(dir3, '.husky/pre-commit'), 'npm test\n');
+  git(dir3, 'config', 'core.hooksPath', join(dir3, '.husky'));
+  const r3 = await installHooks(dir3);
+  assert.equal(r3.strategy, 'alongside');
+  assert.deepEqual(r3.managers, ['.husky/']);
+  assert.equal(readFileSync(join(dir3, '.husky/pre-commit'), 'utf8'), 'npm test\n');
+  assert.ok(existsSync(join(dir3, '.husky/pre-push')), 'free name got the shim');
+  assert.equal(git(dir3, 'config', 'core.hooksPath'), join(dir3, '.husky'));
+});
+
+test('our own hooks dir spelled absolutely is ours, not a foreign gate', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  git(dir, 'config', 'core.hooksPath', join(dir, '.multivac/hooks'));
+
+  const r = await installHooks(dir);
+  assert.equal(r.strategy, 'fresh', 'the long spelling names the same directory');
+  assert.equal(r.dir, '.multivac/hooks');
+  assert.deepEqual(r.installed, ['pre-commit', 'pre-push']);
+  assert.ok(existsSync(join(dir, '.multivac/hooks/pre-commit')));
+  assert.equal(
+    git(dir, 'config', 'core.hooksPath'),
+    '.multivac/hooks',
+    'normalised to the spelling that travels with a clone — the same directory',
+  );
+  await capture(() => init.run([], { cwd: dir }));
+  const hooks = line((await doctorReport(dir)).lines, 'hooks');
+  assert.match(hooks, /core\.hooksPath ok/);
+  assert.doesNotMatch(hooks, /installs alongside/);
+
+  // and doctor answers the same on a checkout nothing has normalised yet —
+  // the long spelling is ours, so the gate is armed and --strict says so
+  git(dir, 'config', 'core.hooksPath', join(dir, '.multivac/hooks'));
+  mkdirSync(join(dir, 'dist'), { recursive: true });
+  writeFileSync(join(dir, 'dist/cli.js'), '// built\n');
+  mkdirSync(join(dir, 'node_modules'), { recursive: true });
+  const abs = await doctorReport(dir, true);
+  assert.equal(abs.exit, 0, 'the long spelling of our own dir is armed too');
+  assert.match(line(abs.lines, 'hooks'), /core\.hooksPath ok/);
+
+  // the repo's own .git/hooks gate still chains first, and its exit code wins
+  const dir2 = tmp();
+  gitInit(dir2);
+  git(dir2, 'config', 'core.hooksPath', join(dir2, '.multivac/hooks'));
+  saleorHooks(dir2, 3);
+  const r2 = await installHooks(dir2);
+  assert.equal(r2.strategy, 'chained');
+  assert.deepEqual(r2.chained, ['.git/hooks/pre-commit']);
+  assert.equal(r2.preCommit, 'hook');
+  assert.equal(runHook(dir2, '.multivac/hooks/pre-commit').status, 3);
+
+  // and MV-44's fresh-clone fallback arms under the same spelling
+  const dir3 = tmp();
+  gitInit(dir3);
+  git(dir3, 'config', 'core.hooksPath', join(dir3, '.multivac/hooks'));
+  writeFileSync(join(dir3, '.pre-commit-config.yaml'), 'repos: []\n');
+  const bin = stubPreCommit(dir3);
+  const r3 = await withPath(`${bin}:${SYS}`, () => installHooks(dir3));
+  assert.equal(r3.strategy, 'chained');
+  assert.equal(r3.preCommit, 'run');
+  assert.match(
+    runHook(dir3, '.multivac/hooks/pre-commit', `${bin}:${SYS}`).stdout,
+    /PC-GATE run --hook-stage pre-commit/,
+  );
+});
+
+test('doctor reads the resolved directory: an inherited absolute hooksPath is not a missing shim', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  const foreign = foreignDir();
+  git(dir, 'config', 'core.hooksPath', foreign);
+  await capture(() => init.run([], { cwd: dir }));
+
+  // a runner the shim can find, so `armed` is about the path, not the runner
+  mkdirSync(join(dir, 'dist'), { recursive: true });
+  writeFileSync(join(dir, 'dist/cli.js'), '// built\n');
+  mkdirSync(join(dir, 'node_modules'), { recursive: true });
+
+  const hooks = line((await doctorReport(dir)).lines, 'hooks');
+  assert.match(hooks, /pre-commit runs multivac/);
+  assert.match(hooks, /pre-push runs multivac/);
+  assert.doesNotMatch(hooks, /missing in/, 'a shim that is there is never reported missing');
+  assert.equal((await doctorReport(dir, true)).exit, 0, '--strict passes a gate that is armed');
+
+  // and --strict still fails when the gate really is down
+  rmSync(join(foreign, 'pre-commit'));
+  const strict = await doctorReport(dir, true);
+  assert.equal(strict.exit, 1);
+  assert.match(line(strict.lines, 'hooks'), /pre-commit missing in/);
 });

@@ -156,6 +156,24 @@ picks one of three strategies, and says which one it used:
 | `.git/hooks/<name>`, `.pre-commit-config.yaml`, `lefthook.yml` | **chained** | same shims; each runs the repo's own `.git/hooks` hook first, its exit code wins — and a `.pre-commit-config.yaml` with no hook installed runs via `pre-commit run` |
 | `core.hooksPath` set elsewhere, or `.husky/` | **alongside** | never repoint — the shim is written INTO that directory where the name is free |
 
+`core.hooksPath` is read **the way git reads it** (MV-79), with `git config
+--path`: a leading `~` or `~user` expands to the home directory first, and what
+that leaves names the directory outright if it is absolute, otherwise resolving
+against the root of the working tree, because that is where git stands when it
+runs a hook. So a repo that spelled its hooks dir `/home/you/proj/.githooks`
+gets the shim in `/home/you/proj/.githooks`; one that spelled it `~/.githooks`
+gets it in `$HOME/.githooks`, not in a directory named `~` inside the checkout;
+and one that spelled multivac's own dir the long way is recognised as already
+ours rather than treated as a foreign gate.
+
+A linked `git worktree` inherits its main checkout's value verbatim through the
+shared config, and which branch it lands on follows from the spelling it
+inherited: relative, it resolves against the worktree's own root, so the
+worktree has its own `.multivac/hooks`; absolute, it names the **main
+checkout's** directory, so the worktree installs alongside into that. `init`
+writes into the directory it resolved and `doctor` reads from the same one, so
+the report is about the directory git will actually run.
+
 Where a foreign hook name is taken and does not run multivac, `init` refuses
 that hook and prints the exact line to add:
 

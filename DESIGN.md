@@ -354,6 +354,25 @@ the hook name is free, and a taken name that does not run multivac is a
 refusal carrying the exact line to add. `doctor` reports the coexistence
 state either way.
 
+Which directory that is comes first.
+**`core.hooksPath` is read the way git reads it**, in git's own order: with
+`git config --path`, so a leading `~` or `~user` expands to the home directory
+first; what that leaves names the directory outright if it is absolute, and
+otherwise resolves against the worktree root, because git moves there before
+running a hook. The same resolution decides whether the directory is multivac's
+own, so `.multivac/hooks` and its absolute spelling are one gate and not two.
+A linked `git worktree` inherits the MAIN checkout's value verbatim through the
+shared config, and the two spellings part company there: the relative one
+resolves against the worktree's own root, so the worktree has its own gate; the
+absolute one names the main checkout's directory, so the worktree installs
+alongside into it. Both land where git will look, which is the whole point.
+`install` writes into the resolved directory and `doctor` reads from it, one
+computation, because the alternative is what MV-79 was written for: a configured
+value joined onto the repo root, shims in a tree named after the machine's
+filesystem — or in a directory literally named `~` — while `init` printed that
+path as the place they went and `doctor` called them missing from the directory
+they were sitting in.
+
 A versioned hook still needs something to run. The shim resolves a runnable
 multivac in a fixed order — `mvac` on PATH, then `npx --no-install multivac`
 when the package sits in the repo's `node_modules`, then the repo-local build
