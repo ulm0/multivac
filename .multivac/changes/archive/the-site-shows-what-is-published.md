@@ -1,9 +1,9 @@
 ---
 slug: the-site-shows-what-is-published
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
