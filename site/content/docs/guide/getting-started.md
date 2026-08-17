@@ -66,8 +66,9 @@ mvac init . --provider claude,cursor --sdd opsx --grapher graphify
 Flags are configuration, not one-shot magic: they land in
 `.multivac/config.yml`. Adopting Cursor in three months is one line in that
 file plus `mvac doors` — not re-running init. The default is `doors: [agents]`:
-`AGENTS.md` alone, already read by Codex, opencode, Cursor, and Claude Code.
-`--provider claude` is what adds the symlink.
+`AGENTS.md` alone, already read by Codex, opencode and Cursor. Claude Code reads
+`CLAUDE.md` and not `AGENTS.md`, which is the whole reason the `claude` door is a
+symlink — `--provider claude` is what adds it.
 
 ## What the empty brain says
 

@@ -63,8 +63,10 @@ rendered, greppable, no parallel file to drift. One leg per line:
   rejected when the anchor is parsed with a translation hint
   (`\s` → `[[:space:]]`, `\w` → `[[:alnum:]_]`), never silently accepted:
   macOS git grep drops them silently, which turns a tombstone into a vacuous
-  pass. Every engine (git grep, ripgrep, built-in fallback) implements the
-  same accepted subset, so a passing anchor passes on every machine.
+  pass. The dialect is pinned to that lowest common denominator even though
+  multivac runs one matcher of its own — a `RegExp` compiled from the ERE, in
+  process — so an anchor stays readable by `git grep` and by the next person,
+  and passes the same way on every machine.
 
 ## Five modes, one mechanism
 
@@ -127,12 +129,14 @@ in append-only history; the last leg kills the upsert bypass.
 
 Two rules are normative, measured against real repos, not theorized:
 
-- **Statement-normalized matching for SQL and config surfaces.** Real DDL
-  splits one grant across lines; a per-line tombstone over DDL has an escape
-  by construction. On `.sql` and config files the matcher normalizes per
-  statement — whitespace runs, newlines included, collapse to one space —
-  before the regex runs. Line-based `absent` over DDL is unsound and
-  multivac does not offer it.
+- **Statement-normalized matching for SQL.** Real DDL splits one grant across
+  lines; a per-line tombstone over DDL has an escape by construction. On `.sql`
+  files the matcher normalizes per statement — whitespace runs, newlines
+  included, collapse to one space — before the regex runs. Line-based `absent`
+  over DDL is unsound and multivac does not offer it. **Only `.sql`**: every
+  other file, config included, is matched per line, so a value split across
+  lines in YAML or TOML still escapes a line-based tombstone. Write the leg
+  against a shape that survives one line, or anchor the SQL instead.
 - **Append-only history takes the latest definition or the ratchet.**
   `present` over `migrations/*.sql` proves "was built this way", never
   "still is"; `unique` and `count` conflate history with HEAD. Over an
@@ -161,7 +165,7 @@ loosening below `[absent]` — unblocking the tombstone — is refused.
 ## Self-healing, states, exit codes
 
 When a `present` leg fails in its declared glob, the whole repo is searched
-before reporting. Four states, not two:
+before reporting. Six states, not two:
 
 - **ok** — every leg holds.
 - **moved** — a `present` leg with exactly one match outside its glob: the
@@ -172,6 +176,10 @@ before reporting. Four states, not two:
   For `absent`/`count`/`each` this is a blocking failure: a directory rename
   would silently green every tombstone otherwise, and a universal quantified
   over nothing proves nothing. For `present`/`unique` it reports as broken.
+- **pending** — a claim an open change declared before its code exists.
+  Informational, never blocking, never self-healed.
+- **unevaluated** — a declared repo is not on disk, so its legs were not read
+  at all. Not a pass: `multivac repos sync`, then re-read.
 
 One exit matrix, no second answer:
 
@@ -191,6 +199,9 @@ still amend.
 ```txt
 $ mvac verify
 82 claims · 48 anchored (59%)
+  unanchored: INV-03, INV-08, INV-11, … (34)
+  read      backend: origin/main @ abc1234 — fetched 2h ago
+  read      brain: working tree on main @ def5678 — the brain's own repo
 
   ok         44
   moved       3

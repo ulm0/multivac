@@ -2,7 +2,8 @@
 
 > A **brain-driven development** tool: one brain repo from which an entire
 > ecosystem is developed — the knowledge base, its verification, and the
-> change that crosses repos. Destination: OSS. Status: design, zero code.
+> change that crosses repos. Destination: OSS. Status: released on npm — this
+> document is the design record, not the release state; see CHANGELOG.md.
 >
 > **Named 2026-08-13** after Asimov's world-computer: the central brain
 > humanity consults for every decision, accumulating all knowledge across
@@ -1029,7 +1030,6 @@ multivac verify   # anchors + tombstones + derived numbers. No LLM, no network, 
 multivac count    # dry-run one anchor leg: match count + per-file breakdown, verify's own matcher
 multivac help     # help anchor — the grammar on one screen; help <command> — usage
 multivac seed     # reads boundaries, proposes law rows + map stubs (LLM-optional)
-multivac anchor   # optional helper that proposes anchors (LLM-optional)
 multivac doors    # projects AGENTS.md to the declared targets
 multivac doctor   # what is declared, what was found, what is degraded, how to fix it
 multivac repos    # sync — clone declared-but-missing repos (--shallow for verify-only machines)
@@ -1051,8 +1051,9 @@ validation flow is **accept / correct / discard**, in batches ordered by
 blast radius (see Risks); whatever stays unvalidated remains marked
 `proposed`, never blocking.
 
-The LLM boundary, exhaustively: **LLM-optional** — `anchor` (proposes
-anchors), `seed` (proposes rows), and the interview. **Guaranteed
+The LLM boundary, exhaustively: **LLM-optional** — `seed` (proposes rows) and
+the interview. Anchor drafting is a skill step the agent performs, never a
+command the tool ships. **Guaranteed
 deterministic, never a model call** — `verify`, `doors`, `doctor`, `repos`,
 and the mechanics of `change` plan/apply/land/close. The tool works end to
 end with no API key; the LLM-optional three only draft what a human then
@@ -1277,7 +1278,7 @@ Two axes that "full-fledged" conflates:
 
 | axis | day 1 | why |
 | --- | --- | --- |
-| **Capability** — the whole loop: `init`, `seed`, `verify`, `anchor`, `doors`, `doctor`, hooks, **`change`** | **yes** | fixture and requirements exist; `change` ran by hand twice on 08-12/13 |
+| **Capability** — the whole loop: `init`, `seed`, `verify`, `count`, `doors`, `doctor`, `repos`, hooks, **`change`** | **yes** | fixture and requirements exist; `change` ran by hand twice on 08-12/13 |
 | **Compatibility** — 5 agents × 2 SDD × 2 graphers | **two adapters** | nine integrations on day 1 are nine to maintain on day 2, against APIs that change on their own |
 
 And three things **don't accelerate with more agents**, because they are

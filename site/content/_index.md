@@ -5,7 +5,7 @@ layout: hextra-home
 
 {{< hextra/hero-badge link="docs/guide/install" >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>v0.2.0</span>
+  <span>v0.3.0</span>
   {{< icon name="arrow-circle-right" attributes="height=14" >}}
 {{< /hextra/hero-badge >}}
 
@@ -46,7 +46,7 @@ layout: hextra-home
   >}}
   {{< hextra/feature-card
     title="A door in every harness"
-    subtitle="One canonical `AGENTS.md`, projected per harness as symlink, stub, or nothing at all where the harness already reads it. Nine entries, each verified against its vendor's own docs."
+    subtitle="One canonical `AGENTS.md`, projected per harness as symlink, stub, or nothing at all where the harness already reads it. Eight entries, each verified against its vendor's own docs."
     link="docs/reference/integrations"
   >}}
   {{< hextra/feature-card
@@ -78,9 +78,9 @@ believe is still true. CLI alias: `mvac`.
 Where this is
 {{< /hextra/hero-section >}}
 
-An early build, pre-release, `npx multivac init` away. It is its
+Published on npm, `npx multivac init` away. It is its
 own first user: multivac's law lives in this repo, and every change to it is
-held by the same hooks you would install, running `mvac verify --strict`.
+held by the same hooks you would install; CI re-runs them as `mvac verify --strict`.
 The design was validated against a real
 production ecosystem before the code existed — 82 invariants collected by
 hand, 95.1% of them anchorable.

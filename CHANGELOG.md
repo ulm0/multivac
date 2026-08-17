@@ -10,6 +10,52 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## 0.3.0 — 2026-08-17
+
+One behaviour changed in a way that can newly refuse a repository that was
+passing. Read the first item before upgrading.
+
+**Changed — read before upgrading**
+
+- The anchor scanner **skips a line only when that line carries a complete
+  anchor comment** — the opener the grammar defines, and the `-->` that closes
+  it. Until now it skipped any line containing the substring `@anchor`
+  anywhere, so `const evade = "user.name"; // @anchor` in your source was
+  invisible to every leg: an `absent` tombstone over that pattern reported
+  green at exit 0, and the same line without the seven-character suffix broke
+  it. Those lines are now scanned. **If your repository has source, fixtures or
+  docs mentioning `@anchor` outside a real anchor comment, a tombstone or a
+  `count=N` ratchet over them can start refusing — that is the defect being
+  fixed, not a regression.** `mvac count '<the leg>'` shows you the new match
+  set before you decide.
+
+  The ceiling, stated rather than implied: a line carrying **both** the opener
+  and `-->` still hides, anywhere on the line, in any file, whether or not it
+  is a well-formed anchor. The scanner tests shape and never grammar, because
+  the fixtures that quote whole anchors inside string literals must keep
+  hiding and a forgery is byte-identical to them in shape. Closing that needs
+  something which is not a test on one line's shape. (MV-82)
+
+**Documentation**
+
+- The site sets its own type, and serves it from its own origin. Two variable
+  faces — one for human language, one for machine output — with the width axis
+  carrying the distinction, both stored in the repository with their licences.
+  No typeface is fetched from a third party at page load, which is the same
+  promise `verify` makes about the network. Nothing an installed tool does
+  changes. (MV-83)
+- Twenty-one statements across the site, `DESIGN.md` and the shipped skill were
+  found to contradict the code and were corrected. The install page told
+  readers the binary prints `1.0.0`, that the package is `private: true` and
+  that it is unreleased — none of which has ever been true of a published
+  multivac. Others miscounted the door registry, the command list, the door
+  kinds and the leg states, or quoted output the tool does not print. (MV-84)
+- The site's pages now carry **exactly one** version string, and a test holds
+  it equal to the manifest. The three pinned version sites — tag, manifest,
+  badge — were already held equal by MV-68 and MV-77; nothing covered a version
+  somebody typed into prose, which is how `1.0.0` survived on the install page
+  under a law table with 83 anchored rows. (MV-84)
+
 ## 0.2.0 — 2026-08-17
 
 Five of these change behaviour for anyone already running the tool. Read this

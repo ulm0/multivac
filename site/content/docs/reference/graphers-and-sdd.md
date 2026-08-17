@@ -232,7 +232,7 @@ exits non-zero is a warning that hands the command back — `close` never fails
 because a foreign tool did:
 
 ```txt
-graph graphify @ brain: binary not found — refresh skipped; npm i -g graphify, then `graphify update .` there
+graph graphify @ brain: binary not found — refresh skipped; uv tool install graphifyy, then `graphify update .` there
 graph graphify @ api: refresh failed (…) — run `graphify update .` there by hand
 ```
 

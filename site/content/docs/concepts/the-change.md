@@ -56,9 +56,16 @@ Because the claims were declared up front, `close` doesn't ask whether
 someone updated the docs — it re-runs `verify` **scoped to the declared
 claims** and refuses to archive until:
 
-- every claim in field 4 resolves ok on its new anchors,
-- every "amends INV-xx" ended consistent — row and code agree,
-- no blocking leg broke anywhere the change touched.
+- every claim in field 4 resolves ok or moved on its new anchors,
+- every declared repo is recorded landed,
+- the SDD's own artifacts exist, where one is declared.
+
+That scope is deliberate and it is narrower than it sounds: `close` evaluates
+the **claim IDs the change declared**, not the rows under `touches` or
+`retires`, and it never runs an unscoped verify. An amended row that nobody
+listed as a claim is not re-checked here — the pre-commit hook is what catches
+it, on every commit, which is the earlier and stricter place. Declare the rows
+you amend as claims if you want `close` to be the one that answers.
 
 Updating the documentation stops being discipline and becomes mechanism.
 Nothing new is invented: the change declares before what today gets checked
@@ -81,7 +88,9 @@ change is archived:
 $ mvac change close points-expire
 INV-02: ok
 archived -> .multivac/changes/archive/points-expire.md
-archived — commit this: git -C ~/eco/brain add -A .multivac/changes && git commit -m "Archive the points-expire change"
+archived — commit this on a branch; nothing lands on main directly:
+  git -C ~/eco/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
+  then open MR close-points-expire -> main
 
 ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
   - [ ] tell support before the flag flips
@@ -102,13 +111,15 @@ ritual is prose the tool only ever prints.
   are present, what the order implies, what the change touches. A declared
   repo missing locally gets cloned here — an explicit operation that needs
   it, the same contract as `git submodule update`.
-- **apply** branches each repo from `origin/main` (falling back to `main`);
-  a repo that doesn't exist is created with its consumer door. The edits and
-  commits are yours, on those branches. A declared SDD adapter's apply step
-  runs here automatically (`--no-sdd` skips it for one change).
+- **apply** branches each repo from its default branch, resolved in that
+  order: where `origin/HEAD` points, then this machine's `init.defaultBranch`,
+  then `main`, then `master` — never a fixed name. A repo that doesn't exist is
+  created with its consumer door. The edits and commits are yours, on those
+  branches. A declared SDD adapter's apply step is **printed** here for you to
+  run (`--no-sdd` skips the printing and the later gate for one change).
 - **land** reports the MR order the stages dictate: what is ready to push
-  now, what is blocked behind an earlier stage. `--landed <repo>` records a
-  merge.
+  now, what is blocked behind an earlier stage. It opens nothing — multivac
+  has no forge integration — and `--landed <repo>` is you recording a merge.
 - **close** is the gate above. On success the change file is archived; the
   rows the change promised are already in the law, enacted by the human.
 
