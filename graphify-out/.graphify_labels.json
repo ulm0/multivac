@@ -19,7 +19,7 @@
   "17": "Top-level keys",
   "18": "SDD adapters",
   "19": "Implementation Plan: The release says what changed",
-  "20": "detect.ts",
+  "20": "adapters.test.ts",
   "21": "Tasks: [FEATURE NAME]",
   "22": "Contributor Covenant Code of Conduct",
   "23": "integrations.md",
@@ -133,7 +133,7 @@
   "131": "speckit-taskstoissues/SKILL.md",
   "132": "[CHECKLIST TYPE] Checklist: [FEATURE NAME]",
   "133": "The project document is gated on existing",
-  "134": "A finished change is not a pending one",
+  "134": "refresh.ts",
   "135": "changelog.test.ts",
   "136": "composition.md",
   "137": "ls-files-counts-each-file-once.md",
@@ -142,5 +142,6 @@
   "140": "git.ts",
   "141": "site-version.test.ts",
   "142": "change.test.ts",
-  "143": "normalize.ts"
+  "143": "normalize.ts",
+  "144": "A finished change is not a pending one"
 }
