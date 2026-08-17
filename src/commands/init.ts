@@ -6,6 +6,7 @@
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
+import { PROJECTED_PATH, recordBody, selfVersion } from '../lib/version.js';
 import { doorTargets, grapherNames, sddNames } from '../adapters/registry.js';
 import { doorsCommand } from './doors.js';
 import {
@@ -97,6 +98,16 @@ function parseFlags(argv: string[]): Flags {
     }
   }
   return f;
+}
+
+/**
+ * The record: which version this brain was deliberately brought to (MV-86).
+ * Tool-owned, and written only here and by `doors --adopt` — a record that
+ * moved as a side effect of any command would silence the notice without the
+ * upgrade having been taken.
+ */
+async function stamp(brainDir: string): Promise<void> {
+  await writeFile(join(brainDir, PROJECTED_PATH), recordBody(selfVersion()));
 }
 
 /** Render .multivac/config.yml: flags land as keys, detections as comment proposals. */
@@ -309,6 +320,7 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // (change apply puts one checkout per change there — never committed).
   await mkdir(join(dir, '.multivac', 'cache'), { recursive: true });
   await writeIfMissing(join(dir, '.multivac', '.gitignore'), 'cache/\nworktrees/\n');
+  await stamp(dir);
   const cfgPath = join(dir, '.multivac', 'config.yml');
   if (await exists(cfgPath)) {
     report('init: .multivac/config.yml kept — edit it directly, then `multivac doors`');

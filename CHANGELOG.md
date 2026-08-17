@@ -12,6 +12,26 @@ keeping a second one (MV-78).
 
 ## Unreleased
 
+**Added**
+
+- **A brain now records the version it was deliberately brought to**, in
+  `.multivac/projected.yml`, and every command tells you when your binary
+  disagrees — in colour, with the command that closes the gap. Upgrading the
+  binary never upgraded a brain: `npm i -g multivac@latest` replaces the
+  projector, not the doors, skills, hook shims and harness settings it already
+  wrote. Nothing is refused over a version; enforcement degrades, it never locks
+  you out.
+  - `mvac doors --adopt` re-projects **and** records. Bare `mvac doors`
+    re-projects and leaves the record alone on purpose, so the notice survives a
+    run made for an unrelated reason rather than going quiet without the upgrade
+    having been taken.
+  - `requires: ">=X.Y.Z"` in `.multivac/config.yml`, hand-authored, declares the
+    minimum your team will trust. A binary below it gets the loudest notice.
+    The tool never writes this field.
+  - Existing brains have no record, which reads as an absence and not as an
+    ancient version: you get the mildest notice, once, with the command to fix
+    it. (MV-86, amending MV-29)
+
 **Changed — read before upgrading**
 
 - A command now **refuses an argument it does not declare** and exits 2, where

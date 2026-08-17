@@ -319,6 +319,26 @@ there:
 pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain)
 ```
 
+### `requires`
+
+The minimum multivac this team will trust. **Hand-authored — the tool never
+writes this field**, because a floor is a decision and multivac does not answer
+for a human's decisions.
+
+```yaml
+requires: ">=X.Y.Z"
+```
+
+Grammar is `>=X.Y.Z` and nothing else. A floor gets a floor's grammar: `^0.3` or
+`>=0.3 <1` needs a semver range parser, which would be a third runtime
+dependency, and the law pins two. A malformed value is **refused by name**, not
+ignored — silently dropping it would leave you believing a gate is declared that
+is not.
+
+A binary below the floor gets the loudest notice on every run and is **not
+refused**. Nothing here changes an exit code: enforcement degrades, it never
+locks you out (MV-86).
+
 ### `repos`
 
 | | |
@@ -398,6 +418,26 @@ $ mvac verify
 $ mvac verify
 no .multivac/config.yml in /private/tmp — run `multivac init .` to create it
 ```
+
+## `.multivac/projected.yml` — not config
+
+A second file lives beside the config, and it is **not** yours to edit:
+
+```yaml
+# Written by multivac, never by hand.
+version: X.Y.Z
+```
+
+It records the version this brain was **deliberately brought to** — not whatever
+binary last touched it. `init` writes it; `mvac doors --adopt` moves it; nothing
+else does. Bare `mvac doors` re-projects and leaves it alone on purpose, so the
+notice survives a run you made for an unrelated reason.
+
+Upgrading the binary does not upgrade a brain: `npm i -g multivac@latest`
+replaces the projector, not the projections it already wrote. The record is what
+lets every command tell you the two have drifted, and name the command that
+closes it. It is **provenance, not integrity** — it says which version wrote
+these files, never that they still are what was written (MV-86).
 
 ## Layout
 
