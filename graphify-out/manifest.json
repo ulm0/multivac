@@ -55,8 +55,8 @@
     "semantic_hash": ""
   },
   "src/anchor/parse.ts": {
-    "mtime": 1786733485.1140673,
-    "ast_hash": "f238b808497cedbeaab48b16c8159163",
+    "mtime": 1786940669.2681034,
+    "ast_hash": "e42f1ccb84426b5536125ae122ebc439",
     "semantic_hash": ""
   },
   "src/change/file.ts": {
@@ -85,8 +85,8 @@
     "semantic_hash": ""
   },
   "src/commands/doctor.ts": {
-    "mtime": 1786929796.5987287,
-    "ast_hash": "02903c1f7888a7d10269a3bfe77ef63d",
+    "mtime": 1786940669.2683492,
+    "ast_hash": "44f4dd4b3dea6f9d675e94f677e71e58",
     "semantic_hash": ""
   },
   "src/commands/doors.ts": {
@@ -120,8 +120,8 @@
     "semantic_hash": ""
   },
   "src/commands/verify.ts": {
-    "mtime": 1786862447.6076083,
-    "ast_hash": "96eac44a2b0119e9a3bc923b9d8b6a93",
+    "mtime": 1786940669.2687533,
+    "ast_hash": "5e93abc1b36d05f40b7c1bfff9b5e6de",
     "semantic_hash": ""
   },
   "src/doors/block.ts": {
@@ -145,7 +145,7 @@
     "semantic_hash": ""
   },
   "src/hooks/install.ts": {
-    "mtime": 1786929796.5988734,
+    "mtime": 1786934421.2633264,
     "ast_hash": "09320acea2011e548241410c4252b0d5",
     "semantic_hash": ""
   },
@@ -380,8 +380,8 @@
     "semantic_hash": ""
   },
   "test/verify/verify.test.ts": {
-    "mtime": 1786834495.8374882,
-    "ast_hash": "ef8bc218739ff978f4036f95b13ac8db",
+    "mtime": 1786940669.269086,
+    "ast_hash": "0c1d033ddf83665e7b2c15ba0fadf57e",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -630,8 +630,8 @@
     "semantic_hash": ""
   },
   ".multivac/invariants.md": {
-    "mtime": 1786930302.8894176,
-    "ast_hash": "be743ca6f73b60ff26ce1bfe1f97104e",
+    "mtime": 1786940683.5669796,
+    "ast_hash": "2606fa63d6b3e096f65f0014dfce8990",
     "semantic_hash": ""
   },
   ".multivac/ritual.md": {
@@ -700,8 +700,8 @@
     "semantic_hash": ""
   },
   "site/content/docs/concepts/invariants.md": {
-    "mtime": 1786687460.614298,
-    "ast_hash": "4bafd149fe45a0130a7a3b96709a0d1b",
+    "mtime": 1786940669.2667594,
+    "ast_hash": "4d2207ef1c9a5040018ca9c5712433d9",
     "semantic_hash": ""
   },
   "site/content/docs/concepts/philosophy.md": {
@@ -1260,7 +1260,7 @@
     "semantic_hash": ""
   },
   ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md": {
-    "mtime": 1786930302.8491802,
+    "mtime": 1786934401.2382176,
     "ast_hash": "ac34aa89d1b071c4ca0a1134d3a661db",
     "semantic_hash": ""
   },
@@ -1269,9 +1269,29 @@
     "ast_hash": "ab802b64266fd86571334c2d4f287f61",
     "semantic_hash": ""
   },
-  ".multivac/changes/enactment-is-gated-where-the-credential-lives.md": {
-    "mtime": 1786930302.8891983,
-    "ast_hash": "9f5ff249b2d387cacb376ae6959a8771",
+  ".multivac/changes/archive/enactment-is-gated-where-the-credential-lives.md": {
+    "mtime": 1786940683.5665035,
+    "ast_hash": "86ec8a5676054c201d08420554671a01",
+    "semantic_hash": ""
+  },
+  "specs/005-enactment-is-gated-where-the-credential-lives/checklists/requirements.md": {
+    "mtime": 1786940669.2670588,
+    "ast_hash": "d1bcac1000157d010f2e09d01d583a6b",
+    "semantic_hash": ""
+  },
+  "specs/005-enactment-is-gated-where-the-credential-lives/plan.md": {
+    "mtime": 1786940669.2673132,
+    "ast_hash": "bc0955ce39cb14eb9e1896a5013e6894",
+    "semantic_hash": ""
+  },
+  "specs/005-enactment-is-gated-where-the-credential-lives/spec.md": {
+    "mtime": 1786940669.2675357,
+    "ast_hash": "fa4730e96aac067d2938ade831298ca9",
+    "semantic_hash": ""
+  },
+  "specs/005-enactment-is-gated-where-the-credential-lives/tasks.md": {
+    "mtime": 1786940669.267773,
+    "ast_hash": "c452e3f865ab8e9bc83aa1eb0804a751",
     "semantic_hash": ""
   }
 }
