@@ -1,9 +1,9 @@
 ---
 slug: the-rows-say-what-they-check
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
