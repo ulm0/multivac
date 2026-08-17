@@ -86,7 +86,10 @@ function parseFlags(argv: string[]): Flags {
         break;
       default:
         if (a.startsWith('-')) {
-          throw new Error(
+          // MV-85: a usage error is exit 2, and a throw is mapped to 1 by the
+          // dispatcher. init refused correctly and reported the wrong code, so
+          // the documented matrix was false for it alone.
+          throw new UsageError(
             `init: unknown flag ${a} — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet`,
           );
         }
@@ -255,8 +258,20 @@ async function ensureVisibleToGit(dir: string, report: Report): Promise<void> {
   }
 }
 
+/** A refusal about the command line itself: exit 2, never 1 (MV-85). */
+class UsageError extends Error {}
+
 async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
-  const f = parseFlags(argv);
+  let f: Flags;
+  try {
+    f = parseFlags(argv);
+  } catch (e) {
+    if (e instanceof UsageError) {
+      warn(e.message);
+      return 2;
+    }
+    throw e;
+  }
   // --quiet: the whole report goes, banner included. Refusals stay on stderr.
   const report: Report = f.quiet ? () => {} : say;
   const dir = resolve(ctx.cwd, f.dir ?? '.');

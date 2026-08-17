@@ -23,7 +23,15 @@ const USAGE = [
 
 async function run(argv: string[], ctx: CommandContext): Promise<number> {
   const args = argv.filter((a) => !a.startsWith('-'));
-  if (argv.length !== args.length || args.length === 0 || args.length > 2) {
+  // MV-85: count already exited 2 on a flag, but printed its usage without ever
+  // saying WHICH argument it did not understand — the reader was left to diff
+  // their command line against the usage block. Name it, then print the usage.
+  const flag = argv.find((a) => a.startsWith('-'));
+  if (flag !== undefined) {
+    warn(`count: unknown flag "${flag}" — count takes '<spec>' [dir] and no flags`);
+    return 2;
+  }
+  if (args.length === 0 || args.length > 2) {
     for (const l of USAGE) warn(l);
     return 2;
   }

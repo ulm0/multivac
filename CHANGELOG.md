@@ -10,6 +10,29 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## Unreleased
+
+**Changed — read before upgrading**
+
+- A command now **refuses an argument it does not declare** and exits 2, where
+  four of the nine used to accept one and carry on. This can refuse a command
+  line that worked before, so read the list:
+  - `mvac doctor --sttrict` used to run the report **without** the strict
+    assertion and exit **0** — a pipeline going green over a gate nobody had
+    asserted was armed. It now refuses and names the flag.
+  - `mvac doctor <dir>` and `mvac doors <dir>` used to **discard the directory**
+    and act on the working one. Neither command declares a directory. They now
+    refuse rather than answering about somewhere else.
+  - `mvac seed --anything` used to ignore the flag; `mvac init --badflag` exited
+    1 where the reference documents 2.
+  - `mvac count --anything` already exited 2 but printed only its usage; it now
+    names the argument it did not understand.
+
+  What each command takes is its `--help` (MV-69), and the refusal is measured
+  against exactly that. If a script of yours passes an argument a command never
+  read, it was already having no effect — the difference is that you are told.
+  (MV-85, strengthening MV-29)
+
 ## 0.3.0 — 2026-08-17
 
 One behaviour changed in a way that can newly refuse a repository that was
