@@ -4,7 +4,7 @@ weight: 1
 ---
 
 ```sh
-npx multivac init
+npx multivac@latest init
 ```
 
 That is the whole thing. No install, no clone, no global.
@@ -25,22 +25,22 @@ count is itself law — a third is a design change, not a convenience.
 for the first command you ever run against a repo:
 
 ```sh
-npx multivac doctor        # what it would find here
-npx multivac init          # write the brain
+npx multivac@latest doctor        # what it would find here
+npx multivac@latest init          # write the brain
 ```
 
 Once you know you want it, put it on your `PATH` so the hooks find it too:
 
 ```sh
-npm i -g multivac
-# or: pnpm add -g multivac
+npm i -g multivac@latest
+# or: pnpm add -g multivac@latest
 ```
 
 **The hooks care which one you did.** The shims try `mvac` on `PATH` first,
-then `npx --no-install multivac`, then a repo-local build. `npx --no-install`
+then `npx --no-install multivac@latest`, then a repo-local build. `npx --no-install`
 resolves a package already present in the project, not one it has to fetch —
 so a global install, or multivac as a devDependency of the brain, both arm the
-floor. `npx multivac` typed by hand does not, because nothing persists.
+floor. `npx multivac@latest` typed by hand does not, because nothing persists.
 
 An early build, pre-release. The CLI surface below is what ships
 today, and the parts still moving say so where they appear.
@@ -71,9 +71,11 @@ would be a tool nobody installs.
 ## Two names, one binary
 
 ```json
-"bin": {
-  "multivac": "dist/cli.js",
-  "mvac": "dist/cli.js"
+{
+  "bin": {
+    "multivac": "dist/cli.js",
+    "mvac": "dist/cli.js"
+  }
 }
 ```
 

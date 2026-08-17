@@ -26,7 +26,7 @@ it has not done yet is run against a multi-repo ecosystem — the shape it was
 designed for.
 
 ```sh
-npx multivac init
+npx multivac@latest init
 ```
 
 Or from source, to work on it:
