@@ -15,7 +15,7 @@ test('the version on the site home is the version the package declares', () => {
   assert.match(version, /^[0-9]+\.[0-9]+\.[0-9]+$/, 'package.json version is not a plain semver');
 
   const home = readFileSync(HOME, 'utf8');
-  const badge = /<span>v([0-9]+\.[0-9]+\.[0-9]+) · npx multivac init<\/span>/.exec(home);
+  const badge = /<span>v([0-9]+\.[0-9]+\.[0-9]+)[^<]*<\/span>/.exec(home);
   assert.ok(badge, `${HOME} no longer carries the version badge this test pins`);
   assert.equal(
     badge[1],
