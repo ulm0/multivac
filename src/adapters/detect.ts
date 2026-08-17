@@ -5,7 +5,7 @@ import { access, readdir } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import { doorTargets, type AdapterSpec } from './registry.js';
-import type { Config } from '../types.js';
+import type { Config, RepoEntry } from '../types.js';
 
 export interface AdapterStatus {
   name: string;
@@ -49,7 +49,28 @@ export interface SddRoot {
   /** The repo key, or `brain` for the brain itself. */
   scope: string;
   dir: string;
+  /**
+   * The adapter that applies HERE (MV-87): this repo's own `sdd:` when it
+   * declares one, the ecosystem's otherwise, and `undefined` when the repo
+   * opted out. Undefined is out of scope, never deficient — no scaffold, no
+   * gate, no notice.
+   */
+  sdd?: string;
 }
+
+/**
+ * The opt-out token for `repos.<key>.sdd`. A value rather than a parse case,
+ * so `repoEntry` keeps the one validator every repo key goes through; it
+ * cannot collide, since the registry's names are `opsx` and `speckit` and an
+ * unknown name is already reported with the known list.
+ */
+export const NO_SDD = 'none';
+
+/** Which SDD applies in one declared repo: its own, the ecosystem's, or none. */
+export const sddFor = (entry: RepoEntry | undefined, cfg: Config): string | undefined => {
+  const declared = entry?.sdd ?? cfg.sdd;
+  return declared === NO_SDD ? undefined : declared;
+};
 
 /**
  * Every directory an SDD tool's files may live in: the brain plus each
@@ -57,13 +78,21 @@ export interface SddRoot {
  * would refuse a change whose specs live in the code repo — and one that
  * searched them all silently would refuse without saying where it looked, so
  * each root carries the name the config gave it.
+ *
+ * Each root also carries the adapter that applies to it. Callers used to ask
+ * `cfg.sdd` once and treat the answer as the ecosystem's; that is the read
+ * MV-87 replaces, and resolving it here is what keeps every caller from
+ * re-deriving it differently.
  */
 export async function sddRoots(brain: string, cfg: Config): Promise<SddRoot[]> {
-  const roots: SddRoot[] = [{ scope: 'brain', dir: brain }];
+  // The brain's own entry when it declared one (brain==code), so a brain that
+  // opted out is treated the same as any other root that did.
+  const brainEntry = Object.values(cfg.repos).find((e) => e.isBrain);
+  const roots: SddRoot[] = [{ scope: 'brain', dir: brain, sdd: sddFor(brainEntry, cfg) }];
   for (const [key, e] of Object.entries(cfg.repos)) {
     if (e.isBrain) continue; // already the brain
     const d = resolve(brain, e.path);
-    if (await pathExists(d)) roots.push({ scope: key, dir: d });
+    if (await pathExists(d)) roots.push({ scope: key, dir: d, sdd: sddFor(e, cfg) });
   }
   return roots;
 }

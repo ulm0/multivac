@@ -211,3 +211,65 @@ test('a grapher that exits non-zero is a warning, never a failed close', async (
     /status: archived/,
   );
 });
+
+// --- MV-87: the first build reaches every declared, present repo ---
+
+/** A grapher whose BUILD command differs from its refresh — the distinction
+ *  `doctor` has always printed and the runner never asked. */
+const DECL_CREATE =
+  'graphers:\n' +
+  '  fakegraph:\n' +
+  '    artifact: fakegraph-out/graph.json\n' +
+  '    refresh: fakegraph update .\n' +
+  '    create: fakegraph build .\n' +
+  '    install: npm i -g fakegraph\n';
+
+/** Writes the artifact on `build`, appends on `update`. */
+const BUILD_OR_REFRESH =
+  '#!/bin/sh\nmkdir -p fakegraph-out\n' +
+  'case "$1" in build) echo built > fakegraph-out/graph.json;; *) echo refreshed >> fakegraph-out/graph.json;; esac\n';
+
+test('a declared repo no change has touched still gets its first graph', async () => {
+  // The graph is what the agent reads in order to do the work, so building it
+  // only for repos a change already touched is the wrong end of the change.
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-first-'));
+  const brain = makeBrain(
+    tmp,
+    `doors: [agents]\ngrapher: fakegraph\n${DECL_CREATE}repos:\n  brain: .\n  api: ../acme-api\n  web: ../acme-web\n`,
+  );
+  initRepo(join(tmp, 'acme-api'), { 'README.md': '# api\n' });
+  initRepo(join(tmp, 'acme-web'), { 'README.md': '# web\n' });
+  const bin = makeGrapherBin(tmp, BUILD_OR_REFRESH);
+
+  await withPath(bin, async () => {
+    const { out } = await capture(() => change.run(['new', 'graph-first', 'Graph first'], { cwd: brain }));
+    // Built, not "refreshed", and with the adapter's OWN create command.
+    assert.match(out, /graph fakegraph @ api: built \(`fakegraph build \.`\)/);
+    assert.match(out, /graph fakegraph @ web: built \(`fakegraph build \.`\)/);
+    // The brain already had one: nothing runs there, and nothing is said.
+    assert.doesNotMatch(out, /graph fakegraph @ brain:/);
+
+    assert.ok(existsSync(join(tmp, 'acme-api/fakegraph-out/graph.json')));
+    assert.ok(existsSync(join(tmp, 'acme-web/fakegraph-out/graph.json')));
+
+    // Self-limiting: the artifact now exists everywhere, so the next lifecycle
+    // command builds nothing at all.
+    const again = await capture(() => change.run(['new', 'graph-again', 'Graph again'], { cwd: brain }));
+    assert.doesNotMatch(again.out, /graph fakegraph @ .*: built/);
+  });
+});
+
+test('a missing binary on the build path is a notice, never a failed lifecycle', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-nobin-'));
+  const brain = makeBrain(
+    tmp,
+    `doors: [agents]\ngrapher: fakegraph\n${DECL_CREATE}repos:\n  brain: .\n  api: ../acme-api\n`,
+  );
+  initRepo(join(tmp, 'acme-api'), { 'README.md': '# api\n' });
+  // No bin dir on PATH: declared, absent, degraded — and the command it names
+  // is the BUILD, because that is what this scope needs.
+  const { code, out } = await capture(() => change.run(['new', 'graph-nobin', 'Graph nobin'], { cwd: brain }));
+  assert.equal(code, 0);
+  assert.match(out, /graph fakegraph @ api: binary not found — build skipped; npm i -g fakegraph, then `fakegraph build \.`/);
+  assert.ok(!existsSync(join(tmp, 'acme-api/fakegraph-out/graph.json')));
+});
