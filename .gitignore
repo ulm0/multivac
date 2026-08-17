@@ -14,3 +14,8 @@ graphify-out/graph.html
 site/public/
 site/.hugo_build.lock
 site/_vendor/
+# Agent-harness scratch checkouts. `.claude/skills/` and `.claude/settings.json`
+# are multivac's own projection (MV-72, MV-74) and stay tracked; this one is a
+# git worktree per subagent, written by the harness and never by this tool. It
+# reached 524 MB in one session and shows up as untracked in every status.
+.claude/worktrees/
