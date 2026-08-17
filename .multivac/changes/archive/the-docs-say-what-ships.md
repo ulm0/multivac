@@ -1,9 +1,9 @@
 ---
 slug: the-docs-say-what-ships
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
