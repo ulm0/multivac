@@ -1,7 +1,12 @@
+# ORDER IS LOAD-BEARING, and it looks like formatting. `deploy` must follow
+# `publish`: on a tag both run, and a site deployed first would announce a
+# package the registry has not accepted — the same falsehood this ordering was
+# introduced to remove, one minute long instead of forever (MV-77). A failed
+# publish leaves the deploy unrun.
 stages:
   - test
-  - deploy
   - publish
+  - deploy
 
 test:
   stage: test
@@ -60,6 +65,12 @@ pages:
   stage: deploy
   image: hugomods/hugo:std-go-git-0.165.0
   script:
+    # The badge shows what is PUBLISHED, never what package.json declares: the
+    # manifest is bumped in a merge that precedes the tag, so advertising it
+    # would name a version nobody can install — and an abandoned release would
+    # advertise it forever. The last tag is the published version by MV-68,
+    # which refuses to publish under a tag that disagrees with the manifest.
+    - export HUGO_PARAMS_RELEASE=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo dev)
     - cd site
     - hugo --minify --baseURL https://multivac.ulm0.com/
     - mv public ../public
@@ -69,10 +80,19 @@ pages:
       - .gomodcache/
   variables:
     GOMODCACHE: "$CI_PROJECT_DIR/.gomodcache"
+    # Tags are the version source below, and GitLab clones shallow by default —
+    # without this `git describe` finds nothing and the badge renders `dev` in
+    # production without saying so. A quiet wrong answer is the failure mode
+    # this whole arrangement exists to remove (MV-77).
+    GIT_DEPTH: 0
   artifacts:
     paths:
       - public
   rules:
+    # A release moves the badge at once rather than at the next unrelated
+    # merge; `publish` is an earlier stage, so this cannot run ahead of it.
+    - if: '$CI_COMMIT_TAG'
+    # And site-only corrections reach readers without a release being cut.
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
 
 # Releasing multivac, which is not the same thing as using it: multivac itself

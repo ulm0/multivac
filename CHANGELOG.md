@@ -14,6 +14,25 @@ keeping a second one (MV-78).
 
 **Fixed**
 
+- **The site advertised a version nobody could install.** It deploys on every
+  merge to `main` and its badge was held equal to `package.json` — but both of
+  those sit at HEAD, so the pair agreed with each other while neither knew what
+  the registry serves. The release sequence is bump → merge → *the site
+  deploys* → tag → publish, so every release advertised an unpublished version
+  for as long as that took; and a release abandoned after the bump merged would
+  have advertised it **forever**, with the rule calling it correct.
+
+  The site now states no version at all: the badge renders a parameter the
+  release pipeline sets from the last git tag, which is a published version
+  because publishing refuses a tag that disagrees with the manifest. What is not
+  written cannot drift.
+
+  Deployment is unchanged — site-only corrections still reach readers on merge,
+  without a release being cut — and the pipeline's stages were reordered so a
+  release's site follows the publication it describes and does not run if that
+  fails. (MV-77, tightening MV-84 to forbid version literals on the site
+  outright)
+
 - **`change close --abandon` no longer releases a reserved invariant ID that an
   anchor names.** It archived the change first and then released against an
   *empty* anchor set, so the condition the law states — release only when no
