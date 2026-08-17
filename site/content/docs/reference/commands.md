@@ -950,7 +950,18 @@ help <command>` prints that command's usage; bare `mvac help` lists topics.
 | --- | --- |
 | **0** | ok — including every degraded state: unevaluated repos, absent adapters, missing repos, unsupported door targets, non-blocking broken legs |
 | **1** | a check failed or a gate refused: blocking leg broken/vacuous, anchor parse error, stale pin under `staleness: block`, `close` before every repo landed, a claim not green, a clone that failed, invalid config **in `doors` and `doctor`**, a disarmed enforcement gate under **`doctor --strict`** |
-| **2** | usage or environment: no command, unknown command, unknown flag, unknown subcommand, missing or invalid `.multivac/config.yml` |
+| **2** | usage or environment: no command, unknown command, **any argument a command does not declare** — a flag or a positional — unknown subcommand, missing or invalid `.multivac/config.yml`. The refusal names the argument and states what the command takes, and comes before the command does anything (MV-85). |
+
+A command takes what it declares and refuses the rest. `mvac doctor --sttrict`
+used to run the report without the assertion and exit 0; `mvac doctor /other/repo`
+used to report on the working directory, because `doctor` declares no directory
+and the argument was discarded. Both refuse now. What each command declares is
+its `--help` (MV-69), and that is the list the refusal is measured against.
+
+```txt
+$ mvac doctor --sttrict
+doctor: unknown flag "--sttrict" — doctor takes --strict
+```
 
 ```txt
 $ mvac frobnicate

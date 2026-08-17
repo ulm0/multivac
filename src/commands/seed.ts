@@ -6,9 +6,10 @@
 import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
+import { undeclared } from '../lib/args.js';
 import { loadConfig } from '../lib/config.js';
 import { lsFiles } from '../lib/git.js';
-import { say } from '../lib/out.js';
+import { say, warn } from '../lib/out.js';
 import { classify } from '../seed/inventory.js';
 
 export const REPORT_PATH = '.multivac/seed-report.md';
@@ -69,6 +70,14 @@ function openQuestions(gates: string[], prose: string[], stacks: string[]): stri
 }
 
 async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
+  // MV-85: before the inventory and before the report is written. seed took the
+  // first non-flag and ignored every flag, so a typo changed nothing and said so
+  // to nobody.
+  const bad = undeclared('seed', argv, { positionals: 1 });
+  if (bad) {
+    warn(bad);
+    return 2;
+  }
   const dirArg = argv.find((a) => !a.startsWith('-'));
   const brainDir = resolve(ctx.cwd, dirArg ?? '.');
   const cfg = await loadConfig(brainDir); // throws actionable ConfigError

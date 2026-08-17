@@ -17,6 +17,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Command, CommandContext, Config } from '../types.js';
+import { undeclared } from '../lib/args.js';
 import { ConfigError, LAW_PATH, loadConfig } from '../lib/config.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
@@ -229,7 +230,14 @@ async function projectInto(
   return notices;
 }
 
-async function run(_argv: string[], ctx: CommandContext): Promise<number> {
+async function run(argv: string[], ctx: CommandContext): Promise<number> {
+  // MV-85: doors declares no arguments and used to take `_argv` — anything you
+  // passed was discarded in silence. Before loadConfig, before any write.
+  const bad = undeclared('doors', argv, {});
+  if (bad) {
+    warn(bad);
+    return 2;
+  }
   const brainDir = ctx.cwd;
   let config: Config;
   try {

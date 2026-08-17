@@ -5,6 +5,7 @@
 import { lstat, readFile, readlink, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import type { Command, Config } from '../types.js';
+import { undeclared } from '../lib/args.js';
 import {
   BRAIN_PATHS,
   CONFIG_PATH,
@@ -14,7 +15,7 @@ import {
   loadConfig,
 } from '../lib/config.js';
 import * as git from '../lib/git.js';
-import { say } from '../lib/out.js';
+import { say, warn } from '../lib/out.js';
 import {
   doorTargets,
   grapherSpec,
@@ -682,6 +683,14 @@ export const doctorCommand: Command = {
     '  that the gate is armed, not just a report that describes it.',
   ],
   async run(argv, ctx) {
+    // MV-85: before the report. `--sttrict` used to run the report without the
+    // assertion and exit 0, and a named directory used to be discarded while
+    // doctorReport read ctx.cwd — a truthful report about somewhere else.
+    const bad = undeclared('doctor', argv, { flags: ['--strict'] });
+    if (bad) {
+      warn(bad);
+      return 2;
+    }
     const strict = argv.includes('--strict');
     const { lines, exit } = await doctorReport(ctx.cwd, strict);
     for (const l of lines) say(l);
