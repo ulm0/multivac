@@ -647,4 +647,5 @@ checks them on every commit.
 <!-- @anchor MV-86 brain:.multivac/projected.yml /^version: / unique -->
 <!-- @anchor MV-86 brain:test/cli/version-skew.test.ts /the notice moved the exit code/ -->
 <!-- @anchor MV-86 brain:test/cli/version-skew.test.ts /only init and doors --adopt may/ -->
+| MV-87 | RESERVED by change the-rows-say-what-they-check — state the rule here before close. | open | proposed | 2026-08-17 | [changes/the-rows-say-what-they-check.md](changes/the-rows-say-what-they-check.md) |
 
