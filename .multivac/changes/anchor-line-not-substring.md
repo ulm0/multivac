@@ -3,7 +3,7 @@ slug: anchor-line-not-substring
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
@@ -13,14 +13,7 @@ invariants:
   retires: []
 claims:
   - id: MV-82
-    statement: "A leg skips a line only when that line carries an anchor comment —
-      the `<!-- @anchor` opener the grammar defines — decided by one exported
-      recogniser that the parser and the matcher share, so the set of lines the
-      law calls anchors and the set the scan hides can never drift apart. The
-      guard MUST NOT be a substring test for the word `@anchor`: that reach made
-      every line of every file that merely mentioned the word invisible to every
-      leg, so seven characters of trailing comment silenced any `absent`,
-      `unique`, `count` or `each!` tombstone and verify still reported green."
+    statement: "A leg skips a line only when that line carries an anchor comment — the `<!-- @anchor` opener the grammar defines — decided by one exported recogniser that the parser and the matcher share, so the set of lines the law calls anchors and the set the scan hides can never drift apart. The guard MUST NOT be a substring test for the word `@anchor`: that reach made every line of every file that merely mentioned the word invisible to every leg, so seven characters of trailing comment silenced any `absent`, `unique`, `count` or `each!` tombstone and verify still reported green."
 ---
 
 # The scan guard skips anchor lines, not every line saying @anchor
