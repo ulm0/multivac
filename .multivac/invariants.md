@@ -627,4 +627,5 @@ checks them on every commit.
 <!-- @anchor MV-83 brain:site/assets/css/custom.css /--font-machine: 'Martian Mono'/ unique -->
 <!-- @anchor MV-83 brain:test/invariants/site-fonts.test.ts /every @font-face source resolves to a tracked file/ -->
 <!-- @anchor MV-83 brain:test/invariants/site-fonts.test.ts /every shipped font file has a licence beside it/ -->
+| MV-84 | RESERVED by change the-docs-say-what-ships — state the rule here before close. | open | proposed | 2026-08-17 | [changes/the-docs-say-what-ships.md](changes/the-docs-say-what-ships.md) |
 
