@@ -55,3 +55,61 @@ test('the skip is stateless — the same line answers the same twice', () => {
   assert.deepEqual(matchesInFile('x.md', text, re), first);
   assert.deepEqual(first, []);
 });
+
+// MV-82, second pass. Narrowing the substring to the OPENER left the opener
+// itself as the whole password: it needed no terminator, could sit anywhere in
+// the line, in a file of any type. Each spelling below silenced MV-04's
+// tombstone on one line. The skip now requires a COMPLETE anchor comment —
+// `ANCHOR_LINE` plus the `-->` the parser demands before it accepts one — so
+// each is scanned. One helper, one payload, so the name is the only variable.
+
+const PII = () => compileAnchorRegex('user\\.(name|email)');
+const scanned = (line: string) =>
+  assert.deepEqual(matchesInFile('src/lib/paths.ts', line + '\n', PII()), [
+    { file: 'src/lib/paths.ts', line: 1 },
+  ]);
+
+test('evasion: opener with no terminator — // <!-- @anchor', () => {
+  scanned('const evade = "user.name"; // <!-- @anchor');
+});
+
+test('evasion: zero whitespace — <!--@anchor', () => {
+  scanned('const evade = "user.name"; // <!--@anchor');
+});
+
+test('evasion: tab after the opener — <!--\\t@anchor', () => {
+  scanned('const evade = "user.name"; // <!--\t@anchor');
+});
+
+test('evasion: non-word character satisfies \\b — <!-- @anchor.', () => {
+  scanned('const evade = "user.name"; // <!-- @anchor.');
+});
+
+test('evasion: opener inside a plain string literal, never a comment', () => {
+  scanned('const evade = "user.name" + "<!-- @anchor";');
+});
+
+test('evasion: opener inside a template literal', () => {
+  scanned('const evade = `user.name <!-- @anchor`;');
+});
+
+test('the terminator is required in any file type, not just source', () => {
+  for (const f of ['src/lib/paths.ts', 'config/app.yaml', 'notes.txt', 'Makefile']) {
+    assert.deepEqual(matchesInFile(f, 'user.name  # <!-- @anchor\n', PII()), [{ file: f, line: 1 }]);
+  }
+});
+
+// The ceiling, asserted so it is a decision and not a surprise. A FULLY forged
+// anchor comment — opener and terminator both — still hides its line, in a
+// block comment or ahead of the code. These two are indistinguishable, by line
+// shape alone, from `test/verify/`'s fixtures quoting whole anchors inside
+// string literals, which MUST stay hidden. Closing them needs something that
+// is not a line-shape test.
+
+test('ceiling: a fully forged anchor in a block comment still hides the line', () => {
+  assert.deepEqual(matchesInFile('src/lib/paths.ts', 'const evade = "user.name"; /* <!-- @anchor --> */\n', PII()), []);
+});
+
+test('ceiling: a fully forged anchor ahead of the code still hides the line', () => {
+  assert.deepEqual(matchesInFile('src/lib/paths.ts', '<!-- @anchor --> const evade = "user.name";\n', PII()), []);
+});

@@ -131,6 +131,55 @@ satisfies.
 
 ---
 
+## Phase 7: Audit closure — the opener was still a password
+
+An adversarial audit of the landed fix found the opener alone silences a leg in
+eight further spellings, and named three claims in the artifacts as false.
+
+- [X] T022 Require the terminator in `matchesInFile`:
+  `ANCHOR_LINE.test(lines[i]) && lines[i].includes('-->')`. One shared
+  `ANCHOR_LINE` still; the `-->` stays out of the literal so `parseAnchors`
+  keeps reporting `unterminated anchor comment` instead of skipping silently.
+- [X] T023 Measure the cost before taking it: enumerate every tracked line
+  carrying the opener without a terminator. Result: exactly 3
+  (`.multivac/changes/anchor-line-not-substring.md`,
+  `specs/006-anchor-line-not-substring/plan.md`, `test/anchor/parse.test.ts`).
+- [X] T024 Re-scan all legs under the old guard and the new one and compare
+  match sets byte for byte, not just the summary line. Result: 528 legs,
+  identical; no verdict moved.
+- [X] T025 One test per closed spelling, named for the spelling: no terminator,
+  zero whitespace, tab, non-word character, plain string literal, template
+  literal, and one that the terminator is required in any file type.
+- [X] T026 Two tests for the ceiling, so it is demonstrated and not conceded: a
+  fully forged anchor in a block comment, and one ahead of the code, both still
+  hiding their line.
+- [X] T027 Mutation-verify the terminator half: drop it in the TypeScript
+  source, `pnpm run build`, watch the seven named assertions fail, restore.
+- [X] T028 End-to-end at the CLI: append each spelling to `src/lib/paths.ts`,
+  build, run `node dist/cli.js verify --strict`, watch MV-04 go red at the
+  exact file and line, restore. Both ceiling spellings appended too and shown
+  to stay green.
+- [X] T029 Two more legs on MV-82 — the first four survive the terminator
+  mutation, so they could not have caught it. `brain:src/anchor/match.ts
+  /lines\[i\]\.includes\('--/ unique` and the check that names it. Both
+  validated with `count` before being written.
+- [X] T030 Correct the false claim in all four places it appears (MV-82's row,
+  the change file, the `ANCHOR_LINE` doc comment, the `matchesInFile` doc
+  comment) — plus this feature's plan and spec, which carry it too. One shared
+  PATTERN, not one set: `collectBrainAnchors` reads a handful of `.md` files
+  while the scanner reads every tracked file in every repo.
+- [X] T031 Restate MV-82's headline as the guard is built (complete comment:
+  opener AND terminator) and its ceiling as a predicate (a line carrying both
+  the opener and `-->`, anywhere on it).
+- [X] T032 Re-derive the line-start rejection. The count was right — 111
+  exactly, not "~100 in `test/verify/`": 61 there, 34 under `test/anchor/`, 16
+  elsewhere. The reasoning was not measured: patched and re-scanned, it moves
+  one leg's count (MV-40, 2 to 3), no verdict, `verify --strict` exit 0. The
+  reason that stands: it stops a forgery written after the code and not one
+  written before it, and the forger picks.
+
+---
+
 ## Dependencies
 
 - Phase 1 blocks everything: no edit before the defect is measured.

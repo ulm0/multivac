@@ -86,7 +86,7 @@ check must report the rule satisfied.
 
 ---
 
-### User Story 3 - The set of hidden lines and the set of declared anchors are the same set (Priority: P2)
+### User Story 3 - One shared pattern decides the shape of an anchor line, wherever the question is asked (Priority: P2)
 
 Two parts of the system answer a question about the same line. The reader of
 the law asks "does this line declare a rule's search instruction?". The scanner
@@ -95,9 +95,16 @@ questions are answered by two independent tests written in two files, and they
 disagree: the reader requires the grammar's comment form, the scanner requires
 only the keyword.
 
-Every line where they disagree is either a rule that is read but scanned — a
-false report — or a line that is scanned by nobody while nobody declared it a
-rule, which is the hole in Story 1.
+Every line where they disagree about the SHAPE is either a rule that is read
+but scanned — a false report — or a line that is scanned by nobody while nobody
+declared it a rule, which is the hole in Story 1.
+
+What this story does NOT ask for, because it is not achievable and must not be
+written as if it were: that the two end up with the same SET of lines. The
+reader is only ever handed a few `.md` files; the scanner is handed every
+tracked file in every declared repo. The declared anchors are a strict subset
+of the hidden lines and will stay one. Sharing the pattern is what stops the
+two disagreeing about shape — that, and nothing wider, is the claim.
 
 **Why this priority**: It is the durable form of the fix rather than a symptom
 of it. Ranked second because Stories 1 and 2 must hold on the day this ships
