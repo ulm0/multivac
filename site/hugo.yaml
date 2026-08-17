@@ -43,6 +43,12 @@ menu:
         type: search
 
 params:
+  # The version the badge shows. NOT a fact about this repository: the pages
+  # job overrides it with the last git tag, which is the last version actually
+  # published (MV-77). `dev` is what a local build or a fork with no releases
+  # renders — it names itself rather than showing a number nobody can install,
+  # and it is not a semver, so MV-84's count=0 stays satisfied.
+  release: dev
   externalLinkDecoration: true
   navbar:
     displayTitle: true
