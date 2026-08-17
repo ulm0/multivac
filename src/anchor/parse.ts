@@ -193,14 +193,8 @@ export interface ClaimRow {
   state: string;
 }
 
-/** Parse the law table in .multivac/invariants.md. Missing file = zero claims. */
-export async function readClaimRows(brainDir: string): Promise<ClaimRow[]> {
-  let text: string;
-  try {
-    text = await readFile(join(brainDir, LAW_PATH), 'utf8');
-  } catch {
-    return [];
-  }
+/** Parse the law table out of invariants.md text. Empty text = zero claims. */
+export function parseClaimRows(text: string): ClaimRow[] {
   const rows: ClaimRow[] = [];
   for (const line of text.split('\n')) {
     const t = line.trim();
@@ -212,4 +206,20 @@ export async function readClaimRows(brainDir: string): Promise<ClaimRow[]> {
     rows.push({ id, state: cells[4] ?? '' });
   }
   return rows;
+}
+
+/**
+ * Parse the law table in .multivac/invariants.md. Missing file = zero claims.
+ *
+ * The parse itself lives in `parseClaimRows` because MV-81 reads the same
+ * table out of two git blobs — HEAD's and the index's — that are not files on
+ * disk. A second parser of the law table is how the two would eventually
+ * disagree about what a row's state is.
+ */
+export async function readClaimRows(brainDir: string): Promise<ClaimRow[]> {
+  try {
+    return parseClaimRows(await readFile(join(brainDir, LAW_PATH), 'utf8'));
+  } catch {
+    return [];
+  }
 }

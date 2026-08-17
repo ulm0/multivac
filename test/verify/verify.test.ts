@@ -746,3 +746,106 @@ test('parse diagnostics print above the summary, not below it', async () => {
   assert.ok(parseAt >= 0 && summaryAt >= 0, r.out);
   assert.ok(parseAt < summaryAt, `diagnostics below the summary:\n${r.out}`);
 });
+
+// --- MV-81: enactment lands in its own commit ---------------------------
+//
+// The other half of MV-81 — WHO enacts — has no test here on purpose: the row
+// declares it ungateable, and a test asserting it would be exactly the
+// invented pass the row exists to refuse.
+
+/** A brain whose HEAD carries `state` for INV-90, anchored at src/thing.ts. */
+function lawEco(state: string): ScratchEcosystem {
+  const e = eco();
+  mkdirSync(join(e.brain, 'src'), { recursive: true });
+  writeFileSync(join(e.brain, 'src/thing.ts'), 'export const marker = 1;\n');
+  setLaw(
+    e.brain,
+    `| INV-90 | the thing is marked | published | ${state} | 2026-01-01 | x |`,
+    '<!-- @anchor INV-90 brain:src/thing.ts /marker/ -->',
+  );
+  git(e.brain, 'add', '-A');
+  git(e.brain, 'commit', '-q', '-m', `INV-90 ${state}`);
+  return e;
+}
+
+test('a row enacted beside the code it anchors is refused', async () => {
+  const e = lawEco('proposed');
+  setLaw(
+    e.brain,
+    '| INV-90 | the thing is marked | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-90 brain:src/thing.ts /marker/ -->',
+  );
+  writeFileSync(join(e.brain, 'src/thing.ts'), 'export const marker = 2;\n');
+  git(e.brain, 'add', '-A');
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1, `enactment beside its own code was allowed:\n${r.out}`);
+  assert.match(r.out, /REFUSED INV-90 beside src\/thing\.ts/);
+  assert.match(r.out, /enactment lands in its own commit/);
+  assert.match(r.out, /git restore --staged src\/thing\.ts/);
+  assert.match(r.out, /1 blocking broken · exit 1 · enactment refused/);
+  // The printed fix is the whole fix: unstage the code and the commit stands.
+  git(e.brain, 'restore', '--staged', 'src/thing.ts');
+  const after = await captured(() => runVerify(e.brain));
+  assert.equal(after.code, 0, `the printed fix did not clear the refusal:\n${after.out}`);
+  assert.match(after.out, /INV-90 → active, alone in this commit/);
+});
+
+test('a row enacted alone in its commit is not refused', async () => {
+  const e = eco();
+  mkdirSync(join(e.brain, 'src'), { recursive: true });
+  writeFileSync(join(e.brain, 'src/thing.ts'), 'export const marker = 1;\n');
+  // The second leg anchors into the law file itself. That file necessarily
+  // carries the state change, so counting it as "the code beside the row"
+  // would make enactment impossible rather than separate.
+  const row = (state: string): string[] => [
+    `| INV-90 | the thing is marked | published | ${state} | 2026-01-01 | x |`,
+    '<!-- @anchor INV-90 brain:src/thing.ts /marker/ -->',
+    '<!-- @anchor INV-90 brain:.multivac/invariants.md /the thing is marked/ -->',
+  ];
+  setLaw(e.brain, ...row('proposed'));
+  git(e.brain, 'add', '-A');
+  git(e.brain, 'commit', '-q', '-m', 'INV-90 proposed');
+  setLaw(e.brain, ...row('active'));
+  git(e.brain, 'add', '-A');
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 0, `the law file counted as the code beside the row:\n${r.out}`);
+  assert.match(r.out, /INV-90 → active, alone in this commit/);
+  assert.doesNotMatch(r.out, /REFUSED/);
+});
+
+test('a row born active beside its code is refused on the same ground', async () => {
+  const e = eco();
+  mkdirSync(join(e.brain, 'src'), { recursive: true });
+  writeFileSync(join(e.brain, 'src/thing.ts'), 'export const marker = 1;\n');
+  setLaw(e.brain); // HEAD's law has no such row at all
+  git(e.brain, 'add', '-A');
+  git(e.brain, 'commit', '-q', '-m', 'empty law');
+  setLaw(
+    e.brain,
+    '| INV-90 | the thing is marked | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-90 brain:src/thing.ts /marker/ -->',
+  );
+  writeFileSync(join(e.brain, 'src/thing.ts'), 'export const marker = 2;\n');
+  git(e.brain, 'add', '-A');
+  const r = await captured(() => runVerify(e.brain));
+  assert.equal(r.code, 1, `a row born active skipped the same review:\n${r.out}`);
+  assert.match(r.out, /REFUSED INV-90 beside src\/thing\.ts/);
+});
+
+test('the enactment check says when it could not answer, and when it answered nothing', async () => {
+  const e = lawEco('active');
+  const clean = await captured(() => runVerify(e.brain));
+  assert.equal(clean.code, 0, clean.out);
+  assert.match(clean.out, /not answered — nothing staged, so no commit is being composed/);
+  assert.match(clean.out, /reads the index against HEAD/);
+  // Staged, with the law untouched: the question WAS asked, and answered.
+  writeFileSync(join(e.brain, 'src/thing.ts'), 'export const marker = 3;\n');
+  git(e.brain, 'add', 'src/thing.ts');
+  const staged = await captured(() => runVerify(e.brain));
+  assert.equal(staged.code, 0, staged.out);
+  assert.match(
+    staged.out,
+    /no row enacted in this commit — 1 staged path, \.multivac\/invariants\.md untouched/,
+  );
+  assert.doesNotMatch(staged.out, /not answered/);
+});

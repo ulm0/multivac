@@ -12,6 +12,7 @@ import {
   ConfigError,
   CONFIG_PATH,
   DEFAULT_CHANNEL,
+  LAW_PATH,
 } from '../lib/config.js';
 import {
   currentBranch,
@@ -25,9 +26,11 @@ import { samePath } from '../lib/paths.js';
 import { dim, green, red, say, warn, yellow } from '../lib/out.js';
 import {
   collectBrainAnchors,
+  parseClaimRows,
   readClaimRows,
   type ParseDiagnostic,
 } from '../anchor/parse.js';
+import { excludeGlobs, makeMatcher } from '../lib/glob.js';
 import { evaluateAnchors, type RepoHandle } from '../anchor/evaluate.js';
 import type {
   Anchor,
@@ -155,6 +158,117 @@ async function stalenessLines(brainDir: string, cfg: Config): Promise<Diagnostic
     });
   }
   return lines;
+}
+
+/**
+ * MV-81's ungateable half, written once and printed by `doctor` too. Two
+ * hand-written copies of a declaration is the paraphrase that ages silently —
+ * the reason Principle I exists — and this repo has already paid for the same
+ * shape once, when MV-79's path arithmetic lived in two files and the two
+ * disagreed. It lives here because it is verify's own statement about what
+ * verify cannot check; `doctor`, whose job is what is armed, reports it.
+ */
+export const ENACTMENT_UNGATEABLE =
+  'who enacts is not a fact on disk — multivac never fabricates git identity (MV-04), so an ' +
+  'agent commits as the person, and a git hook runs with the caller\'s permissions, so a gate ' +
+  'installed here is one the same process can skip. UNGATEABLE by design (MV-81), not an ' +
+  'oversight; enforcement is the forge\'s merge button, held by an account the agent does not ' +
+  'have. verify checks the other half — enactment lands in its own commit — from the index, ' +
+  'so only while a commit is being composed.';
+
+/**
+ * MV-81's checkable half: not who enacts, but when.
+ *
+ * A row that goes `proposed → active` in the same commit that writes the code
+ * it anchors is a rule nobody reviewed on its own — the claim and its evidence
+ * arrive together under one hand. That is decidable, but not from what verify
+ * normally reads: `git ls-files` shows a state, never a state *change*. The
+ * only offline comparison that answers it without inventing a reference is
+ * HEAD against the index, and the index is populated exactly while a commit is
+ * being composed — the pre-commit run.
+ *
+ * So this can answer inside a commit and nowhere else, and it says which of
+ * the two it is on every run. Staying quiet outside a commit would let a green
+ * line imply a check that never happened, which is the lie the tool exists to
+ * prevent.
+ *
+ * Cost: one `git diff --cached` in the ordinary case — a commit that does not
+ * touch the law stops at step 2 — and three more only when the law is staged.
+ */
+async function enactmentLine(
+  brainDir: string,
+  cfg: Config,
+  anchors: Anchor[],
+): Promise<Diagnostic> {
+  const unanswered = (why: string): Diagnostic => ({
+    text: `  ${dim('enact')}     not answered — ${why}; MV-81's check reads the index against HEAD`,
+    gates: false,
+  });
+  const staged = await git(brainDir, ['diff', '--cached', '--name-only', '-z'])
+    .then((s) => s.split('\0').filter(Boolean))
+    .catch(() => null);
+  if (staged === null) return unanswered('the index could not be read here');
+  if (staged.length === 0) {
+    return unanswered('nothing staged, so no commit is being composed');
+  }
+  const plural = `${staged.length} staged path${staged.length > 1 ? 's' : ''}`;
+  const nothing = (why: string): Diagnostic => ({
+    text: `  ${dim('enact')}     no row enacted in this commit — ${why}`,
+    gates: false,
+  });
+  if (!staged.includes(LAW_PATH)) return nothing(`${plural}, ${LAW_PATH} untouched`);
+  const head = await revParse(brainDir, 'HEAD');
+  if (head === null) return unanswered('no commit here yet, so there is no previous state');
+  const blob = (rev: string): Promise<string> =>
+    git(brainDir, ['cat-file', 'blob', `${rev}:${LAW_PATH}`]).catch(() => '');
+  const [before, now] = await Promise.all([blob(head), blob('')]);
+  const was = new Map(parseClaimRows(before).map((r) => [r.id, r.state]));
+  // A row absent from HEAD counts as not-previously-active: a row born
+  // `active` skipped the same review, which is the stronger offence and not a
+  // way around this check.
+  const enacted = parseClaimRows(now)
+    .filter((r) => r.state === 'active' && was.get(r.id) !== 'active')
+    .map((r) => r.id);
+  if (enacted.length === 0) return nothing(`${plural}, no row reached active`);
+  // Which anchors name THIS checkout: `brain`, `*`, and any config key that
+  // resolves to the brain (MV-12's alias rule). A leg pointing at a sibling
+  // repo cannot be offended here — those files are not in this commit.
+  const brainKeys = new Set(['brain', '*']);
+  for (const [key, e] of Object.entries(cfg.repos)) if (e.isBrain) brainKeys.add(key);
+  // The law file carries the state change by definition. Counting it would
+  // make enactment impossible rather than separate.
+  const code = staged.filter((p) => p !== LAW_PATH);
+  const offences: string[] = [];
+  const unstage = new Set<string>();
+  for (const id of enacted) {
+    const hits = new Set<string>();
+    for (const a of anchors) {
+      if (a.claimId !== id || !brainKeys.has(a.repoKey)) continue;
+      const m = makeMatcher(a.include, excludeGlobs(a.excludes, brainKeys));
+      for (const p of code) if (m(p)) hits.add(p);
+    }
+    if (hits.size === 0) continue;
+    const list = [...hits].sort();
+    for (const p of list) unstage.add(p);
+    offences.push(
+      `${id} beside ${list.slice(0, 3).join(', ')}${list.length > 3 ? ` +${list.length - 3} more` : ''}`,
+    );
+  }
+  if (offences.length === 0) {
+    return {
+      text:
+        `  ${green('enact')}     ${enacted.join(', ')} → active, alone in this commit — ` +
+        'the row is reviewable on its own',
+      gates: false,
+    };
+  }
+  return {
+    text:
+      `  ${red('enact')}     REFUSED ${offences.join('; ')} · blocking — enactment lands in ` +
+      `its own commit, never beside the code it anchors (MV-81): git restore --staged ` +
+      `${[...unstage].sort().join(' ')}, commit ${LAW_PATH} alone, then the code`,
+    gates: true,
+  };
 }
 
 /** Consumer scope: evaluate one declared repo's anchors (+ `*` scoped to it). */
@@ -684,13 +798,23 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
       if (d.gates) staleBlocking++;
     }
   }
-  const finalExit: 0 | 1 = staleBlocking > 0 ? 1 : exitCode;
+  // MV-81, on every run: which of the three things happened. A consumer
+  // checkout has no law in its index, so there is no question to answer there
+  // — said out loud rather than skipped, for the same reason as above.
+  const enact: Diagnostic = scope
+    ? {
+        text: `  ${dim('enact')}     not answered — ${LAW_PATH} is not in this checkout's index; MV-81 is decided in the brain`,
+        gates: false,
+      }
+    : await enactmentLine(brainDir, cfg, anchors);
+  say(enact.text);
+  const finalExit: 0 | 1 = staleBlocking > 0 || enact.gates ? 1 : exitCode;
   // The summary counts THE predicate — the same `gating` set the per-leg lines
   // read for their `· blocking` marker — never a second tally computed with
   // different arguments. `blockingBroken` answers a different question (blocking
   // modes alone, --strict ignored) and printing it here made `--strict` runs say
   // "0 blocking broken · exit 1" under a line marked blocking.
-  const blocking = gating.size + staleBlocking;
+  const blocking = gating.size + staleBlocking + (enact.gates ? 1 : 0);
   // A pending claim is a real failure a change file is holding back: exit 0 is
   // the grace, silence is not. Name what is masked and who masks it.
   const masking = [
@@ -700,7 +824,8 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   say(
     `${blocking} blocking broken · exit ${finalExit}` +
       (allDiags.length ? ` · ${allDiags.length} anchor parse errors` : '') +
-      (staleBlocking ? ` · ${staleBlocking} stale pin${staleBlocking > 1 ? 's' : ''} blocking` : ''),
+      (staleBlocking ? ` · ${staleBlocking} stale pin${staleBlocking > 1 ? 's' : ''} blocking` : '') +
+      (enact.gates ? ' · enactment refused' : ''),
   );
   if (masking.length > 0) {
     say(
@@ -737,7 +862,9 @@ export const verify: Command = {
     'from the brain, a sibling repo is read at its channel ref (the ecosystem',
     'as published) and the brain itself at its working tree; from a consumer',
     'repo, its working tree — the content about to be committed there. Every',
-    'run prints a `read` line per repo naming the ref or branch and its sha.',
+    'run prints a `read` line per repo naming the ref or branch and its sha,',
+    'and one `enact` line (MV-81): a row reaching active beside the code it',
+    'anchors is refused, or the line says why the question could not be asked.',
   ],
   run: runVerify,
 };
