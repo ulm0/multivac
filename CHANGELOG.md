@@ -10,6 +10,57 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## 0.6.0 — 2026-08-17
+
+**Fixed**
+
+- **A declared adapter reached whichever repo answered first, and stopped
+  there.** Measured in an ecosystem of six: one sibling repo that somebody had
+  run `specify init` in by hand months earlier made the scaffold return before
+  it touched anything — the brain included — because presence was asked of the
+  whole repo list and answered by the first hit. `doctor` printed
+  `speckit: artifact ok` over five unequipped repos for the same reason, and
+  the project-document check accepted that one repo's constitution as the
+  ecosystem's, so the gate passed on a document five repos had never seen.
+
+  One rule replaces the three reads: a **root** is the brain plus every
+  declared repo present on disk, and one root's artifact never answers for
+  another's. The scaffold runs the tool's own init in every root that lacks
+  it and stays silent in every root that has it, a root whose init fails is
+  reported in the tool's own words while the roots after it are still
+  attempted, `doctor` prints one line per root, and the project-document gate
+  asks each root where the tool is installed and names every one that fails.
+  (MV-87, amending MV-75 and MV-76)
+
+- **The mark showed the old colour in the terminal.** The lamp in flight was
+  still amber while the site had long since moved to the acid accent, and
+  `lockup.svg` still carried the old hex — three copies of one identity
+  disagreeing about its own colour. The accent is now defined once and gated
+  twice: by the TTY check for ordinary output, by its own argument for the
+  drawing `init` prints. (MV-33)
+
+**Added**
+
+- **A declared repo that no change has touched gets its graph.** The code graph
+  was only ever built for repos a change explicitly touched, so a repo had to
+  be worked on before it could be navigated — backwards for an agent that reads
+  the graph in order to do the work. The lifecycle now builds it once in every
+  declared, present repo that has none, using the adapter's own `create` where
+  it declares one; refreshing an existing graph is unchanged. (MV-87)
+
+- **A repo can declare its own `sdd:`,** mirroring the per-repo `grapher:` the
+  config already carried. The literal `none` means that repo has no
+  spec-driven flow: never scaffolded, never gated, never reported as lacking
+  anything — out of scope, not a gap. (MV-87)
+
+- **`init` closes on a call to action instead of a full stop.** It used to end
+  with "load the multivac skill", leaving the reader to discover session zero —
+  that there are two flows and which one is theirs — from the door. It now
+  prints three numbered steps with the branch already decided: tracked source
+  in the repo means discovery (`multivac seed`), an empty repo means the
+  interview. On a terminal the scaffolding lines are dim and that closing line
+  is acid; piped output and `NO_COLOR` are byte-identical to before.
+
 ## 0.5.0 — 2026-08-17
 
 **Fixed**
