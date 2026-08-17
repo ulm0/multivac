@@ -1151,8 +1151,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "src_adapters_detect_pathexists",
-      "community": 8,
-      "community_name": "doctor.ts",
+      "community": 61,
+      "community_name": "sdd.ts",
       "norm_label": "pathexists()"
     },
     {
@@ -1162,8 +1162,8 @@
       "source_location": "L37",
       "_origin": "ast",
       "id": "src_adapters_detect_artifactpresent",
-      "community": 8,
-      "community_name": "doctor.ts",
+      "community": 20,
+      "community_name": "detect.ts",
       "norm_label": "artifactpresent()"
     },
     {
@@ -1206,8 +1206,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "src_adapters_detect_onpath",
-      "community": 43,
-      "community_name": "install.ts",
+      "community": 61,
+      "community_name": "sdd.ts",
       "norm_label": "onpath()"
     },
     {
@@ -1228,8 +1228,8 @@
       "source_location": "L116",
       "_origin": "ast",
       "id": "src_adapters_detect_detected",
-      "community": 6,
-      "community_name": "init.ts",
+      "community": 20,
+      "community_name": "detect.ts",
       "norm_label": "detected"
     },
     {
@@ -1239,8 +1239,8 @@
       "source_location": "L127",
       "_origin": "ast",
       "id": "src_adapters_detect_detectadapters",
-      "community": 20,
-      "community_name": "detect.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "detectadapters()"
     },
     {
@@ -1459,8 +1459,8 @@
       "source_location": "L538",
       "_origin": "ast",
       "id": "src_adapters_registry_sddspec",
-      "community": 61,
-      "community_name": "sdd.ts",
+      "community": 118,
+      "community_name": "doors.ts",
       "norm_label": "sddspec()"
     },
     {
@@ -1679,8 +1679,8 @@
       "source_location": "L218",
       "_origin": "ast",
       "id": "src_adapters_sdd_runscaffold",
-      "community": 61,
-      "community_name": "sdd.ts",
+      "community": 42,
+      "community_name": "change.ts",
       "norm_label": "runscaffold()"
     },
     {
@@ -1811,8 +1811,8 @@
       "source_location": "L258",
       "_origin": "ast",
       "id": "src_anchor_evaluate_evaluateanchors",
-      "community": 134,
-      "community_name": "count.ts",
+      "community": 112,
+      "community_name": "evaluate.ts",
       "norm_label": "evaluateanchors()"
     },
     {
@@ -1877,8 +1877,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_anchor_match_reposcanner_untracked",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 112,
+      "community_name": "evaluate.ts",
       "norm_label": ".untracked()"
     },
     {
@@ -2020,7 +2020,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_anchor_parse_parsediagnostic",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "parsediagnostic"
     },
@@ -2031,7 +2031,7 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_anchor_parse_parseresult",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "parseresult"
     },
@@ -2262,8 +2262,8 @@
       "source_location": "L203",
       "_origin": "ast",
       "id": "src_change_file_serializechange",
-      "community": 1,
-      "community_name": "file.ts",
+      "community": 24,
+      "community_name": "loadChange",
       "norm_label": "serializechange()"
     },
     {
@@ -2273,7 +2273,7 @@
       "source_location": "L221",
       "_origin": "ast",
       "id": "src_change_file_scaffoldchange",
-      "community": 119,
+      "community": 116,
       "community_name": "ritual.test.ts",
       "norm_label": "scaffoldchange()"
     },
@@ -2317,8 +2317,8 @@
       "source_location": "L307",
       "_origin": "ast",
       "id": "src_change_file_archivechange",
-      "community": 1,
-      "community_name": "file.ts",
+      "community": 24,
+      "community_name": "loadChange",
       "norm_label": "archivechange()"
     },
     {
@@ -2977,7 +2977,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_count",
-      "community": 134,
+      "community": 114,
       "community_name": "count.ts",
       "norm_label": "count.ts"
     },
@@ -2988,7 +2988,7 @@
       "source_location": "L17",
       "_origin": "ast",
       "id": "src_commands_count_usage",
-      "community": 134,
+      "community": 114,
       "community_name": "count.ts",
       "norm_label": "usage"
     },
@@ -2999,7 +2999,7 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "src_commands_count_run",
-      "community": 134,
+      "community": 114,
       "community_name": "count.ts",
       "norm_label": "run()"
     },
@@ -3109,8 +3109,8 @@
       "source_location": "L219",
       "_origin": "ast",
       "id": "src_commands_doctor_grapherlines",
-      "community": 8,
-      "community_name": "doctor.ts",
+      "community": 20,
+      "community_name": "detect.ts",
       "norm_label": "grapherlines()"
     },
     {
@@ -3362,8 +3362,8 @@
       "source_location": "L279",
       "_origin": "ast",
       "id": "src_commands_doors_doorscommand",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "doorscommand"
     },
     {
@@ -3582,8 +3582,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_repos",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "repos.ts"
     },
     {
@@ -3593,8 +3593,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_commands_repos_execfilep",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "execfilep"
     },
     {
@@ -3604,8 +3604,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_commands_repos_reposlist",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "reposlist()"
     },
     {
@@ -3615,8 +3615,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "src_commands_repos_repossync",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "repossync()"
     },
     {
@@ -3637,8 +3637,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_seed",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "seed.ts"
     },
     {
@@ -3648,8 +3648,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "src_commands_seed_namesome",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "namesome()"
     },
     {
@@ -3659,8 +3659,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_commands_seed_deploystacks",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "deploystacks()"
     },
     {
@@ -3670,8 +3670,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_commands_seed_openquestions",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "openquestions()"
     },
     {
@@ -3681,8 +3681,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "src_commands_seed_runseed",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "runseed()"
     },
     {
@@ -3703,7 +3703,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_commands_verify",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "verify.ts"
     },
@@ -3714,7 +3714,7 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "src_commands_verify_state_order",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "state_order"
     },
@@ -3725,7 +3725,7 @@
       "source_location": "L52",
       "_origin": "ast",
       "id": "src_commands_verify_paint",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "paint()"
     },
@@ -3736,8 +3736,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "src_commands_verify_openchangeclaims",
-      "community": 1,
-      "community_name": "file.ts",
+      "community": 53,
+      "community_name": "verify.ts",
       "norm_label": "openchangeclaims()"
     },
     {
@@ -3747,7 +3747,7 @@
       "source_location": "L89",
       "_origin": "ast",
       "id": "src_commands_verify_fmtage",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "fmtage()"
     },
@@ -3758,7 +3758,7 @@
       "source_location": "L98",
       "_origin": "ast",
       "id": "src_commands_verify_diagnostic",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "diagnostic"
     },
@@ -3770,7 +3770,7 @@
       "_origin": "ast",
       "id": "src_commands_verify_stalenesslines",
       "community": 108,
-      "community_name": "verify.ts",
+      "community_name": "run",
       "norm_label": "stalenesslines()"
     },
     {
@@ -3780,7 +3780,7 @@
       "source_location": "L161",
       "_origin": "ast",
       "id": "src_commands_verify_verifyscope",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "verifyscope"
     },
@@ -3791,7 +3791,7 @@
       "source_location": "L167",
       "_origin": "ast",
       "id": "src_commands_verify_evaluateopts",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "evaluateopts"
     },
@@ -3802,7 +3802,7 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "src_commands_verify_reposource",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "reposource"
     },
@@ -3813,7 +3813,7 @@
       "source_location": "L189",
       "_origin": "ast",
       "id": "src_commands_verify_short",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "short()"
     },
@@ -3824,7 +3824,7 @@
       "source_location": "L192",
       "_origin": "ast",
       "id": "src_commands_verify_worktreeat",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "worktreeat()"
     },
@@ -3835,7 +3835,7 @@
       "source_location": "L207",
       "_origin": "ast",
       "id": "src_commands_verify_braindrift",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "braindrift()"
     },
@@ -3846,7 +3846,7 @@
       "source_location": "L234",
       "_origin": "ast",
       "id": "src_commands_verify_resolvesources",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "resolvesources()"
     },
@@ -3857,7 +3857,7 @@
       "source_location": "L321",
       "_origin": "ast",
       "id": "src_commands_verify_findmount",
-      "community": 134,
+      "community": 114,
       "community_name": "count.ts",
       "norm_label": "findmount()"
     },
@@ -3868,7 +3868,7 @@
       "source_location": "L349",
       "_origin": "ast",
       "id": "src_commands_verify_findstalemount",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "findstalemount()"
     },
@@ -3879,7 +3879,7 @@
       "source_location": "L362",
       "_origin": "ast",
       "id": "src_commands_verify_normurl",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "normurl()"
     },
@@ -3890,7 +3890,7 @@
       "source_location": "L375",
       "_origin": "ast",
       "id": "src_commands_verify_resolverepokey",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "resolverepokey()"
     },
@@ -3901,8 +3901,8 @@
       "source_location": "L414",
       "_origin": "ast",
       "id": "src_commands_verify_leggates",
-      "community": 83,
-      "community_name": "parse.ts",
+      "community": 53,
+      "community_name": "verify.ts",
       "norm_label": "leggates()"
     },
     {
@@ -3912,7 +3912,7 @@
       "source_location": "L425",
       "_origin": "ast",
       "id": "src_commands_verify_evaluated",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "evaluated"
     },
@@ -3923,8 +3923,8 @@
       "source_location": "L442",
       "_origin": "ast",
       "id": "src_commands_verify_evaluatecore",
-      "community": 83,
-      "community_name": "parse.ts",
+      "community": 53,
+      "community_name": "verify.ts",
       "norm_label": "evaluatecore()"
     },
     {
@@ -3934,8 +3934,8 @@
       "source_location": "L549",
       "_origin": "ast",
       "id": "src_commands_verify_evaluate",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 53,
+      "community_name": "verify.ts",
       "norm_label": "evaluate()"
     },
     {
@@ -3945,7 +3945,7 @@
       "source_location": "L556",
       "_origin": "ast",
       "id": "src_commands_verify_runverify",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "runverify()"
     },
@@ -3967,8 +3967,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_block",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "block.ts"
     },
     {
@@ -3978,8 +3978,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_doors_block_renderblock",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "renderblock()"
     },
     {
@@ -3989,8 +3989,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "src_doors_block_findmarker",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "findmarker()"
     },
     {
@@ -4000,8 +4000,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "src_doors_block_applymanagedblock",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "applymanagedblock()"
     },
     {
@@ -4011,8 +4011,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_brain",
-      "community": 61,
-      "community_name": "sdd.ts",
+      "community": 118,
+      "community_name": "doors.ts",
       "norm_label": "brain.ts"
     },
     {
@@ -4033,8 +4033,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_doors_brain_projectlawlines",
-      "community": 61,
-      "community_name": "sdd.ts",
+      "community": 118,
+      "community_name": "doors.ts",
       "norm_label": "projectlawlines()"
     },
     {
@@ -4044,8 +4044,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "src_doors_brain_grapherlines",
-      "community": 61,
-      "community_name": "sdd.ts",
+      "community": 118,
+      "community_name": "doors.ts",
       "norm_label": "grapherlines()"
     },
     {
@@ -4055,8 +4055,8 @@
       "source_location": "L96",
       "_origin": "ast",
       "id": "src_doors_brain_renderbraindoor",
-      "community": 61,
-      "community_name": "sdd.ts",
+      "community": 118,
+      "community_name": "doors.ts",
       "norm_label": "renderbraindoor()"
     },
     {
@@ -4066,8 +4066,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_consumer",
-      "community": 53,
-      "community_name": "types.ts",
+      "community": 118,
+      "community_name": "doors.ts",
       "norm_label": "consumer.ts"
     },
     {
@@ -4088,8 +4088,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_settings",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "settings.ts"
     },
     {
@@ -4099,8 +4099,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "src_doors_settings_json",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "json"
     },
     {
@@ -4110,8 +4110,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_doors_settings_refreshhookcmd",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "refreshhookcmd()"
     },
     {
@@ -4121,8 +4121,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "src_doors_settings_owns",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "owns"
     },
     {
@@ -4132,8 +4132,8 @@
       "source_location": "L61",
       "_origin": "ast",
       "id": "src_doors_settings_ownsverify",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "ownsverify()"
     },
     {
@@ -4143,8 +4143,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "src_doors_settings_ownsrefresh",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "ownsrefresh()"
     },
     {
@@ -4154,8 +4154,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "src_doors_settings_owned",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "owned"
     },
     {
@@ -4165,8 +4165,8 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "src_doors_settings_ourhooks",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "ourhooks()"
     },
     {
@@ -4176,8 +4176,8 @@
       "source_location": "L97",
       "_origin": "ast",
       "id": "src_doors_settings_eventlist",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "eventlist()"
     },
     {
@@ -4187,8 +4187,8 @@
       "source_location": "L110",
       "_origin": "ast",
       "id": "src_doors_settings_drop",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "drop()"
     },
     {
@@ -4198,8 +4198,8 @@
       "source_location": "L126",
       "_origin": "ast",
       "id": "src_doors_settings_ensureevent",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "ensureevent()"
     },
     {
@@ -4209,8 +4209,8 @@
       "source_location": "L173",
       "_origin": "ast",
       "id": "src_doors_settings_duplicatenotice",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "duplicatenotice()"
     },
     {
@@ -4220,8 +4220,8 @@
       "source_location": "L193",
       "_origin": "ast",
       "id": "src_doors_settings_mergeclaudesettings",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "mergeclaudesettings()"
     },
     {
@@ -4484,8 +4484,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_config",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "config.ts"
     },
     {
@@ -4495,8 +4495,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_config_configerror",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 114,
+      "community_name": "count.ts",
       "norm_label": "configerror"
     },
     {
@@ -4506,8 +4506,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_lib_config_modes",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "modes"
     },
     {
@@ -4517,8 +4517,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_lib_config_brain_paths",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "brain_paths"
     },
     {
@@ -4528,8 +4528,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "src_lib_config_legacy",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "legacy"
     },
     {
@@ -4539,8 +4539,8 @@
       "source_location": "L51",
       "_origin": "ast",
       "id": "src_lib_config_exists",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "exists()"
     },
     {
@@ -4561,8 +4561,8 @@
       "source_location": "L67",
       "_origin": "ast",
       "id": "src_lib_config_ischangefile",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "ischangefile()"
     },
     {
@@ -4572,8 +4572,8 @@
       "source_location": "L93",
       "_origin": "ast",
       "id": "src_lib_config_lookslikeours",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "lookslikeours()"
     },
     {
@@ -4583,8 +4583,8 @@
       "source_location": "L129",
       "_origin": "ast",
       "id": "src_lib_config_legacylayout",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "legacylayout"
     },
     {
@@ -4605,8 +4605,8 @@
       "source_location": "L169",
       "_origin": "ast",
       "id": "src_lib_config_fail",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "fail()"
     },
     {
@@ -4616,8 +4616,8 @@
       "source_location": "L173",
       "_origin": "ast",
       "id": "src_lib_config_stringlist",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "stringlist()"
     },
     {
@@ -4627,8 +4627,8 @@
       "source_location": "L181",
       "_origin": "ast",
       "id": "src_lib_config_optstring",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "optstring()"
     },
     {
@@ -4638,8 +4638,8 @@
       "source_location": "L187",
       "_origin": "ast",
       "id": "src_lib_config_repoentry",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "repoentry()"
     },
     {
@@ -4649,8 +4649,8 @@
       "source_location": "L216",
       "_origin": "ast",
       "id": "src_lib_config_grapherdecl",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "grapherdecl()"
     },
     {
@@ -4660,8 +4660,8 @@
       "source_location": "L239",
       "_origin": "ast",
       "id": "src_lib_config_loadconfig",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "loadconfig()"
     },
     {
@@ -4671,8 +4671,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_git",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "git.ts"
     },
     {
@@ -4682,8 +4682,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_git_execfilep",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "execfilep"
     },
     {
@@ -4693,8 +4693,8 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_lib_git_ambient_git_env",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "ambient_git_env"
     },
     {
@@ -4704,8 +4704,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_lib_git_cleanenv",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "cleanenv()"
     },
     {
@@ -4715,8 +4715,8 @@
       "source_location": "L44",
       "_origin": "ast",
       "id": "src_lib_git_gitfailure",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "gitfailure()"
     },
     {
@@ -4726,8 +4726,8 @@
       "source_location": "L50",
       "_origin": "ast",
       "id": "src_lib_git_run",
-      "community": 42,
-      "community_name": "change.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "run()"
     },
     {
@@ -4737,8 +4737,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "src_lib_git_lsfiles",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "lsfiles()"
     },
     {
@@ -4748,8 +4748,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "src_lib_git_unmergedfiles",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "unmergedfiles()"
     },
     {
@@ -4759,8 +4759,8 @@
       "source_location": "L102",
       "_origin": "ast",
       "id": "src_lib_git_untrackedfiles",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "untrackedfiles()"
     },
     {
@@ -4770,8 +4770,8 @@
       "source_location": "L108",
       "_origin": "ast",
       "id": "src_lib_git_lstree",
-      "community": 112,
-      "community_name": "evaluate.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "lstree()"
     },
     {
@@ -4792,8 +4792,8 @@
       "source_location": "L164",
       "_origin": "ast",
       "id": "src_lib_git_headsha",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "headsha()"
     },
     {
@@ -4803,7 +4803,7 @@
       "source_location": "L169",
       "_origin": "ast",
       "id": "src_lib_git_revparse",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "revparse()"
     },
@@ -4815,7 +4815,7 @@
       "_origin": "ast",
       "id": "src_lib_git_currentbranch",
       "community": 108,
-      "community_name": "verify.ts",
+      "community_name": "run",
       "norm_label": "currentbranch()"
     },
     {
@@ -4825,8 +4825,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "src_lib_git_remotetrackingref",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "remotetrackingref()"
     },
     {
@@ -4837,7 +4837,7 @@
       "_origin": "ast",
       "id": "src_lib_git_lastfetchage",
       "community": 108,
-      "community_name": "verify.ts",
+      "community_name": "run",
       "norm_label": "lastfetchage()"
     },
     {
@@ -4848,7 +4848,7 @@
       "_origin": "ast",
       "id": "src_lib_git_lstreegitlink",
       "community": 108,
-      "community_name": "verify.ts",
+      "community_name": "run",
       "norm_label": "lstreegitlink()"
     },
     {
@@ -4869,8 +4869,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_glob",
-      "community": 112,
-      "community_name": "evaluate.ts",
+      "community": 119,
+      "community_name": "types.ts",
       "norm_label": "glob.ts"
     },
     {
@@ -4880,8 +4880,8 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_lib_glob_opts",
-      "community": 112,
-      "community_name": "evaluate.ts",
+      "community": 119,
+      "community_name": "types.ts",
       "norm_label": "opts"
     },
     {
@@ -4902,8 +4902,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "src_lib_glob_makematcher",
-      "community": 112,
-      "community_name": "evaluate.ts",
+      "community": 8,
+      "community_name": "doctor.ts",
       "norm_label": "makematcher()"
     },
     {
@@ -4924,7 +4924,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_out",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "out.ts"
     },
@@ -4935,7 +4935,7 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "src_lib_out_wrap",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "wrap()"
     },
@@ -4946,7 +4946,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_out_red",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "red"
     },
@@ -4957,7 +4957,7 @@
       "source_location": "L10",
       "_origin": "ast",
       "id": "src_lib_out_green",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "green"
     },
@@ -4968,7 +4968,7 @@
       "source_location": "L11",
       "_origin": "ast",
       "id": "src_lib_out_yellow",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "yellow"
     },
@@ -4979,7 +4979,7 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_lib_out_dim",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "dim"
     },
@@ -4990,7 +4990,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_lib_out_bold",
-      "community": 108,
+      "community": 53,
       "community_name": "verify.ts",
       "norm_label": "bold"
     },
@@ -5023,7 +5023,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_paths",
-      "community": 134,
+      "community": 114,
       "community_name": "count.ts",
       "norm_label": "paths.ts"
     },
@@ -5034,7 +5034,7 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_lib_paths_realpath",
-      "community": 134,
+      "community": 114,
       "community_name": "count.ts",
       "norm_label": "realpath()"
     },
@@ -5045,7 +5045,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "src_lib_paths_samepath",
-      "community": 134,
+      "community": 114,
       "community_name": "count.ts",
       "norm_label": "samepath()"
     },
@@ -5111,7 +5111,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_ritual",
-      "community": 119,
+      "community": 116,
       "community_name": "ritual.test.ts",
       "norm_label": "ritual.ts"
     },
@@ -5122,7 +5122,7 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "src_lib_ritual_ritualchecklist",
-      "community": 119,
+      "community": 116,
       "community_name": "ritual.test.ts",
       "norm_label": "ritualchecklist()"
     },
@@ -5133,8 +5133,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_seed_inventory",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "inventory.ts"
     },
     {
@@ -5144,8 +5144,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "src_seed_inventory_opts",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "opts"
     },
     {
@@ -5155,8 +5155,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "src_seed_inventory_excludes",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "excludes"
     },
     {
@@ -5166,8 +5166,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "src_seed_inventory_category",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "category"
     },
     {
@@ -5177,8 +5177,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "src_seed_inventory_categories",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "categories"
     },
     {
@@ -5188,8 +5188,8 @@
       "source_location": "L180",
       "_origin": "ast",
       "id": "src_seed_inventory_excluded",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "excluded"
     },
     {
@@ -5199,8 +5199,8 @@
       "source_location": "L181",
       "_origin": "ast",
       "id": "src_seed_inventory_matchers",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "matchers"
     },
     {
@@ -5210,8 +5210,8 @@
       "source_location": "L191",
       "_origin": "ast",
       "id": "src_seed_inventory_classify",
-      "community": 121,
-      "community_name": "seed.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "classify()"
     },
     {
@@ -5221,7 +5221,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_types",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "types.ts"
     },
@@ -5232,7 +5232,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "src_types_mode",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "mode"
     },
@@ -5243,7 +5243,7 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "src_types_legstate",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "legstate"
     },
@@ -5254,8 +5254,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_types_grapherdecl",
-      "community": 20,
-      "community_name": "detect.ts",
+      "community": 62,
+      "community_name": "registry.ts",
       "norm_label": "grapherdecl"
     },
     {
@@ -5265,7 +5265,7 @@
       "source_location": "L42",
       "_origin": "ast",
       "id": "src_types_repoentry",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "repoentry"
     },
@@ -5276,8 +5276,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "src_types_config",
-      "community": 53,
-      "community_name": "types.ts",
+      "community": 118,
+      "community_name": "doors.ts",
       "norm_label": "config"
     },
     {
@@ -5287,8 +5287,8 @@
       "source_location": "L92",
       "_origin": "ast",
       "id": "src_types_exclusion",
-      "community": 112,
-      "community_name": "evaluate.ts",
+      "community": 119,
+      "community_name": "types.ts",
       "norm_label": "exclusion"
     },
     {
@@ -5298,7 +5298,7 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "src_types_anchor",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "anchor"
     },
@@ -5309,7 +5309,7 @@
       "source_location": "L123",
       "_origin": "ast",
       "id": "src_types_legresult",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "legresult"
     },
@@ -5320,7 +5320,7 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "src_types_claimresult",
-      "community": 53,
+      "community": 119,
       "community_name": "types.ts",
       "norm_label": "claimresult"
     },
@@ -5397,8 +5397,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_apply_base_test",
-      "community": 137,
-      "community_name": "apply-base.test.ts",
+      "community": 24,
+      "community_name": "loadChange",
       "norm_label": "apply-base.test.ts"
     },
     {
@@ -5408,8 +5408,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "test_change_apply_base_test_git",
-      "community": 137,
-      "community_name": "apply-base.test.ts",
+      "community": 24,
+      "community_name": "loadChange",
       "norm_label": "git()"
     },
     {
@@ -5419,8 +5419,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "test_change_apply_base_test_capture",
-      "community": 137,
-      "community_name": "apply-base.test.ts",
+      "community": 24,
+      "community_name": "loadChange",
       "norm_label": "capture()"
     },
     {
@@ -5430,8 +5430,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "test_change_apply_base_test_brainwithstaleremote",
-      "community": 137,
-      "community_name": "apply-base.test.ts",
+      "community": 24,
+      "community_name": "loadChange",
       "norm_label": "brainwithstaleremote()"
     },
     {
@@ -5441,8 +5441,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "test_change_apply_base_test_wt",
-      "community": 137,
-      "community_name": "apply-base.test.ts",
+      "community": 24,
+      "community_name": "loadChange",
       "norm_label": "wt()"
     },
     {
@@ -5452,8 +5452,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "test_change_apply_base_test_blockworktree",
-      "community": 137,
-      "community_name": "apply-base.test.ts",
+      "community": 24,
+      "community_name": "loadChange",
       "norm_label": "blockworktree()"
     },
     {
@@ -5738,8 +5738,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test",
-      "community": 24,
-      "community_name": "loadChange",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "lifecycle-polish.test.ts"
     },
     {
@@ -5749,8 +5749,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_git",
-      "community": 24,
-      "community_name": "loadChange",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "git()"
     },
     {
@@ -5760,8 +5760,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_wt",
-      "community": 24,
-      "community_name": "loadChange",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "wt()"
     },
     {
@@ -5771,8 +5771,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_capture",
-      "community": 24,
-      "community_name": "loadChange",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "capture()"
     },
     {
@@ -5782,8 +5782,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "test_change_lifecycle_polish_test_brain",
-      "community": 24,
-      "community_name": "loadChange",
+      "community": 113,
+      "community_name": "fixture.ts",
       "norm_label": "brain()"
     },
     {
@@ -5804,7 +5804,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_ritual_test",
-      "community": 119,
+      "community": 116,
       "community_name": "ritual.test.ts",
       "norm_label": "ritual.test.ts"
     },
@@ -5815,7 +5815,7 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "test_change_ritual_test_tmp",
-      "community": 119,
+      "community": 116,
       "community_name": "ritual.test.ts",
       "norm_label": "tmp()"
     },
@@ -5826,7 +5826,7 @@
       "source_location": "L18",
       "_origin": "ast",
       "id": "test_change_ritual_test_capture",
-      "community": 119,
+      "community": 116,
       "community_name": "ritual.test.ts",
       "norm_label": "capture()"
     },
@@ -5837,7 +5837,7 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "test_change_ritual_test_landedchange",
-      "community": 119,
+      "community": 116,
       "community_name": "ritual.test.ts",
       "norm_label": "landedchange()"
     },
@@ -6167,8 +6167,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doctor_doctor_test",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 8,
+      "community_name": "doctor.ts",
       "norm_label": "doctor.test.ts"
     },
     {
@@ -6178,8 +6178,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "test_doctor_doctor_test_line",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 8,
+      "community_name": "doctor.ts",
       "norm_label": "line()"
     },
     {
@@ -6189,8 +6189,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doors_block_test",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "block.test.ts"
     },
     {
@@ -6354,8 +6354,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doors_settings_test",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "settings.test.ts"
     },
     {
@@ -6365,8 +6365,8 @@
       "source_location": "L6",
       "_origin": "ast",
       "id": "test_doors_settings_test_merged",
-      "community": 118,
-      "community_name": "doors.ts",
+      "community": 111,
+      "community_name": "settings.ts",
       "norm_label": "merged()"
     },
     {
@@ -6464,8 +6464,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_helpers_scaffold_test",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "scaffold.test.ts"
     },
     {
@@ -6475,8 +6475,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "test_helpers_scaffold_test_eco",
-      "community": 7,
-      "community_name": "git.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "eco"
     },
     {
@@ -6695,8 +6695,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_init_init_test",
-      "community": 145,
-      "community_name": "init.test.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "init.test.ts"
     },
     {
@@ -6706,8 +6706,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "test_init_init_test_tmp",
-      "community": 145,
-      "community_name": "init.test.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "tmp()"
     },
     {
@@ -6717,8 +6717,8 @@
       "source_location": "L24",
       "_origin": "ast",
       "id": "test_init_init_test_capture",
-      "community": 145,
-      "community_name": "init.test.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "capture()"
     },
     {
@@ -6728,8 +6728,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "test_init_init_test_snapshot",
-      "community": 145,
-      "community_name": "init.test.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "snapshot()"
     },
     {
@@ -6739,8 +6739,8 @@
       "source_location": "L122",
       "_origin": "ast",
       "id": "test_init_init_test_legacybrain",
-      "community": 145,
-      "community_name": "init.test.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "legacybrain()"
     },
     {
@@ -6827,8 +6827,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_lib_git_env_test",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "git-env.test.ts"
     },
     {
@@ -6838,8 +6838,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_lib_unmerged_test",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "unmerged.test.ts"
     },
     {
@@ -6849,8 +6849,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "test_lib_unmerged_test_git",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "git()"
     },
     {
@@ -6860,8 +6860,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "test_lib_unmerged_test_conflicted",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 108,
+      "community_name": "run",
       "norm_label": "conflicted()"
     },
     {
@@ -6871,8 +6871,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_repos_brain_first_class_test",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "brain-first-class.test.ts"
     },
     {
@@ -6882,8 +6882,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "test_repos_brain_first_class_test_brain_is_code",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "brain_is_code"
     },
     {
@@ -6893,8 +6893,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "test_repos_brain_first_class_test_brainiscode",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "brainiscode()"
     },
     {
@@ -6904,8 +6904,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "test_repos_brain_first_class_test_capture",
-      "community": 111,
-      "community_name": "config.ts",
+      "community": 6,
+      "community_name": "init.ts",
       "norm_label": "capture()"
     },
     {
@@ -6915,8 +6915,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_repos_sync_test",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "sync.test.ts"
     },
     {
@@ -6926,8 +6926,8 @@
       "source_location": "L12",
       "_origin": "ast",
       "id": "test_repos_sync_test_tmp",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "tmp"
     },
     {
@@ -6937,8 +6937,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "test_repos_sync_test_src",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "src"
     },
     {
@@ -6948,8 +6948,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "test_repos_sync_test_remote",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "remote"
     },
     {
@@ -6959,8 +6959,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "test_repos_sync_test_makebrain",
-      "community": 116,
-      "community_name": "repos.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "makebrain()"
     },
     {
@@ -6970,8 +6970,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_seed_seed_test",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "seed.test.ts"
     },
     {
@@ -6981,8 +6981,8 @@
       "source_location": "L178",
       "_origin": "ast",
       "id": "test_seed_seed_test_brainfor",
-      "community": 113,
-      "community_name": "fixture.ts",
+      "community": 13,
+      "community_name": "index.ts",
       "norm_label": "brainfor()"
     },
     {
@@ -9549,6 +9549,61 @@
       "norm_label": "friction"
     },
     {
+      "label": "a-finished-change-is-not-a-pending-one.md",
+      "file_type": "document",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "multivac_changes_a_finished_change_is_not_a_pending_one",
+      "community": 134,
+      "community_name": "A finished change is not a pending one",
+      "norm_label": "a-finished-change-is-not-a-pending-one.md"
+    },
+    {
+      "label": "A finished change is not a pending one",
+      "file_type": "document",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L20",
+      "_origin": "ast",
+      "id": "multivac_changes_a_finished_change_is_not_a_pending_one_a_finished_change_is_not_a_pending_one",
+      "community": 134,
+      "community_name": "A finished change is not a pending one",
+      "norm_label": "a finished change is not a pending one"
+    },
+    {
+      "label": "The distinction the tool does not make",
+      "file_type": "document",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L44",
+      "_origin": "ast",
+      "id": "multivac_changes_a_finished_change_is_not_a_pending_one_the_distinction_the_tool_does_not_make",
+      "community": 134,
+      "community_name": "A finished change is not a pending one",
+      "norm_label": "the distinction the tool does not make"
+    },
+    {
+      "label": "Landing, read from the channel",
+      "file_type": "document",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L56",
+      "_origin": "ast",
+      "id": "multivac_changes_a_finished_change_is_not_a_pending_one_landing_read_from_the_channel",
+      "community": 134,
+      "community_name": "A finished change is not a pending one",
+      "norm_label": "landing, read from the channel"
+    },
+    {
+      "label": "Open for the spec",
+      "file_type": "document",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L76",
+      "_origin": "ast",
+      "id": "multivac_changes_a_finished_change_is_not_a_pending_one_open_for_the_spec",
+      "community": 134,
+      "community_name": "A finished change is not a pending one",
+      "norm_label": "open for the spec"
+    },
+    {
       "label": "apply-git-robustness.md",
       "file_type": "document",
       "source_file": ".multivac/changes/archive/apply-git-robustness.md",
@@ -9742,8 +9797,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_close_keeps_used_reservations",
-      "community": 146,
-      "community_name": "close-keeps-used-reservations.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "close-keeps-used-reservations.md"
     },
     {
@@ -9753,8 +9808,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_close_keeps_used_reservations_close_keeps_used_reservations",
-      "community": 146,
-      "community_name": "close-keeps-used-reservations.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "close keeps used reservations"
     },
     {
@@ -9778,6 +9833,94 @@
       "community": 67,
       "community_name": "consumer-verify.md",
       "norm_label": "verify runs from a consumer repo"
+    },
+    {
+      "label": "core-hookspath-is-read-the-way-git-reads-it.md",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it",
+      "community": 7,
+      "community_name": "core.hooksPath is read the way git reads it",
+      "norm_label": "core-hookspath-is-read-the-way-git-reads-it.md"
+    },
+    {
+      "label": "core.hooksPath is read the way git reads it",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L23",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
+      "community": 7,
+      "community_name": "core.hooksPath is read the way git reads it",
+      "norm_label": "core.hookspath is read the way git reads it"
+    },
+    {
+      "label": "What changes",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L50",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_what_changes",
+      "community": 7,
+      "community_name": "core.hooksPath is read the way git reads it",
+      "norm_label": "what changes"
+    },
+    {
+      "label": "Second round: the audit found the row half-true (2026-08-16)",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L65",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_second_round_the_audit_found_the_row_half_true_2026_08_16",
+      "community": 7,
+      "community_name": "core.hooksPath is read the way git reads it",
+      "norm_label": "second round: the audit found the row half-true (2026-08-16)"
+    },
+    {
+      "label": "Mutation proofs, this round",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L142",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_mutation_proofs_this_round",
+      "community": 7,
+      "community_name": "core.hooksPath is read the way git reads it",
+      "norm_label": "mutation proofs, this round"
+    },
+    {
+      "label": "What does NOT change",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L165",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_what_does_not_change",
+      "community": 7,
+      "community_name": "core.hooksPath is read the way git reads it",
+      "norm_label": "what does not change"
+    },
+    {
+      "label": "Friction, written down rather than worked around",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L192",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_friction_written_down_rather_than_worked_around",
+      "community": 7,
+      "community_name": "core.hooksPath is read the way git reads it",
+      "norm_label": "friction, written down rather than worked around"
+    },
+    {
+      "label": "Drafted anchors",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L206",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_drafted_anchors",
+      "community": 7,
+      "community_name": "core.hooksPath is read the way git reads it",
+      "norm_label": "drafted anchors"
     },
     {
       "label": "docs-and-headers.md",
@@ -10171,8 +10314,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_ls_files_counts_each_file_once",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 137,
+      "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "ls-files-counts-each-file-once.md"
     },
     {
@@ -10182,8 +10325,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_ls_files_counts_each_file_once_ls_files_counts_each_file_once",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 137,
+      "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "ls-files counts each file once"
     },
     {
@@ -10193,8 +10336,8 @@
       "source_location": "L63",
       "_origin": "ast",
       "id": "multivac_changes_archive_ls_files_counts_each_file_once_and_the_ignore_rule_that_let_a_symlink_through",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 137,
+      "community_name": "ls-files-counts-each-file-once.md",
       "norm_label": "and the ignore rule that let a symlink through"
     },
     {
@@ -11051,8 +11194,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares",
-      "community": 140,
-      "community_name": "the-site-quotes-the-version-the-package-declares.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-site-quotes-the-version-the-package-declares.md"
     },
     {
@@ -11062,8 +11205,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
-      "community": 140,
-      "community_name": "the-site-quotes-the-version-the-package-declares.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the site quotes the version the package declares"
     },
     {
@@ -11073,8 +11216,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_why_this_is_a_test_not_an_anchor",
-      "community": 140,
-      "community_name": "the-site-quotes-the-version-the-package-declares.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "why this is a test, not an anchor"
     },
     {
@@ -11128,8 +11271,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_two_graphers_and_what_each_one_answers",
-      "community": 148,
-      "community_name": "two-graphers-and-what-each-one-answers.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "two-graphers-and-what-each-one-answers.md"
     },
     {
@@ -11139,8 +11282,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "multivac_changes_archive_two_graphers_and_what_each_one_answers_two_graphers_and_what_each_one_answers",
-      "community": 148,
-      "community_name": "two-graphers-and-what-each-one-answers.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "two graphers, and what each one answers"
     },
     {
@@ -11166,92 +11309,70 @@
       "norm_label": "verify tells untracked from vacuous, and pending from broken"
     },
     {
-      "label": "core-hookspath-is-read-the-way-git-reads-it.md",
+      "label": "enactment-is-gated-where-the-credential-lives.md",
       "file_type": "document",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
       "source_location": "L1",
       "_origin": "ast",
-      "id": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it",
-      "community": 142,
-      "community_name": "core.hooksPath is read the way git reads it",
-      "norm_label": "core-hookspath-is-read-the-way-git-reads-it.md"
+      "id": "multivac_changes_enactment_is_gated_where_the_credential_lives",
+      "community": 121,
+      "community_name": "Enactment is gated where the credential lives",
+      "norm_label": "enactment-is-gated-where-the-credential-lives.md"
     },
     {
-      "label": "core.hooksPath is read the way git reads it",
+      "label": "Enactment is gated where the credential lives",
       "file_type": "document",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L23",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L19",
       "_origin": "ast",
-      "id": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
-      "community": 142,
-      "community_name": "core.hooksPath is read the way git reads it",
-      "norm_label": "core.hookspath is read the way git reads it"
+      "id": "multivac_changes_enactment_is_gated_where_the_credential_lives_enactment_is_gated_where_the_credential_lives",
+      "community": 121,
+      "community_name": "Enactment is gated where the credential lives",
+      "norm_label": "enactment is gated where the credential lives"
     },
     {
-      "label": "What changes",
+      "label": "So the row says so",
       "file_type": "document",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L50",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L45",
       "_origin": "ast",
-      "id": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_what_changes",
-      "community": 142,
-      "community_name": "core.hooksPath is read the way git reads it",
-      "norm_label": "what changes"
+      "id": "multivac_changes_enactment_is_gated_where_the_credential_lives_so_the_row_says_so",
+      "community": 121,
+      "community_name": "Enactment is gated where the credential lives",
+      "norm_label": "so the row says so"
     },
     {
-      "label": "Second round: the audit found the row half-true (2026-08-16)",
+      "label": "The half that is checkable",
       "file_type": "document",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L65",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L57",
       "_origin": "ast",
-      "id": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_second_round_the_audit_found_the_row_half_true_2026_08_16",
-      "community": 142,
-      "community_name": "core.hooksPath is read the way git reads it",
-      "norm_label": "second round: the audit found the row half-true (2026-08-16)"
+      "id": "multivac_changes_enactment_is_gated_where_the_credential_lives_the_half_that_is_checkable",
+      "community": 121,
+      "community_name": "Enactment is gated where the credential lives",
+      "norm_label": "the half that is checkable"
     },
     {
-      "label": "Mutation proofs, this round",
+      "label": "Considered and declined",
       "file_type": "document",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L142",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L68",
       "_origin": "ast",
-      "id": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_mutation_proofs_this_round",
-      "community": 142,
-      "community_name": "core.hooksPath is read the way git reads it",
-      "norm_label": "mutation proofs, this round"
+      "id": "multivac_changes_enactment_is_gated_where_the_credential_lives_considered_and_declined",
+      "community": 121,
+      "community_name": "Enactment is gated where the credential lives",
+      "norm_label": "considered and declined"
     },
     {
-      "label": "What does NOT change",
+      "label": "Not claimed",
       "file_type": "document",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L165",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L76",
       "_origin": "ast",
-      "id": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_what_does_not_change",
-      "community": 142,
-      "community_name": "core.hooksPath is read the way git reads it",
-      "norm_label": "what does not change"
-    },
-    {
-      "label": "Friction, written down rather than worked around",
-      "file_type": "document",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L192",
-      "_origin": "ast",
-      "id": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_friction_written_down_rather_than_worked_around",
-      "community": 142,
-      "community_name": "core.hooksPath is read the way git reads it",
-      "norm_label": "friction, written down rather than worked around"
-    },
-    {
-      "label": "Drafted anchors",
-      "file_type": "document",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L206",
-      "_origin": "ast",
-      "id": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_drafted_anchors",
-      "community": 142,
-      "community_name": "core.hooksPath is read the way git reads it",
-      "norm_label": "drafted anchors"
+      "id": "multivac_changes_enactment_is_gated_where_the_credential_lives_not_claimed",
+      "community": 121,
+      "community_name": "Enactment is gated where the credential lives",
+      "norm_label": "not claimed"
     },
     {
       "label": ".multivac/invariants.md",
@@ -12163,7 +12284,7 @@
       "_origin": "ast",
       "id": "changelog",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "changelog.md"
     },
     {
@@ -12174,7 +12295,7 @@
       "_origin": "ast",
       "id": "changelog_changelog",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "changelog"
     },
     {
@@ -12185,7 +12306,7 @@
       "_origin": "ast",
       "id": "changelog_0_2_0_2026_08_17",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "0.2.0 \u2014 2026-08-17"
     },
     {
@@ -12196,7 +12317,7 @@
       "_origin": "ast",
       "id": "changelog_0_1_1_2026_08_16",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "0.1.1 \u2014 2026-08-16"
     },
     {
@@ -12207,7 +12328,7 @@
       "_origin": "ast",
       "id": "changelog_0_1_0_2026_08_16",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "0.1.0 \u2014 2026-08-16"
     },
     {
@@ -12361,7 +12482,7 @@
       "_origin": "ast",
       "id": "contributing",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "contributing.md"
     },
     {
@@ -12371,7 +12492,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "contributing_contributing_to_multivac",
-      "community": 114,
+      "community": 85,
       "community_name": "Contributing to multivac",
       "norm_label": "contributing to multivac"
     },
@@ -12382,7 +12503,7 @@
       "source_location": "L7",
       "_origin": "ast",
       "id": "contributing_getting_set_up",
-      "community": 114,
+      "community": 85,
       "community_name": "Contributing to multivac",
       "norm_label": "getting set up"
     },
@@ -12393,7 +12514,7 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "contributing_the_loop",
-      "community": 114,
+      "community": 85,
       "community_name": "Contributing to multivac",
       "norm_label": "the loop"
     },
@@ -12404,7 +12525,7 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "contributing_what_we_ask",
-      "community": 114,
+      "community": 85,
       "community_name": "Contributing to multivac",
       "norm_label": "what we ask"
     },
@@ -12415,7 +12536,7 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "contributing_friction_is_a_finding",
-      "community": 114,
+      "community": 85,
       "community_name": "Contributing to multivac",
       "norm_label": "friction is a finding"
     },
@@ -12426,7 +12547,7 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "contributing_adding_a_harness_a_grapher_or_an_sdd_tool",
-      "community": 114,
+      "community": 85,
       "community_name": "Contributing to multivac",
       "norm_label": "adding a harness, a grapher or an sdd tool"
     },
@@ -12437,7 +12558,7 @@
       "source_location": "L79",
       "_origin": "ast",
       "id": "contributing_merge_requests",
-      "community": 114,
+      "community": 85,
       "community_name": "Contributing to multivac",
       "norm_label": "merge requests"
     },
@@ -12449,7 +12570,7 @@
       "_origin": "ast",
       "id": "design",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "design.md"
     },
     {
@@ -12944,7 +13065,7 @@
       "_origin": "ast",
       "id": "readme",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "readme.md"
     },
     {
@@ -12955,7 +13076,7 @@
       "_origin": "ast",
       "id": "readme_multivac",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "multivac"
     },
     {
@@ -12966,7 +13087,7 @@
       "_origin": "ast",
       "id": "readme_contributing",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "contributing"
     },
     {
@@ -12977,7 +13098,7 @@
       "_origin": "ast",
       "id": "readme_license",
       "community": 85,
-      "community_name": "README.md",
+      "community_name": "Contributing to multivac",
       "norm_label": "license"
     },
     {
@@ -40369,6 +40490,61 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L20",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_a_finished_change_is_not_a_pending_one",
+      "target": "multivac_changes_a_finished_change_is_not_a_pending_one_a_finished_change_is_not_a_pending_one",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/invariants.md",
+      "source_location": "L588",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_invariants",
+      "target": "multivac_changes_a_finished_change_is_not_a_pending_one",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L56",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_a_finished_change_is_not_a_pending_one_a_finished_change_is_not_a_pending_one",
+      "target": "multivac_changes_a_finished_change_is_not_a_pending_one_landing_read_from_the_channel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L76",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_a_finished_change_is_not_a_pending_one_a_finished_change_is_not_a_pending_one",
+      "target": "multivac_changes_a_finished_change_is_not_a_pending_one_open_for_the_spec",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/a-finished-change-is-not-a-pending-one.md",
+      "source_location": "L44",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_a_finished_change_is_not_a_pending_one_a_finished_change_is_not_a_pending_one",
+      "target": "multivac_changes_a_finished_change_is_not_a_pending_one_the_distinction_the_tool_does_not_make",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/archive/apply-git-robustness.md",
       "source_location": "L23",
       "weight": 1.0,
@@ -40540,6 +40716,94 @@
       "_origin": "ast",
       "source": "multivac_changes_archive_consumer_verify",
       "target": "multivac_changes_archive_consumer_verify_verify_runs_from_a_consumer_repo",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it",
+      "target": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/invariants.md",
+      "source_location": "L198",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_invariants",
+      "target": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L206",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
+      "target": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_drafted_anchors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L192",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
+      "target": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_friction_written_down_rather_than_worked_around",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L65",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
+      "target": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_second_round_the_audit_found_the_row_half_true_2026_08_16",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L50",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
+      "target": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_what_changes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L165",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
+      "target": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_what_does_not_change",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md",
+      "source_location": "L142",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_second_round_the_audit_found_the_row_half_true_2026_08_16",
+      "target": "multivac_changes_archive_core_hookspath_is_read_the_way_git_reads_it_mutation_proofs_this_round",
       "confidence_score": 1.0
     },
     {
@@ -41722,89 +41986,67 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L23",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L19",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it",
-      "target": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
+      "source": "multivac_changes_enactment_is_gated_where_the_credential_lives",
+      "target": "multivac_changes_enactment_is_gated_where_the_credential_lives_enactment_is_gated_where_the_credential_lives",
       "confidence_score": 1.0
     },
     {
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": ".multivac/invariants.md",
-      "source_location": "L198",
+      "source_location": "L593",
       "weight": 1.0,
       "_origin": "ast",
       "source": "multivac_invariants",
-      "target": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it",
+      "target": "multivac_changes_enactment_is_gated_where_the_credential_lives",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L206",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L68",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
-      "target": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_drafted_anchors",
+      "source": "multivac_changes_enactment_is_gated_where_the_credential_lives_enactment_is_gated_where_the_credential_lives",
+      "target": "multivac_changes_enactment_is_gated_where_the_credential_lives_considered_and_declined",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L192",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L76",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
-      "target": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_friction_written_down_rather_than_worked_around",
+      "source": "multivac_changes_enactment_is_gated_where_the_credential_lives_enactment_is_gated_where_the_credential_lives",
+      "target": "multivac_changes_enactment_is_gated_where_the_credential_lives_not_claimed",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L65",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L45",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
-      "target": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_second_round_the_audit_found_the_row_half_true_2026_08_16",
+      "source": "multivac_changes_enactment_is_gated_where_the_credential_lives_enactment_is_gated_where_the_credential_lives",
+      "target": "multivac_changes_enactment_is_gated_where_the_credential_lives_so_the_row_says_so",
       "confidence_score": 1.0
     },
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L50",
+      "source_file": ".multivac/changes/enactment-is-gated-where-the-credential-lives.md",
+      "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
-      "source": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
-      "target": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_what_changes",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L165",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_core_hookspath_is_read_the_way_git_reads_it",
-      "target": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_what_does_not_change",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md",
-      "source_location": "L142",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_second_round_the_audit_found_the_row_half_true_2026_08_16",
-      "target": "multivac_changes_core_hookspath_is_read_the_way_git_reads_it_mutation_proofs_this_round",
+      "source": "multivac_changes_enactment_is_gated_where_the_credential_lives_enactment_is_gated_where_the_credential_lives",
+      "target": "multivac_changes_enactment_is_gated_where_the_credential_lives_the_half_that_is_checkable",
       "confidence_score": 1.0
     },
     {
@@ -48541,5 +48783,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "57e2f403e4e082d3ed80cce8306c67df07dc0023"
+  "built_at_commit": "94bc2eec99db4a9b059d17394bc2c382a4c358b0"
 }
