@@ -9,8 +9,14 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
 import { join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
-import { CHANGES_DIR, LAW_PATH, RITUAL_PATH, loadConfig } from '../lib/config.js';
-import { lsFiles, run as gitRun } from '../lib/git.js';
+import {
+  CHANGES_DIR,
+  DEFAULT_CHANNEL,
+  LAW_PATH,
+  RITUAL_PATH,
+  loadConfig,
+} from '../lib/config.js';
+import { lastFetchAge, lsFiles, revParse, run as gitRun } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { ritualChecklist } from '../lib/ritual.js';
 import { applyManagedBlock } from '../doors/block.js';
@@ -18,7 +24,7 @@ import { renderConsumerDoor } from '../doors/consumer.js';
 import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
 import { runScaffold, sddGate, sddInstructions } from '../adapters/sdd.js';
 import { refreshGraph } from '../adapters/refresh.js';
-import { evaluate } from './verify.js';
+import { evaluate, fmtAge } from './verify.js';
 import {
   ChangeError,
   REPO_STATUSES,
@@ -237,6 +243,66 @@ async function mergedLocally(repo: string, slug: string): Promise<MergeEvidence 
   }
   if (await containsCommit(repo, head, base.sha)) return { ...base, merged: true };
   return { ...base, merged: false, missing: `${slug} is not contained in ${base.ref} here` };
+}
+
+/**
+ * Landing, read from the channel instead of from commit containment (MV-80).
+ *
+ * MV-18's containment test can never succeed against a squashing forge — the
+ * branch's commits are not ancestors of anything it merged — so `--landed` had
+ * nothing local to offer and became a bare assertion. MV-53 already reads a
+ * repo at its channel ref; pointed at the brain's own channel the question
+ * answers itself: if the change's declared claims resolve against what origin
+ * published, the work is published, however it got there. A squash destroys
+ * the commit trail; it cannot change the content.
+ *
+ * MV-54 sets the limit and it is carried here: a channel ref is only as true
+ * as the last fetch, so an unresolved claim may mean "not landed" OR "not
+ * fetched", and the sentence says both rather than pretending freshness.
+ *
+ * The verdict is per CHANGE, not per repo: this is one evaluation of the
+ * change's claims against ONE ref — the brain's channel — and a `*` leg
+ * belongs to no single repo, so a per-repo split would have to invent an
+ * attribution. The caller therefore prints it under its own `channel:` label
+ * and never behind a repo key (2026-08-17: it did, and on a multi-repo change
+ * `land --landed api` named the brain's ref and sha as the evidence for api).
+ *
+ * A channel that does not resolve is a sentence, not a silence: the same
+ * never-guess rule `verify`'s read line follows when it falls back to the
+ * working tree. Null only when the change declares no claims — there is then
+ * nothing to evaluate, and the landing plan below is the whole answer.
+ */
+async function channelEvidence(
+  brain: string,
+  cfg: Config,
+  claimIds: string[],
+): Promise<{ line: string; ok: boolean } | null> {
+  if (claimIds.length === 0) return null;
+  const ref = cfg.channel ?? DEFAULT_CHANNEL;
+  const sha = await revParse(brain, ref);
+  if (sha === null) {
+    return {
+      ok: false,
+      line:
+        `${ref} does not resolve here (no remote, or never fetched) — nothing read, ` +
+        'so landing is unverified either way: `multivac repos sync`, then re-read',
+    };
+  }
+  const ms = await lastFetchAge(brain).catch(() => null);
+  const age = ms === null ? 'never fetched here' : `last fetch ${fmtAge(ms)} ago`;
+  const at = `${ref} ${sha.slice(0, 7)} (${age})`;
+  const report = await evaluate(brain, { claimIds, atChannel: true });
+  return closeGate(report, claimIds).ok
+    ? {
+        ok: true,
+        line: `every declared claim resolves at ${at} — the work is published there, however it got in`,
+      }
+    : {
+        ok: false,
+        line:
+          `not every declared claim resolves at ${at} — not landed, or not fetched: ` +
+          '`multivac repos sync`, then re-read',
+      };
 }
 
 const hasOrigin = (repo: string): Promise<boolean> =>
@@ -629,6 +695,9 @@ async function cmdLand(
     warn(`${changeRel(slug)} declares no repos — declare repos and landing_order first`);
     return 1;
   }
+  // Read once, before anything is recorded: the same bytes answer both the
+  // record line and the report line, so the two can never disagree.
+  const ch = await channelEvidence(brain, cfg, change.claims.map((c) => c.id));
   if (landed !== undefined) {
     if (!change.repos[landed]) {
       warn(`repo "${landed}" is not in this change — check the frontmatter`);
@@ -664,6 +733,31 @@ async function cmdLand(
     } else {
       say(`${landed}: already landed`);
     }
+  }
+  // One channel line, under its own label, in both forms. It is a verdict about
+  // the CHANGE — one evaluation against the brain's channel ref — so it never
+  // hides behind the repo key that `--landed` names: on a multi-repo change
+  // that read as the brain's ref and sha being api's evidence. Recording is
+  // never refused on it either — the read OFFERS, the operator asserts, because
+  // a channel ref cannot tell "not landed" from "not fetched" and published
+  // content proves publication rather than authorship (MV-80).
+  if (ch) {
+    say(
+      `channel: ${ch.line}` +
+        (ch.ok && landed === undefined
+          ? ` — record it: multivac change land ${slug} --landed <repo>`
+          : ''),
+    );
+  }
+  // MV-80's third condition, met. The other two — the change declares claims,
+  // and they all resolve — are not read here, so the sentence is conditional;
+  // but `verify --strict` runs on the channel in CI, and a red main that
+  // arrives unannounced is a gate people learn to route around.
+  if (change.claims.length > 0 && Object.values(change.repos).every((r) => r.status === 'landed')) {
+    say(
+      `every repo is now landed — once every declared claim resolves, \`verify --strict\` ` +
+        `refuses ${slug} as unclosed (MV-80), here and in CI, until: multivac change close ${slug}`,
+    );
   }
   const plan = landingPlan(change);
   for (const [i, s] of plan.entries()) {

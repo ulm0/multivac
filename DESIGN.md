@@ -656,6 +656,16 @@ reporting. Four states, not two:
   regression. Failing legs print the owning change, never gate (in any mode,
   strict included), and self-heal never chases them. A closed or archived
   change confers nothing, and `change close` still demands a genuine `ok`.
+  The grace is for work not yet written, so it ends where that stops being
+  true: a change that declares at least one claim, whose **every** declared
+  claim resolves and whose **every** declared repo is recorded `landed`, is
+  **finished, not pending** (MV-80). Its legs still never gate — the change
+  does. `--strict` names the slug and refuses the run until `close` archives
+  it; the default policy reports the same line and exits 0, because a
+  pre-commit hook is not where an operator is told to go run another command.
+  A consumer-scoped or claim-scoped run reaches no verdict at all: it read a
+  subset of the legs, and "every declared claim" would be a statement about
+  bytes it never opened.
 
 A law row may also be marked `drift` in its state column: a **real,
 not-yet-fixable finding on the record**. Its legs evaluate and report — the
@@ -672,6 +682,7 @@ One exit matrix, no second answer:
 | broken `present` / `unique` | reported, exit 0 | exit 1 |
 | moved (self-healed) | exit 0 | exit 0 |
 | pending (claim of an open change) | exit 0 | exit 0 |
+| finished change — every declared claim resolves, every declared repo landed | reported, exit 0 | exit 1 |
 | leg of a `drift` law row (recorded finding) | exit 0 | exit 0 |
 
 Who invokes what: git hooks (`pre-commit`, `pre-push`) and harness hooks run

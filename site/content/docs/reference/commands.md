@@ -325,6 +325,25 @@ summary says who is holding it — exit 0 is the grace, silence is not:
   1 claim held pending by open change points-expire — not gating; close or delete the change to unmask them
 ```
 
+**A finished change is not a pending one.** That grace is for work not yet
+written, so it ends where that stops being true: a change declaring at least
+one claim, whose **every** declared claim resolves and whose **every**
+declared repo is recorded `landed`, is finished — nothing is left but `close`,
+and until somebody runs it every claim it holds stays unenforced. `--strict`
+refuses the run and names the slug:
+
+```txt
+finished  points-expire — every declared claim resolves and every declared repo is landed (3 claims whose failure this run would not gate); finished, not pending — close it: multivac change close points-expire · blocking
+
+1 blocking broken · exit 1 · 1 finished change unclosed
+```
+
+The default policy prints the same line and exits 0: a pre-commit hook is not
+where you are told to go run another command. A change declaring no claims is
+never finished — a universal over nothing is true of a change scaffolded
+seconds ago — and a `--repo`-scoped run reaches no verdict at all, because it
+read a subset of the legs.
+
 ### The exit matrix
 
 | result | default | `--strict` |
@@ -336,6 +355,7 @@ summary says who is holding it — exit 0 is the grace, silence is not:
 | a leg belonging to a `proposed` row | **0** | **0** |
 | a leg belonging to a `drift` row — recorded finding | **0** | **0** |
 | a claim an open change declares (`pending`) | **0** | **0** |
+| a **finished** change — every declared claim resolves, every declared repo landed | reported, **0** | **1** |
 | anchor parse error | **1** | **1** |
 | stale pin, `staleness: report` | **0** | **0** |
 | stale pin, `staleness: block` | **1** | **1** |
@@ -780,6 +800,40 @@ refusal:
 
 ```txt
 api: recorded as landed — no local merge commit to confirm it (points-expire is not contained in main here); normal for an MR merged on the remote, or squashed
+```
+
+**Landing is also read from the channel**, which the squash cannot destroy.
+`land` evaluates the change's declared claims against the brain's channel ref:
+if they resolve against what `origin` published, the work is published,
+however it got there. That verdict is per **change**, not per repo — one
+evaluation against one ref, and a `*` leg belongs to no single repo — so it
+prints under its own `channel:` label, never behind the repo key `--landed`
+names:
+
+```txt
+$ mvac change land points-expire
+channel: every declared claim resolves at origin/main 330cc3b (last fetch 2h ago) — the work is published there, however it got in — record it: multivac change land points-expire --landed <repo>
+```
+
+The read **offers** the conclusion; it never writes the record. A channel ref
+is only as true as the last fetch (MV-54), so the negative says both things it
+can mean, and published content proves publication rather than authorship:
+
+```txt
+channel: not every declared claim resolves at origin/main 330cc3b (never fetched here) — not landed, or not fetched: `multivac repos sync`, then re-read
+```
+
+A channel that does not resolve at all says that too, rather than going quiet:
+
+```txt
+channel: origin/main does not resolve here (no remote, or never fetched) — nothing read, so landing is unverified either way: `multivac repos sync`, then re-read
+```
+
+Recording the last repo arms `verify --strict`, and `land` says so — CI runs
+that gate on the channel, so a change left open turns main red:
+
+```txt
+every repo is now landed — once every declared claim resolves, `verify --strict` refuses points-expire as unclosed (MV-80), here and in CI, until: multivac change close points-expire
 ```
 
 A repo with no `origin` is told to land locally instead of to push:

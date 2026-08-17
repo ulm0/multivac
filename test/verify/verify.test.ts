@@ -367,7 +367,7 @@ function writeChange(
   brain: string,
   slug: string,
   claimIds: string[],
-  opts: { status?: 'open' | 'archived'; dir?: string } = {},
+  opts: { status?: 'open' | 'archived'; dir?: string; repoStatus?: string } = {},
 ): void {
   const dir = join(brain, '.multivac/changes', opts.dir ?? '');
   mkdirSync(dir, { recursive: true });
@@ -379,7 +379,7 @@ function writeChange(
       `status: ${opts.status ?? 'open'}`,
       'repos:',
       '  api:',
-      '    status: planned',
+      `    status: ${opts.repoStatus ?? 'planned'}`,
       'landing_order:',
       '  - - api',
       'invariants:',
@@ -455,6 +455,67 @@ test('pendency is not self-heal: a pending claim never rewrites its glob', async
   assert.match(out, /pending/);
   assert.doesNotMatch(out, /moved/);
   assert.match(readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8'), /api:src\/app\/\*\.ts/);
+});
+
+// --- MV-80: finished is not pending ---------------------------------------
+
+test('a finished change is refused as unclosed, not excused as pending', async () => {
+  const e = eco();
+  // Every declared claim resolves and the one declared repo is recorded
+  // landed: nothing is left but `close`. MV-17's grace has nothing to protect
+  // here, and while it holds, breaking INV-30 would print as a notice.
+  writeChange(e.brain, 'points-done', ['INV-30'], { repoStatus: 'landed' });
+  setLaw(
+    e.brain,
+    '| INV-30 | accounts table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-30 api:db/migrations/*.sql /create[[:space:]]+table[[:space:]]+accounts/i -->',
+  );
+  const strict = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(strict.code, 1);
+  assert.match(strict.out, /finished\s+points-done — every declared claim resolves/);
+  assert.match(strict.out, /finished, not pending — close it: multivac change close points-done/);
+  assert.match(strict.out, /1 blocking broken · exit 1 · 1 finished change unclosed/);
+  assert.ok(agrees(strict.code, strict.out), strict.out);
+  // ...and the ordinary run is untouched: it has never gated on anything but
+  // the blocking modes, and this is not one of them.
+  const plain = await captured(() => runVerify(e.brain));
+  assert.equal(plain.code, 0);
+  assert.match(plain.out, /finished\s+points-done .* · reported only — this run is not --strict/);
+});
+
+test('a change with work left is still pending, and still does not block', async () => {
+  const e = eco();
+  writeChange(e.brain, 'half-built', ['INV-31', 'INV-32'], { repoStatus: 'landed' });
+  setLaw(
+    e.brain,
+    '| INV-31 | accounts table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-31 api:db/migrations/*.sql /create[[:space:]]+table[[:space:]]+accounts/i -->',
+    '| INV-32 | points expire after a year | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-32 api:src/points.ts /expiresAt/ count=1 -->',
+  );
+  const { code, out } = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(code, 0);
+  assert.match(out, /declared by open change half-built/);
+  assert.doesNotMatch(out, /finished/);
+});
+
+test('an empty declaration is not finished by vacuity, and neither is an unlanded one', async () => {
+  const e = eco();
+  // Three shapes that a universal-over-nothing reading would call finished.
+  writeChange(e.brain, 'just-opened', [], { repoStatus: 'landed' });
+  writeChange(e.brain, 'nothing-checks-it', ['INV-33'], { repoStatus: 'landed' });
+  writeChange(e.brain, 'still-mine', ['INV-34']); // repo still planned
+  setLaw(
+    e.brain,
+    '| INV-33 | a claim nothing anchors | published | active | 2026-01-01 | x |',
+    '| INV-34 | accounts table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-34 api:db/migrations/*.sql /create[[:space:]]+table[[:space:]]+accounts/i -->',
+  );
+  const { code, out } = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(code, 0);
+  assert.doesNotMatch(out, /finished/);
+  // the unanchored row is still named as such — it is reported, not resolved
+  assert.match(out, /unanchored: INV-33/);
 });
 
 test('a closed change confers nothing: archived and non-open claims still gate', async () => {
