@@ -8,6 +8,7 @@ import { catFileBlobs, lsFiles, lsTree, untrackedFiles } from '../lib/git.js';
 import { excludeGlobs, filterFiles } from '../lib/glob.js';
 import { compileAnchorRegex } from '../lib/regex.js';
 import { sqlStatements } from './normalize.js';
+import { ANCHOR_LINE } from './parse.js';
 import type { Anchor } from '../types.js';
 
 export interface Match {
@@ -78,8 +79,14 @@ export class RepoScanner {
 
 /**
  * Matches of `re` in one file: per-statement for *.sql (normalized),
- * per-line otherwise. Anchor comment lines never match — an anchor's own
- * regex text must not satisfy (or break) another anchor.
+ * per-line otherwise. A line carrying an anchor COMMENT never matches — an
+ * anchor's own regex text must not satisfy (or break) another anchor, and the
+ * law table, the change files, DESIGN.md, the guide page teaching the grammar
+ * and this suite's own fixtures all quote whole anchors.
+ *
+ * MV-82: the skip is `ANCHOR_LINE` — the same predicate `parseAnchors` uses to
+ * decide a line declares a leg — never the substring `@anchor`. A line that
+ * merely names the word is code, and code is what legs are for.
  */
 export function matchesInFile(file: string, text: string, re: RegExp): Match[] {
   const out: Match[] = [];
@@ -91,7 +98,7 @@ export function matchesInFile(file: string, text: string, re: RegExp): Match[] {
   }
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('@anchor')) continue;
+    if (ANCHOR_LINE.test(lines[i])) continue;
     if (re.test(lines[i])) out.push({ file, line: i + 1 });
   }
   return out;

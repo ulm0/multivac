@@ -18,6 +18,18 @@ export interface ParseResult {
   diagnostics: ParseDiagnostic[];
 }
 
+/**
+ * A line carrying an anchor comment. The ONE definition, deliberately shared:
+ * this module decides which lines declare a leg, and `matchesInFile` decides
+ * which lines contribute no matches, and those must be the same set. Two
+ * private tests is how MV-82's defect happened — the scanner tested for the
+ * bare substring `@anchor`, so any line of any file that merely mentioned the
+ * word went unscanned and a trailing comment silenced any tombstone.
+ * No `g` flag: a stateful literal would make one line's verdict depend on the
+ * line tested before it.
+ */
+export const ANCHOR_LINE = /<!--\s*@anchor\b/;
+
 const GRAMMAR =
   '<!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> ...] /<regex>/[i] [present|absent|unique|count=N|each|each!] -->';
 
@@ -57,7 +69,7 @@ export function parseAnchors(text: string, file: string): ParseResult {
       bad(`anchor is not an HTML comment — write: ${GRAMMAR}`);
       continue;
     }
-    if (!/<!--\s*@anchor\b/.test(raw)) continue;
+    if (!ANCHOR_LINE.test(raw)) continue;
     const cm = raw.match(/<!--\s*@anchor\s+(.*?)\s*-->/);
     if (!cm) {
       bad(`unterminated anchor comment — write it on one line: ${GRAMMAR}`);

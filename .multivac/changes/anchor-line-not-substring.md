@@ -59,9 +59,18 @@ Consequence checked, not assumed: 10 lines across 5 files stop being hidden
 `test/anchor/parse.test.ts` 2, `test/skill.test.ts` 1). Full `verify --strict`
 after the fix decides whether any existing leg changes verdict.
 
-Drafted anchors for MV-82:
+Drafted anchors for MV-82, as landed:
 
     <!-- @anchor MV-82 brain:src/anchor/parse.ts /export const ANCHOR_LINE = \/<!--/ unique -->
+    <!-- @anchor MV-82 brain:src/anchor/parse.ts /!ANCHOR_LINE\.test\(raw\)/ -->
     <!-- @anchor MV-82 brain:src/anchor/match.ts /ANCHOR_LINE\.test\(lines\[i\]\)/ -->
-    <!-- @anchor MV-82 brain:src/anchor/match.ts /includes\('@anchor'\)/ absent -->
     <!-- @anchor MV-82 brain:test/anchor/match.test.ts /a source line that mentions @anchor in a comment is scanned/ -->
+
+A fifth was drafted and withdrawn on measurement, not on taste — the tombstone
+`brain:src/anchor/match.ts /includes\('@anchor'\)/ absent`. It validates at 0
+matches with the fix in place, and it *also* validates at 0 matches with the fix
+reverted: the reverted line contains the word, so under the reverted guard it
+hides itself from every leg. A tombstone that is green in both states is
+decoration, and the mutation run is what exposed it — `verify` under the revert
+listed the three positive legs as not matching and said nothing about this one.
+The defect's signature is that its own implementation is invisible to the law.

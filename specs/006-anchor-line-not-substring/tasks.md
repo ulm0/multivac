@@ -44,14 +44,14 @@ the wider alternative is refused for a stated reason.
 
 ## Phase 2: The shared predicate (foundational — blocks Phases 3 and 4)
 
-- [ ] T006 In `src/anchor/parse.ts`, export the anchor-line predicate as
+- [X] T006 In `src/anchor/parse.ts`, export the anchor-line predicate as
   `ANCHOR_LINE`, with a doc comment saying it is the one definition and naming
   both callers. Rewrite the existing test at the top of the anchor branch to use
   it, so the parser has no second copy.
-- [ ] T007 In `src/anchor/match.ts`, import `ANCHOR_LINE` and replace the
+- [X] T007 In `src/anchor/match.ts`, import `ANCHOR_LINE` and replace the
   substring test in `matchesInFile`'s line loop with it. Update the function's
   doc comment to say anchor *comment* lines, and say why the skip exists.
-- [ ] T008 `pnpm run build` — both `tsconfig.json` and `tsconfig.test.json`
+- [X] T008 `pnpm run build` — both `tsconfig.json` and `tsconfig.test.json`
   compile clean.
 
 **Checkpoint**: one definition, two callers, no cycle, tree builds.
@@ -65,13 +65,13 @@ the wider alternative is refused for a stated reason.
 **Independent test**: FR-002, SC-001 — the same violating line reports the same
 verdict with and without a trailing comment naming the keyword.
 
-- [ ] T009 [US1] Add `test/anchor/match.test.ts` with the assertion
+- [X] T009 [US1] Add `test/anchor/match.test.ts` with the assertion
   `a source line that mentions @anchor in a comment is scanned`: the
   reproduction's exact line against MV-04's pattern, expecting one match at
   line 1.
-- [ ] T010 [US1] Add the state-free assertion: scanning the same line twice
+- [X] T010 [US1] Add the state-free assertion: scanning the same line twice
   returns the same result, which fails if `ANCHOR_LINE` ever gains a `g` flag.
-- [ ] T011 [US1] End-to-end proof, not only the unit: append the evading line to
+- [X] T011 [US1] End-to-end proof, not only the unit: append the evading line to
   `src/lib/paths.ts`, `pnpm run build`, run `node dist/cli.js verify --strict`,
   confirm it is now RED with MV-04 named at that file and line, restore and
   confirm clean.
@@ -88,12 +88,12 @@ test.
 **Independent test**: FR-004, SC-004 — a documentation page quoting the grammar
 satisfies a forbidding leg whose search text the example contains.
 
-- [ ] T012 [US2] Add the assertion that a genuine `<!-- @anchor … -->` line is
+- [X] T012 [US2] Add the assertion that a genuine `<!-- @anchor … -->` line is
   skipped, with an ordinary line beside it that does match, so the test proves
   the skip is line-scoped and not file-scoped.
-- [ ] T013 [US2] Add the assertion that a docs page quoting the grammar in a
+- [X] T013 [US2] Add the assertion that a docs page quoting the grammar in a
   fenced example yields no match for a pattern the example contains.
-- [ ] T014 [US2] Run the full `node dist/cli.js verify --strict` and compare
+- [X] T014 [US2] Run the full `node dist/cli.js verify --strict` and compare
   every leg's verdict against the Phase 1 baseline. Report any leg that moved
   and decide it on its merits; re-base a `count` only in the row, with the
   reason in the row.
@@ -105,27 +105,28 @@ satisfies.
 
 ## Phase 5: The law (Priority: P1 — Constitution III)
 
-- [ ] T015 State MV-82 in `.multivac/invariants.md`: what the guard is for and
+- [X] T015 State MV-82 in `.multivac/invariants.md`: what the guard is for and
   what its reach must not become, dated, sourced to the change file.
-- [ ] T016 Write MV-82's four legs — the definition's own line (`unique`), the
-  scanner's use of it, the tombstone on the substring test (`absent`), and the
-  named check from T009. Validate each with `node dist/cli.js count` before
-  committing to it, so no leg is written blind.
-- [ ] T017 Confirm no existing row already covers this behaviour, so that
+- [X] T016 Write MV-82's legs — the definition's own line (`unique`), the
+  reader's use of it, the scanner's use of it, the tombstone on the substring
+  test (`absent`), and the named check from T009. Validate each with
+  `node dist/cli.js count` before committing to it, so no leg is written blind,
+  and drop any that cannot fire — a leg green in both states is decoration.
+- [X] T017 Confirm no existing row already covers this behaviour, so that
   `adds` is honest and nothing needed `touches`.
 
 ---
 
 ## Phase 6: Proof and polish
 
-- [ ] T018 `pnpm test` — the whole suite green, with the new file's assertions
+- [X] T018 `pnpm test` — the whole suite green, with the new file's assertions
   named in the output.
-- [ ] T019 Mutation-verify: revert the change in `src/anchor/match.ts`,
+- [X] T019 Mutation-verify: revert the change in `src/anchor/match.ts`,
   `pnpm run build`, watch the named assertion from T009 fail, restore, rebuild.
   Name the exact failing assertion in the report.
-- [ ] T020 Time `node dist/cli.js verify --strict` and report the wall clock:
+- [X] T020 Time `node dist/cli.js verify --strict` and report the wall clock:
   the pre-commit budget is sub-second (Constitution IV).
-- [ ] T021 Commit on the branch `change apply` made, repo style, with the
+- [X] T021 Commit on the branch `change apply` made, repo style, with the
   `Co-Authored-By` trailer. No push, no merge request, no `change close`.
 
 ---
@@ -143,6 +144,7 @@ satisfies.
 ## Implementation strategy
 
 Minimum viable scope is the whole of Phases 2–5: the fix without the law row
-violates Constitution III, and the law row without the tombstone leg is a rule
+violates Constitution III, and the law row without a leg that can fire is a rule
 nothing checks. Phase 6's mutation and timing steps are not polish in the
-optional sense — SC-003 and SC-005 are success criteria.
+optional sense — SC-003 and SC-005 are success criteria, and T019 is what
+demoted the drafted tombstone from a pin to decoration.
