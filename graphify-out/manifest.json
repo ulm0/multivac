@@ -10,7 +10,7 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1786929889.5786672,
+    "mtime": 1786930302.8915536,
     "ast_hash": "2ee6c3611be6be19718d88e2500f2353",
     "semantic_hash": ""
   },
@@ -630,8 +630,8 @@
     "semantic_hash": ""
   },
   ".multivac/invariants.md": {
-    "mtime": 1786929880.2173448,
-    "ast_hash": "d5cb84169d8ed2bdcc0f247079e143be",
+    "mtime": 1786930302.8894176,
+    "ast_hash": "be743ca6f73b60ff26ce1bfe1f97104e",
     "semantic_hash": ""
   },
   ".multivac/ritual.md": {
@@ -670,7 +670,7 @@
     "semantic_hash": ""
   },
   "site/content/_index.md": {
-    "mtime": 1786929889.5791075,
+    "mtime": 1786930302.8916578,
     "ast_hash": "86da424c72a6cdf542e3000ddd1e8411",
     "semantic_hash": ""
   },
@@ -1085,7 +1085,7 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1786929906.3749907,
+    "mtime": 1786930302.8895457,
     "ast_hash": "f4db28d0896dbed134404ac2d461e72c",
     "semantic_hash": ""
   },
@@ -1239,11 +1239,6 @@
     "ast_hash": "7ababb3205a51bf3f2207bdefa0ec8f2",
     "semantic_hash": ""
   },
-  ".multivac/changes/core-hookspath-is-read-the-way-git-reads-it.md": {
-    "mtime": 1786929796.5958302,
-    "ast_hash": "cef21aafbefd37aa88db52756a67fd8a",
-    "semantic_hash": ""
-  },
   "specs/004-core-hookspath-is-read-the-way-git-reads-it/checklists/requirements.md": {
     "mtime": 1786929753.6115637,
     "ast_hash": "1dad1b9f2f34c2bc51b34f0c7e502154",
@@ -1262,6 +1257,21 @@
   "specs/004-core-hookspath-is-read-the-way-git-reads-it/tasks.md": {
     "mtime": 1786929796.5985847,
     "ast_hash": "c6ee66144abbdbdf52871cf236a99f8b",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/core-hookspath-is-read-the-way-git-reads-it.md": {
+    "mtime": 1786930302.8491802,
+    "ast_hash": "ac34aa89d1b071c4ca0a1134d3a661db",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/a-finished-change-is-not-a-pending-one.md": {
+    "mtime": 1786930302.8891292,
+    "ast_hash": "ab802b64266fd86571334c2d4f287f61",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/enactment-is-gated-where-the-credential-lives.md": {
+    "mtime": 1786930302.8891983,
+    "ast_hash": "9f5ff249b2d387cacb376ae6959a8771",
     "semantic_hash": ""
   }
 }
