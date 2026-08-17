@@ -358,7 +358,30 @@ repos:
     url: git@example.com:acme/payments.git
     path: ../payments                  # optional; defaults to ../<key>
     grapher: codegraph                 # overrides the global grapher
+    sdd: opsx                          # overrides the global sdd; `none` = no SDD here
     channel: origin/release            # overrides the global channel
+```
+
+**`sdd:` per repo.** Declared adapters reach every declared, present repo:
+the change lifecycle runs the tool's own init in each one that lacks it, and
+`doctor` reports each one by name. A repo that should have no spec-driven flow
+says so in its own entry:
+
+```yaml
+repos:
+  landing:
+    path: ../acme-landing
+    sdd: none
+```
+
+`none` is out of scope, not a gap: that repo is never scaffolded, never gated
+on the SDD's project-level document, and never reported as lacking anything.
+An absent `sdd:` inherits the ecosystem's — it does not mean none.
+
+```txt
+sdd        speckit @ brain: artifact ok · binary ok · sdd_auto on
+sdd        speckit @ api: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init …`, doctor never does (it reaches the network)
+sdd        none @ landing: no sdd declared for this repo — out of scope, not a gap
 ```
 
 Paths are resolved relative to the brain directory. An entry with only a

@@ -5,10 +5,10 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, rmdir } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
-import type { GrapherDecl } from '../types.js';
+import { dirname, join, resolve } from 'node:path';
+import type { Config, GrapherDecl } from '../types.js';
 import { grapherSpec, unverifiedGrapher } from './registry.js';
-import { binaryPresent } from './detect.js';
+import { artifactPresent, binaryPresent, pathExists } from './detect.js';
 import { GRAPH_LOCK } from '../doors/settings.js';
 import { say, warn } from '../lib/out.js';
 
@@ -60,10 +60,18 @@ async function takeLock(dir: string, label: string): Promise<(() => Promise<void
 }
 
 /**
- * Refresh the graph for one scope (the brain, or one declared repo).
+ * Refresh the graph for one scope (the brain, or one declared repo) — or BUILD
+ * it, where the scope has no artifact yet.
+ *
+ * The two are not the same command for every tool: an adapter may declare a
+ * `create` that differs from its `refresh`, and `doctor` has always printed
+ * `create ?? refresh` for a missing artifact and `refresh` for a stale one. The
+ * runner asked neither question and always ran `refresh`, so the distinction
+ * existed in the report and nowhere else (MV-87).
+ *
  * An unverified grapher = the fields to declare, and nothing is run — a
  * derived command would be a guess. Absent binary = notice with the install
- * hint; a refresh that exits non-zero = warning handing the command back.
+ * hint; a run that exits non-zero = warning handing the command back.
  * Never throws: a foreign tool's failure is never the lifecycle's failure.
  */
 export async function refreshGraph(
@@ -77,19 +85,23 @@ export async function refreshGraph(
     warn(`graph @ ${scope}: ${unverifiedGrapher(name)}`);
     return;
   }
+  // Per scope, like everything else about an adapter (MV-87): a graph is
+  // missing HERE or it is not, and the answer decides which command runs.
+  const first = !(await artifactPresent(spec, dir));
+  const run = first ? (spec.create ?? spec.refresh) : spec.refresh;
   if (!(await binaryPresent(spec))) {
     say(
-      `graph ${name} @ ${scope}: binary not found — refresh skipped; ` +
-        `${spec.installHint}, then \`${spec.refresh}\` there`,
+      `graph ${name} @ ${scope}: binary not found — ${first ? 'build' : 'refresh'} skipped; ` +
+        `${spec.installHint}, then \`${run}\` there`,
     );
     return;
   }
   const label = `graph ${name} @ ${scope}`;
   const release = await takeLock(dir, label);
-  const [bin, ...args] = spec.refresh.split(' ');
+  const [bin, ...args] = run.split(' ');
   try {
     await execFileP(bin, args, { cwd: dir });
-    say(`${label}: refreshed (\`${spec.refresh}\`) — artifact left uncommitted`);
+    say(`${label}: ${first ? 'built' : 'refreshed'} (\`${run}\`) — artifact left uncommitted`);
   } catch (e) {
     // The TOOL'S words, not node's. `Command failed: <cmd>` only repeats the
     // command this very line prints again two clauses later, while the cause
@@ -104,10 +116,59 @@ export async function refreshGraph(
       .slice(0, 3)
       .join(' ');
     warn(
-      `${label}: refresh failed (${said || err.message.split('\n')[0]}) — ` +
-        `run \`${spec.refresh}\` there by hand`,
+      `${label}: ${first ? 'build' : 'refresh'} failed (${said || err.message.split('\n')[0]}) — ` +
+        `run \`${run}\` there by hand`,
     );
   } finally {
     await release?.();
+  }
+}
+
+/** One scope a grapher may run in, with the tool that applies THERE. */
+export interface GraphScope {
+  scope: string;
+  dir: string;
+  name?: string;
+}
+
+/**
+ * The brain plus every declared, present repo, each carrying the grapher that
+ * applies to it — the per-scope override first, the ecosystem's otherwise.
+ * The same list `doctor` reports over, so the report and the runner cannot
+ * disagree about which scopes exist.
+ */
+export async function graphScopes(brain: string, cfg: Config): Promise<GraphScope[]> {
+  const scopes: GraphScope[] = [{ scope: 'brain', dir: brain, name: cfg.grapher }];
+  for (const [key, e] of Object.entries(cfg.repos)) {
+    if (e.isBrain) continue; // already the brain
+    const dir = resolve(brain, e.path);
+    if (await pathExists(dir)) scopes.push({ scope: key, dir, name: e.grapher ?? cfg.grapher });
+  }
+  return scopes;
+}
+
+/**
+ * Build the graph once in every declared, present scope that has none (MV-87).
+ *
+ * The graph was only ever built for repos a change happened to touch, so a
+ * repo had to be worked on before it could be navigated — backwards for an
+ * agent that reads the graph in order to do the work. `doctor` named the
+ * command per repo and nothing ever ran it.
+ *
+ * Self-limiting, which is why the lifecycle can call it at more than one
+ * point: a scope with an artifact is skipped, so this costs one `stat` per
+ * scope on every run after the first, and a repo is built exactly once ever.
+ * Refreshing an existing graph stays where it was — `change close`, over the
+ * repos that change touched.
+ */
+export async function ensureGraphs(brain: string, cfg: Config): Promise<void> {
+  for (const s of await graphScopes(brain, cfg)) {
+    if (!s.name) continue; // no grapher declared for this scope: silence
+    const spec = grapherSpec(s.name, cfg.graphers);
+    // Unverified: `doctor` prints the fields to declare, and nothing is run.
+    // Building from a guessed command is the one thing worse than no graph.
+    if (spec === null) continue;
+    if (await artifactPresent(spec, s.dir)) continue; // already built here
+    await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
   }
 }

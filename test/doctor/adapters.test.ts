@@ -13,11 +13,15 @@ import {
   unverifiedGrapher,
 } from '../../src/adapters/registry.js';
 import {
+  NO_SDD,
   artifactPresent,
   binaryPresent,
   detect,
   policy,
+  sddFor,
+  sddRoots,
 } from '../../src/adapters/detect.js';
+import { loadConfig } from '../../src/lib/config.js';
 
 const tmp = mkdtempSync(join(tmpdir(), 'mvac-adapters-'));
 const emptyDir = join(tmp, 'empty');
@@ -176,4 +180,56 @@ test('registry door targets: canonical agents, symlink claude', () => {
   assert.equal(doorTargets.claude.kind, 'symlink');
   assert.ok(doorTargets.claude.skill);
   assert.ok(doorTargets.claude.hookConfig?.path);
+});
+
+// --- MV-87: which adapter applies is a per-root fact, resolved in one place ---
+
+test('repos.<key>.sdd overrides the ecosystem, and `none` opts the repo out', async () => {
+  // The same shape and the same fallback `grapher` already had, so the config
+  // teaches one mechanism rather than two.
+  const eco = mkdtempSync(join(tmpdir(), 'mvac-rootsdd-'));
+  const brain = join(eco, 'brain');
+  for (const d of ['brain', 'api', 'legacy', 'landing']) mkdirSync(join(eco, d), { recursive: true });
+  mkdirSync(join(brain, '.multivac'), { recursive: true });
+  writeFileSync(
+    join(brain, '.multivac/config.yml'),
+    [
+      'doors: [agents]',
+      'sdd: speckit',
+      'repos:',
+      '  brain: .',
+      '  api: ../api',
+      '  legacy:',
+      '    path: ../legacy',
+      '    sdd: opsx',
+      '  landing:',
+      '    path: ../landing',
+      '    sdd: none',
+      '  gone: ../gone',
+      '',
+    ].join('\n'),
+  );
+  const cfg = await loadConfig(brain);
+  assert.equal(cfg.repos.legacy.sdd, 'opsx', 'the key parses like every other repo key');
+  assert.equal(cfg.repos.landing.sdd, NO_SDD);
+  assert.equal(cfg.repos.api.sdd, undefined, 'absent inherits, it does not mean none');
+
+  assert.equal(sddFor(cfg.repos.api, cfg), 'speckit');
+  assert.equal(sddFor(cfg.repos.legacy, cfg), 'opsx');
+  assert.equal(sddFor(cfg.repos.landing, cfg), undefined, '`none` is out of scope');
+  assert.equal(sddFor(undefined, cfg), 'speckit');
+
+  const roots = await sddRoots(brain, cfg);
+  // The brain first, then declared repos in config order — and only the ones
+  // that are on disk: `gone` is declared and never cloned.
+  assert.deepEqual(
+    roots.map((r) => [r.scope, r.sdd]),
+    [
+      ['brain', 'speckit'],
+      ['api', 'speckit'],
+      ['legacy', 'opsx'],
+      ['landing', undefined],
+    ],
+  );
+  assert.ok(!roots.some((r) => r.scope === 'gone'), 'an absent repo is not a root');
 });

@@ -23,7 +23,7 @@ import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
 import { runScaffold, sddGate, sddInstructions } from '../adapters/sdd.js';
-import { refreshGraph } from '../adapters/refresh.js';
+import { ensureGraphs, refreshGraph } from '../adapters/refresh.js';
 import { evaluate, fmtAge } from './verify.js';
 import {
   ChangeError,
@@ -110,6 +110,11 @@ async function gateSdd(
   // apply and close, so one call covers all three. A scaffold that fails
   // changes nothing here — the gate below still refuses on its own terms.
   await runScaffold(brain, cfg, noSdd);
+  // The other half of the same idea (MV-87): a declared repo with no graph is
+  // one the agent cannot navigate, and the graph is what it reads in order to
+  // do the work. Skipped the moment an artifact exists, so this is one `stat`
+  // per scope on every run after the first.
+  await ensureGraphs(brain, cfg);
   const { ok, lines } = await sddGate(brain, cfg, gate, slug, noSdd);
   for (const l of lines) (ok ? say : warn)(l);
   return ok;
@@ -559,6 +564,7 @@ async function cmdNew(
   // have to be runnable: scaffold before printing, so the lines below name
   // chat commands that exist.
   await runScaffold(brain, cfg, noSdd);
+  await ensureGraphs(brain, cfg);
   runSdd(cfg, 'new', slug, noSdd);
   return 0;
 }

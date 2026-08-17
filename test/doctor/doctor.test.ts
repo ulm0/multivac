@@ -99,7 +99,8 @@ repos:
     const { lines, exit } = await doctorReport(eco.brain);
     assert.equal(exit, 0);
     const sdd = line(lines, 'sdd');
-    assert.match(sdd, /opsx: artifact missing/);
+    // The scope is part of the verdict now (MV-87): a root, not an ecosystem.
+    assert.match(sdd, /opsx @ brain: artifact missing/);
     // No init was verified for this tool, so none is named: the clause below
     // belongs to the adapter that declares a scaffold, not to every absence.
     assert.doesNotMatch(sdd, /declared but never run here/);
@@ -179,7 +180,10 @@ test('doctor: the constitution is reported present, missing and stale — doctor
   lawRow('2026-08-15');
   // Absent: the exact agent command that creates it.
   const missing = await sddLines();
-  assert.match(missing, /project law — \.specify\/memory\/constitution\.md missing → run \/speckit\.constitution/);
+  // Per root, and every root: the brain AND the declared repo. One repo's
+  // constitution used to be reported as the whole product's (MV-87).
+  assert.match(missing, /project law @ brain: \.specify\/memory\/constitution\.md missing → run \/speckit\.constitution/);
+  assert.match(missing, /project law @ api: \.specify\/memory\/constitution\.md missing → run \/speckit\.constitution/);
   assert.match(missing, /project law — revisit: once at start, then on every principle change/);
   // The state `change plan` REFUSES over (MV-76) is the state doctor still
   // exits 0 on: doctor reports, and gating is somebody else's job.
@@ -206,6 +210,60 @@ test('doctor: the constitution is reported present, missing and stale — doctor
   lawRow('2026-07-01');
   const fresh = await sddLines();
   assert.match(fresh, /present \(last modified 2026-08-01\).*— fresh/);
+  assert.equal((await doctorReport(eco.brain)).exit, 0);
+});
+
+/**
+ * MV-87: the SDD pass reports per root, the way the grapher pass always has.
+ * It used to collapse every root into one boolean and stop at the first hit,
+ * so one repo somebody had scaffolded by hand made an ecosystem of unequipped
+ * repos read `artifact ok` — a green report over nothing, which is the exact
+ * failure the tool exists to prevent.
+ */
+test('doctor: the sdd is reported per root, and an opted-out repo is scope, not a gap', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-perroot-')));
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    [
+      'doors: [agents]',
+      'sdd: speckit',
+      'repos:',
+      '  api: ../acme-api',
+      '  web:',
+      '    path: ../acme-web',
+      '    sdd: none',
+      '',
+    ].join('\n'),
+  );
+  // Only api has ever been scaffolded — the repo somebody did by hand.
+  mkdirSync(join(eco.repos.api, '.specify'), { recursive: true });
+
+  const lines = (await doctorReport(eco.brain)).lines.filter((l) => l.startsWith('sdd'));
+  const joined = lines.join('\n');
+
+  // One line per declared, present root, each with its OWN verdict.
+  assert.match(joined, /speckit @ brain: artifact missing \(looked for \.specify\)/);
+  assert.match(joined, /speckit @ api: artifact ok/);
+  // The opted-out repo is named as out of scope, never as a deficiency.
+  assert.match(joined, /none @ web: no sdd declared for this repo — out of scope, not a gap/);
+  assert.doesNotMatch(joined, /speckit @ web/);
+
+  // api's artifact must not answer for the brain: that is the whole defect.
+  assert.doesNotMatch(joined, /speckit @ brain: artifact ok/);
+
+  // The tool's own facts stay said ONCE — repeating a nine-line flow per root
+  // would bury the lines that differ.
+  assert.equal(lines.filter((l) => / gates — /.test(l)).length, 1);
+  assert.equal(lines.filter((l) => /flow — new: run \/speckit\.specify/.test(l)).length, 1);
+  assert.equal(lines.filter((l) => /project law — revisit:/.test(l)).length, 1);
+
+  // The project document is asked of each root the tool applies to, and of no
+  // root it does not.
+  assert.match(joined, /project law @ brain: .*constitution\.md missing/);
+  assert.match(joined, /project law @ api: .*constitution\.md missing/);
+  assert.doesNotMatch(joined, /project law @ web/);
+
+  // A report, throughout: doctor never gates on any of it.
   assert.equal((await doctorReport(eco.brain)).exit, 0);
 });
 

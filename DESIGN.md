@@ -1181,6 +1181,30 @@ module. `.multivac/config.yml` never defines adapters; it only **selects**
 them by
 name (`doors: [agents, claude]`, `sdd: opsx`, `grapher: graphify`).
 
+### Every adapter question is asked per root (2026-08-17)
+
+**A root is the brain plus every declared repo present on disk, and one root's
+artifact never answers for another's.** Measured in an ecosystem of six: a
+single sibling repo somebody had run `specify init` in by hand made the
+scaffold return before it touched anything — the brain included — because
+presence was asked of the whole list and answered by the first hit; `doctor`
+printed `artifact ok` over five unequipped repos for the same reason; and the
+project-document gate accepted that one repo's constitution as the
+ecosystem's.
+
+The rule lands in four places: the scaffold runs the tool's own init in every
+root that lacks the artifact and stays silent in every root that has it;
+`doctor` prints one line per root, the shape its grapher pass always had; the
+project-document gate asks each root where the tool is **installed**, naming
+each that fails; and the grapher's first build reaches every declared, present
+repo rather than only the repos a change happened to touch. A repo opts out
+with its own `sdd:` — the literal `none` — and a root that resolves to no SDD
+is out of scope, never deficient.
+
+Nothing here moves a subprocess out of the change lifecycle, and nothing
+derives a command from a tool's name: a tool that declares no init still gets
+none, stated once per root that lacks the artifact.
+
 ### Automation by default (owner decision, 2026-08-13)
 
 Three normative rules, applying to the brain and to every declared repo:

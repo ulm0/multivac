@@ -578,8 +578,16 @@ test('plan refuses while the project document is absent or still the template', 
   //    beginning and nothing ever refused for it.
   const absent = await capture(() => change.run(['plan', 'proj-doc'], ctx));
   assert.equal(absent.code, 1);
-  assert.match(absent.out, /refused — \.specify\/memory\/constitution\.md is missing or unreadable/);
-  assert.match(absent.out, /looked in brain/);
+  // The refusal names the ROOT it is about (MV-87), not just the path: in an
+  // ecosystem of six, "it is missing" does not say which checkout to open.
+  assert.match(
+    absent.out,
+    /refused — brain:\.specify\/memory\/constitution\.md is missing or unreadable/,
+  );
+  // No "looked in <every root>" here any more: that list was what a first-hit
+  // search had to disclose. A per-root refusal names the root in the sentence
+  // itself, and the list survives only for the case where the tool is
+  // installed in no root at all.
   assert.match(absent.out, /run \/speckit\.constitution in your agent/);
   assert.match(absent.out, /then re-run: multivac change plan proj-doc/);
   assert.match(absent.out, /--no-sdd/);
@@ -624,7 +632,7 @@ test('a stale project document still reports, never gates', async () => {
   const old = new Date('2020-01-01T00:00:00Z').getTime() / 1000;
   utimesSync(constitution, old, old);
   const report = (await doctorReport(brain)).lines.join('\n');
-  assert.match(report, /project law — .*STALE: the law moved while this did not/);
+  assert.match(report, /project law @ brain: .*STALE: the law moved while this did not/);
 
   const planned = await capture(() => change.run(['plan', 'proj-doc'], ctx));
   assert.equal(planned.code, 0);
@@ -668,11 +676,12 @@ test('a declared SDD that is not installed scaffolds itself', async () => {
   // The command is the vendor's, verbatim, and it is printed before it runs.
   assert.match(
     c.out,
-    /running the tool's own init in brain: `specify init --here --integration claude --force`/,
+    /running the tool's own init there: `specify init --here --integration claude --force`/,
   );
-  // Which roots were searched, so an operator whose specs live in a sibling
-  // checkout can see which one was scaffolded.
-  assert.match(c.out, /\.specify is in none of brain/);
+  // The root it is missing FROM, named: presence is a per-root fact (MV-87),
+  // so the line says which checkout is being scaffolded, not which list was
+  // searched.
+  assert.match(c.out, /\.specify is missing in brain/);
   assert.match(c.out, /scaffolded — brain:\.specify is there now/);
   assert.ok(existsSync(join(brain, '.specify')), 'the init must have written its artifact');
   assert.equal(specifyRuns().length, 1);
@@ -791,6 +800,127 @@ test('--no-sdd and sdd_auto: false turn the scaffold off with everything else', 
   commitAll();
 });
 
+// --- the cascade: every declared, present root, not the first one that answers ---
+
+/** A sibling code repo beside the brain, the way a real ecosystem has them. */
+const sibling = (name: string): string => {
+  const dir = join(tmp, name);
+  initRepo(dir, { 'README.md': `# ${name}\n` });
+  return dir;
+};
+
+/** The five-root ecosystem these tests measure: two bare, one done by hand,
+ *  one opted out, one declared but never cloned. */
+const cascadeConfig = (sdd = 'speckit'): void =>
+  config([
+    'doors: [agents]',
+    `sdd: ${sdd}`,
+    'repos:',
+    '  brain: .',
+    '  api:',
+    '    path: ../acme-api',
+    '  web:',
+    '    path: ../acme-web',
+    '  landing:',
+    '    path: ../acme-landing',
+    '    sdd: none',
+    '  gone:',
+    '    path: ../acme-gone',
+  ]);
+
+test('the scaffold reaches every root that lacks the artifact, not the first one that has it', async () => {
+  // The measured defect, at the size it was measured: one sibling repo somebody
+  // ran `specify init` in by hand suppressed the scaffold in every other root,
+  // the brain included, because presence was asked of the whole list and
+  // answered by the first hit (MV-87).
+  const api = sibling('acme-api');
+  const web = sibling('acme-web');
+  const landing = sibling('acme-landing');
+  cascadeConfig();
+  unscaffold();
+  rmSync(join(api, '.specify'), { recursive: true, force: true });
+  mkdirSync(join(web, '.specify'), { recursive: true }); // the one done by hand
+  forgetSpecifyRuns();
+  stubSpecify(0);
+
+  const c = await capture(() => change.run(['new', 'cascade-a', 'Cascade a'], ctx));
+  assert.equal(c.code, 0);
+  // Every root that needed it, named — and the one that did not, silent.
+  assert.match(c.out, /\.specify is missing in brain/);
+  assert.match(c.out, /\.specify is missing in api/);
+  assert.doesNotMatch(c.out, /missing in web/);
+  // Out of scope, not deficient: `sdd: none`, and a repo that is not on disk.
+  assert.doesNotMatch(c.out, /missing in landing/);
+  assert.doesNotMatch(c.out, /missing in gone/);
+
+  assert.equal(specifyRuns().length, 2, 'brain and api, once each — never web');
+  assert.ok(existsSync(join(brain, '.specify')), 'the brain is scaffolded');
+  assert.ok(existsSync(join(api, '.specify')), 'and so is the sibling that lacked it');
+  assert.ok(!existsSync(join(landing, '.specify')), 'the opted-out repo is untouched');
+  assert.ok(!existsSync(join(tmp, 'acme-gone')), 'an absent repo is never created');
+  commitAll();
+});
+
+test('a second run over an equipped ecosystem scaffolds nothing and says nothing', async () => {
+  // Silence is a contract: `specify init` downloads templates and can overwrite
+  // them, so a lifecycle that re-ran it every command would be worse than the
+  // hole it fills.
+  forgetSpecifyRuns();
+  const c = await capture(() => change.run(['new', 'cascade-b', 'Cascade b'], ctx));
+  assert.equal(c.code, 0);
+  assert.equal(specifyRuns().length, 0);
+  assert.doesNotMatch(c.out, /running the tool's own init/);
+  assert.doesNotMatch(c.out, /scaffolded/);
+  // No commitAll: `change new` commits its own bookkeeping and this test
+  // deliberately leaves nothing else behind — that is the whole assertion.
+});
+
+test('a root whose init fails does not decide the fate of the roots after it', async () => {
+  // One broken checkout in an ecosystem of six is a report, not a stop.
+  const api = join(tmp, 'acme-api');
+  unscaffold();
+  rmSync(join(api, '.specify'), { recursive: true, force: true });
+  forgetSpecifyRuns();
+  // Fails in api alone; the brain is scaffolded before it and must still land.
+  writeFileSync(
+    join(bin, 'specify'),
+    `#!/bin/sh\necho "$@" >> '${runLog}'\n` +
+      "case \"$PWD\" in *acme-api) echo 'error: failed to download template' >&2; exit 2;; esac\n" +
+      `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\nexit 0\n`,
+  );
+  chmodSync(join(bin, 'specify'), 0o755);
+  try {
+    const c = await capture(() => change.run(['new', 'cascade-c', 'Cascade c'], ctx));
+    assert.equal(c.code, 0, 'a foreign tool failing is never the lifecycle failing');
+    assert.equal(specifyRuns().length, 2, 'both roots were attempted');
+    assert.match(c.out, /left no \.specify in api/);
+    assert.match(c.out, /it said: error: failed to download template/);
+    assert.match(c.out, /run it in api by hand/);
+    // ...and the root before it still got its artifact.
+    assert.match(c.out, /scaffolded — brain:\.specify is there now/);
+    assert.ok(existsSync(join(brain, '.specify')));
+  } finally {
+    stubSpecify(0);
+  }
+});
+
+test('an adapter with no declared init states the gap once per root that lacks it', async () => {
+  // MV-59's rule survives the cascade: a tool whose init was never verified
+  // gets none, in every root, and the gap is stated where it applies rather
+  // than once for an ecosystem.
+  const api = join(tmp, 'acme-api');
+  rmSync(join(brain, 'openspec'), { recursive: true, force: true });
+  rmSync(join(api, 'openspec'), { recursive: true, force: true });
+  cascadeConfig('opsx');
+  const c = await capture(() => change.run(['new', 'cascade-d', 'Cascade d'], ctx));
+  assert.match(c.out, /sdd opsx: declared, and nothing of it is in brain/);
+  assert.match(c.out, /sdd opsx: declared, and nothing of it is in api/);
+  assert.match(c.out, /will not guess one/);
+  assert.equal(sddSpec('opsx')!.scaffold, undefined);
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  commitAll();
+});
+
 test('the scaffold does not satisfy the project-document gate it runs in front of', async () => {
   // Where MV-75 and MV-76 meet, and the only place either can undo the other.
   // `runScaffold` runs BEFORE `sddGate` in the same command, and what
@@ -820,5 +950,76 @@ test('the scaffold does not satisfy the project-document gate it runs in front o
     c.out,
     /constitution\.md is still the unfilled template shipped by the tool \(placeholders remain/,
   );
+  commitAll();
+});
+
+// --- the project document, asked of every root the tool is installed in ---
+
+test('the project-document gate asks every installed root and names each that fails', async () => {
+  // The measured defect: one repo's constitution satisfied the gate for an
+  // ecosystem of six, so five repos planned against a document they had never
+  // seen (MV-87 amending MV-76).
+  const api = join(tmp, 'acme-api');
+  const web = join(tmp, 'acme-web');
+  cascadeConfig();
+  for (const d of [brain, api, web]) rmSync(join(d, '.specify'), { recursive: true, force: true });
+  // web's init fails, so the cascade leaves it uninstalled — the state that
+  // must NOT be asked for a constitution. landing opted out of the SDD
+  // entirely. Both are roots; neither owns this document.
+  writeFileSync(
+    join(bin, 'specify'),
+    `#!/bin/sh\necho "$@" >> '${runLog}'\n` +
+      "case \"$PWD\" in *acme-web) echo 'error: no network' >&2; exit 2;; esac\n" +
+      `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\nexit 0\n`,
+  );
+  chmodSync(join(bin, 'specify'), 0o755);
+
+  await capture(() => change.run(['new', 'doc-per-root', 'Doc per root'], ctx));
+  assert.ok(existsSync(join(brain, '.specify')), 'the cascade installed the brain');
+  assert.ok(existsSync(join(api, '.specify')), 'and api');
+  assert.ok(!existsSync(join(web, '.specify')), 'and could not install web');
+  const parsed = await loadChange(brain, 'doc-per-root');
+  parsed.change.repos = { brain: { status: 'planned' } };
+  parsed.change.landing_order = [['brain']];
+  parsed.change.invariants.adds = [];
+  await saveChange(brain, parsed);
+  artifact('specs/001-doc-per-root/spec.md', '# Real spec\n');
+
+  const refused = await capture(() => change.run(['plan', 'doc-per-root'], ctx));
+  assert.equal(refused.code, 1);
+  // BOTH installed roots, each named. One line naming one repo would leave the
+  // other unfixed and unmentioned. What the scaffold left them is the UNFILLED
+  // template, which MV-76 refuses in each root exactly as it refuses in one.
+  assert.match(
+    refused.out,
+    /refused — brain:\.specify\/memory\/constitution\.md is still the unfilled template/,
+  );
+  assert.match(
+    refused.out,
+    /refused — api:\.specify\/memory\/constitution\.md is still the unfilled template/,
+  );
+  // Not installed here, and opted out there: neither is asked, so neither can
+  // refuse work over a document it has no reason to own.
+  assert.doesNotMatch(refused.out, /refused — web:/);
+  assert.doesNotMatch(refused.out, /refused — landing:/);
+
+  // Written in both: the gate passes, and each pass names its root.
+  const real = '# Constitution\n\nOne principle, written by a human.\n';
+  writeFileSync(join(brain, '.specify/memory/constitution.md'), real);
+  writeFileSync(join(api, '.specify/memory/constitution.md'), real);
+  const passed = await capture(() => change.run(['plan', 'doc-per-root'], ctx));
+  assert.equal(passed.code, 0);
+  assert.match(passed.out, /sdd speckit: brain: \.specify\/memory\/constitution\.md ok/);
+  assert.match(passed.out, /sdd speckit: api: \.specify\/memory\/constitution\.md ok/);
+
+  // One root regressing is enough to refuse again — the gate is an AND over
+  // the installed roots, not a search that stops at the first satisfied one.
+  rmSync(join(api, '.specify/memory/constitution.md'), { force: true });
+  const again = await capture(() => change.run(['plan', 'doc-per-root'], ctx));
+  assert.equal(again.code, 1);
+  assert.match(again.out, /refused — api:\.specify\/memory\/constitution\.md is missing or unreadable/);
+  assert.match(again.out, /sdd speckit: brain: \.specify\/memory\/constitution\.md ok/);
+  stubSpecify(0);
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
   commitAll();
 });

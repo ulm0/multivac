@@ -181,6 +181,20 @@ not one of them:
 | **`change close`** | once, at the end of a change | the safety net |
 | ~~git hooks~~ | never | the shims run `verify` only |
 
+The **first build** is separate, because a repo cannot be refreshed before it
+has been built. `change new` and the gates build the graph once in every
+declared, present repo that has none — with the adapter's `create` where it
+declares one, its `refresh` otherwise — and skip every repo that already has
+an artifact:
+
+```txt
+graph graphify @ api: built (`graphify update .`) — artifact left uncommitted
+```
+
+Before this, the graph was only ever built for repos a change explicitly
+touched, so a repo had to be worked on before it could be navigated — backwards
+for an agent that reads the graph in order to do the work (MV-87).
+
 **The harness post-edit hook.** `doors` writes it into the hook config of each
 declared target whose harness has such a hook — for Claude Code that is one
 more entry in the same managed `.claude/settings.json` merge that carries
@@ -255,14 +269,15 @@ adapter, not necessarily the tool's own binary name:
 
 ```txt
 $ mvac doctor
-sdd        opsx: artifact ok · binary ok · sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts
+sdd        opsx @ brain: artifact ok · binary ok · sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts
+sdd        opsx @ api: artifact ok · binary ok · sdd_auto on — …
 sdd        opsx flow — new: run /opsx:propose <slug> in your agent … [proof: openspec/changes/<slug>/proposal.md — `change plan` refuses without it]
 sdd        opsx gates — change plan: refuses without openspec/changes/<slug>/proposal.md · change apply: refuses without openspec/changes/<slug>/tasks.md · change close: refuses without openspec/changes/archive/*-<slug>
 sdd        opsx project law — this tool has no project-level document; nothing to create, nothing to keep fresh
 ```
 
 ```txt
-sdd        nope: unknown adapter — known: opsx, speckit; fix sdd: in .multivac/config.yml
+sdd        nope @ brain: unknown adapter — known: opsx, speckit; fix sdd: in .multivac/config.yml
 ```
 
 {{< callout >}}
@@ -289,39 +304,48 @@ So an adapter also declares its **scaffold**: the artifact whose absence means
 | `speckit` | `.specify` | `specify init --here --integration claude --force` |
 | `opsx` | — | **unverified — not recorded, and never guessed** |
 
-`change new`, `change plan`, `change apply` and `change close` run it when the
-artifact is missing, print it first, and skip it entirely when it is there:
+`change new`, `change plan`, `change apply` and `change close` run it in **every
+declared, present repo** that lacks the artifact — the brain and the siblings
+alike — print it first, and skip a repo entirely when it is already there:
 
 ```txt
-sdd speckit: .specify is in none of brain, api — running the tool's own init in brain: `specify init --here --integration claude --force`
+sdd speckit: .specify is missing in brain — running the tool's own init there: `specify init --here --integration claude --force`
 sdd speckit: scaffolded — brain:.specify is there now; its steps are runnable
+sdd speckit: .specify is missing in api — running the tool's own init there: `specify init --here --integration claude --force`
+sdd speckit: scaffolded — api:.specify is there now; its steps are runnable
 ```
 
+Presence is a **per-root** question (MV-87). One repo somebody initialized by
+hand does not answer for the others, a repo whose init fails does not stop the
+repos after it, and a repo with `sdd: none` in its entry is never touched.
+
 `verify`, `doctor` and `doors` **never** run it: the init downloads templates,
-and those three make no network calls. `doctor` reports the state and names the
-command instead:
+and those three make no network calls. `doctor` reports the state per repo and
+names the command instead:
 
 ```txt
-sdd        speckit: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force`, doctor never does (it reaches the network) · binary ok · sdd_auto on …
+sdd        speckit @ brain: artifact ok · binary ok · sdd_auto on …
+sdd        speckit @ api: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force`, doctor never does (it reaches the network) · binary ok · sdd_auto on …
+sdd        none @ landing: no sdd declared for this repo — out of scope, not a gap
 ```
 
 Five outcomes, all of them said out loud:
 
 | state | what happens |
 | --- | --- |
-| artifact present anywhere | nothing runs, nothing is printed |
-| no init recorded for that tool | the gap is stated with the install line; **nothing is executed** |
-| binary not on `PATH` | the install hint; nothing is executed |
-| ran, artifact now there | `scaffolded` |
-| ran, artifact still missing | the tool's own stderr, the command handed back, and the gate that follows still refuses on its own terms |
+| artifact present **in this repo** | nothing runs there, nothing is printed |
+| no init recorded for that tool | the gap is stated per repo with the install line; **nothing is executed** |
+| binary not on `PATH` | the install hint, once — it is a fact about the machine |
+| ran, artifact now there | `scaffolded`, naming the repo |
+| ran, artifact still missing | the tool's own stderr, the command handed back, the next repo still attempted, and the gate that follows still refuses on its own terms |
 
 The last row is the honest one: an exit code is the tool's claim, the artifact
 is the fact, and the gates look for the artifact.
 
-Only the brain is scaffolded, and the message names every repo that was
-searched — a sibling checkout is yours to `init`. `--no-sdd` and
-`sdd_auto: false` turn the scaffold off with everything else; there is no
-separate switch.
+Every declared, present repo is scaffolded, each judged on its own artifact;
+a repo declared but not on disk is skipped, and one with `sdd: none` is out of
+scope. `--no-sdd` and `sdd_auto: false` turn the scaffold off with everything
+else; there is no separate switch.
 
 {{< callout >}}
 A scaffold is **not a step**. It is the tool's own terminal command, run once
@@ -513,7 +537,8 @@ a constitution the agent only hears about on the second command is one nobody
 writes — and `doctor` reports it:
 
 ```txt
-sdd        speckit project law — .specify/memory/constitution.md missing → run /speckit.constitution in your agent to write the project principles …
+sdd        speckit project law @ brain: .specify/memory/constitution.md missing → run /speckit.constitution in your agent to write the project principles …
+sdd        speckit project law @ api: .specify/memory/constitution.md missing → run /speckit.constitution …
 sdd        speckit project law — revisit: once at start, then on every principle change: amend it in place, bump CONSTITUTION_VERSION by semver …
 ```
 

@@ -187,7 +187,7 @@ function optString(v: unknown, key: string): string | undefined {
 function repoEntry(key: string, v: unknown): RepoEntry {
   if (typeof v === 'string') return { path: v };
   if (v === null || typeof v !== 'object' || Array.isArray(v)) {
-    fail(`repos.${key} must be a path string or { path, url?, grapher?, channel? }`);
+    fail(`repos.${key} must be a path string or { path, url?, grapher?, sdd?, channel? }`);
   }
   const o = v as Record<string, unknown>;
   let path: string;
@@ -204,6 +204,9 @@ function repoEntry(key: string, v: unknown): RepoEntry {
     path,
     url: optString(o.url, `repos.${key}.url`),
     grapher: optString(o.grapher, `repos.${key}.grapher`),
+    // Same validator as `grapher`, on purpose: one shape for both overrides.
+    // `none` is a value, not a parse case — `sddFor` resolves it (MV-87).
+    sdd: optString(o.sdd, `repos.${key}.sdd`),
     channel: optString(o.channel, `repos.${key}.channel`),
   };
 }

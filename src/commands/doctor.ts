@@ -25,11 +25,14 @@ import {
   type AdapterSpec,
 } from '../adapters/registry.js';
 import {
+  type SddRoot,
   artifactPresent,
   binaryPresent,
   pathExists,
+  sddRoots,
 } from '../adapters/detect.js';
 import { flowLines, stepsGating } from '../adapters/sdd.js';
+import { graphScopes } from '../adapters/refresh.js';
 import { readLaw } from '../change/reserve.js';
 import {
   HOOKS_DIR,
@@ -108,14 +111,15 @@ async function doorState(brain: string, name: string): Promise<string> {
  */
 async function projectDocLines(
   brain: string,
-  cfg: Config,
+  name: string,
   spec: AdapterSpec,
+  roots: SddRoot[],
 ): Promise<string[]> {
   const steps = spec.projectSteps ?? [];
   if (steps.length === 0) {
     return [
       label('sdd') +
-        `${cfg.sdd} project law — this tool has no project-level document; nothing to create, nothing to keep fresh`,
+        `${name} project law — this tool has no project-level document; nothing to create, nothing to keep fresh`,
     ];
   }
   // The newest law row is the product's own high-water mark.
@@ -125,83 +129,125 @@ async function projectDocLines(
     .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
     .sort()
     .at(-1);
-  const roots = [brain, ...(await presentRepoDirs(brain, cfg))];
   const out: string[] = [];
   for (const p of steps) {
-    let found: string | null = null;
+    // Per root (MV-87). It used to take the first root that could answer, so
+    // in an ecosystem of six one repo's constitution was reported as the
+    // product's and five repos without one read as satisfied. Reported for
+    // every root the tool APPLIES to, installed or not — the gate is the one
+    // that asks only about installed roots, because a report that hid a
+    // missing document until somebody scaffolded the repo would hide it
+    // exactly when it is most worth saying.
     for (const root of roots) {
-      const path = join(root, p.artifact);
+      const path = join(root.dir, p.artifact);
       const st = await stat(path).catch(() => null);
-      if (!st) continue;
-      // Scaffolded is not written: spec-kit installs the constitution as its
-      // own template, so a file full of placeholders is a placeholder, and
-      // calling it "present" would be the fakery this report exists to avoid.
-      if (p.placeholder) {
-        const text = await readFile(path, 'utf8').catch(() => '');
-        if (new RegExp(p.placeholder).test(text)) {
+      let found: string | null = null;
+      if (st) {
+        // Scaffolded is not written: spec-kit installs the constitution as its
+        // own template, so a file full of placeholders is a placeholder, and
+        // calling it "present" would be the fakery this report exists to avoid.
+        const text = p.placeholder ? await readFile(path, 'utf8').catch(() => '') : '';
+        if (p.placeholder && new RegExp(p.placeholder).test(text)) {
           found = `${p.artifact} is still the unfilled template shipped by the tool (placeholders remain) → ${p.run}`;
-          break;
+        } else {
+          const day = new Date(st.mtimeMs).toISOString().slice(0, 10);
+          found =
+            newest && newest > day
+              ? `${p.artifact} present (last modified ${day}) but the law's newest row is ${newest} — STALE: the law moved while this did not; a report, never a gate`
+              : `${p.artifact} present (last modified ${day})${newest ? `, law's newest row ${newest}` : ''} — fresh`;
         }
       }
-      const day = new Date(st.mtimeMs).toISOString().slice(0, 10);
-      found =
-        newest && newest > day
-          ? `${p.artifact} present (last modified ${day}) but the law's newest row is ${newest} — STALE: the law moved while this did not; a report, never a gate`
-          : `${p.artifact} present (last modified ${day})${newest ? `, law's newest row ${newest}` : ''} — fresh`;
-      break;
+      out.push(
+        label('sdd') +
+          `${name} project law @ ${root.scope}: ${found ?? `${p.artifact} missing → ${p.run}`}`,
+      );
     }
-    out.push(
-      label('sdd') + `${cfg.sdd} project law — ${found ?? `${p.artifact} missing → ${p.run}`}`,
-    );
-    out.push(label('sdd') + `${cfg.sdd} project law — revisit: ${p.revisit}`);
+    // The revisit cadence is the tool's, not a checkout's: said once.
+    out.push(label('sdd') + `${name} project law — revisit: ${p.revisit}`);
   }
   return out;
 }
 
+/**
+ * The SDD, per root (MV-87) — the shape `grapherLines` below has always had.
+ *
+ * It used to collapse every root into one boolean and stop at the first hit,
+ * so a single sibling repo somebody had scaffolded by hand made the whole
+ * ecosystem read `artifact ok` while the brain and four repos had nothing.
+ * What is per ROOT (is it installed here, is the project document here) is
+ * reported per root; what is per TOOL (its flow, which lifecycle commands
+ * gate, whether the automation is on) is said once, because repeating it six
+ * times would bury the six lines that differ.
+ */
 async function sddLines(brain: string, cfg: Config): Promise<string[]> {
-  if (!cfg.sdd) return []; // not declared: silence
-  const spec = sddSpec(cfg.sdd);
-  if (!spec) {
-    return [
-      label('sdd') +
-        `${cfg.sdd}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`,
-    ];
-  }
-  let artifact = false;
-  for (const d of [brain, ...(await presentRepoDirs(brain, cfg))]) {
-    if (await artifactPresent(spec, d)) {
-      artifact = true;
-      break;
-    }
-  }
-  const binary = await binaryPresent(spec);
-  // A declared tool that has never run here is a state worth reporting, and
-  // reporting is all doctor may do: the init downloads templates and MV-01
-  // keeps this command offline. It names the command; the lifecycle runs it.
-  const sc = spec.scaffold;
-  const art = artifact
-    ? 'artifact ok'
-    : `artifact missing (looked for ${spec.artifacts.join(', ')})` +
-      (sc
-        ? ` — declared but never run here; \`change new\` runs the tool's own \`${sc.run}\`, doctor never does (it reaches the network)`
-        : '');
-  const bin = binary ? 'binary ok' : `binary missing → ${spec.installHint}`;
+  const roots = await sddRoots(brain, cfg);
+  // Not declared anywhere — not by the ecosystem, not by any repo: silence.
+  if (!roots.some((r) => r.sdd)) return [];
   const auto = !cfg.sddAuto
     ? 'sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself'
     : "sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts";
-  const out = [label('sdd') + `${cfg.sdd}: ${art} · ${bin} · ${auto}`];
-  // The tool's whole flow, in its own order and length, each step with the
-  // artifact that proves it ran — or the reason nothing ever could.
-  for (const l of flowLines(spec)) out.push(label('sdd') + `${cfg.sdd} flow — ${l}`);
-  // Which lifecycle commands actually refuse, and which cannot for this tool.
-  const gates = (['plan', 'apply', 'close'] as const).map((g) => {
-    const on = stepsGating(spec, g);
-    return on.length > 0
-      ? `change ${g}: refuses without ${on.map((s) => s.artifact).join(', ')}`
-      : `change ${g}: not gated — this tool declares no step to prove there`;
-  });
-  out.push(label('sdd') + `${cfg.sdd} gates — ${gates.join(' · ')}`);
-  out.push(...(await projectDocLines(brain, cfg, spec)));
+  const out: string[] = [];
+  const binCache = new Map<string, boolean>();
+  for (const root of roots) {
+    if (!root.sdd) {
+      // `sdd: none`. An exclusion is an ordinary configuration, so it reads as
+      // a fact about scope and never as a deficiency.
+      out.push(
+        label('sdd') + `none @ ${root.scope}: no sdd declared for this repo — out of scope, not a gap`,
+      );
+      continue;
+    }
+    const spec = sddSpec(root.sdd);
+    if (!spec) {
+      out.push(
+        label('sdd') +
+          `${root.sdd} @ ${root.scope}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`,
+      );
+      continue;
+    }
+    let binary = binCache.get(root.sdd);
+    if (binary === undefined) {
+      binary = await binaryPresent(spec);
+      binCache.set(root.sdd, binary);
+    }
+    // A declared tool that has never run here is a state worth reporting, and
+    // reporting is all doctor may do: the init downloads templates and MV-01
+    // keeps this command offline. It names the command; the lifecycle runs it.
+    const sc = spec.scaffold;
+    const art = (await artifactPresent(spec, root.dir))
+      ? 'artifact ok'
+      : `artifact missing (looked for ${spec.artifacts.join(', ')})` +
+        (sc
+          ? ` — declared but never run here; \`change new\` runs the tool's own \`${sc.run}\`, doctor never does (it reaches the network)`
+          : '');
+    const bin = binary ? 'binary ok' : `binary missing → ${spec.installHint}`;
+    out.push(label('sdd') + `${root.sdd} @ ${root.scope}: ${art} · ${bin} · ${auto}`);
+  }
+  // Once per distinct tool, in the order the roots named them.
+  const tools = [...new Set(roots.map((r) => r.sdd).filter((n): n is string => Boolean(n)))];
+  for (const name of tools) {
+    const spec = sddSpec(name);
+    if (!spec) continue;
+    // The tool's whole flow, in its own order and length, each step with the
+    // artifact that proves it ran — or the reason nothing ever could.
+    for (const l of flowLines(spec)) out.push(label('sdd') + `${name} flow — ${l}`);
+    // Which lifecycle commands actually refuse, and which cannot for this tool.
+    const gates = (['plan', 'apply', 'close'] as const).map((g) => {
+      const on = stepsGating(spec, g);
+      return on.length > 0
+        ? `change ${g}: refuses without ${on.map((s) => s.artifact).join(', ')}`
+        : `change ${g}: not gated — this tool declares no step to prove there`;
+    });
+    out.push(label('sdd') + `${name} gates — ${gates.join(' · ')}`);
+    out.push(
+      ...(await projectDocLines(
+        brain,
+        name,
+        spec,
+        roots.filter((r) => r.sdd === name),
+      )),
+    );
+  }
   return out;
 }
 
@@ -219,16 +265,10 @@ async function graphStale(dir: string, spec: AdapterSpec): Promise<boolean> {
 }
 
 async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
-  const scopes: Array<{ scope: string; dir: string; name?: string }> = [
-    { scope: 'brain', dir: brain, name: cfg.grapher },
-  ];
-  for (const [key, e] of Object.entries(cfg.repos)) {
-    if (e.isBrain) continue; // already covered by the brain scope above
-    const dir = resolve(brain, e.path);
-    if (await pathExists(dir)) {
-      scopes.push({ scope: key, dir, name: e.grapher ?? cfg.grapher });
-    }
-  }
+  // The same list the lifecycle builds from, not a second copy of it: a report
+  // and a runner that enumerate the scopes separately can disagree about which
+  // scopes exist, and the report is the only one anybody reads.
+  const scopes = await graphScopes(brain, cfg);
   const out: string[] = [];
   const binCache = new Map<string, boolean>();
   for (const s of scopes) {
