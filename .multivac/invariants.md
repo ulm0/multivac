@@ -613,4 +613,5 @@ checks them on every commit.
 <!-- @anchor MV-81 brain:test/verify/verify.test.ts /a row enacted beside the code it anchors is refused/ -->
 <!-- @anchor MV-81 brain:test/verify/verify.test.ts /the enactment check says when it could not answer/ -->
 <!-- @anchor MV-81 brain:site/content/docs/concepts/invariants.md /ungateable/ -->
+| MV-82 | RESERVED by change anchor-line-not-substring — state the rule here before close. | open | proposed | 2026-08-17 | [changes/anchor-line-not-substring.md](changes/anchor-line-not-substring.md) |
 
