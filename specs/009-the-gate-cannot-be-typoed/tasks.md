@@ -86,7 +86,7 @@ were right are untouched.
       newly refuse a command line that worked. `mvac doctor .` refused where it
       used to report on the working directory. Name it plainly.
 - [X] T014 `pnpm run build && pnpm test && node dist/cli.js verify --strict`.
-- [ ] T015 Land, `change land --landed brain`, `change close`.
+- [X] T015 Land, `change land --landed brain`, `change close`.
 
 ### After close
 
