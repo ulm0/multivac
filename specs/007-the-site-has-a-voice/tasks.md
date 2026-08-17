@@ -179,7 +179,7 @@ names the file.
 - [X] T028 Run the full gate: `pnpm test` and `node dist/cli.js verify --strict`.
 - [X] T029 Verify SC-007: `git diff --stat main -- site/content CHANGELOG.md`
       shows only the changelog entry. No page text changed (FR-011).
-- [ ] T030 `change close the-site-has-a-voice`, then walk the printed ritual.
+- [X] T030 `change close the-site-has-a-voice`, then walk the printed ritual.
       MV-83 stays `proposed` — only a human enacts a row (Principle III).
 
 ---
