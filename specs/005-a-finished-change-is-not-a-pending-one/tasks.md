@@ -146,7 +146,7 @@ Depends on: Phases 2 and 3. Blocks: Phase 5.
 - [X] **T018** `node dist/cli.js verify --strict` exits 0 with MV-80's six legs
   resolving, and this change is NOT named as finished — its repo is `branched`,
   not `landed`, which is Phase 1's whole point demonstrated on itself. (SC-007)
-- [ ] **T019** Commit on the branch `change apply` created, repo style, with the
+- [X] **T019** Commit on the branch `change apply` created, repo style, with the
   co-author trailer. No push, no MR, no `change close`.
 
 Depends on: Phase 4.

@@ -1,16 +1,16 @@
-# Graph Report - brain  (2026-08-17)
+# Graph Report - multivac  (2026-08-17)
 
 ## Corpus Check
-- 248 files · ~274,365 words
+- 248 files · ~274,356 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 1746 nodes · 2786 edges · 144 communities (113 shown, 31 thin omitted)
+- 1746 nodes · 2786 edges · 145 communities (114 shown, 31 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.54)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `09bfcec4`
+- Built from commit: `83ae04f9`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -35,7 +35,7 @@
 - Top-level keys
 - SDD adapters
 - Implementation Plan: The release says what changed
-- detect.ts
+- adapters.test.ts
 - Tasks: [FEATURE NAME]
 - Contributor Covenant Code of Conduct
 - integrations.md
@@ -141,7 +141,7 @@
 - speckit-taskstoissues/SKILL.md
 - [CHECKLIST TYPE] Checklist: [FEATURE NAME]
 - The project document is gated on existing
-- A finished change is not a pending one
+- refresh.ts
 - composition.md
 - ls-files-counts-each-file-once.md
 - doors prunes what it projects
@@ -149,6 +149,7 @@
 - git.ts
 - change.test.ts
 - normalize.ts
+- A finished change is not a pending one
 
 ## God Nodes (most connected - your core abstractions)
 1. `say()` - 37 edges
@@ -177,7 +178,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (144 total, 31 thin omitted)
+## Communities (145 total, 31 thin omitted)
 
 ### Community 0 - "Implementation Plan: The project document is gated on existing"
 Cohesion: 0.05
@@ -212,8 +213,8 @@ Cohesion: 0.25
 Nodes (7): core.hooksPath is read the way git reads it, Drafted anchors, Friction, written down rather than worked around, Mutation proofs, this round, Second round: the audit found the row half-true (2026-08-16), What changes, What does NOT change
 
 ### Community 8 - "doctor.ts"
-Cohesion: 0.27
-Nodes (15): stepsGating(), branchesLine(), buildCritical(), doctorReport(), doorState(), fmtAge(), label(), pinsLine() (+7 more)
+Cohesion: 0.24
+Nodes (20): artifactPresent(), binaryPresent(), detect(), pathExists(), branchesLine(), buildCritical(), doctorReport(), doorState() (+12 more)
 
 ### Community 9 - "common.sh"
 Cohesion: 0.08
@@ -259,9 +260,9 @@ Nodes (16): Artifact ≠ binary, Automatic refresh, Detection at init, Each tool
 Cohesion: 0.05
 Nodes (36): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: The release says what changed, Complexity Tracking, Constitution Check, Design decisions (+28 more)
 
-### Community 20 - "detect.ts"
-Cohesion: 0.16
-Nodes (19): AdapterStatus, artifactPresent(), binaryPresent(), detect(), policy, SddRoot, execFileP, refreshGraph() (+11 more)
+### Community 20 - "adapters.test.ts"
+Cohesion: 0.23
+Nodes (10): policy, grapherNames, grapherSpec(), sddSpec(), grapherLines(), projectLawLines(), renderBrainDoor(), acme (+2 more)
 
 ### Community 21 - "Tasks: [FEATURE NAME]"
 Cohesion: 0.07
@@ -420,12 +421,12 @@ Cohesion: 0.05
 Nodes (37): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: enactment is gated where the credential lives, 1. The index is the only honest source, and the limit is printed, 2. The offence is "beside the code it anchors", so the anchors define it, 3. A row born `active` counts as an enactment (+29 more)
 
 ### Community 61 - "sdd.ts"
-Cohesion: 0.19
-Nodes (22): artifactHit(), onPath(), pathExists(), sddRoots(), sddSpec(), copiedFrom(), execFileP, flowLines() (+14 more)
+Cohesion: 0.18
+Nodes (21): AdapterStatus, artifactHit(), onPath(), SddRoot, sddRoots(), AdapterSpec, copiedFrom(), execFileP (+13 more)
 
 ### Community 62 - "registry.ts"
-Cohesion: 0.11
-Nodes (17): DoorKind, DoorTarget, doorTargets, GatePoint, GrapherEntry, GrapherQuery, knownGraphers, LifecyclePoint (+9 more)
+Cohesion: 0.12
+Nodes (16): DoorKind, DoorTarget, doorTargets, GatePoint, GrapherEntry, GrapherQuery, knownGraphers, LifecyclePoint (+8 more)
 
 ### Community 66 - "Anchors: the writing manual"
 Cohesion: 0.22
@@ -567,9 +568,9 @@ Nodes (4): [Category 1], [Category 2], [CHECKLIST TYPE] Checklist: [FEATURE NAME
 Cohesion: 0.50
 Nodes (3): The project document is gated on existing, What changes, What merging MV-75 found
 
-### Community 134 - "A finished change is not a pending one"
-Cohesion: 0.40
-Nodes (4): A finished change is not a pending one, Landing, read from the channel, Open for the spec, The distinction the tool does not make
+### Community 134 - "refresh.ts"
+Cohesion: 0.48
+Nodes (6): execFileP, refreshGraph(), sleep(), takeLock(), unverifiedGrapher(), GrapherDecl
 
 ### Community 136 - "composition.md"
 Cohesion: 0.33
@@ -591,6 +592,10 @@ Nodes (4): ctx, eco, svc, tmp
 Cohesion: 0.53
 Nodes (4): dollarTag(), endOfQuoted(), SqlStatement, sqlStatements()
 
+### Community 144 - "A finished change is not a pending one"
+Cohesion: 0.40
+Nodes (4): A finished change is not a pending one, Landing, read from the channel, Open for the spec, The distinction the tool does not make
+
 ## Knowledge Gaps
 - **895 isolated node(s):** `common.sh script`, `name`, `version`, `description`, `license` (+890 more)
   These have ≤1 connection - possible missing edges or undocumented components.
@@ -599,7 +604,7 @@ Nodes (4): dollarTag(), endOfQuoted(), SqlStatement, sqlStatements()
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `say()` connect `change.ts` to `init.ts`, `doctor.ts`, `index.ts`, `fixture.ts`, `count.ts`, `detect.ts`, `verify.ts`, `doors.ts`, `sdd.ts`?**
+- **Why does `say()` connect `change.ts` to `refresh.ts`, `init.ts`, `doctor.ts`, `index.ts`, `fixture.ts`, `count.ts`, `verify.ts`, `doors.ts`, `sdd.ts`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._
 - **Why does `multivac — design` connect `multivac — design` to `Contributing to multivac`?**
   _High betweenness centrality (0.003) - this node is a cross-community bridge._

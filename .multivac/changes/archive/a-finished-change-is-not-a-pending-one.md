@@ -1,9 +1,9 @@
 ---
 slug: a-finished-change-is-not-a-pending-one
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
