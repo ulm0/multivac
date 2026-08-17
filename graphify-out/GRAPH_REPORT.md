@@ -1,16 +1,16 @@
-# Graph Report - brain  (2026-08-17)
+# Graph Report - multivac  (2026-08-17)
 
 ## Corpus Check
-- 285 files · ~311,498 words
+- 313 files · ~333,884 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2022 nodes · 3085 edges · 176 communities (143 shown, 33 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.54)
+- 2231 nodes · 3321 edges · 212 communities (181 shown, 31 thin omitted)
+- Extraction: 100% EXTRACTED · 0% INFERRED · 0% AMBIGUOUS · INFERRED: 16 edges (avg confidence: 0.54)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `f185624c`
+- Built from commit: `20464334`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -100,7 +100,7 @@
 - the-door-for-contributors.md
 - parse.ts
 - the-gate-names-its-room.md
-- Contributing to multivac
+- Changelog
 - Reading `mvac verify`
 - the-panel-lights-up.md
 - Interview: a brain from scratch
@@ -119,7 +119,7 @@
 - Enactment is gated where the credential lives
 - Execution Steps
 - settings.ts
-- git.ts
+- evaluate.ts
 - fixture.ts
 - config.ts
 - Feature Specification: [FEATURE NAME]
@@ -127,7 +127,7 @@
 - speckit-plan/SKILL.md
 - doors.ts
 - types.ts
-- The merge keeps what it did not write
+- seed.ts
 - Tasks: The site has a voice
 - speckit-specify/SKILL.md
 - speckit-tasks/SKILL.md
@@ -147,17 +147,18 @@
 - doors prunes what it projects
 - sync-fetches-the-channel.md
 - Tasks: The docs say what ships
+- run
 - Feature Specification: The gate cannot be typoed
 - normalize.ts
 - A finished change is not a pending one
 - Quickstart: seeing it, and breaking it on purpose
-- out.ts
+- cli.ts
 - Implementation Plan: The site has a voice
 - Implementation Plan: The docs say what ships
 - Quickstart: cut it, and break it on purpose
 - Quickstart: typo it on purpose
 - Tasks: The gate cannot be typoed
-- registry.test.ts
+- adapters.test.ts
 - Contract: the tokens `site/assets/css/custom.css` exposes
 - Data model: The site has a voice
 - Research: The site has a voice
@@ -173,10 +174,42 @@
 - Contract: what each command declares
 - Data model: The gate cannot be typoed
 - 0.3.0, and the pages stop claiming a release state the manifest contradicts
+- doors.test.ts
+- Feature Specification: A brain knows what projected it
+- coexist.test.ts
+- Feature Specification: The rows say what they check
+- Feature Specification: The site shows what is published
+- Tasks: The rows say what they check
+- Tasks: A brain knows what projected it
+- Tasks: The site shows what is published
+- Contributing to multivac
+- Contract: the notice and the two fields
+- Quickstart: get the notice on purpose
+- Research: A brain knows what projected it
+- Quickstart: check the corrections, and break them
+- Research: The rows say what they check
+- Contract: where the number comes from
+- refresh.ts
+- ritual.test.ts
+- Data model: A brain knows what projected it
+- Implementation Plan: A brain knows what projected it
+- Contract: what each correction says afterwards
+- Implementation Plan: The rows say what they check
+- Data model: The site shows what is published
+- Implementation Plan: The site shows what is published
+- Quickstart: build it at each state
+- Research: The site shows what is published
+- The rows say what they check
+- The site shows what is published
+- User Scenarios & Testing *(mandatory)*
+- Specification Quality Checklist: A brain knows what projected it
+- Specification Quality Checklist: The rows say what they check
+- Data model: The rows say what they check
+- Specification Quality Checklist: The site shows what is published
+- A brain knows what projected it
 - An unknown flag is refused, not ignored
-- the-site-has-a-voice.md
-- seed-finds-the-contracts.md
-- the-graph-follows-the-agent.md
+- The project document is gated on existing
+- the-site-quotes-the-version-the-package-declares.md
 
 ## God Nodes (most connected - your core abstractions)
 1. `say()` - 37 edges
@@ -188,9 +221,11 @@
 7. `pathExists()` - 22 edges
 8. `loadChange()` - 22 edges
 9. `saveChange()` - 22 edges
-10. `runInit()` - 19 edges
+10. `runInit()` - 20 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `run()` --calls--> `main()`  [EXTRACTED]
+  test/cli/unknown-args.test.ts → src/cli.ts
 - `scanned()` --calls--> `matchesInFile()`  [EXTRACTED]
   test/anchor/match.test.ts → src/anchor/match.ts
 - `declareBrain()` --calls--> `loadChange()`  [EXTRACTED]
@@ -199,25 +234,23 @@
   test/change/ritual.test.ts → src/change/file.ts
 - `declareBrain()` --calls--> `saveChange()`  [EXTRACTED]
   test/change/sdd-gates.test.ts → src/change/file.ts
-- `run()` --calls--> `main()`  [EXTRACTED]
-  test/cli/help.test.ts → src/cli.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (176 total, 33 thin omitted)
+## Communities (212 total, 31 thin omitted)
 
 ### Community 0 - "Implementation Plan: The project document is gated on existing"
 Cohesion: 0.05
 Nodes (39): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: The project document is gated on existing, Complexity Tracking, Constitution Check, D1 — Recognize "nobody has written this" by the template's fill-in tokens, not by whole-file equality (+31 more)
 
 ### Community 1 - "file.ts"
-Cohesion: 0.12
-Nodes (20): archiveChange(), ChangeClaim, ChangeError, ChangeFile, closeGate(), frontmatterError(), normalizeChange(), ParsedChange (+12 more)
+Cohesion: 0.15
+Nodes (19): archiveChange(), ChangeClaim, ChangeError, ChangeFile, closeGate(), frontmatterError(), normalizeChange(), parseChange() (+11 more)
 
 ### Community 2 - "reserve.ts"
-Cohesion: 0.26
-Nodes (16): changeRel(), insertRow(), lawPath(), lawRelChange(), LawRow, lawRows(), nextFreeId(), owns() (+8 more)
+Cohesion: 0.28
+Nodes (15): insertRow(), lawPath(), lawRelChange(), LawRow, lawRows(), nextFreeId(), owns(), readLaw() (+7 more)
 
 ### Community 3 - "package.json"
 Cohesion: 0.04
@@ -232,16 +265,16 @@ Cohesion: 0.05
 Nodes (38): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: core.hooksPath is read the way git reads it, 1. One resolver, exported, called from both sides, 2. Identity is decided after resolution, never on the text, 3. The report keeps its wording; only the directory it reads changes (+30 more)
 
 ### Community 6 - "init.ts"
-Cohesion: 0.07
-Nodes (28): detectAdapters(), Detected, ensureVisibleToGit(), exists(), Flags, init, isRepoRoot(), migrateLegacy() (+20 more)
+Cohesion: 0.12
+Nodes (23): detectAdapters(), Detected, ensureVisibleToGit(), exists(), Flags, init, isRepoRoot(), migrateLegacy() (+15 more)
 
 ### Community 7 - "core.hooksPath is read the way git reads it"
 Cohesion: 0.25
 Nodes (7): core.hooksPath is read the way git reads it, Drafted anchors, Friction, written down rather than worked around, Mutation proofs, this round, Second round: the audit found the row half-true (2026-08-16), What changes, What does NOT change
 
 ### Community 8 - "doctor.ts"
-Cohesion: 0.19
-Nodes (17): pathExists(), branchesLine(), buildCritical(), doctorReport(), doorState(), fmtAge(), label(), pinsLine() (+9 more)
+Cohesion: 0.22
+Nodes (22): artifactPresent(), binaryPresent(), detect(), pathExists(), stepsGating(), branchesLine(), buildCritical(), doctorReport() (+14 more)
 
 ### Community 9 - "common.sh"
 Cohesion: 0.08
@@ -260,12 +293,12 @@ Cohesion: 0.33
 Nodes (5): Next, The arc, What changes per case, and what does not, What each phase buys, Where you start
 
 ### Community 13 - "index.ts"
-Cohesion: 0.08
-Nodes (34): main(), usage(), version(), doctorCommand, helpCommand, run(), TOPICS, usageFor() (+26 more)
+Cohesion: 0.16
+Nodes (14): doctorCommand, helpCommand, run(), TOPICS, usageFor(), execFileP, reposCommand, reposList() (+6 more)
 
 ### Community 14 - ".multivac/invariants.md"
 Cohesion: 0.05
-Nodes (22): The scan guard skips anchor lines, not every line saying @anchor, Close keeps used reservations, Each scope verifies what it is responsible for, Do not name what you do not support, The chain arms in every order, The first release, The gaps that were not gaps, The graph refreshes itself (+14 more)
+Nodes (23): The scan guard skips anchor lines, not every line saying @anchor, Close keeps used reservations, Each scope verifies what it is responsible for, Do not name what you do not support, seed finds the contracts, The chain arms in every order, The first release, The gaps that were not gaps (+15 more)
 
 ### Community 15 - "Every command shows its flags"
 Cohesion: 0.40
@@ -276,8 +309,8 @@ Cohesion: 0.04
 Nodes (43): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: The SDD arrives with its own scaffold, 1. `scaffold` is a field on the adapter entry, not a new kind of step, 2. Two operative fields plus a note, and no defaulting, 3. Absent everywhere ⇒ scaffold the brain; present anywhere ⇒ silence (+35 more)
 
 ### Community 17 - "Top-level keys"
-Cohesion: 0.12
-Nodes (15): `authorities`, `blocking`, `channel`, `doors`, Errors are exit 2, `grapher`, `graphers`, Layout (+7 more)
+Cohesion: 0.11
+Nodes (17): `authorities`, `blocking`, `channel`, `doors`, Errors are exit 2, `grapher`, `graphers`, Layout (+9 more)
 
 ### Community 18 - "SDD adapters"
 Cohesion: 0.12
@@ -377,11 +410,11 @@ Nodes (6): Amending and retiring, apply — a worktree per repo, or create, clos
 
 ### Community 42 - "change.ts"
 Cohesion: 0.16
-Nodes (37): runScaffold(), landingPlan(), anchoredClaimIds(), baseNames(), blockedPaths(), BranchBase, bump(), clone() (+29 more)
+Nodes (37): runScaffold(), changeRel(), landingPlan(), anchoredClaimIds(), baseNames(), blockedPaths(), BranchBase, bump() (+29 more)
 
 ### Community 43 - "install.ts"
-Cohesion: 0.18
-Nodes (20): onPath(), alongsideParts(), hooksLine(), chainedHooks(), execFileP, findRunner(), gitConfigPath(), gitHooksDir() (+12 more)
+Cohesion: 0.22
+Nodes (19): onPath(), alongsideParts(), hooksLine(), chainedHooks(), execFileP, findRunner(), gitConfigPath(), gitHooksDir() (+11 more)
 
 ### Community 44 - "Bug.md"
 Cohesion: 0.33
@@ -420,8 +453,8 @@ Cohesion: 0.40
 Nodes (4): Changes do not collide, Observed while running this change through the lifecycle, Reserved invariant IDs (MV-26), Worktree per change (MV-25)
 
 ### Community 53 - "verify.ts"
-Cohesion: 0.12
-Nodes (31): evaluateAnchors(), parseChange(), channelEvidence(), brainAtChannel(), brainDrift(), Diagnostic, evaluate(), evaluateCore() (+23 more)
+Cohesion: 0.13
+Nodes (32): channelEvidence(), brainAtChannel(), brainDrift(), Diagnostic, enactmentLine(), evaluate(), evaluateCore(), EvaluateOpts (+24 more)
 
 ### Community 54 - "The ledger and the link"
 Cohesion: 0.40
@@ -448,12 +481,12 @@ Cohesion: 0.05
 Nodes (37): Content Quality, Feature Readiness, Notes, Requirement Completeness, Specification Quality Checklist: enactment is gated where the credential lives, 1. The index is the only honest source, and the limit is printed, 2. The offence is "beside the code it anchors", so the anchors define it, 3. A row born `active` counts as an enactment (+29 more)
 
 ### Community 61 - "sdd.ts"
-Cohesion: 0.19
-Nodes (21): artifactHit(), sddRoots(), sddSpec(), copiedFrom(), execFileP, flowLines(), GateResult, openItems() (+13 more)
+Cohesion: 0.20
+Nodes (19): AdapterStatus, artifactHit(), SddRoot, sddRoots(), AdapterSpec, copiedFrom(), execFileP, flowLines() (+11 more)
 
 ### Community 62 - "registry.ts"
-Cohesion: 0.10
-Nodes (31): AdapterStatus, artifactPresent(), binaryPresent(), detect(), policy, SddRoot, execFileP, refreshGraph() (+23 more)
+Cohesion: 0.12
+Nodes (16): DoorKind, DoorTarget, doorTargets, GatePoint, GrapherEntry, GrapherQuery, knownGraphers, LifecyclePoint (+8 more)
 
 ### Community 66 - "Anchors: the writing manual"
 Cohesion: 0.22
@@ -471,9 +504,9 @@ Nodes (8): 1. Run the seeder, 2. Read the inventory BY CATEGORY, not by repo, 3.
 Cohesion: 0.16
 Nodes (16): ClaimRow, collectBrainAnchors(), nibble(), parseAnchors(), parseClaimRows(), readClaimRows(), compileAnchorRegex(), ESCAPE_HINTS (+8 more)
 
-### Community 85 - "Contributing to multivac"
-Cohesion: 0.11
-Nodes (15): 0.1.0 — 2026-08-16, 0.1.1 — 2026-08-16, 0.2.0 — 2026-08-17, 0.3.0 — 2026-08-17, Changelog, Adding a harness, a grapher or an SDD tool, Contributing to multivac, Friction is a finding (+7 more)
+### Community 85 - "Changelog"
+Cohesion: 0.14
+Nodes (10): 0.1.0 — 2026-08-16, 0.1.1 — 2026-08-16, 0.2.0 — 2026-08-17, 0.3.0 — 2026-08-17, 0.4.0 — 2026-08-17, Changelog, Unreleased, Contributing (+2 more)
 
 ### Community 86 - "Reading `mvac verify`"
 Cohesion: 0.25
@@ -511,17 +544,17 @@ Nodes (15): 1. Initialize Convergence Context, 2. Load Artifacts (Progressive Di
 Cohesion: 0.26
 Nodes (13): drop(), duplicateNotice(), ensureEvent(), eventList(), Json, mergeClaudeSettings(), ourHooks(), Owned (+5 more)
 
-### Community 112 - "git.ts"
-Cohesion: 0.10
-Nodes (30): evalLeg(), EvaluateOptions, RANK, RepoHandle, rewriteGlob(), TaggedMatch, Target, untrackedHint() (+22 more)
+### Community 112 - "evaluate.ts"
+Cohesion: 0.14
+Nodes (23): evalLeg(), evaluateAnchors(), EvaluateOptions, RANK, RepoHandle, rewriteGlob(), TaggedMatch, Target (+15 more)
 
 ### Community 113 - "fixture.ts"
 Cohesion: 0.06
-Nodes (39): count, seed, verify, brain(), git(), publishedBrain(), eco(), git() (+31 more)
+Nodes (37): count, verify, brain(), git(), publishedBrain(), eco(), git(), gitInit() (+29 more)
 
 ### Community 114 - "config.ts"
-Cohesion: 0.20
-Nodes (19): run(), USAGE, findMount(), BRAIN_PATHS, ConfigError, exists(), fail(), grapherDecl() (+11 more)
+Cohesion: 0.21
+Nodes (16): exists(), fail(), grapherDecl(), isChangeFile(), layoutError(), LEGACY, legacyLayout, loadConfig() (+8 more)
 
 ### Community 115 - "Feature Specification: [FEATURE NAME]"
 Cohesion: 0.15
@@ -536,16 +569,16 @@ Cohesion: 0.18
 Nodes (10): Completion Report, Done When, Key rules, Mandatory Post-Execution Hooks, Outline, Phase 0: Outline & Research, Phase 1: Design & Contracts, Phases (+2 more)
 
 ### Community 118 - "doors.ts"
-Cohesion: 0.15
-Nodes (19): doorsCommand, installHookConfig(), installSkill(), KNOWN_TARGETS, linkDoor(), mirror(), packagedSkill(), packageRoot() (+11 more)
+Cohesion: 0.19
+Nodes (18): installHookConfig(), installSkill(), KNOWN_TARGETS, linkDoor(), mirror(), packagedSkill(), packageRoot(), projectInto() (+10 more)
 
 ### Community 119 - "types.ts"
-Cohesion: 0.22
-Nodes (11): ParseDiagnostic, ParseResult, Evaluated, Anchor, ClaimResult, CommandContext, Config, LegResult (+3 more)
+Cohesion: 0.18
+Nodes (12): ParseDiagnostic, ParseResult, Evaluated, OPTS, Anchor, ClaimResult, Config, Exclusion (+4 more)
 
-### Community 120 - "The merge keeps what it did not write"
-Cohesion: 0.50
-Nodes (3): Migration, The merge keeps what it did not write, What identity should be
+### Community 120 - "seed.ts"
+Cohesion: 0.14
+Nodes (17): deployStacks(), nameSome(), openQuestions(), runSeed(), seed, Surface, surfaceOf(), undeclared() (+9 more)
 
 ### Community 121 - "Tasks: The site has a voice"
 Cohesion: 0.15
@@ -615,9 +648,13 @@ Nodes (3): doors prunes what it projects, Found alongside, NOT fixed here, Scope
 Cohesion: 0.17
 Nodes (12): After close — the ship sequence, in order, Dependencies, Format: `[ID] [P?] [Story] Description`, Notes, Phase 1: Setup, Phase 2: Foundational (blocks the release), Phase 3: US2 — the upgrader is warned (P1), Phase 4: US1 — the install page tells the truth (P1) (+4 more)
 
+### Community 141 - "run"
+Cohesion: 0.20
+Nodes (15): AMBIENT_GIT_ENV, cleanEnv(), currentBranch(), execFileP, headSha(), lsFiles(), lsTree(), lsTreeGitlink() (+7 more)
+
 ### Community 142 - "Feature Specification: The gate cannot be typoed"
-Cohesion: 0.17
-Nodes (12): Assumptions, Edge Cases, Feature Specification: The gate cannot be typoed, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)* (+4 more)
+Cohesion: 0.29
+Nodes (7): Assumptions, Feature Specification: The gate cannot be typoed, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)*
 
 ### Community 143 - "normalize.ts"
 Cohesion: 0.53
@@ -631,9 +668,9 @@ Nodes (4): A finished change is not a pending one, Landing, read from the channe
 Cohesion: 0.18
 Nodes (11): Build and serve, Prerequisites, Quickstart: seeing it, and breaking it on purpose, SC-001 — two voices, colour removed *(by eye)*, SC-002 — nothing leaves the origin *(by eye, then gated in part)*, SC-003 — the rule is checked, not remembered *(gated)*, SC-004 — the grammar line fits, the transcripts scroll *(by eye)*, SC-005 — licences ship *(gated)* (+3 more)
 
-### Community 146 - "out.ts"
-Cohesion: 0.33
-Nodes (9): enactmentLine(), findStaleMount(), paint(), runVerify(), bold, dim, green, red (+1 more)
+### Community 146 - "cli.ts"
+Cohesion: 0.26
+Nodes (11): main(), usage(), commands, cmp(), Notice, paint(), readRecord(), triple() (+3 more)
 
 ### Community 147 - "Implementation Plan: The site has a voice"
 Cohesion: 0.25
@@ -652,12 +689,12 @@ Cohesion: 0.25
 Nodes (7): Every command, measured — not sampled, Nothing declared broke *(gated)*, Quickstart: typo it on purpose, The one that matters, The positional half, The refusal comes before the writing *(gated)*, The tenth command *(gated)*
 
 ### Community 151 - "Tasks: The gate cannot be typoed"
-Cohesion: 0.25
-Nodes (8): After close, Notes, Phase 1: Foundational, Phase 2: US1 + US2 — the four commands (P1), Phase 3: US3 — the tenth command (P2), Phase 4: Law, Phase 5: Docs and close, Tasks: The gate cannot be typoed
+Cohesion: 0.22
+Nodes (9): After close, Notes, Phase 1: Foundational, Phase 2: US1 + US2 — the four commands (P1), Phase 3: US3 — the tenth command (P2), Phase 4: Law, Phase 5: Docs and close, Tasks: The gate cannot be typoed (+1 more)
 
-### Community 152 - "registry.test.ts"
-Cohesion: 0.25
-Nodes (5): LifecyclePoint, sddNames, eco, names, ORDER
+### Community 152 - "adapters.test.ts"
+Cohesion: 0.23
+Nodes (10): policy, grapherNames, grapherSpec(), sddSpec(), grapherLines(), projectLawLines(), renderBrainDoor(), acme (+2 more)
 
 ### Community 154 - "Contract: the tokens `site/assets/css/custom.css` exposes"
 Cohesion: 0.33
@@ -719,29 +756,165 @@ Nodes (4): Data model: The gate cannot be typoed, Declared surface, Refusal, Reg
 Cohesion: 0.50
 Nodes (3): 0.3.0, and the pages stop claiming a release state the manifest contradicts, What 0.3.0 contains, What this change does not touch
 
-### Community 169 - "An unknown flag is refused, not ignored"
+### Community 169 - "doors.test.ts"
+Cohesion: 0.17
+Nodes (8): doorsCommand, doorsWithSkills(), eco, projected, runDoors(), skills, BRAIN_IS_CODE, brainIsCode()
+
+### Community 170 - "Feature Specification: A brain knows what projected it"
+Cohesion: 0.17
+Nodes (12): Assumptions, Edge Cases, Feature Specification: A brain knows what projected it, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)* (+4 more)
+
+### Community 173 - "coexist.test.ts"
+Cohesion: 0.20
+Nodes (4): foreignDir(), git(), saleorHooks(), tmp()
+
+### Community 174 - "Feature Specification: The rows say what they check"
+Cohesion: 0.18
+Nodes (11): Assumptions, Edge Cases, Feature Specification: The rows say what they check, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)* (+3 more)
+
+### Community 176 - "Feature Specification: The site shows what is published"
+Cohesion: 0.18
+Nodes (11): Assumptions, Edge Cases, Feature Specification: The site shows what is published, Functional Requirements, Key Entities, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)* (+3 more)
+
+### Community 177 - "Tasks: The rows say what they check"
+Cohesion: 0.22
+Nodes (9): After close, Notes, Phase 1: The code moves (P1), Phase 2: The rows move (P1), Phase 3: The rows gain their limit (P1), Phase 4: Documents (P2), Phase 5: Close, Tasks: The rows say what they check (+1 more)
+
+### Community 178 - "Tasks: A brain knows what projected it"
+Cohesion: 0.25
+Nodes (8): After close, Phase 1: Foundational, Phase 2: US1 + US2 — the notice (P1), Phase 3: US3 — only the explicit act (P2), Phase 4: Tests, Phase 5: Law and docs, Tasks: A brain knows what projected it, What the run recorded
+
+### Community 179 - "Tasks: The site shows what is published"
+Cohesion: 0.25
+Nodes (8): After close, Notes, Phase 1: The number changes its source (P1), Phase 2: When it deploys (P1), Phase 3: The law (P1), Phase 4: Prove it (P1), Tasks: The site shows what is published, What the run recorded
+
+### Community 180 - "Contributing to multivac"
+Cohesion: 0.29
+Nodes (7): Adding a harness, a grapher or an SDD tool, Contributing to multivac, Friction is a finding, Getting set up, Merge requests, The loop, What we ask
+
+### Community 181 - "Contract: the notice and the two fields"
+Cohesion: 0.29
+Nodes (6): Contract: the notice and the two fields, Invariants of the notice, `.multivac/config.yml`, `.multivac/projected.yml`, The three lines, What is deliberately not here
+
+### Community 182 - "Quickstart: get the notice on purpose"
+Cohesion: 0.29
+Nodes (6): A malformed floor is refused, not ignored *(gated)*, Colour off, notice intact *(by eye)*, Nothing is refused *(gated)*, Only the explicit act moves the record *(gated)*, Quickstart: get the notice on purpose, See all three
+
+### Community 183 - "Research: A brain knows what projected it"
+Cohesion: 0.29
+Nodes (6): D1 — Two files, because `doors` does not write `config.yml`, D2 — The record moves only under an explicit act, and this reversed the design, D3 — Warn always, refuse never — and the reason the first instinct was wrong, D4 — `>=X.Y.Z` and nothing else, D5 — The notice is emitted once, from the dispatcher, Research: A brain knows what projected it
+
+### Community 184 - "Quickstart: check the corrections, and break them"
+Cohesion: 0.29
+Nodes (6): `--abandon` honours the condition *(gated)*, Quickstart: check the corrections, and break them, The blind leg, before and after *(gated)*, The cleared one, The documents agree with the law *(gated)*, The rows read against their code *(by eye)*
+
+### Community 185 - "Research: The rows say what they check"
+Cohesion: 0.29
+Nodes (7): D1 — MV-46, and why the leg is worse than the claim, D2 — MV-45, and the hazard `--abandon` reopens, D3 — MV-51 and MV-56 were true when written, and MV-75 made them false, D4 — Two ceilings, kept as claims, D5 — MV-10 is accurate, and that is a result, Research: The rows say what they check, The ledger
+
+### Community 186 - "Contract: where the number comes from"
+Cohesion: 0.29
+Nodes (6): Contract: where the number comes from, The derivation, The fallback, The page states nothing, What this does not guarantee, When it deploys
+
+### Community 187 - "refresh.ts"
+Cohesion: 0.48
+Nodes (6): execFileP, refreshGraph(), sleep(), takeLock(), unverifiedGrapher(), GrapherDecl
+
+### Community 188 - "ritual.test.ts"
+Cohesion: 0.38
+Nodes (3): scaffoldChange(), ritualChecklist(), landedChange()
+
+### Community 189 - "Data model: A brain knows what projected it"
+Cohesion: 0.33
+Nodes (5): Data model: A brain knows what projected it, Notice, Severity, The two fields, What the record does not say
+
+### Community 190 - "Implementation Plan: A brain knows what projected it"
+Cohesion: 0.33
+Nodes (6): Complexity Tracking, Constitution Check, Implementation Plan: A brain knows what projected it, Project Structure, Summary, Technical Context
+
+### Community 191 - "Contract: what each correction says afterwards"
+Cohesion: 0.33
+Nodes (6): Code moves, Contract: what each correction says afterwards, Documents, Rows gain their limit, Rows move, What no correction may do
+
+### Community 192 - "Implementation Plan: The rows say what they check"
+Cohesion: 0.33
+Nodes (6): Complexity Tracking, Constitution Check, Implementation Plan: The rows say what they check, Project Structure, Summary, Technical Context
+
+### Community 193 - "Data model: The site shows what is published"
+Cohesion: 0.33
+Nodes (5): Data model: The site shows what is published, Deployment triggers, The stand-in for "published", offline, Three versions, which were being conflated, What the repository no longer contains
+
+### Community 194 - "Implementation Plan: The site shows what is published"
+Cohesion: 0.33
+Nodes (6): Complexity Tracking, Constitution Check, Implementation Plan: The site shows what is published, Project Structure, Summary, Technical Context
+
+### Community 195 - "Quickstart: build it at each state"
+Cohesion: 0.33
+Nodes (5): Nothing states a version *(gated)*, Quickstart: build it at each state, Tags reach the job *(by eye, once)*, The deployment cannot precede the publication *(by eye)*, The three states *(gated)*
+
+### Community 196 - "Research: The site shows what is published"
+Cohesion: 0.33
+Nodes (5): D1 — The window, measured from the configuration, D2 — Deploying only from tags was rejected, and the reason is binding, D3 — The badge becomes a parameter, and its test is deleted, D4 — The stage order would have reopened the hole, Research: The site shows what is published
+
+### Community 197 - "The rows say what they check"
+Cohesion: 0.40
+Nodes (4): And two documents, The five where the row moves, The rows say what they check, The two where the code moves
+
+### Community 198 - "The site shows what is published"
+Cohesion: 0.40
+Nodes (4): And a stage order that would have reopened the hole, The one number, The site shows what is published, Why not deploy the site from tags only
+
+### Community 199 - "User Scenarios & Testing *(mandatory)*"
+Cohesion: 0.40
+Nodes (5): Edge Cases, User Scenarios & Testing *(mandatory)*, User Story 1 - A typo in CI does not go green (Priority: P1), User Story 2 - A directory you named is not silently ignored (Priority: P1), User Story 3 - The tenth command cannot forget (Priority: P2)
+
+### Community 200 - "Specification Quality Checklist: A brain knows what projected it"
+Cohesion: 0.40
+Nodes (4): Content Quality, Notes, Requirement Completeness, Specification Quality Checklist: A brain knows what projected it
+
+### Community 201 - "Specification Quality Checklist: The rows say what they check"
+Cohesion: 0.40
+Nodes (4): Content Quality, Notes, Requirement Completeness, Specification Quality Checklist: The rows say what they check
+
+### Community 203 - "Data model: The rows say what they check"
+Cohesion: 0.40
+Nodes (4): Blind leg, Correction direction, by verdict, Data model: The rows say what they check, Finding
+
+### Community 204 - "Specification Quality Checklist: The site shows what is published"
+Cohesion: 0.40
+Nodes (4): Content Quality, Notes, Requirement Completeness, Specification Quality Checklist: The site shows what is published
+
+### Community 205 - "A brain knows what projected it"
+Cohesion: 0.50
+Nodes (3): A brain knows what projected it, The cost is not the migration, it is the skew, The shape
+
+### Community 206 - "An unknown flag is refused, not ignored"
 Cohesion: 0.50
 Nodes (3): An unknown flag is refused, not ignored, Positionals are the same lie, Why one helper and not three patches
 
+### Community 207 - "The project document is gated on existing"
+Cohesion: 0.50
+Nodes (3): The project document is gated on existing, What changes, What merging MV-75 found
+
 ## Knowledge Gaps
-- **1079 isolated node(s):** `common.sh script`, `name`, `version`, `description`, `license` (+1074 more)
+- **1212 isolated node(s):** `common.sh script`, `name`, `version`, `description`, `license` (+1207 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **33 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **31 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `multivac — design` connect `multivac — design` to `Contributing to multivac`?**
+- **Why does `warn()` connect `change.ts` to `init.ts`, `doctor.ts`, `index.ts`, `evaluate.ts`, `cli.ts`, `verify.ts`, `doors.ts`, `seed.ts`, `refresh.ts`, `sdd.ts`?**
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **Why does `say()` connect `change.ts` to `init.ts`, `doctor.ts`, `index.ts`, `evaluate.ts`, `cli.ts`, `verify.ts`, `doors.ts`, `seed.ts`, `refresh.ts`, `sdd.ts`?**
   _High betweenness centrality (0.004) - this node is a cross-community bridge._
-- **Why does `say()` connect `change.ts` to `init.ts`, `doctor.ts`, `index.ts`, `config.ts`, `out.ts`, `verify.ts`, `doors.ts`, `sdd.ts`, `registry.ts`?**
-  _High betweenness centrality (0.003) - this node is a cross-community bridge._
-- **Why does `run()` connect `change.ts` to `init.ts`, `index.ts`, `git.ts`, `out.ts`, `verify.ts`?**
-  _High betweenness centrality (0.002) - this node is a cross-community bridge._
+- **Why does `loadConfig()` connect `config.ts` to `init.ts`, `doctor.ts`, `doors.test.ts`, `change.ts`, `index.ts`, `run`, `evaluate.ts`, `verify.ts`, `doors.ts`, `seed.ts`?**
+  _High betweenness centrality (0.004) - this node is a cross-community bridge._
 - **What connects `common.sh script`, `name`, `version` to the rest of the system?**
-  _1079 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _1212 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Implementation Plan: The project document is gated on existing` be split into smaller, more focused modules?**
   _Cohesion score 0.047619047619047616 - nodes in this community are weakly interconnected._
-- **Should `file.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.1168091168091168 - nodes in this community are weakly interconnected._
 - **Should `package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.044444444444444446 - nodes in this community are weakly interconnected._
+- **Should `multivac — design` be split into smaller, more focused modules?**
+  _Cohesion score 0.045454545454545456 - nodes in this community are weakly interconnected._
