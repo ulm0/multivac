@@ -38,6 +38,7 @@ import {
   chainedHooks,
   findRunner,
   preCommitGate,
+  resolveHooksPath,
 } from '../hooks/install.js';
 import { collectBrainAnchors } from '../anchor/parse.js';
 import { excludeGlobs, makeMatcher } from '../lib/glob.js';
@@ -409,15 +410,22 @@ async function pinsLine(brain: string, cfg: Config): Promise<string> {
 
 /** Coexistence with a foreign hook dir: multivac wired, refused, or absent.
  *  `armed` is the enforcement floor here: both shims run multivac AND a runner
- *  exists — the same condition `--strict` asserts. */
+ *  exists — the same condition `--strict` asserts.
+ *
+ *  Read through resolveHooksPath, so the shims are looked for where install put
+ *  them and where git will run them. `join(brain, dir, shim)` reported both
+ *  shims missing from a directory they were sitting in whenever `dir` was
+ *  absolute — the spelling a linked worktree inherits verbatim from its main
+ *  checkout, which names the main checkout's hooks dir (MV-79). */
 async function alongsideParts(
   brain: string,
   dir: string,
 ): Promise<{ parts: string[]; armed: boolean }> {
   const parts: string[] = [];
+  const base = resolveHooksPath(brain, dir).dir;
   let installed = true;
   for (const shim of ['pre-commit', 'pre-push']) {
-    const text = await readFile(join(brain, dir, shim), 'utf8').catch(() => null);
+    const text = await readFile(join(base, shim), 'utf8').catch(() => null);
     if (text === null) {
       installed = false;
       parts.push(`${shim} missing in ${dir} → run \`multivac init .\` to install alongside`);
@@ -444,11 +452,18 @@ async function alongsideParts(
 /** The hooks report line, plus whether the enforcement gate is actually armed
  *  — the floor `--strict` asserts. Disarmed ⇒ a commit here is not verified. */
 async function hooksLine(brain: string): Promise<{ line: string; armed: boolean }> {
-  const hp = await git.run(brain, ['config', 'core.hooksPath']).catch(() => null);
+  // `--path`, because that is how git reads it: a leading `~`/`~user` expands
+  // to the home directory before anything resolves. Plain `git config` hands
+  // back the literal text, so `~/hooks` would resolve against the repo root and
+  // doctor would read a directory named `~` inside the checkout (MV-79).
+  const hp = await git.run(brain, ['config', '--path', 'core.hooksPath']).catch(() => null);
+  // Ours or foreign is decided on the resolved path (MV-79), never on the
+  // configured text: `.multivac/hooks` and its absolute spelling are one gate.
+  const ours = hp !== null && resolveHooksPath(brain, hp).own;
   // A hooksPath the repo set itself is its own gate: multivac coexists there,
   // it never repoints — advising `git config core.hooksPath` here would be
   // advising the user to disarm their own enforcement.
-  if (hp !== null && hp !== HOOKS_DIR) {
+  if (hp !== null && !ours) {
     const { parts, armed } = await alongsideParts(brain, hp);
     return {
       line: [
@@ -469,7 +484,7 @@ async function hooksLine(brain: string): Promise<{ line: string; armed: boolean 
     };
   }
   const parts: string[] = [
-    hp === HOOKS_DIR
+    ours
       ? 'core.hooksPath ok'
       : `core.hooksPath unset → git config core.hooksPath ${HOOKS_DIR}`,
   ];
@@ -514,7 +529,7 @@ async function hooksLine(brain: string): Promise<{ line: string; armed: boolean 
   // Armed only when core.hooksPath is ours (unset ⇒ git never runs the shims —
   // measurement 3's exact disarm), both shims are present, and something can
   // run them. Any one missing and a commit here goes unverified.
-  return { line: parts.join(' · '), armed: hp === HOOKS_DIR && installed && runner !== null };
+  return { line: parts.join(' · '), armed: ours && installed && runner !== null };
 }
 
 /** Config file at a repo root: tsconfig*, package*, *.config.*, .*rc[.ext]. */

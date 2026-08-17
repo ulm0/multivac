@@ -19,12 +19,16 @@
 //              it on install) — never repoint; write the shim INTO that
 //              directory where the name is free, refuse with the exact manual
 //              step where it is taken.
+//
+// Which directory that is gets decided BEFORE the strategy does, by
+// resolveHooksPath, because the configured value is git's spelling and not
+// ours to assume (MV-79).
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { access, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { onPath, pathExists } from '../adapters/detect.js';
 
 const execFileP = promisify(execFile);
@@ -38,7 +42,9 @@ const MANAGER_CONFIGS = ['.pre-commit-config.yaml', 'lefthook.yml'] as const;
 
 export interface HooksReport {
   strategy: 'fresh' | 'chained' | 'alongside';
-  /** Repo-relative directory the shims live in. */
+  /** The directory the shims live in, in the spelling git carries: repo-relative
+   *  for ours and for most foreign dirs, absolute where the repo configured it
+   *  that way. resolveHooksPath turns it into the path on disk. */
   dir: string;
   /** Hook names written by this call (or already ours). */
   installed: HookName[];
@@ -170,13 +176,59 @@ function verifyArgs(name: HookName, strictPrePush: boolean): string {
   return name === 'pre-push' && strictPrePush ? 'verify --strict' : 'verify';
 }
 
-async function gitConfig(repo: string, key: string): Promise<string | null> {
+/**
+ * A path-valued git config key, read the way git reads paths: `--path`.
+ *
+ * Plain `git config <key>` hands back the literal configured text, and a
+ * leading `~` or `~user` is a legal spelling git expands to $HOME before it
+ * ever looks at the directory. Without `--path` a value of `~/hooks` arrives
+ * here as the literal `~/hooks`, resolves against the repo root and
+ * lands the shims in a directory literally named `~` inside the checkout —
+ * the same concatenation defect as the absolute spelling, one spelling down.
+ * `--path` performs exactly git's own expansion (leading `~` only: `a~b`
+ * stays `a~b`), and leaves relative and absolute values untouched.
+ *
+ * Exit non-zero — key unset, or a `~user` git cannot expand, which is a value
+ * git itself fatals on for every hook-running command — reads as absent.
+ */
+async function gitConfigPath(repo: string, key: string): Promise<string | null> {
   try {
-    const { stdout } = await execFileP('git', ['-C', repo, 'config', key]);
+    const { stdout } = await execFileP('git', ['-C', repo, 'config', '--path', key]);
     return stdout.trim() || null;
   } catch {
     return null;
   }
+}
+
+/**
+ * `core.hooksPath` as git reads it, and whether it names our own dir.
+ *
+ * git's rule (githooks(5)): it expands a leading `~`/`~user` to the home
+ * directory first, then — because it moves to the root of the working tree
+ * before running a hook — reads what is left relative to THERE, and an
+ * absolute result is the directory itself. `--path` is the first half of that
+ * rule (see gitConfigPath); `resolve` is the second. `join` is neither.
+ * `join(repo, '/Users/me/proj/.multivac/hooks')` concatenates, so the shims
+ * landed in a tree inside the repo named after the machine's filesystem while
+ * the notice printed the absolute path as the place they went, and the commit
+ * that followed was not verified. A linked worktree reaches that spelling
+ * without anyone choosing it: it inherits the main checkout's value verbatim
+ * through the shared config, so an absolute one names the MAIN checkout's hooks
+ * dir — a foreign gate it installs alongside into, resolved, never concatenated.
+ *
+ * `own` is the identity test done on the resolved path, never on the configured
+ * text: `.multivac/hooks` and its absolute spelling are the same gate.
+ *
+ * One computation for install and doctor — like chainedHooks and preCommitGate
+ * — so the directory the shims are written into is the directory the report
+ * reads them from and the directory git will run (MV-79).
+ */
+export function resolveHooksPath(
+  repo: string,
+  configured: string,
+): { dir: string; own: boolean } {
+  const dir = resolve(repo, configured);
+  return { dir, own: dir === resolve(repo, HOOKS_DIR) };
 }
 
 /**
@@ -213,6 +265,11 @@ export async function chainedHooks(repo: string): Promise<string[]> {
  * Never repoint a hooksPath the repo already claimed: install into it. A free
  * name gets the shim; a taken name that already runs multivac is left alone;
  * a taken name that does not is a refusal carrying the exact line to add.
+ *
+ * `dir` stays git's reading of the configured value — `git config --path`, so
+ * relative and absolute spellings are printed back verbatim and a `~` one is
+ * printed expanded, which is where the shims are. Every filesystem path goes
+ * through the resolved base.
  */
 async function installAlongside(
   repo: string,
@@ -230,9 +287,10 @@ async function installAlongside(
     preCommit: null,
     refused: [],
   };
-  await mkdir(join(repo, dir), { recursive: true });
+  const base = resolveHooksPath(repo, dir).dir;
+  await mkdir(base, { recursive: true });
   for (const name of HOOK_NAMES) {
-    const file = join(repo, dir, name);
+    const file = join(base, name);
     const existing = await readFile(file, 'utf8').catch(() => null);
     if (existing === null) {
       await writeFile(file, shim(verifyArgs(name, strictPrePush), null));
@@ -261,7 +319,7 @@ export async function installHooks(
   opts: { strictPrePush?: boolean } = {},
 ): Promise<HooksReport> {
   const strict = opts.strictPrePush === true;
-  const hooksPath = await gitConfig(repo, 'core.hooksPath');
+  const hooksPath = await gitConfigPath(repo, 'core.hooksPath');
   const managers: string[] = [];
   for (const m of MANAGER_CONFIGS) {
     if (await pathExists(join(repo, m))) managers.push(m);
@@ -269,7 +327,9 @@ export async function installHooks(
   if (await pathExists(join(repo, '.husky'))) managers.push('.husky/');
 
   // A hooksPath the repo set itself is the repo's own gate: install into it.
-  if (hooksPath !== null && hooksPath !== HOOKS_DIR) {
+  // "Ours" is decided on the resolved path, so our own dir spelled the long way
+  // is not mistaken for somebody else's gate.
+  if (hooksPath !== null && !resolveHooksPath(repo, hooksPath).own) {
     return installAlongside(repo, hooksPath, strict, managers);
   }
   // .husky/ with hooksPath still unset: husky's prepare script claims
