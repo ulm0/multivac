@@ -1,9 +1,9 @@
 ---
 slug: the-site-has-a-voice
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
