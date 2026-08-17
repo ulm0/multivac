@@ -1,0 +1,14 @@
+{{- /*
+  Both faces are preloaded so the swap window is short enough that no reader
+  watches the page reflow. They are two files, not four, because each is
+  variable and covers its whole weight and width range on its own.
+
+  Served from this origin, never from a font host — that is MV-83, and the
+  reason is MV-01: the tool refuses the network in the commands that gate
+  work, so its own site must not fetch its type from somewhere else.
+
+  `crossorigin` is required on a font preload even same-origin; without it the
+  browser fetches the file twice.
+*/ -}}
+<link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/martian-mono-latin.woff2" as="font" type="font/woff2" crossorigin />
