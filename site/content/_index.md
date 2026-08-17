@@ -5,7 +5,7 @@ layout: hextra-home
 
 {{< hextra/hero-badge link="docs/guide/install" >}}
   <div class="hx:w-2 hx:h-2 hx:rounded-full hx:bg-primary-400"></div>
-  <span>v0.3.0</span>
+  <span>v0.4.0</span>
   {{< icon name="arrow-circle-right" attributes="height=14" >}}
 {{< /hextra/hero-badge >}}
 

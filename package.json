@@ -1,6 +1,6 @@
 {
   "name": "multivac",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Brain-driven development CLI: one brain repo of claims, law and ritual, from which an ecosystem of code repos is developed. Deterministic verification, no model in the path.",
   "license": "MIT",
   "type": "module",
