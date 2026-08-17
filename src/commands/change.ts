@@ -458,7 +458,12 @@ async function greenfield(abs: string, key: string, slug: string, cfg: Config): 
   await mkdir(abs, { recursive: true });
   await execFileP('git', ['init', '-q', abs]);
   await writeFile(join(abs, 'AGENTS.md'), applyManagedBlock(null, renderConsumerDoor(cfg)));
-  await gitRun(abs, ['add', '-A']);
+  // MV-46 says `add -A` appears NOWHERE in the lifecycle, and this line made
+  // that nearly-true rather than true. Harmless here — a repo created seconds
+  // ago holding the one file just written — but an exception nobody can check
+  // is how a claim decays: `greenfield` growing a second written file would
+  // silently widen the sweep. Naming the file removes the exception.
+  await gitRun(abs, ['add', 'AGENTS.md']);
   await gitRun(abs, ['commit', '-q', '-m', `multivac: init ${key} (change ${slug})`]);
   say(`${key}: created ${abs} — git init, door written, first commit`);
 }
@@ -813,8 +818,18 @@ async function cmdClose(
       warn('  drop the claims first, or close it properly');
       return 1;
     }
+    // MV-45: the anchor set is read BEFORE the archive moves the change file
+    // out of tracked sight, and release requires that no anchor names the ID.
+    // This path did neither — it archived first and released against an empty
+    // set, so the condition was never evaluated. --abandon refuses a change
+    // with claims, which makes an anchor on the reserved ID unlikely, not
+    // impossible: one written by hand would send that ID back to the pool with
+    // a live reference to it, and the next `change new` would hand it out.
+    // That is MV-26's collision by another road, and the guard is a set the
+    // sibling path already computes.
+    const anchored = await anchoredClaimIds(brain);
     const dest = await archiveChange(brain, parsed);
-    const freed = await releaseUnused(brain, slug, new Set<string>());
+    const freed = await releaseUnused(brain, slug, anchored);
     for (const l of freed) say(l);
     say(`abandoned -> ${relative(brain, dest)} — nothing was verified, nothing landed`);
     return 0;

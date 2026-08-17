@@ -71,10 +71,14 @@ instead of working around it.
 
 Adapters are **data, not code**: an entry in `src/adapters/registry.ts`. Add
 what the vendor's own documentation says it reads — the exact path, the
-format, its hook mechanism — and cite the source in your MR. If you cannot
-verify a format from a primary source, mark it unsupported with the reason. A
-missing integration is an honest gap; an invented one is a lie the tool exists
-to prevent.
+format, its hook mechanism — and cite the source in your MR. **If you cannot
+verify a format from a primary source, add no entry at all** — not an entry
+marked unsupported. There is no such kind (MV-28): an entry is how this tool
+says "supported", and it shows up in `--provider`'s legal values, in the
+reference table and in the count of what multivac integrates with. `aider` sat
+there as unsupported, carrying a long note explaining why none of it applied,
+and read as support to everyone who did not open it. A missing integration is
+an honest gap; an invented one is a lie the tool exists to prevent.
 
 ## Merge requests
 
