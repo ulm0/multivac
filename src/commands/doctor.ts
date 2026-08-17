@@ -42,6 +42,7 @@ import {
 } from '../hooks/install.js';
 import { collectBrainAnchors } from '../anchor/parse.js';
 import { excludeGlobs, makeMatcher } from '../lib/glob.js';
+import { ENACTMENT_UNGATEABLE } from './verify.js';
 
 const BEGIN = '<!-- multivac:begin -->';
 const label = (s: string): string => s.padEnd(11);
@@ -649,6 +650,11 @@ export async function doctorReport(
     label('branches') + (await branchesLine(brainDir, cfg)),
     label('pins') + (await pinsLine(brainDir, cfg)),
     label('hooks') + hooks.line,
+    // Straight after the line that says what IS armed. `doctor --strict` is
+    // the assertion that the enforcement gate is up, and a reader who takes
+    // that as covering the whole law would be reading coverage out of silence
+    // — the one rule no local gate can arm has to say so in the same report.
+    label('enact') + ENACTMENT_UNGATEABLE,
     label('untracked') + (await untrackedLine(brainDir, cfg)),
   ];
   // The one strict-only exit: a report that exits 0 while nothing is enforced

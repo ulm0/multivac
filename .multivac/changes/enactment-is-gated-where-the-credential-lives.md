@@ -3,7 +3,7 @@ slug: enactment-is-gated-where-the-credential-lives
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
@@ -13,7 +13,7 @@ invariants:
   retires: []
 claims:
   - id: MV-81
-    statement: "Who enacts a row is not a fact on disk, so the tool says so instead of pretending to check it, and enforces the one half it can: a state change to active lands in its own commit, never beside the code it anchors."
+    statement: "Who enacts a row is not a fact on disk, so the tool says so instead of pretending to check it, and enforces the one half it can: a state change to active lands in its own commit, never beside the code it anchors — decided from the index against HEAD, so it answers only inside a commit and says so when it cannot."
 ---
 
 # Enactment is gated where the credential lives
@@ -64,6 +64,34 @@ sees a diff where the new rule is drowned in the change that motivated it.
 Enactment lands in its own commit. That is mechanical, local, and refusable —
 the same shape MV-46 already uses to keep the lifecycle's bookkeeping scoped to
 its own paths.
+
+## What the check can reach, and when
+
+`verify` reads **tracked files**. A tracked file shows a state; it never shows a
+state *change*, so "in the same commit" is not a question verify can answer as
+it stands. The evidence that does answer it is the **index against HEAD**, and
+the index is populated exactly while a commit is being composed — which is the
+pre-commit run, where verify already lives.
+
+So the check answers inside a commit and nowhere else, and it says which of the
+two it is on every run:
+
+- **not answered** — nothing staged, no HEAD yet, or a consumer checkout whose
+  index has no law file, each with its reason;
+- **no row enacted** — the question was asked and came back clean;
+- **enacted alone** — a row reached `active` with none of its anchored code
+  beside it;
+- **REFUSED** — the row and its code arrived together; the line names the rows,
+  the files, and the `git restore --staged` that clears it.
+
+Rejected: comparing the working tree's law against the channel ref (MV-53),
+which would answer on any run. It answers a *different* question — "has this
+branch enacted a row since it forked" — true for every commit after the enacting
+one, so the refusal would follow the branch around until a merge, and the
+verdict would depend on how recently anyone fetched.
+
+Cost: one `git diff --cached` in the ordinary case; three more calls only when
+the law file is among the staged paths.
 
 ## Considered and declined
 
