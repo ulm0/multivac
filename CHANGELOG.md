@@ -12,10 +12,29 @@ keeping a second one (MV-78).
 
 ## 0.2.0 — 2026-08-17
 
-Three of these change behaviour for anyone already running the tool. Read the
-first two before upgrading.
+Five of these change behaviour for anyone already running the tool. Read this
+section before upgrading.
 
 **Changed — read before upgrading**
+
+- `verify --strict` now **refuses a change that is finished but not closed** —
+  every declared claim resolving and every declared repo recorded landed — and
+  names it with the command that fixes it. Until now such a change was
+  indistinguishable from one opened seconds ago: both reported `pending`, and
+  pending never blocks. That grace hid fourteen claims in this repo for weeks.
+  If you carry finished-but-unclosed changes, `--strict` will start refusing
+  them, in CI too. `change close <slug>` is the whole fix. A change declaring no
+  claims is never finished, and staleness of any kind is untouched. (MV-80)
+- `verify` now **refuses a commit that flips a law row to `active` alongside the
+  code that row anchors**. A rule and its evidence arriving under one hand is a
+  rule nobody reviewed on its own. Commit the law file alone, then the code. The
+  check reads the index against `HEAD`, so it answers only while a commit is
+  being composed, and says so when it cannot answer rather than passing
+  silently. (MV-81)
+- `change land` now reads whether the work landed from the **channel ref**
+  instead of commit containment, which a squashing forge defeats every time, and
+  reports the ref, its sha and how long ago it was fetched. It offers the
+  conclusion; recording it stays yours. (MV-80)
 
 - `change plan` now **refuses** while the SDD's project-level document is
   missing, empty, or still the unfilled template its own tool shipped. A repo
@@ -57,6 +76,10 @@ first two before upgrading.
   site mounts it rather than keeping a second one. (MV-78)
 - The version the site advertises is pinned to the version the package declares.
   (MV-77)
+- `doctor` now states, in its own report, that who enacts a law row cannot be
+  checked by this tool — identity is not a fact on disk — and names where it is
+  enforced instead. Declared ungateable with its reason rather than left absent
+  from the law. (MV-81)
 - `Adoption` and `Composition` in the docs: the arc from `init` to steady state
   and which phase buys what, and why spec-driven tools and code graphers are
   built on rather than competed with.
