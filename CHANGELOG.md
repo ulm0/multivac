@@ -12,6 +12,19 @@ keeping a second one (MV-78).
 
 ## 0.6.0 — 2026-08-17
 
+**Packaging — read if you verify what you install**
+
+- **This release and the ones after it carry no provenance attestation.** npm
+  generates one by default under trusted publishing, and its registry verifies
+  a bundle only from a gitlab.com shared runner; this project's shared-runner
+  minutes are exhausted and it publishes from a self-hosted one, so the release
+  stopped on that check with a `422` after the tarball was already built and
+  signed. Publishing is still trusted publishing over OIDC — the credential is
+  short-lived and no long-lived token exists in the pipeline — but a tarball
+  from here has no verifiable link back to the commit that built it. It comes
+  back the day npm supports self-hosted runners, or the day this project runs
+  on a shared runner again. (MV-88, amending MV-68)
+
 **Fixed**
 
 - **A declared adapter reached whichever repo answered first, and stopped
