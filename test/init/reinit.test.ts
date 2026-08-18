@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initRepo } from '../helpers/fixture.js';
@@ -152,6 +152,36 @@ test('a declared adapter still reaches the door on a re-run with no flag', async
   await capture(() => init.run([dir], { cwd: dir }));
 
   assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /Features gate through the `speckit` SDD/);
+});
+
+test('init and doors write the same door, byte for byte', async () => {
+  // MV-102. MV-101's version of this could only compare the ADAPTER, because
+  // the two commands rendered the document twice and the bodies genuinely
+  // differed. There is one rendering now, so the assertion is the rule.
+  for (const flags of [[], ['--sdd', 'speckit'], ['--grapher', 'graphify'], ['--provider', 'claude']]) {
+    const dir = repo();
+    await capture(() => init.run([...flags, '--quiet', dir], { cwd: dir }));
+    const afterInit = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
+
+    await capture(() => doorsCommand.run([], { cwd: dir }));
+
+    assert.equal(
+      readFileSync(join(dir, 'AGENTS.md'), 'utf8'),
+      afterInit,
+      `doors rewrote the door init wrote, with flags ${JSON.stringify(flags)}`,
+    );
+  }
+});
+
+test('content outside the managed block survives both commands', async () => {
+  const dir = repo();
+  await capture(() => init.run(['--quiet', dir], { cwd: dir }));
+  writeFileSync(join(dir, 'AGENTS.md'), `${readFileSync(join(dir, 'AGENTS.md'), 'utf8')}\n## my notes\nkeep me\n`);
+
+  await capture(() => init.run(['--quiet', dir], { cwd: dir }));
+  await capture(() => doorsCommand.run([], { cwd: dir }));
+
+  assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /## my notes\nkeep me/);
 });
 
 /** The SDD the door names, or null where it names none. */
