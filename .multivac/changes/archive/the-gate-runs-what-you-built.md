@@ -1,10 +1,10 @@
 ---
 slug: the-gate-runs-what-you-built
-status: open
+status: archived
 horizon: now
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
