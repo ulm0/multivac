@@ -10,6 +10,24 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## Unreleased
+
+**Fixed**
+
+- **The commit hook now runs the multivac that governs the repository**, not
+  whatever is installed on the machine. The shim tried `mvac` on PATH first and
+  the repository's own build last; the order is now the exact inverse — this
+  repository's build, then the multivac it declares, then PATH. A global install
+  a year behind was enforcing an older law table against a repo that pinned
+  something else, silently. Nothing runnable still never blocks a commit, and
+  the repository's own gates still run first. (MV-92)
+- **`pnpm test` no longer runs tests whose sources are gone.** `tsc` does not
+  delete output for a deleted source, so the compiled suite accumulated whatever
+  any branch ever built: measured after a rebase, five failures from a file
+  absent from that branch — and silently, a deleted test that keeps passing. The
+  build clears its output before compiling, and a test asserts the property
+  rather than the script, so it fails whatever the cause. (MV-92)
+
 ## 0.7.0 — 2026-08-18
 
 **Fixed**

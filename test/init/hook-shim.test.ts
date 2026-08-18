@@ -56,22 +56,33 @@ async function runnerWith(path: string, repo: string): Promise<string | null> {
   }
 }
 
-test('shim prefers mvac on PATH', async () => {
+// MV-92: most specific first. A repo that BUILDS or DECLARES a multivac has
+// said which one governs it; whatever is on PATH is whatever the machine has.
+// These three assertions were the exact inverse until 2026-08-18, and the cost
+// was silent — a global a year behind enforcing an older law table against a
+// repo that pinned something else.
+
+test('shim prefers the build in this repo, over everything else available', async () => {
   const { repo, bin } = await fixture();
-  fake(bin, 'mvac');
+  fake(bin, 'mvac'); // present, and must LOSE
   fake(bin, 'npx');
+  fake(bin, 'node');
   mkdirSync(join(repo, 'node_modules/multivac'), { recursive: true });
   writeFileSync(join(repo, 'node_modules/multivac/package.json'), '{}');
+  mkdirSync(join(repo, 'dist'), { recursive: true });
+  writeFileSync(join(repo, 'dist/cli.js'), '// built cli\n');
 
   const path = `${bin}:${SYS}`;
   const r = runHook(repo, path);
   assert.equal(r.status, 0);
-  assert.equal(r.stdout.trim(), 'mvac verify');
-  assert.equal(await runnerWith(path, repo), 'mvac on PATH');
+  // absolute path, from the hook's own location (tmpdir may be a symlink)
+  assert.match(r.stdout.trim(), /^node \/\S+\/dist\/cli\.js verify$/);
+  assert.equal(await runnerWith(path, repo), 'node dist/cli.js');
 });
 
-test('no mvac: shim falls back to npx --no-install multivac', async () => {
+test('no build here: the multivac this repo DECLARES beats the one on PATH', async () => {
   const { repo, bin } = await fixture();
+  fake(bin, 'mvac'); // present, and must lose to the declared dependency
   fake(bin, 'npx');
   mkdirSync(join(repo, 'node_modules/multivac'), { recursive: true });
   writeFileSync(join(repo, 'node_modules/multivac/package.json'), '{}');
@@ -83,20 +94,15 @@ test('no mvac: shim falls back to npx --no-install multivac', async () => {
   assert.equal(await runnerWith(path, repo), 'npx --no-install multivac');
 });
 
-test('no mvac, no installed multivac: shim runs the repo-local build', async () => {
+test('nothing declared and nothing built: whatever is on PATH runs', async () => {
   const { repo, bin } = await fixture();
-  fake(bin, 'npx'); // present but unusable: multivac is not installed here
-  fake(bin, 'node');
-  mkdirSync(join(repo, 'dist'), { recursive: true });
-  writeFileSync(join(repo, 'dist/cli.js'), '// built cli\n');
-  mkdirSync(join(repo, 'node_modules'), { recursive: true });
+  fake(bin, 'mvac');
 
   const path = `${bin}:${SYS}`;
   const r = runHook(repo, path);
   assert.equal(r.status, 0);
-  // absolute path, from the hook's own location (tmpdir may be a symlink)
-  assert.match(r.stdout.trim(), /^node \/\S+\/dist\/cli\.js verify$/);
-  assert.equal(await runnerWith(path, repo), 'node dist/cli.js');
+  assert.equal(r.stdout.trim(), 'mvac verify');
+  assert.equal(await runnerWith(path, repo), 'mvac on PATH');
 });
 
 test('the repo-local build is found from the hook, not from cwd', async () => {

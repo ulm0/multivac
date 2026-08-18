@@ -1,14 +1,20 @@
 ---
 slug: the-gate-runs-what-you-built
-status: planned
+status: open
 horizon: now
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: branched
+landing_order:
+  - - brain
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-92
   retires: []
-claims: []
+claims:
+  - id: MV-92
+    statement: The gate runs the multivac that governs this checkout — the repo's own build first, its declared dependency second, whatever is on PATH last — and the build clears its output before compiling, so no check ever runs a file whose source is gone.
 ---
 
 # The gate runs the code in this tree, not a copy of it
