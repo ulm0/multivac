@@ -191,6 +191,7 @@ test('brain door carries the SDD flow when one is declared', () => {
     doors: ['agents'],
     sdd: 'opsx',
     sddAuto: true,
+  grapherAuto: true,
     authorities: [],
     blocking: ['absent', 'count', 'each'],
     staleness: 'report',

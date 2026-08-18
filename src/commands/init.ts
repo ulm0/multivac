@@ -17,6 +17,7 @@ import {
   layoutError,
   legacyLayout,
   loadConfig,
+  CONFIG_PATH,
 } from '../lib/config.js';
 import { RITUAL_TEMPLATE } from '../lib/ritual.js';
 import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
@@ -321,6 +322,41 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     return 1;
   }
 
+  // MV-91, BEFORE the first write. `init` used to resolve each adapter as
+  // `flag ?? config`: right on a first run, where the flag is what writes the
+  // config a moment later, and wrong on a re-run, where the config is kept and
+  // the flag has already lost — except in the door, written two lines later
+  // from the flag. Measured: `init --sdd speckit` then `init --sdd opsx` left
+  // `sdd: speckit` in the config and `Features gate through the \`opsx\` SDD`
+  // in the door, with nothing saying they disagreed. The door is the first
+  // file an agent reads.
+  //
+  // A refusal must write NOTHING, which is why this sits here rather than
+  // beside the door: everything below creates something.
+  const declared = await loadConfig(dir).catch(() => null);
+  if (declared !== null) {
+    const clash = ([
+      ['--sdd', 'sdd', f.sdd, declared.sdd],
+      ['--grapher', 'grapher', f.grapher, declared.grapher],
+    ] as const).filter(([, , want, have]) => want !== undefined && have !== undefined && want !== have);
+    if (clash.length > 0) {
+      // Every disagreement in one refusal: nobody should re-run a command to
+      // discover the second half of the same problem.
+      for (const [flag, key, want, have] of clash) {
+        warn(`init refused — ${CONFIG_PATH} already declares ${key}: ${have} and ${flag} says ${want}`);
+      }
+      warn(
+        `  the config is authoritative on a re-run; a flag cannot change it, and init will not ` +
+          `write a door that disagrees with it`,
+      );
+      warn(
+        `  change ${clash.length > 1 ? 'them' : 'it'} in ${CONFIG_PATH} then run \`multivac doors\`, ` +
+          `or drop ${clash.map(([flag]) => flag).join(' and ')}`,
+      );
+      return 1;
+    }
+  }
+
   // The brain must be visible to git before anything is written into it.
   await ensureVisibleToGit(dir, report);
 
@@ -336,6 +372,30 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   const brainIsCode = (await lsFiles(dir).catch(() => [])).length > 0;
   if (await exists(cfgPath)) {
     report('init: .multivac/config.yml kept — edit it directly, then `multivac doors`');
+    // MV-91: a flag that survived the refusal above either agrees with the
+    // config or names something the config declares none of. Neither is an
+    // error and both are invisible without a line, which is the confusion this
+    // ends: nobody should diff their command line against a file to find out
+    // what happened to it.
+    const agreed = ([
+      ['--sdd', f.sdd, declared?.sdd],
+      ['--grapher', f.grapher, declared?.grapher],
+    ] as const).filter(([, want, have]) => want !== undefined && want === have);
+    const unanswered = ([
+      ['--sdd', 'sdd', f.sdd, declared?.sdd],
+      ['--grapher', 'grapher', f.grapher, declared?.grapher],
+    ] as const).filter(([, , want, have]) => want !== undefined && have === undefined);
+    if (agreed.length > 0) {
+      report(
+        `init:   ${agreed.map(([flag, want]) => `${flag} ${want}`).join(' and ')} ` +
+          `${agreed.length > 1 ? 'are' : 'is'} already what it declares — nothing to change`,
+      );
+    }
+    for (const [flag, key, want] of unanswered) {
+      report(
+        `init:   ${flag} ${want} is not in it: add \`${key}: ${want}\` there, then \`multivac doors\``,
+      );
+    }
   } else {
     await writeFile(cfgPath, renderConfig(f, await detectAdapters(dir), brainIsCode));
     report(
@@ -350,7 +410,10 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // An sdd declared here brings its project-level document with it: `doors`
   // is a later, separate command, and a constitution the agent is only told
   // about on the second command is one nobody writes.
-  const sddName = f.sdd ?? (await loadConfig(dir).catch(() => null))?.sdd;
+  // Config first, flag second — the opposite of what this line used to say.
+  // After the refusal above the two can no longer disagree, so this is belt
+  // and braces; it is written this way round so the ORDER states the rule.
+  const sddName = declared?.sdd ?? f.sdd;
   const law = sddName ? projectLawLines(sddName) : [];
   const body =
     law.length > 0

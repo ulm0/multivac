@@ -263,8 +263,10 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     await projectInto(brainDir, renderBrainDoor(config, active), config, config.grapher),
   );
 
-  const consumerBody = renderConsumerDoor(config);
+  // Per repo, not once for all of them: MV-90 resolves the graph block with the
+  // grapher that applies THERE, and a body rendered before the loop cannot know.
   for (const [key, entry] of Object.entries(config.repos)) {
+    const consumerBody = renderConsumerDoor(config, key);
     if (entry.isBrain) {
       // brain==code: this entry IS the brain, which already carries the brain
       // door. A consumer door here would point at a mount that cannot exist.

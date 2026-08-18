@@ -12,8 +12,41 @@ keeping a second one (MV-78).
 
 ## Unreleased
 
+**Fixed**
+
+- **Re-running `init` no longer writes a door that disagrees with the config it
+  kept.** `init --sdd speckit` followed by `init --sdd opsx` left `sdd: speckit`
+  in `.multivac/config.yml` and `Features gate through the ``opsx`` SDD` in
+  `AGENTS.md`, with nothing saying they disagreed — and the door is the first
+  file an agent reads. The config is authoritative once it exists: a flag naming
+  a different adapter is now refused, with both values named and both ways
+  forward stated, and the refusal writes nothing at all. A flag that agrees is
+  reported as redundant; a flag naming an adapter the config declares none of is
+  reported with how to make it stick. Everything else about a re-run was already
+  correct and is unchanged. (MV-91, amending MV-70)
+
 **Added**
 
+- **A declared grapher now obliges a graph.** `change close` refuses while any
+  declared, present repo has no graph, naming every one of them in a single
+  message with the command that builds one there. Declaring `grapher:` used to
+  oblige nothing — the tool ran where it could and every failure was a notice
+  that kept going, so a change could close with four repos ungraphed and say
+  nothing. The cost was invisible by design: the door tells agents to ask the
+  graph before reading the tree, so a missing graph never failed, it degraded
+  into agents grepping. A root whose binary is not on PATH refuses too, because
+  a gate that cannot be evaluated must not pass. The gate asks whether a graph
+  exists and never whether it is current. `--no-grapher` skips it for one run,
+  `grapher_auto: false` turns it off for good, and `--abandon` is exempt.
+  (MV-90, amending MV-87)
+- **The refresh at close reaches every declared repo**, not only the ones the
+  change named. A repo moved by another change, a merge or a sync was left
+  describing a tree that was gone.
+- **The door projected into each declared repo now names the graph** — the tool,
+  its artifact and its own query verbs — resolved with the grapher that applies
+  to that repo. Only the brain's door carried this before, so an operator
+  entering the ecosystem through a code repo got an agent that never learned a
+  graph existed.
 - **A change can now exist before it starts.** `planned` is a new change state
   in front of `open`, carried by the same `.multivac/changes/<slug>.md` file
   with the same schema, plus a `horizon` of `now`, `next` or `later`. That is

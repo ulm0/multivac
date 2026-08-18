@@ -111,6 +111,18 @@ The file also carries per-repo status
 
 ## close — the gate
 
+**The graph gate (MV-90).** A declared grapher must have left a graph in every
+declared, present root, or close refuses and names every root that has none.
+The build-where-missing pass runs inside the gate, so a fresh ecosystem builds
+rather than refuses; a root whose binary is not on PATH refuses too, because a
+gate that cannot be evaluated must not pass. It asks EXISTENCE, never
+freshness — a stale graph passes on purpose. `--no-grapher` skips it for one
+run and `grapher_auto: false` turns it off for good; do not reach for either to
+get past a root you could simply graph. `--abandon` is exempt.
+
+The refresh that follows covers every declared, present repo, not only the ones
+this change named.
+
 `close` re-runs verify **scoped to the declared claims** and refuses to
 archive until they hold:
 

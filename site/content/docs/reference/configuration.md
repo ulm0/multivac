@@ -143,6 +143,28 @@ gets no query lines in the door, because multivac does not know its verbs.
 `change close`. A newborn brain is two content files; graphing that is noise,
 which is why `init` declares no grapher unless it detects one.
 
+### `grapher_auto`
+
+Default `true`. When `false`, the graph gate never refuses — the declared tool
+still runs, the graph is still built and refreshed, and `change close` simply
+stops requiring the artifact.
+
+```yaml
+grapher_auto: false
+```
+
+Named after [`sdd_auto`](#sdd_auto) and parsed the same way, because two
+adapters with two vocabularies for one idea is a tax on every reader.
+
+It answers a different question from `grapher: none` on a repo. `grapher: none`
+says *do not graph this repo*; `grapher_auto: false` says *graph it, but do not
+refuse my close over it*. Neither substitutes for the other, and an operator
+forced to un-declare their tool to get a change closed will un-declare it
+permanently.
+
+See [MV-90](#) and `--no-grapher` in [commands](commands#change-sub-slug-args)
+for the per-run form.
+
 ### `graphers`
 
 | | |

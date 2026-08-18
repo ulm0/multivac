@@ -68,6 +68,8 @@ export interface Config {
   /** yml key: sdd_auto. Default true. */
   sddAuto: boolean;
   grapher?: string;
+  /** yml key: grapher_auto. Default true. False keeps the tool and drops the gate. */
+  grapherAuto: boolean;
   /**
    * yml key: graphers. Contracts for graphers the registry has not verified,
    * stated by the operator: name -> { artifact, refresh, create?, binary?,

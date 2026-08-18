@@ -65,8 +65,12 @@ export function projectLawLines(sdd: string): string[] {
  * A tool with no query surface gets a line saying exactly that. Silence there
  * would read as "no graph"; an invented verb would be worse.
  */
-export function grapherLines(config: Config): string[] {
-  const name = config.grapher;
+export function grapherLines(config: Config, grapher?: string): string[] {
+  // MV-90: the same rendering serves the brain's door and every consumer's, so
+  // the two cannot drift. The caller passes the grapher that applies THERE —
+  // a repo's own override first, the ecosystem's otherwise — and the brain
+  // passes nothing, which means the ecosystem's.
+  const name = grapher ?? config.grapher;
   if (name === undefined) return [];
   // Unverified: `doors` already prints the full declare-it-yourself notice —
   // repeating a guess in the door is the one thing MV-59 forbids.
