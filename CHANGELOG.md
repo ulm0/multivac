@@ -10,14 +10,14 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
-## Unreleased
+## 0.7.0 — 2026-08-18
 
 **Fixed**
 
 - **Re-running `init` no longer writes a door that disagrees with the config it
   kept.** `init --sdd speckit` followed by `init --sdd opsx` left `sdd: speckit`
-  in `.multivac/config.yml` and `Features gate through the ``opsx`` SDD` in
-  `AGENTS.md`, with nothing saying they disagreed — and the door is the first
+  in `.multivac/config.yml` while `AGENTS.md` said the features gate through
+  the `opsx` SDD, with nothing saying they disagreed — and the door is the first
   file an agent reads. The config is authoritative once it exists: a flag naming
   a different adapter is now refused, with both values named and both ways
   forward stated, and the refusal writes nothing at all. A flag that agrees is
