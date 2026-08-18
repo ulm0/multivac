@@ -162,6 +162,38 @@ rewritten.
 init: .multivac/config.yml kept — edit it directly, then `multivac doors`
 ```
 
+### Re-running it (MV-91)
+
+Safe, and narrow in what it will do. Nothing is appended twice and nothing is
+destroyed:
+
+| what | on a re-run |
+| --- | --- |
+| `.multivac/config.yml` | **kept, never rewritten** — edit it directly, then `multivac doors` |
+| `AGENTS.md` | the managed block is refreshed; your own content is untouched |
+| `.multivac/invariants.md` | kept |
+| `.multivac/ritual.md` | kept |
+| `.multivac/.gitignore`, `changes/.gitkeep` | kept |
+| an older brain layout | migrated, never clobbered |
+| git hooks | reinstalled, never displacing the repo's own gates |
+
+**A flag that disagrees with the config is refused**, because the config is
+authoritative once it exists:
+
+```txt
+init refused — .multivac/config.yml already declares sdd: speckit and --sdd says opsx
+  the config is authoritative on a re-run; a flag cannot change it, and init will not write a door that disagrees with it
+  change it in .multivac/config.yml then run `multivac doors`, or drop --sdd
+```
+
+Nothing is written by that refusal. Before it existed, the config was kept and
+the flag still won the door — so the door instructed the agent to follow a tool
+the law did not declare, and nothing said so.
+
+A flag that **agrees** is accepted and reported as redundant. A flag naming an
+adapter the config declares none of is reported with how to make it stick,
+never refused — nothing disagrees, and the config is only ever edited by hand.
+
 ## `seed [dir]`
 
 ```txt
@@ -978,6 +1010,40 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] tell support before the flag flips
   - [ ] the public site ships before the backend
 ```
+
+#### The graph gate (MV-90)
+
+A declared grapher must have left a graph in every declared, present root, or
+`close` refuses:
+
+```txt
+graph: `change close points-expire` refused — 2 roots have no graph
+  api: no graphify-out/graph.json — `graphify update .` there
+  web: no graphify-out/graph.json — `graphify update .` there
+  or skip the gate without losing the tool: `--no-grapher` for one run, `grapher_auto: false` in .multivac/config.yml for good
+```
+
+Every offending root is named in one message: you never close repeatedly to
+discover the rest of the list. The gate runs the build-where-missing pass
+first, so the first close in a fresh ecosystem builds rather than refuses.
+
+A root whose grapher binary is not on PATH also refuses, naming the binary and
+the install hint — a gate that cannot be evaluated refuses rather than passes.
+A root with `grapher: none`, an ecosystem with no grapher, and an UNVERIFIED
+adapter are all out of scope: nothing is required of a tool whose artifact path
+would have to be guessed.
+
+**It asks existence, never freshness.** A stale graph passes, deliberately:
+currency would have to be defined, and every definition is wrong on a fresh
+clone where every file is newer than the artifact.
+
+`--no-grapher` skips it for one run and says so. `--abandon` is exempt — an
+abandoned change made no claims and landed nothing, so demanding an artifact
+from it would punish dropping work.
+
+The refresh that follows now covers **every declared, present repo**, not only
+the repos this change named. A repo moved by another change, a merge or a sync
+was previously left describing a tree that was gone.
 
 #### `--abandon`
 

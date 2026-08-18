@@ -257,6 +257,26 @@ project commits it at all.
 No grapher is declared by default. A newborn brain is two content files, and a
 graph of that is noise.
 
+## A declared grapher obliges something (MV-90)
+
+Declaring a grapher used to be closer to a wish than a decision: the tool
+ran where it could, every failure was a notice that kept going, and a change
+could close with four declared repos ungraphed without a word. The SDD adapter
+had been gated at both ends since MV-56; this one had no gate anywhere.
+
+Now `change close` refuses while a declared, present root has no graph — see
+[the graph gate](commands#the-graph-gate-mv-90). The cost of the old behaviour
+was invisible by design, which is exactly why it needed a gate: the door tells
+every agent to ask the graph before reading the tree, so a missing graph never
+failed — it degraded into agents grepping, which looks like working.
+
+Two things arrived with it. The refresh at close reaches every declared,
+present repo rather than the ones a change happened to name. And the door
+projected into each declared repo now carries the same graph block the brain's
+door has always carried, resolved with the grapher that applies to that repo —
+requiring an artifact in a repo whose own door never mentioned it is the tool
+talking to itself.
+
 ## SDD adapters
 
 Two entries, selected by the registry key — which is multivac's name for the

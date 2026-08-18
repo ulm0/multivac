@@ -23,7 +23,7 @@ import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
 import { runScaffold, sddGate, sddInstructions } from '../adapters/sdd.js';
-import { ensureGraphs, refreshGraph } from '../adapters/refresh.js';
+import { ensureGraphs, graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
 import { evaluate, fmtAge } from './verify.js';
 import {
   ChangeError,
@@ -463,7 +463,7 @@ async function removeWorktrees(
 async function greenfield(abs: string, key: string, slug: string, cfg: Config): Promise<void> {
   await mkdir(abs, { recursive: true });
   await execFileP('git', ['init', '-q', abs]);
-  await writeFile(join(abs, 'AGENTS.md'), applyManagedBlock(null, renderConsumerDoor(cfg)));
+  await writeFile(join(abs, 'AGENTS.md'), applyManagedBlock(null, renderConsumerDoor(cfg, key)));
   // MV-46 says `add -A` appears NOWHERE in the lifecycle, and this line made
   // that nearly-true rather than true. Harmless here — a repo created seconds
   // ago holding the one file just written — but an exception nobody can check
@@ -836,6 +836,7 @@ async function cmdClose(
   slug: string,
   noSdd: boolean,
   abandon = false,
+  noGrapher = false,
 ): Promise<number> {
   // Abandoning is the other ending, and it needs its own door: `change new`
   // reserves an ID before anything is declared, so a change dropped before it
@@ -869,6 +870,12 @@ async function cmdClose(
   }
   // The archive-equivalent has to have HAPPENED — not been printed at.
   if (!(await gateSdd(brain, cfg, 'close', slug, noSdd))) return 1;
+  // MV-90, and deliberately BELOW the --abandon path above: an abandoned change
+  // made no claims and landed nothing, so demanding an artifact from it would
+  // punish dropping work — the one moment an operator is already giving up.
+  const graph = await graphGate(brain, cfg, slug, noGrapher);
+  for (const l of graph.lines) (graph.ok ? say : warn)(l);
+  if (!graph.ok) return 1;
   const parsed = await loadChange(brain, slug);
   assertStarted(parsed.change);
   // A change declaring nothing lands nothing, and `unlanded` over an empty map
@@ -946,19 +953,15 @@ async function cmdClose(
     say(`archived — commit this: ${commit} (no origin remote — the direct commit is the landing)`);
   }
   await removeWorktrees(brain, cfg, Object.keys(parsed.change.repos), slug);
-  // The graph refreshes itself: the declared grapher runs in the brain and in
-  // each declared+present repo this change touched — never staged, never
-  // committed; graph output lands only in dedicated chore commits.
-  const graphScopes: Array<{ scope: string; dir: string; name?: string }> = [
-    { scope: 'brain', dir: brain, name: cfg.grapher },
-  ];
-  for (const key of Object.keys(parsed.change.repos)) {
-    const entry = cfg.repos[key];
-    if (!entry || entry.isBrain) continue; // brain scope already covers it
-    const dir = resolve(brain, entry.path);
-    if (existsSync(dir)) graphScopes.push({ scope: key, dir, name: entry.grapher ?? cfg.grapher });
-  }
-  for (const s of graphScopes) {
+  // The graph refreshes itself in EVERY declared, present root — not only the
+  // repos this change happened to name (MV-90 amending MV-87). This list used
+  // to be built here by hand from `parsed.change.repos`, a second enumeration
+  // of what `graphScopes` already returns, and the two disagreed by design: a
+  // repo moved by another change, a merge or a sync was left describing a tree
+  // that was gone, for a reader whose whole instruction is to trust the graph
+  // instead of reading the tree. Never staged, never committed; graph output
+  // lands only in dedicated chore commits.
+  for (const s of await graphScopes(brain, cfg)) {
     if (s.name) await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
   }
   // The rest of the ceremony is the team's: printed at the moment it matters,
@@ -991,7 +994,8 @@ function usage(): void {
   say('  apply <slug>           worktree per repo (greenfield repos get created)');
   say('  land <slug>            landing-order report; --landed <repo> records a merge');
   say(`  close <slug>           verify claims, archive the change, print ${RITUAL_PATH}`);
-  say('flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only),');
+  say('flags: --no-sdd (skip the SDD steps AND their gates), --no-grapher (close only:');
+  say('       skip the graph gate), --landed <repo> (land only),');
   say('       --abandon (close only: drop a change that landed nothing, give its id back)');
 }
 
@@ -1008,17 +1012,20 @@ export const change: Command = {
     '  close <slug>           verify the declared claims, archive, print the ritual',
     'flags:',
     '  --no-sdd               skip the SDD steps AND their gates, for one run',
+    '  --no-grapher           close only: skip the graph gate for one run',
     '  --landed <repo>        land only: record that repo as merged',
     '  --abandon              close only: drop a change that landed nothing, give its id back',
   ],
   async run(argv, ctx): Promise<number> {
     const pos: string[] = [];
     let noSdd = false;
+    let noGrapher = false;
     let abandon = false;
     let landed: string | undefined;
     for (let i = 0; i < argv.length; i++) {
       const a = argv[i];
       if (a === '--no-sdd') noSdd = true;
+      else if (a === '--no-grapher') noGrapher = true;
       else if (a === '--abandon') abandon = true;
       else if (a === '--landed') landed = argv[++i];
       else if (a.startsWith('--')) {
@@ -1057,7 +1064,7 @@ export const change: Command = {
         case 'land':
           return await cmdLand(brain, cfg, slug, landed, noSdd);
         default:
-          return await cmdClose(brain, cfg, slug, noSdd, abandon);
+          return await cmdClose(brain, cfg, slug, noSdd, abandon, noGrapher);
       }
     } catch (e) {
       if (e instanceof ChangeError) {

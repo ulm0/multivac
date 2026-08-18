@@ -279,6 +279,13 @@ export async function loadConfig(brainDir: string): Promise<Config> {
     fail('"sdd_auto" must be true or false');
   }
 
+  // MV-90. Named after sdd_auto and parsed the same way: two adapters with two
+  // vocabularies for one idea is a tax on every reader.
+  const grapherAuto = o.grapher_auto ?? true;
+  if (typeof grapherAuto !== 'boolean') {
+    fail('"grapher_auto" must be true or false');
+  }
+
   const staleness = o.staleness ?? 'report';
   if (staleness !== 'report' && staleness !== 'block') {
     fail('"staleness" must be "report" or "block" — block makes a stale pin exit 1');
@@ -328,6 +335,7 @@ export async function loadConfig(brainDir: string): Promise<Config> {
     doors: stringList(o.doors, 'doors'),
     sdd: optString(o.sdd, 'sdd'),
     sddAuto,
+    grapherAuto,
     grapher: optString(o.grapher, 'grapher'),
     graphers,
     authorities: stringList(o.authorities, 'authorities'),

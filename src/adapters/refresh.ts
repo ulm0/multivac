@@ -10,6 +10,7 @@ import type { Config, GrapherDecl } from '../types.js';
 import { grapherSpec, unverifiedGrapher } from './registry.js';
 import { artifactPresent, binaryPresent, pathExists } from './detect.js';
 import { GRAPH_LOCK } from '../doors/settings.js';
+import { CONFIG_PATH } from '../lib/config.js';
 import { say, warn } from '../lib/out.js';
 
 const execFileP = promisify(execFile);
@@ -171,4 +172,106 @@ export async function ensureGraphs(brain: string, cfg: Config): Promise<void> {
     if (await artifactPresent(spec, s.dir)) continue; // already built here
     await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
   }
+}
+
+/** One root's answer to "is there a graph here". Only two of the four refuse. */
+type Verdict = 'satisfied' | 'missing' | 'unevaluable' | 'out-of-scope';
+
+export interface GateResult {
+  ok: boolean;
+  lines: string[];
+}
+
+/**
+ * MV-90. A declared grapher leaves a graph in every declared, present root, or
+ * `change close` refuses.
+ *
+ * Declaring `grapher: graphify` used to oblige nothing. The SDD adapter has
+ * been gated at both ends since MV-56 — `plan` refuses without the spec,
+ * `apply` without the plan and the tasks — so declaring an SDD tool MEANS
+ * something. Every grapher failure path was a notice that kept going, so a
+ * change could close with four declared repos ungraphed and say nothing. That
+ * is how the ecosystem this tool was measured against ended up with a declared
+ * grapher and five repos that never had a graph: MV-87 made the adapter REACH
+ * every root, not reaching them REQUIRED.
+ *
+ * The cost is invisible by design, which is exactly why it needs a gate: the
+ * door tells every agent to ask the graph before reading the tree, so a
+ * missing graph does not fail — it degrades into agents grepping, which looks
+ * like working.
+ *
+ * Build first, then judge: `ensureGraphs` is self-limiting, so the first close
+ * in a fresh ecosystem builds rather than refuses. A gate that refuses what it
+ * could have fixed teaches people to route around it.
+ *
+ * Existence, never freshness. Currency would have to be defined — mtime?
+ * content hash? tracked files newer than the artifact? — and every definition
+ * is wrong for some adapter and wrong on a fresh clone, where everything is
+ * newer than everything. Claiming existence and checking existence is
+ * Principle II satisfied.
+ *
+ * `close` only: MV-01 keeps verify/doctor/doors offline and free of foreign
+ * subprocesses, and this gate lets one run.
+ */
+export async function graphGate(
+  brain: string,
+  cfg: Config,
+  slug: string,
+  noGrapher: boolean,
+): Promise<GateResult> {
+  if (cfg.grapher === undefined && Object.values(cfg.repos).every((e) => e.grapher === undefined)) {
+    return { ok: true, lines: [] }; // nothing declared anywhere: silence
+  }
+  if (noGrapher || !cfg.grapherAuto) {
+    // Silence about a skipped check is the failure this gate exists to end.
+    const why = noGrapher ? '--no-grapher' : 'grapher_auto: false';
+    return {
+      ok: true,
+      lines: [`graph: gate ${noGrapher ? 'skipped' : 'off'} (${why}) — a root without a graph will not be reported`],
+    };
+  }
+  // Build where missing before judging. Idempotent and self-limiting: a root
+  // holding an artifact costs one stat.
+  await ensureGraphs(brain, cfg);
+
+  const missing: string[] = [];
+  const unevaluable: string[] = [];
+  const lines: string[] = [];
+  for (const s of await graphScopes(brain, cfg)) {
+    let verdict: Verdict = 'out-of-scope';
+    const spec = s.name === undefined ? null : grapherSpec(s.name, cfg.graphers);
+    // Unverified is out of scope, not a gap: demanding an artifact whose path
+    // would have to be guessed is Principle V's invented integration wearing a
+    // gate's clothes. `doctor` already prints the fields to declare.
+    if (s.name !== undefined && spec !== null) {
+      if (await artifactPresent(spec, s.dir)) verdict = 'satisfied';
+      else if (!(await binaryPresent(spec))) verdict = 'unevaluable';
+      else verdict = 'missing';
+    }
+    if (verdict === 'missing') {
+      missing.push(
+        `  ${s.scope}: no ${spec?.artifacts[0]} — \`${spec?.create ?? spec?.refresh}\` there`,
+      );
+    }
+    if (verdict === 'unevaluable') {
+      unevaluable.push(
+        `  ${s.scope}: \`${spec?.binaries[0]}\` is not on PATH — ${spec?.installHint}, then \`${spec?.create ?? spec?.refresh}\` there`,
+      );
+    }
+  }
+  if (missing.length === 0 && unevaluable.length === 0) return { ok: true, lines };
+
+  // Every offending root in ONE message: nobody should have to close
+  // repeatedly to discover the rest of the list.
+  const n = missing.length + unevaluable.length;
+  lines.push(
+    `graph: \`change close ${slug}\` refused — ${n} root${n > 1 ? 's' : ''} ` +
+      `${unevaluable.length > 0 && missing.length === 0 ? 'cannot be checked' : 'have no graph'}`,
+  );
+  lines.push(...missing, ...unevaluable);
+  lines.push(
+    `  or skip the gate without losing the tool: \`--no-grapher\` for one run, ` +
+      `\`grapher_auto: false\` in ${CONFIG_PATH} for good`,
+  );
+  return { ok: false, lines };
 }
