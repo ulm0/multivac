@@ -221,6 +221,19 @@ export async function lsTreeGitlink(
  * point, init asks before writing. Exit 1 (nothing ignored) and exit 128
  * (not a repo) both come back as "nothing ignored".
  */
+/**
+ * Is `path` in `repo`'s index — tracked, whatever its working-tree state.
+ *
+ * `ls-files --error-unmatch` is the question asked as a question: it exits
+ * non-zero for a path git does not track, which is the answer, not a failure.
+ */
+export async function isTracked(repo: string, path: string): Promise<boolean> {
+  return run(repo, ['ls-files', '--error-unmatch', '--', path]).then(
+    () => true,
+    () => false,
+  );
+}
+
 export async function ignoredPaths(
   repo: string,
   paths: string[],

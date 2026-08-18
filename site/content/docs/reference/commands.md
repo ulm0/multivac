@@ -1176,6 +1176,19 @@ would have to be guessed.
 currency would have to be defined, and every definition is wrong on a fresh
 clone where every file is newer than the artifact.
 
+**And the graph must be in the repository, not just on disk** (MV-103). A second
+refusal follows the first: a root whose artifact exists but is untracked — or is
+matched by an ignore rule — keeps its graph out of every clone, while the door
+there still points at one. The message names each root, the path and the command;
+multivac never runs it, because the refresh module is kept out of git entirely
+(MV-50).
+
+```txt
+graph: `change close points-expire` refused — 2 roots keep their graph out of the repository
+  api: graphify-out/graph.json is untracked — `git -C ../api add graphify-out/graph.json`
+  web: graphify-out/graph.json is ignored by .gitignore — remove the rule, then `git -C ../web add graphify-out/graph.json`
+```
+
 `--no-grapher` skips it for one run and says so. `--abandon` is exempt — an
 abandoned change made no claims and landed nothing, so demanding an artifact
 from it would punish dropping work.

@@ -277,6 +277,37 @@ door has always carried, resolved with the grapher that applies to that repo —
 requiring an artifact in a repo whose own door never mentioned it is the tool
 talking to itself.
 
+## And it is part of the repository (MV-103)
+
+Existence was half the question. A graph that lives only in the author's working
+tree passes the gate above and helps nobody who clones the repo — where the door
+still tells every agent to ask it. So `change close` refuses while a declared,
+present root keeps its artifact untracked:
+
+```txt
+graph: `change close points-expire` refused — 2 roots keep their graph out of the repository
+  api: graphify-out/graph.json is untracked — `git -C ../api add graphify-out/graph.json`
+  web: graphify-out/graph.json is ignored by .gitignore — remove the rule, then `git -C ../web add graphify-out/graph.json`
+```
+
+**Ignored gets its own message** because the fix is different: `git add` on an
+ignored path reports nothing most people read, and `-f` is the wrong advice when
+the rule is what is wrong.
+
+**multivac stages nothing.** The gate names the command; you run it. The refresh
+module is kept out of git entirely (MV-50) — a refresher that touches your index
+turns a background convenience into something that edits your commit — and this
+gate does not relax that. It lives in its own module for the same reason.
+
+**The obligation is the declared artifact**, not the directory around it. The
+tool writes caches, dated exports and generated HTML beside it, which your own
+ignore rules exclude; demanding the whole directory would be a rule its author
+already breaks. `doctor` reports the same state per root and gates on nothing:
+
+```txt
+grapher    graphify @ api: artifact ok · binary ok · fresh · UNTRACKED → `git -C ../api add graphify-out/graph.json`
+```
+
 ## SDD adapters
 
 Two entries, selected by the registry key — which is multivac's name for the
