@@ -24,6 +24,7 @@ import { renderConsumerDoor } from '../doors/consumer.js';
 import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
 import { runScaffold, sddGate, sddInstructions } from '../adapters/sdd.js';
 import { ensureGraphs, graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
+import { graphTrackedGate } from '../adapters/tracked.js';
 import { evaluate, fmtAge, stalenessLines } from './verify.js';
 import {
   ChangeError,
@@ -932,6 +933,14 @@ async function cmdClose(
   const graph = await graphGate(brain, cfg, slug, noGrapher);
   for (const l of graph.lines) (graph.ok ? say : warn)(l);
   if (!graph.ok) return 1;
+  // MV-103: existence was half the question. A graph that lives in one working
+  // tree passes the gate above and helps nobody who clones the repository —
+  // where the door still tells every agent to ask it. Second, because a root
+  // with no artifact at all is the refusal above and should not be reported
+  // twice.
+  const tracked = await graphTrackedGate(brain, cfg, slug, noGrapher);
+  for (const l of tracked.lines) (tracked.ok ? say : warn)(l);
+  if (!tracked.ok) return 1;
   const parsed = await loadChange(brain, slug);
   assertStarted(parsed.change);
   // A change declaring nothing lands nothing, and `unlanded` over an empty map

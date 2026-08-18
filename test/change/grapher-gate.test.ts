@@ -6,6 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
@@ -73,9 +74,14 @@ async function readyToClose(brain: string, ctx: { cwd: string }, slug: string): 
   );
 }
 
+// Written AND tracked: MV-103 makes an untracked graph its own refusal, so a
+// fixture that only writes the file would be testing this gate through the
+// next one.
 const graph = (dir: string): void => {
   mkdirSync(join(dir, 'graph-out'), { recursive: true });
   writeFileSync(join(dir, 'graph-out/graph.json'), '{}\n');
+  execFileSync('git', ['-C', dir, 'add', 'graph-out/graph.json']);
+  execFileSync('git', ['-C', dir, 'commit', '-qm', 'chore: track the graph']);
 };
 
 // --- US1: the gate ---

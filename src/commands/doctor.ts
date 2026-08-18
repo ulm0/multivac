@@ -15,6 +15,7 @@ import {
   loadConfig,
 } from '../lib/config.js';
 import * as git from '../lib/git.js';
+import { heldArtifact } from '../adapters/tracked.js';
 import { say, warn } from '../lib/out.js';
 import {
   doorTargets,
@@ -300,6 +301,17 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
       msg += `artifact ok · binary ok · graph STALE (older than last commit) → run \`${spec.refresh}\` there`;
     } else {
       msg += 'artifact ok · binary ok · fresh';
+    }
+    // MV-103, reported here and gated at close: a graph only this checkout has
+    // is one the next clone does not. `doctor` never gates, so it says it.
+    if (art) {
+      const held = await heldArtifact(spec.artifacts, s.dir);
+      if (held !== null && !(await git.isTracked(s.dir, held))) {
+        msg +=
+          (await git.ignoredPaths(s.dir, [held])).length > 0
+            ? ` · IGNORED by .gitignore → remove the rule, then \`git -C ${s.dir} add ${held}\``
+            : ` · UNTRACKED → \`git -C ${s.dir} add ${held}\``;
+      }
     }
     out.push(label('grapher') + msg);
   }

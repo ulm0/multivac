@@ -12,6 +12,18 @@ keeping a second one (MV-78).
 
 ## Unreleased
 
+**Added**
+
+- **A declared grapher's graph has to be in the repository, not just on disk.**
+  `change close` refuses while a declared, present root keeps its artifact
+  untracked, naming each root, the path and the `git add` that ends it. An
+  artifact matched by an ignore rule gets its own message, because `git add`
+  does not fix that one. Existence was half the question: a graph that lives in
+  one working tree passes the old gate and helps nobody who clones the repo,
+  where the door still tells every agent to ask it. multivac stages nothing —
+  the gate says, you commit — and `doctor` reports the same state per root
+  without gating on it. (MV-103, amending MV-90)
+
 **Fixed**
 
 - **The door a fresh brain gets is the door the tool maintains.** `init` carried
