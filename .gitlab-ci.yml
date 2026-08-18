@@ -107,14 +107,36 @@ pages:
 #
 # Tag-driven, and the tag must match the version in package.json — a release is
 # a decision somebody makes on purpose, never a side effect of a merge.
+#
+# NO PROVENANCE, and the reason is not a preference (MV-88). npm generates a
+# provenance attestation by default under trusted publishing, and its registry
+# refuses to verify one produced anywhere but a gitlab.com shared runner:
+#
+#   422 Unprocessable Entity - Error verifying sigstore provenance bundle:
+#   Unsupported GitLab CI runner environment: "self-hosted". Only
+#   "gitlab-hosted" runners are supported when publishing with provenance.
+#
+# This project's shared-runner minutes are exhausted and it runs on a
+# self-hosted runner, so the whole release stops on that line — measured, on
+# the v0.6.0 tag, after the tarball was built and signed. What the failure does
+# NOT touch is the guarantee this job exists for: the OIDC exchange succeeded,
+# so publishing is still trusted publishing with no long-lived token anywhere
+# (MV-68). `SIGSTORE_ID_TOKEN` is gone with the attestation it minted; the npm
+# token stays.
+#
+# The ceiling, stated where a reader meets it rather than left as an absence:
+# tarballs published from here carry no verifiable link back to the commit that
+# built them. Restore it — drop this variable and the flag — the day npm
+# supports self-hosted runners, or the day this project publishes from a
+# gitlab.com shared runner again.
 publish:
   stage: publish
   image: node:24
+  variables:
+    NPM_CONFIG_PROVENANCE: "false"
   id_tokens:
     NPM_ID_TOKEN:
       aud: "npm:registry.npmjs.org"
-    SIGSTORE_ID_TOKEN:
-      aud: sigstore
   before_script:
     - corepack enable
     - corepack prepare --activate
