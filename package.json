@@ -33,6 +33,7 @@
     "cli"
   ],
   "scripts": {
+    "prebuild": "node -e \"for (const d of ['dist','dist-test']) require('fs').rmSync(d,{recursive:true,force:true})\"",
     "build": "tsc -p tsconfig.json && tsc -p tsconfig.test.json",
     "test": "npm run build && node --test \"dist-test/**/*.test.js\"",
     "preinstall": "node -e \"if(process.env.INIT_CWD===process.cwd()&&!(process.env.npm_config_user_agent||'').startsWith('pnpm')){console.error('multivac develops with pnpm — run: corepack pnpm install');process.exit(1)}\""

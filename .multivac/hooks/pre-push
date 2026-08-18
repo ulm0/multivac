@@ -1,7 +1,9 @@
 #!/bin/sh
 # multivac hook shim — managed by `multivac doors`; regenerate, do not edit.
 # Chains the repo's own .git/hooks hook first; its exit code wins.
-# Runner order: mvac on PATH, npx --no-install, repo-local build. No runnable
+# Runner order, most specific first: this repo's build, its declared
+# dependency, then mvac on PATH. A repo that builds or declares a multivac
+# has said which one governs it; PATH is whatever the machine has. No runnable
 # multivac never blocks a commit: it warns loudly and exits 0.
 case $0 in */*) hookdir=${0%/*} ;; *) hookdir=. ;; esac
 root=$(CDPATH= cd -- "$hookdir/../.." && pwd) || exit 0
@@ -17,14 +19,14 @@ elif [ -f "$root/.pre-commit-config.yaml" ]; then
     echo "multivac: .pre-commit-config.yaml present but pre-commit is not installed — the project's gate did NOT run. Fix: install pre-commit (pipx install pre-commit, or brew install pre-commit)" >&2
   fi
 fi
-if command -v mvac >/dev/null 2>&1; then
-  exec mvac verify
+if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && command -v node >/dev/null 2>&1; then
+  exec node "$root/dist/cli.js" verify
 fi
 if [ -f "$root/node_modules/multivac/package.json" ] && command -v npx >/dev/null 2>&1; then
   exec npx --no-install multivac verify
 fi
-if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && command -v node >/dev/null 2>&1; then
-  exec node "$root/dist/cli.js" verify
+if command -v mvac >/dev/null 2>&1; then
+  exec mvac verify
 fi
 echo "multivac: hooks INACTIVE — no runnable multivac, nothing was verified. Fix: install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)" >&2
 exit 0

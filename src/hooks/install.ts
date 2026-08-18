@@ -64,13 +64,13 @@ export interface HooksReport {
  *  hooks are installed but inactive. Node mirror of the sh below — keep both
  *  sides of this pair in step. */
 export async function findRunner(repo: string): Promise<string | null> {
-  if (await onPath('mvac')) return 'mvac on PATH';
-  if (
-    (await pathExists(join(repo, 'node_modules/multivac/package.json'))) &&
-    (await onPath('npx'))
-  ) {
-    return 'npx --no-install multivac';
-  }
+  // MV-92: most specific first. A repo that BUILDS or DECLARES a multivac has
+  // stated which one governs it; whatever is on PATH is whatever the machine
+  // happens to have, including a laptop a year behind. The order used to be
+  // the exact inverse, and the cost was silent: an older global enforcing an
+  // older law table against a repo that pinned something else. Measured here —
+  // committing in this repository ran a 0.5.0 install against a 0.7.0 brain.
+  //
   // A built dist/ with no node_modules is not runnable: node exits 1 on the
   // first bare import, and an exit 1 out of a pre-commit hook blocks the
   // commit. "Present" is a file test; "runnable" needs the dependencies too.
@@ -81,6 +81,13 @@ export async function findRunner(repo: string): Promise<string | null> {
   ) {
     return 'node dist/cli.js';
   }
+  if (
+    (await pathExists(join(repo, 'node_modules/multivac/package.json'))) &&
+    (await onPath('npx'))
+  ) {
+    return 'npx --no-install multivac';
+  }
+  if (await onPath('mvac')) return 'mvac on PATH';
   return null;
 }
 
@@ -136,7 +143,9 @@ function shim(args: string, chain: HookName | null): string {
     ...(chain
       ? ["# Chains the repo's own .git/hooks hook first; its exit code wins."]
       : []),
-    '# Runner order: mvac on PATH, npx --no-install, repo-local build. No runnable',
+    '# Runner order, most specific first: this repo\'s build, its declared',
+    '# dependency, then mvac on PATH. A repo that builds or declares a multivac',
+    '# has said which one governs it; PATH is whatever the machine has. No runnable',
     '# multivac never blocks a commit: it warns loudly and exits 0.',
     ...(chain
       ? [
@@ -157,14 +166,14 @@ function shim(args: string, chain: HookName | null): string {
           'fi',
         ]
       : ['root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0']),
-    'if command -v mvac >/dev/null 2>&1; then',
-    `  exec mvac ${args}`,
+    'if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && command -v node >/dev/null 2>&1; then',
+    `  exec node "$root/dist/cli.js" ${args}`,
     'fi',
     'if [ -f "$root/node_modules/multivac/package.json" ] && command -v npx >/dev/null 2>&1; then',
     `  exec npx --no-install multivac ${args}`,
     'fi',
-    'if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && command -v node >/dev/null 2>&1; then',
-    `  exec node "$root/dist/cli.js" ${args}`,
+    'if command -v mvac >/dev/null 2>&1; then',
+    `  exec mvac ${args}`,
     'fi',
     `echo "multivac: hooks INACTIVE — no runnable multivac, nothing was verified. Fix: ${INACTIVE_FIX}" >&2`,
     'exit 0',

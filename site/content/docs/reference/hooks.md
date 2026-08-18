@@ -23,6 +23,23 @@ window in which the answer still changes what gets written. There is no rung
 after that, deliberately: a check that runs once everyone has gone home
 reports the lie to its next reader, with the code already written on top.
 
+## Which multivac runs (MV-92)
+
+The shim tries three, most specific first, and the first one available wins:
+
+1. **`<repo>/dist/cli.js`** — the multivac built in this repository
+2. **`<repo>/node_modules/multivac`** — the multivac this repository declares
+3. **`mvac` on PATH** — whatever the machine has
+
+A repository that builds or declares a multivac has said which one governs it;
+what is installed globally is whatever that machine happens to have. The order
+used to be the exact inverse, and the cost was silent: a global install a year
+behind enforcing an older law table against a repo that pinned something else.
+
+The repository's own gates still run before any of them, and their exit code
+still wins. A repository with none of the three is never blocked — the shim
+says plainly that nothing was verified and exits 0.
+
 ## Git hooks — the universal floor
 
 `init` installs them in the brain. `doors` installs them in the brain **and
