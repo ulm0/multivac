@@ -1,9 +1,9 @@
 ---
 slug: the-graph-is-a-gate-not-a-suggestion
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:

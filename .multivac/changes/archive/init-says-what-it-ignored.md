@@ -1,9 +1,9 @@
 ---
 slug: init-says-what-it-ignored
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
