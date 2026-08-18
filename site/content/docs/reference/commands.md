@@ -104,6 +104,13 @@ had not installed. `mvac doors` re-runs that projection after you edit
 open format every other door projects *from*, not a tool anyone could install,
 and `AGENTS.md` is written unconditionally.
 
+**The door `init` writes is the door `doors` writes** (MV-102) — one rendering,
+built from the config, so it already names the declared grapher and its query
+verbs, the declared SDD and its flow, and the repos in the ecosystem. Running
+`mvac doors` straight after `init` changes nothing. It used to rewrite the whole
+managed block, because `init` carried a second copy of the door that had never
+learned about the graph.
+
 Side effects, completely:
 
 ```txt

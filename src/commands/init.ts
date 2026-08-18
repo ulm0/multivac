@@ -24,7 +24,7 @@ import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
 import { acid, bold, dim, say, warn } from '../lib/out.js';
 import { banner } from '../lib/banner.js';
 import { applyManagedBlock } from '../doors/block.js';
-import { projectLawLines } from '../doors/brain.js';
+import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { PRECOMMIT_MISSING_FIX, installHooks } from '../hooks/install.js';
 import { detectAdapters, type Detected } from '../adapters/detect.js';
 
@@ -37,17 +37,6 @@ const INVARIANTS_HEADER = `# Invariants
 | ID | statement | authority | state | date | source |
 | --- | --- | --- | --- | --- | --- |
 `;
-
-const DOOR_BODY = `# multivac
-
-This brain is empty on purpose. Load the multivac skill and fill it:
-- existing ecosystem: \`multivac seed\`, then validate the proposed rows
-- from scratch: run the interview
-
-The law lives in \`${LAW_PATH}\` (anchored claims); every decision enters
-as a \`multivac change\`. The ritual — the closing ceremony no tool can
-check — is \`${RITUAL_PATH}\`, printed by \`change close\`. Run
-\`multivac verify\` before acting on anything you read here.`;
 
 interface Flags {
   dir?: string;
@@ -334,11 +323,6 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // A refusal must write NOTHING, which is why this sits here rather than
   // beside the door: everything below creates something.
   const declared = await loadConfig(dir).catch(() => null);
-  // Whether a config FILE is there, which is a different question from whether
-  // it loaded and a different one again from whether it declares an adapter.
-  // The door below needs this one: a config that exists but names no adapter,
-  // or will not parse, declares nothing — and nothing is what the door may say.
-  const hadConfig = await exists(join(dir, CONFIG_PATH));
   if (declared !== null) {
     const clash = ([
       ['--sdd', 'sdd', f.sdd, declared.sdd],
@@ -415,27 +399,28 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // An sdd declared here brings its project-level document with it: `doors`
   // is a later, separate command, and a constitution the agent is only told
   // about on the second command is one nobody writes.
-  // The config's answer whenever there is a config — not the config's answer
-  // FIRST, which is what this line used to say. Falling back to the flag was
-  // called belt and braces on the strength of the refusal above, and that is
-  // true only where the config DECLARES an adapter. Where it declares none the
-  // fallback reached the flag, so the same run reported `--sdd speckit` as not
-  // taken and wrote a door gating through speckit — and `doors`, which reads
-  // the config alone, deleted that block on its next run. Two commands, one
-  // repo, two doors (MV-101). A flag is the declaration exactly once: on the
-  // run that writes the config, where there is no config to read. The
-  // tombstone on that fallback is MV-101's own absent leg, so this comment
-  // names it rather than quoting it.
-  const sddName = hadConfig ? declared?.sdd : f.sdd;
-  const law = sddName ? projectLawLines(sddName) : [];
-  const body =
-    law.length > 0
-      ? `${DOOR_BODY}\n\nFeatures gate through the \`${sddName}\` SDD, in that tool's OWN flow:\n${law.join('\n')}`
-      : DOOR_BODY;
+  // ONE rendering, and it is `doors`' (MV-102). This used to be a second copy
+  // of the brain door written out by hand here, and the copy drifted exactly
+  // where it mattered: `renderBrainDoor` gained the graph block and the
+  // ecosystem's repo list, and the copy gained neither — so the door a fresh
+  // brain got, the first file an agent reads and the only one it has before
+  // anybody runs a second command, never named the graph it is told to ask.
+  //
+  // Reading the config here is also what keeps MV-101 true: the door names the
+  // adapters the CONFIG declares, and a flag reaches it exactly once — on the
+  // first run, through the config this command has just written from it. There
+  // is no second expression of that rule to keep in step, which is the point.
+  const cfg = await loadConfig(dir).catch(() => null);
+  const body = cfg
+    ? renderBrainDoor(cfg, countActiveInvariants(await readFile(join(dir, LAW_PATH), 'utf8').catch(() => '')))
+    : null;
   const doorPath = join(dir, 'AGENTS.md');
   const existing = await readFile(doorPath, 'utf8').catch(() => null);
-  const next = applyManagedBlock(existing, body);
-  if (next !== existing) {
+  // A config that will not load declares nothing, and a door written from
+  // nothing would be this command inventing the brain it is scaffolding. The
+  // config's own error stands; the door waits for `doors`.
+  const next = body === null ? existing : applyManagedBlock(existing, body);
+  if (next !== null && next !== existing) {
     await writeFile(doorPath, next);
     report(
       existing === null

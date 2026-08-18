@@ -341,3 +341,32 @@ test('init keeps an existing config.yml untouched', async () => {
   await init.run(['--sdd', 'other', '--provider', 'cursor'], { cwd: dir });
   assert.equal(readFileSync(join(dir, '.multivac/config.yml'), 'utf8'), before);
 });
+
+test('the scaffolded door names the declared grapher — MV-102', async () => {
+  // The door a fresh brain gets is the door `doors` maintains, so what MV-90
+  // put in it reaches the first reader rather than the second command's reader.
+  const dir = tmp();
+  assert.equal(await init.run(['--grapher', 'graphify', '--quiet', dir], { cwd: dir }), 0);
+
+  const door = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
+  assert.match(door, /graphify/);
+  assert.match(door, /graphify query/);
+});
+
+test('the scaffolded door lists the declared sibling repos — MV-102', async () => {
+  const dir = tmp();
+  assert.equal(await init.run(['--quiet', dir], { cwd: dir }), 0);
+  const cfg = join(dir, '.multivac', 'config.yml');
+  writeFileSync(cfg, `${readFileSync(cfg, 'utf8')}\nrepos:\n  api: ../acme-api\n`);
+
+  assert.equal(await init.run(['--quiet', dir], { cwd: dir }), 0);
+
+  assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /- api: \.\.\/acme-api/);
+});
+
+test('a brain with no rows still says it is empty — MV-102', async () => {
+  const dir = tmp();
+  assert.equal(await init.run(['--quiet', dir], { cwd: dir }), 0);
+
+  assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /brain empty — load the multivac skill to fill it/);
+});

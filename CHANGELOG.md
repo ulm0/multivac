@@ -14,6 +14,15 @@ keeping a second one (MV-78).
 
 **Fixed**
 
+- **The door a fresh brain gets is the door the tool maintains.** `init` carried
+  its own copy of the brain door and the copy had drifted: the projected door
+  gained the graph block and the ecosystem's repo list, the copy gained neither.
+  So the first file an agent reads — the only one it has before anybody runs a
+  second command — never named the graph it tells you to ask before reading the
+  tree. There is one rendering now: `init` writes the bytes `doors` writes, and
+  running `doors` straight after `init` changes nothing. A config that will not
+  load leaves the door alone rather than being written from nothing. (MV-102,
+  amending MV-101 and MV-91)
 - **The door no longer names an SDD the config does not declare.** On a brain
   whose config exists but declares no `sdd:`, `init --sdd speckit` reported the
   flag as not in the config — correctly — and then wrote a door gating through
