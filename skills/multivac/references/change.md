@@ -15,6 +15,23 @@ mvac change land     # MRs respecting the declared order
 mvac change close    # verifies the declared claims, archives, prints the ritual
 ```
 
+## Run the chain, do not ask to continue (MV-95)
+
+The lifecycle prints each SDD step and REFUSES to advance without the artifact
+that proves it ran, so the sequence is not a decision you are being offered.
+Run it through — specify, plan, tasks, analyze, implement, converge — without
+stopping to ask permission between steps. Stop for a QUESTION the tool itself
+raises: an unresolved clarification marker, an ambiguity the artifacts do not
+settle. "May I continue" is not that question.
+
+`--no-sdd` skips the steps and their gates for one run; `sdd_auto: false` stops
+printing them for good. Both are named on the line beside each step.
+
+When `change apply` says two repos are one stage, they have no ordering
+dependency and you have one checkout each: work them at the same time. Never
+the same file twice at once, and never the law — ids are reserved one at a time
+and stages serialise there.
+
 ## planned — the state before the rhythm starts (MV-89)
 
 A change may exist before it starts. `mvac roadmap add <slug> "<title>"` writes

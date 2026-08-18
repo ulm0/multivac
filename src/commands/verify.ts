@@ -2,7 +2,7 @@
 // offline, sub-second. Exit matrix: blocking modes (absent/count/each) gate
 // always; present/unique gate only under --strict; moved self-heals, exit 0.
 
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 import { changesDir, parseChange } from '../change/file.js';
@@ -172,7 +172,7 @@ interface Diagnostic {
 }
 
 /** Offline pin staleness: mount gitlink in each repo vs the brain's channel ref. */
-async function stalenessLines(brainDir: string, cfg: Config): Promise<Diagnostic[]> {
+export async function stalenessLines(brainDir: string, cfg: Config): Promise<Diagnostic[]> {
   const lines: Diagnostic[] = [];
   const gate = cfg.staleness === 'block';
   for (const [key, entry] of Object.entries(cfg.repos)) {
@@ -263,6 +263,97 @@ export const ENACTMENT_UNGATEABLE =
  * Cost: one `git diff --cached` in the ordinary case — a commit that does not
  * touch the law stops at step 2 — and three more only when the law is staged.
  */
+/**
+ * MV-97. The declared config decides which repos exist, which adapters bind and
+ * which gates run — every one of those as load-bearing as a law row, and all of
+ * them editable in a commit with no explanation and nobody noticing. A repo
+ * dropped from `repos:` stops being verified; an adapter removed stops obliging
+ * anything.
+ *
+ * So a MODIFIED config needs an open change. A CREATED one is free, and that is
+ * the whole exemption story: exactly one code path writes this file — `init`,
+ * and only when it is absent — so the rule reads what the commit DOES rather
+ * than who claims to have done it, and there is nothing to forge.
+ *
+ * The weak reading, deliberately: ANY open change satisfies it. The strong one
+ * — a change that NAMES the config — would need a field the change file does
+ * not have, and adding one to make this check stronger would be a schema change
+ * in service of a check rather than of the work. What this buys is that the
+ * edit lands on a branch with a merge request describing it, which is where a
+ * human reads it.
+ *
+ * The index, never the working tree: it is what is about to be committed. A
+ * working-tree read would refuse a commit for an edit deliberately left
+ * unstaged, and miss a staged edit since reverted from the file.
+ */
+/**
+ * The paths this commit is composed of, or null when the index cannot be read.
+ * One reader, because MV-81 and MV-97 ask the same question of it and two
+ * copies is how two answers appear.
+ */
+async function stagedPaths(brainDir: string): Promise<string[] | null> {
+  return git(brainDir, ['diff', '--cached', '--name-only', '-z'])
+    .then((t) => t.split('\0').filter(Boolean))
+    .catch(() => null);
+}
+
+function openChangeSlugs(brainDir: string): string[] {
+  const dir = changesDir(brainDir);
+  try {
+    return readdirSync(dir)
+      .filter((n) => n.endsWith('.md'))
+      .sort()
+      .flatMap((n) => {
+        try {
+          const { change } = parseChange(readFileSync(join(dir, n), 'utf8'), n);
+          return change.status === 'open' ? [change.slug] : [];
+        } catch {
+          return []; // a broken change file is `change`'s diagnostic to raise
+        }
+      });
+  } catch {
+    return [];
+  }
+}
+
+async function configLine(brainDir: string): Promise<Diagnostic | null> {
+  const staged = await stagedPaths(brainDir);
+  if (staged === null) {
+    return { text: `  ${dim('config')}    not answered — the index could not be read here`, gates: false };
+  }
+  if (!staged.includes(CONFIG_PATH)) return null; // untouched: this check is silent
+  const head = await revParse(brainDir, 'HEAD');
+  // No previous commit, or no previous config: a brain has to start somewhere.
+  const before =
+    head === null
+      ? ''
+      : await git(brainDir, ['cat-file', 'blob', `${head}:${CONFIG_PATH}`]).catch(() => '');
+  if (before === '') {
+    return {
+      text: `  ${dim('config')}    ${CONFIG_PATH} is new here — creating one is free; a brain has to start somewhere`,
+      gates: false,
+    };
+  }
+  // ANY open change, read from the directory rather than from the pendency map:
+  // that map only holds changes DECLARING a claim, and a change opened to make
+  // this very edit has none yet — which is the common case and would have made
+  // the rule unusable.
+  const openSlugs = openChangeSlugs(brainDir);
+  if (openSlugs.length > 0) {
+    return {
+      text: `  ${dim('config')}    ${CONFIG_PATH} is modified, declared by open change ${openSlugs.join(', ')}`,
+      gates: false,
+    };
+  }
+  return {
+    text:
+      `  ${paint('broken', 'config'.padEnd(9))} ${CONFIG_PATH} is modified and no change is open — ` +
+      'it decides which repos are verified and which gates run\n' +
+      '            open one first (`multivac change new "<title>"`), or drop the edit',
+    gates: true,
+  };
+}
+
 async function enactmentLine(
   brainDir: string,
   cfg: Config,
@@ -272,9 +363,7 @@ async function enactmentLine(
     text: `  ${dim('enact')}     not answered — ${why}; MV-81's check reads the index against HEAD`,
     gates: false,
   });
-  const staged = await git(brainDir, ['diff', '--cached', '--name-only', '-z'])
-    .then((s) => s.split('\0').filter(Boolean))
-    .catch(() => null);
+  const staged = await stagedPaths(brainDir);
   if (staged === null) return unanswered('the index could not be read here');
   if (staged.length === 0) {
     return unanswered('nothing staged, so no commit is being composed');
@@ -953,13 +1042,18 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
       }
     : await enactmentLine(brainDir, cfg, anchors);
   say(enact.text);
-  const finalExit: 0 | 1 = staleBlocking > 0 || enact.gates ? 1 : exitCode;
+  // MV-97, beside the enactment check because it is the same shape: an index
+  // read deciding whether this commit may proceed. Silent unless it applies.
+  const conf = scope ? null : await configLine(brainDir);
+  if (conf) say(conf.text);
+  const finalExit: 0 | 1 =
+    staleBlocking > 0 || enact.gates || conf?.gates === true ? 1 : exitCode;
   // The summary counts THE predicate — the same `gating` set the per-leg lines
   // read for their `· blocking` marker — never a second tally computed with
   // different arguments. `blockingBroken` answers a different question (blocking
   // modes alone, --strict ignored) and printing it here made `--strict` runs say
   // "0 blocking broken · exit 1" under a line marked blocking.
-  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0);
+  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0) + (conf?.gates ? 1 : 0);
   // A pending claim is a real failure a change file is holding back: exit 0 is
   // the grace, silence is not. Name what is masked and who masks it.
   const masking = [

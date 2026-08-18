@@ -1,14 +1,20 @@
 ---
 slug: the-ritual-is-seeded-and-its-checkable-lines-become-law
-status: planned
+status: archived
 horizon: later
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: landed
+landing_order:
+  - - brain
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-98
   retires: []
-claims: []
+claims:
+  - id: MV-98
+    statement: A fresh brain gets a ritual seeded from what it declared, every line commented out so nothing is asserted on the operator's behalf — and a ritual line that a check could make true belongs in the check, not on the poster.
 ---
 
 # Seed the ritual from the config, and move its checkable lines into law
@@ -39,3 +45,21 @@ operator's remote was stale. If the gate is kept, diff from the fork point that
 The review also found that two of the four lines are already partly enforced,
 and that one of them is prompted by the merge-request template on disk while the
 law anchors only half of it.
+
+## What this change does NOT do, and why
+
+The design's second half proposed a gate refusing a close whose diff touched
+neither the site nor the changelog while adding user-visible behaviour. The
+review killed it, and the reason is worth keeping:
+
+    close refuses until every declared repo is recorded landed, and landed
+    means the change branch is already an ancestor of the trunk — so the merge
+    base IS the branch tip, and `git diff <base>...<slug>` is empty by
+    construction in the only state close can run in. It would have refused
+    every correctly landed change, and passed only when the operator's remote
+    was stale.
+
+There is a way — persist the fork point `apply` already prints, and diff from
+that — but it is a different mechanism with its own failure modes, and it does
+not belong bolted onto a change about seeding a template. Recorded, not
+shipped.

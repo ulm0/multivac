@@ -19,7 +19,7 @@ import {
   loadConfig,
   CONFIG_PATH,
 } from '../lib/config.js';
-import { RITUAL_TEMPLATE } from '../lib/ritual.js';
+import { ritualSeed } from '../lib/ritual.js';
 import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
 import { acid, bold, dim, say, warn } from '../lib/out.js';
 import { banner } from '../lib/banner.js';
@@ -433,8 +433,10 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   if (await writeIfMissing(join(dir, LAW_PATH), INVARIANTS_HEADER)) {
     report(`init: wrote ${LAW_PATH} — the law table, zero rows`);
   }
-  if (await writeIfMissing(join(dir, RITUAL_PATH), RITUAL_TEMPLATE)) {
-    report(`init: wrote ${RITUAL_PATH} — empty; what you write there, \`change close\` prints`);
+  if (await writeIfMissing(join(dir, RITUAL_PATH), ritualSeed(declared ?? f))) {
+    report(
+      `init: wrote ${RITUAL_PATH} — candidates, all commented; uncomment what your team owes each other`,
+    );
   }
   await mkdir(join(dir, CHANGES_DIR), { recursive: true });
   await writeIfMissing(join(dir, CHANGES_DIR, '.gitkeep'), '');

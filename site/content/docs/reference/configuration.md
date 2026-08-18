@@ -42,6 +42,29 @@ repos:
     channel: origin/release
 ```
 
+## Changing it needs an open change (MV-97)
+
+This file decides which repos exist, which adapters bind and which gates run.
+Every one of those is as load-bearing as a law row, so a staged modification is
+refused while no change is open:
+
+```txt
+config    .multivac/config.yml is modified and no change is open — it decides which repos are verified and which gates run
+          open one first (`multivac change new "<title>"`), or drop the edit
+```
+
+**Creating one is free** — a brain has to start somewhere, and `init` is the
+only thing that writes this file, only when it is absent. So the rule reads what
+the commit does rather than who claims to have done it.
+
+**Any open change satisfies it**, including one opened for this very edit. The
+stronger reading — a change that *names* this file — would need a field the
+change file does not have. What this buys is that the edit lands on a branch
+with a merge request describing it.
+
+It reads the index, not the working tree: the index is what is about to be
+committed.
+
 ## Top-level keys
 
 ### `doors`
@@ -142,6 +165,21 @@ gets no query lines in the door, because multivac does not know its verbs.
 **Without it:** no `grapher` lines in `doctor`, no refresh hint at the end of
 `change close`. A newborn brain is two content files; graphing that is noise,
 which is why `init` declares no grapher unless it detects one.
+
+### `tracker`
+
+Which issue tracker the roadmap projects to: `gitlab`, `github`, or absent.
+
+```yaml
+tracker: gitlab
+```
+
+Root level only. Unlike `sdd:` and `grapher:`, which act on each repo's files,
+the tracker projects the **change** — and changes live only in the brain, so a
+per-repo override would answer a question nobody can ask.
+
+Projection is one way and runs only from `multivac roadmap sync`. It reaches the
+network, so it never runs from `verify`, `doctor` or `doors`.
 
 ### `grapher_auto`
 

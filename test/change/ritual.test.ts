@@ -76,3 +76,58 @@ test('a brain with no ritual closes exactly as before', async () => {
   assert.equal(rc, 0);
   assert.doesNotMatch(out, /ritual/);
 });
+
+// --- MV-98: the seed ---
+
+test('a seeded ritual carries candidates, every one commented', async () => {
+  const { ritualSeed } = await import('../../src/lib/ritual.js');
+  const seed = ritualSeed({ sdd: 'speckit', repos: { api: {}, web: {} }, mount: '.brain' });
+  const bullets = seed.split('\n').filter((l) => l.includes('- [ ]'));
+  assert.ok(bullets.length >= 3, 'candidates were seeded');
+  for (const b of bullets) {
+    assert.match(b, /^<!-- - \[ \] .* -->$/, `not commented: ${b}`);
+  }
+});
+
+test('a commented candidate prints nothing, and uncommenting one makes it print', async () => {
+  const { ritualSeed, ritualChecklist } = await import('../../src/lib/ritual.js');
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join: j } = await import('node:path');
+  const brain = mkdtempSync(j(tmpdir(), 'mvac-seed-'));
+  mkdirSync(j(brain, '.multivac'), { recursive: true });
+  const seed = ritualSeed({ sdd: 'speckit' });
+  writeFileSync(j(brain, '.multivac/ritual.md'), seed);
+  // A fresh brain still prints nothing: exactly what it did before the seed.
+  assert.deepEqual(await ritualChecklist(brain), []);
+
+  writeFileSync(
+    j(brain, '.multivac/ritual.md'),
+    `${seed}\n- [ ] Somebody who did not write it read it, and said so out loud.\n`,
+  );
+  const lines = await ritualChecklist(brain);
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /Somebody who did not write it read it/);
+});
+
+test('a declared grapher contributes no candidate — its work is automatic and already gated', async () => {
+  const { ritualSeed } = await import('../../src/lib/ritual.js');
+  const seed = ritualSeed({ sdd: 'speckit', repos: { api: {} } });
+  assert.equal(/graph/i.test(seed), false, 'the seed mentions the graph');
+});
+
+test("this repo's own ritual keeps only what no check could decide", async () => {
+  const { readFileSync } = await import('node:fs');
+  const { join: j } = await import('node:path');
+  const root = j(import.meta.dirname, '../../..');
+  const text = readFileSync(j(root, '.multivac/ritual.md'), 'utf8');
+  const live = text
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .split('\n')
+    .filter((l) => l.includes('- [ ]'));
+  assert.ok(live.length > 0, 'the ritual is not empty');
+  // The three obligations that moved must not still be posted here.
+  for (const gone of [/an MR is open/i, /landing order/i, /friction backlog/i]) {
+    assert.equal(gone.test(live.join('\n')), false, `still posted: ${gone}`);
+  }
+});

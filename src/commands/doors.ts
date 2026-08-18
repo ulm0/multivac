@@ -19,9 +19,12 @@ import { fileURLToPath } from 'node:url';
 import type { Command, CommandContext, Config } from '../types.js';
 import { undeclared } from '../lib/args.js';
 import { PROJECTED_PATH, recordBody, selfVersion } from '../lib/version.js';
-import { ConfigError, LAW_PATH, loadConfig } from '../lib/config.js';
+import { ConfigError, LAW_PATH, loadConfig,
+  FLOW_PATH,
+} from '../lib/config.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
+import { renderFlow } from '../doors/flow.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings } from '../doors/settings.js';
@@ -262,6 +265,13 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     'brain',
     await projectInto(brainDir, renderBrainDoor(config, active), config, config.grapher),
   );
+
+  // MV-96: the derived page. Rewritten whole every projection — the ritual is
+  // the operator's and is never overwritten, this is the tool's and always is.
+  // Through the managed block so anything written outside it survives.
+  const flowFile = join(brainDir, FLOW_PATH);
+  await writeFile(flowFile, applyManagedBlock(await readOrNull(flowFile), renderFlow(config)));
+  say(`brain: ${FLOW_PATH} — what your declarations oblige, sorted; generated, binds nothing`);
 
   // Per repo, not once for all of them: MV-90 resolves the graph block with the
   // grapher that applies THERE, and a body rendered before the loop cannot know.

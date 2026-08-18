@@ -544,5 +544,18 @@ export function sddInstructions(
   if (steps.length === 0) {
     return [`sdd ${cfg.sdd}: ${at} — this tool has no agent-run ${at} step; nothing to run`];
   }
-  return steps.map((s) => `sdd ${cfg.sdd}: ${withSlug(s.run, slug)} [${proofOf(s, slug)}]`);
+  // MV-95: the chain runs unattended. The lifecycle already REFUSES to advance
+  // without each step's artifact, so the sequence was never a choice — asking
+  // permission between steps costs a confirmation per step and decides nothing.
+  // The opt-out goes on the same line: that is the difference between a tool
+  // that assumes and a tool that decides for you.
+  //
+  // "A question the tool itself raises" is not "may I continue". An agent that
+  // cannot tell them apart will either never stop or always stop, so the line
+  // names the distinction rather than leaving it to be inferred.
+  return steps.flatMap((s) => [
+    `sdd ${cfg.sdd}: ${withSlug(s.run, slug)} [${proofOf(s, slug)}]`,
+    `sdd ${cfg.sdd}:   run the chain through without asking to continue — stop only for a ` +
+      `question the tool itself raises (\`--no-sdd\` for one run, \`sdd_auto: false\` to stop printing these)`,
+  ]);
 }

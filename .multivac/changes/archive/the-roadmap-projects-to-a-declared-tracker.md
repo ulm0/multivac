@@ -1,14 +1,20 @@
 ---
 slug: the-roadmap-projects-to-a-declared-tracker
-status: planned
+status: archived
 horizon: next
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: landed
+landing_order:
+  - - brain
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-99
   retires: []
-claims: []
+claims:
+  - id: MV-99
+    statement: A declared tracker receives the roadmap as a one-way projection — one issue per change in the brain's own project, identified by the number recorded in the change file, labelled only in multivac's own namespace, and never read back as a source.
 ---
 
 # Issues and boards from the change files, one way
@@ -36,3 +42,19 @@ Inspired by the SDD tool's own tasks-to-issues command, and deliberately unlike
 it in three ways: that one is GitHub-only in hard code, re-derives its mapping
 every run by regex over issue titles — edit a title and it duplicates
 everything — and closes nothing, ever.
+
+## Scoped to one unit, and the rest recorded
+
+The design called for one issue per USER STORY, taken from the SDD tool's task
+list. That stays the intent and is not built here.
+
+A story-level projection means a second reader of `tasks.md` — a file that
+already has exactly one consumer, in the tool that writes it. Adding a second
+reader of somebody else's artifact is a coupling worth its own change and its
+own row, not a paragraph inside this one.
+
+What lands here is the layer under it, which story issues would need anyway:
+the declared adapter, the one-way rule, the identity recorded in the change
+file, the label namespace, and the reconciliation. A change gets one issue.
+When story issues arrive they hang under it — the same shape a planned change
+acquiring a spec already has.

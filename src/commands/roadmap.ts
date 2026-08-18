@@ -11,8 +11,8 @@
 // would be unverifiable intent, the same category MV-27 keeps print-only.
 
 import { existsSync } from 'node:fs';
-import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import {
   HORIZONS,
   type ChangeFile,
@@ -23,11 +23,23 @@ import {
   parseChange,
   saveChange,
   scaffoldPlanned,
+  serializeChange,
 } from '../change/file.js';
-import { CHANGES_DIR } from '../lib/config.js';
+import { CHANGES_DIR, CONFIG_PATH, loadConfig } from '../lib/config.js';
+import {
+  LABEL_PREFIX,
+  NO_TRACKER,
+  binaryReady,
+  closeIssue,
+  createIssue,
+  notInstalled,
+  trackerEntry,
+  trackerNames,
+  updateIssue,
+} from '../adapters/tracker.js';
 import { say, warn } from '../lib/out.js';
 import { commitBookkeeping } from './change.js';
-import type { Command } from '../types.js';
+import type { Command, Config } from '../types.js';
 
 interface Entry {
   slug: string;
@@ -138,6 +150,108 @@ async function add(brain: string, slug: string, title: string, horizon: Horizon)
   return 0;
 }
 
+
+/**
+ * MV-99: the roadmap, projected to a declared tracker. ONE WAY.
+ *
+ * The change files are the source; issues are their projection and never a
+ * second source. A projection that reads back is two lists again, which is the
+ * failure the roadmap exists to end — so nothing the tracker says ever reaches
+ * a change file. Closing an issue by hand closes nothing; the next sync
+ * restores it, because the file said so.
+ *
+ * The identity is the NUMBER recorded in the change file. It survives a title
+ * edit, which is what breaks the alternative — searching the tracker for a
+ * matching title, the way the SDD tool's own issue command does.
+ *
+ * Reaches the network, so it lives here and nowhere else: `verify`, `doctor`
+ * and `doors` may not, and MV-99's `absent` leg keeps it that way.
+ */
+async function sync(brain: string, cfg: Config): Promise<number> {
+  if (!cfg.tracker || cfg.tracker === NO_TRACKER) {
+    say(
+      `sync: no tracker declared — add \`tracker: ${trackerNames.join('\` or \`tracker: ')}\` to ${CONFIG_PATH}`,
+    );
+    return 0;
+  }
+  const entry = trackerEntry(cfg.tracker);
+  if (!entry) {
+    warn(`sync: \`${cfg.tracker}\` is not a tracker multivac has verified — known: ${trackerNames.join(', ')}`);
+    return 1;
+  }
+  if (!(await binaryReady(entry))) {
+    for (const l of notInstalled(cfg.tracker, entry)) warn(l);
+    return 1;
+  }
+
+  const dir = changesDir(brain);
+  const files: Array<{ file: string; archived: boolean }> = [];
+  for (const [sub, archived] of [['', false], ['archive', true]] as const) {
+    let names: string[];
+    try {
+      names = (await readdir(join(dir, sub))).filter((n) => n.endsWith('.md')).sort();
+    } catch {
+      continue;
+    }
+    for (const n of names) files.push({ file: join(dir, sub, n), archived });
+  }
+  if (files.length === 0) {
+    say('sync: no changes to project');
+    return 0;
+  }
+
+  say(`sync ${cfg.tracker}: ${files.length} change${files.length > 1 ? 's' : ''} to project`);
+  let recorded = 0;
+  for (const { file, archived } of files) {
+    let parsed;
+    try {
+      parsed = parseChange(await readFile(file, 'utf8'), file);
+    } catch {
+      continue; // a broken change file is `change`'s diagnostic to raise
+    }
+    const { change, body } = parsed;
+    const title = titleOf(body) || change.slug;
+    const label = `${LABEL_PREFIX}${change.status}`;
+    const state = change.status.padEnd(8);
+    if (archived || change.status === 'archived') {
+      if (change.issue === undefined) continue; // nothing to close, nothing to say
+      await closeIssue(brain, entry, change.issue).catch(() => {});
+      say(`  ${state} ${change.slug} → #${change.issue} closed`);
+      continue;
+    }
+    if (change.issue !== undefined) {
+      try {
+        await updateIssue(brain, entry, change.issue, title, label);
+        say(`  ${state} ${change.slug} → #${change.issue} up to date`);
+      } catch {
+        // Never a second issue: silently re-creating is how a change ends up
+        // with two, and nobody can tell which one people commented on.
+        say(
+          `  ${state} ${change.slug} → #${change.issue} not found in the tracker — reported, not re-created; clear \`issue:\` to make a new one`,
+        );
+      }
+      continue;
+    }
+    const n = await createIssue(brain, entry, title, body, label).catch(() => null);
+    if (n === null) {
+      warn(`  ${state} ${change.slug} → could not be created; nothing recorded`);
+      continue;
+    }
+    change.issue = n;
+    await writeFile(file, serializeChange(change, body));
+    recorded++;
+    say(`  ${state} ${change.slug} → #${n} created`);
+  }
+  if (recorded > 0) {
+    say(
+      `recorded ${recorded} issue number${recorded > 1 ? 's' : ''} in ${CHANGES_DIR}/ — commit them: the number is the identity`,
+    );
+  } else {
+    say('nothing recorded — every change already carries its issue number');
+  }
+  return 0;
+}
+
 const USAGE = 'usage: multivac roadmap add <slug> "<title>" [--horizon now|next|later]';
 
 export const roadmap: Command = {
@@ -147,6 +261,7 @@ export const roadmap: Command = {
     'usage: multivac roadmap [add <slug> "<title>"] [--horizon now|next|later]',
     '  (no arguments)         list planned changes by horizon, and the count in flight',
     '  add <slug> "<title>"   record an intention: one change file, planned',
+    '  sync                   project the changes to the declared tracker (reaches the network)',
     'flags:',
     '  --horizon <value>      now, next or later. add only; defaults to later',
     'a planned change reserves no invariant id, opens no branch and never counts',
@@ -184,6 +299,13 @@ export const roadmap: Command = {
       const { planned, open } = await readRoadmap(brain);
       list(planned, open);
       return 0;
+    }
+    if (pos[0] === 'sync') {
+      if (pos.length > 1) {
+        warn(`roadmap: unexpected argument "${pos[1]}" — sync takes none`);
+        return 2;
+      }
+      return await sync(brain, await loadConfig(brain));
     }
     if (pos[0] !== 'add') {
       warn(`roadmap: unexpected argument "${pos[0]}" — ${USAGE}`);
