@@ -1,14 +1,20 @@
 ---
 slug: the-consumer-door-carries-the-ecosystem
-status: planned
+status: open
 horizon: now
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: branched
+landing_order:
+  - - brain
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-93
   retires: []
-claims: []
+claims:
+  - id: MV-93
+    statement: The door projected into a declared repo carries the ecosystem it belongs to — the sibling repos and the handle anchors use for the brain, the adapters that apply to that repo, and the mount refresh as the first instruction of a session rather than the second of four bullets.
 ---
 
 # A door in a code repo names the ecosystem, not only the law
@@ -36,3 +42,31 @@ vendor's own init in every root lacking it — so the door must carry that claus
 verbatim, and `runScaffold`'s per-root behaviour must be confirmed first. It
 also warns rather than scaffolding on three paths. Get that wrong and the door
 is an invented integration claiming more than was checked.
+
+## What the review changed before a line was written
+
+The design was drafted and then attacked by a reader whose only job was to
+refute it. No fatal, and nine corrections that would each have cost a
+round trip:
+
+- the `role:` anchor as first written could never match the code the same
+  design proposed, because the parse wraps `optString` in another call —
+  a broken leg on day one;
+- the door clause about the SDD adapter claimed `change plan` runs the tool's
+  own init, when it runs from four lifecycle points and WARNS instead of
+  scaffolding on three paths. A door that overstates what the tool does is
+  Principle II broken in the one file an agent reads first;
+- the refresh line is the second of four bullets, not the third, and a law row
+  that misdescribes what it replaces decays the day it is written;
+- a single-repo ecosystem would have printed a list whose only row was "(this
+  repo)";
+- `brain` can never appear in a list built from `repos`, because it is an
+  implicit anchor handle — so a heading promising "the keys anchors name"
+  would have omitted the one key every consumer's anchors may use;
+- the probe-nothing leg scanned for identifiers anywhere in the file, so it
+  would have gone red the day somebody wrote "this door never calls
+  `existsSync`" in a comment: MV-46's mistake inverted, failing instead of
+  passing.
+
+Recorded here because the next reader deserves the corrected design, not the
+first one.

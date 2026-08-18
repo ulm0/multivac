@@ -187,7 +187,7 @@ function optString(v: unknown, key: string): string | undefined {
 function repoEntry(key: string, v: unknown): RepoEntry {
   if (typeof v === 'string') return { path: v };
   if (v === null || typeof v !== 'object' || Array.isArray(v)) {
-    fail(`repos.${key} must be a path string or { path, url?, grapher?, sdd?, channel? }`);
+    fail(`repos.${key} must be a path string or { path, url?, role?, grapher?, sdd?, channel? }`);
   }
   const o = v as Record<string, unknown>;
   let path: string;
@@ -208,7 +208,17 @@ function repoEntry(key: string, v: unknown): RepoEntry {
     // `none` is a value, not a parse case — `sddFor` resolves it (MV-87).
     sdd: optString(o.sdd, `repos.${key}.sdd`),
     channel: optString(o.channel, `repos.${key}.channel`),
+    // MV-93: the list is a list, so a role written across several lines is
+    // reduced to one rather than breaking the shape of every entry after it.
+    role: oneLine(optString(o.role, `repos.${key}.role`)),
   };
+}
+
+/** Collapse declared prose to a single line. Undefined stays undefined. */
+function oneLine(v: string | undefined): string | undefined {
+  if (v === undefined) return undefined;
+  const flat = v.split('\n').map((l) => l.trim()).filter(Boolean).join(' ');
+  return flat === '' ? undefined : flat;
 }
 
 /**
