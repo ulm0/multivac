@@ -334,6 +334,11 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // A refusal must write NOTHING, which is why this sits here rather than
   // beside the door: everything below creates something.
   const declared = await loadConfig(dir).catch(() => null);
+  // Whether a config FILE is there, which is a different question from whether
+  // it loaded and a different one again from whether it declares an adapter.
+  // The door below needs this one: a config that exists but names no adapter,
+  // or will not parse, declares nothing — and nothing is what the door may say.
+  const hadConfig = await exists(join(dir, CONFIG_PATH));
   if (declared !== null) {
     const clash = ([
       ['--sdd', 'sdd', f.sdd, declared.sdd],
@@ -410,10 +415,18 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // An sdd declared here brings its project-level document with it: `doors`
   // is a later, separate command, and a constitution the agent is only told
   // about on the second command is one nobody writes.
-  // Config first, flag second — the opposite of what this line used to say.
-  // After the refusal above the two can no longer disagree, so this is belt
-  // and braces; it is written this way round so the ORDER states the rule.
-  const sddName = declared?.sdd ?? f.sdd;
+  // The config's answer whenever there is a config — not the config's answer
+  // FIRST, which is what this line used to say. Falling back to the flag was
+  // called belt and braces on the strength of the refusal above, and that is
+  // true only where the config DECLARES an adapter. Where it declares none the
+  // fallback reached the flag, so the same run reported `--sdd speckit` as not
+  // taken and wrote a door gating through speckit — and `doors`, which reads
+  // the config alone, deleted that block on its next run. Two commands, one
+  // repo, two doors (MV-101). A flag is the declaration exactly once: on the
+  // run that writes the config, where there is no config to read. The
+  // tombstone on that fallback is MV-101's own absent leg, so this comment
+  // names it rather than quoting it.
+  const sddName = hadConfig ? declared?.sdd : f.sdd;
   const law = sddName ? projectLawLines(sddName) : [];
   const body =
     law.length > 0

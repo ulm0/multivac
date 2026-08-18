@@ -12,6 +12,20 @@ keeping a second one (MV-78).
 
 ## Unreleased
 
+**Fixed**
+
+- **The door no longer names an SDD the config does not declare.** On a brain
+  whose config exists but declares no `sdd:`, `init --sdd speckit` reported the
+  flag as not in the config — correctly — and then wrote a door gating through
+  speckit anyway, because the door resolved the flag as a fallback. `doors`,
+  which reads the config alone, deleted that block on its next run: two
+  commands, one repo, two different doors, with nothing on disk recording the
+  choice or explaining the revert. The door now takes the config's answer
+  whenever a config exists, and a flag is the declaration exactly once — on the
+  first run, which is what writes the config. The report, the refusal for a
+  disagreeing flag and first-run behaviour are all unchanged. (MV-101, amending
+  MV-91)
+
 **Added**
 
 - **`multivac roadmap sync` projects the change files to a declared tracker.**
