@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      citty:
+        specifier: ^0.2.2
+        version: 0.2.2
       picomatch:
         specifier: ^4.0.2
         version: 4.0.5
@@ -33,6 +36,9 @@ packages:
   '@types/picomatch@3.0.2':
     resolution: {integrity: sha512-n0i8TD3UDB7paoMMxA3Y65vUncFJXjcUf7lQY7YyKGl6031FNjfsLs6pdLFCy2GNFxItPJG8GvvpbZc2skH7WA==}
 
+  citty@0.2.2:
+    resolution: {integrity: sha512-+6vJA3L98yv+IdfKGZHBNiGW5KHn22e/JwID0Strsz8h4S/csAu/OuICwxrg44k5MRiZHWIo8XXuJgQTriRP4w==}
+
   picomatch@4.0.5:
     resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
     engines: {node: '>=12'}
@@ -57,6 +63,8 @@ snapshots:
       undici-types: 7.18.2
 
   '@types/picomatch@3.0.2': {}
+
+  citty@0.2.2: {}
 
   picomatch@4.0.5: {}
 

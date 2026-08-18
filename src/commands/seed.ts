@@ -6,7 +6,8 @@
 import { writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
-import { undeclared } from '../lib/args.js';
+import { surfaceFrom, undeclared } from '../lib/args.js';
+import { parseArgs, type ArgsDef } from 'citty';
 import { loadConfig } from '../lib/config.js';
 import { lsFiles } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
@@ -69,17 +70,21 @@ function openQuestions(gates: string[], prose: string[], stacks: string[]): stri
   return lines;
 }
 
+/** What seed takes. One declaration: citty parses it, `undeclared` refuses against it. */
+const ARGS = {
+  dir: { type: 'positional', required: false, description: 'the brain; defaults to the working directory' },
+} satisfies ArgsDef;
+
 async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
   // MV-85: before the inventory and before the report is written. seed took the
   // first non-flag and ignored every flag, so a typo changed nothing and said so
   // to nobody.
-  const bad = undeclared('seed', argv, { positionals: 1 });
+  const bad = undeclared('seed', argv, surfaceFrom(ARGS));
   if (bad) {
     warn(bad);
     return 2;
   }
-  const dirArg = argv.find((a) => !a.startsWith('-'));
-  const brainDir = resolve(ctx.cwd, dirArg ?? '.');
+  const brainDir = resolve(ctx.cwd, parseArgs(argv, ARGS).dir ?? '.');
   const cfg = await loadConfig(brainDir); // throws actionable ConfigError
 
   const lines: string[] = [

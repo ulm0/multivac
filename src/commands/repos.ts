@@ -16,7 +16,9 @@ import type { Command } from '../types.js';
 import { CONFIG_PATH, loadConfig } from '../lib/config.js';
 import { pathExists } from '../adapters/detect.js';
 import { gitFailure } from '../lib/git.js';
-import { say } from '../lib/out.js';
+import { parseArgs, type ArgsDef } from 'citty';
+import { surfaceFrom, undeclared } from '../lib/args.js';
+import { say, warn } from '../lib/out.js';
 
 const execFileP = promisify(execFile);
 
@@ -94,6 +96,12 @@ export async function reposSync(
   return { lines, exit };
 }
 
+/** What repos takes. One declaration: citty parses it, and the subcommand is a positional. */
+const ARGS = {
+  sub: { type: 'positional', required: false, description: 'list (default) or sync' },
+  shallow: { type: 'boolean', description: 'sync only: --depth 1' },
+} satisfies ArgsDef;
+
 export const reposCommand: Command = {
   name: 'repos',
   help: 'list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest',
@@ -105,13 +113,23 @@ export const reposCommand: Command = {
     'verify never fetches, so a channel ref is only as current as the last sync.',
   ],
   async run(argv, ctx) {
-    const sub = argv[0];
+    // MV-85, before the config is read. `repos` used to answer an unknown FLAG
+    // with its unknown-subcommand line, which happened to exit 2 and happened
+    // to name it — true by accident of the first positional being whatever you
+    // typed. Refusing against the declaration says it on purpose.
+    const bad = undeclared('repos', argv, surfaceFrom(ARGS));
+    if (bad) {
+      warn(bad);
+      return 2;
+    }
+    const a = parseArgs(argv, ARGS);
+    const sub = a.sub;
     if (sub === undefined || sub === 'list') {
       for (const l of await reposList(ctx.cwd)) say(l);
       return 0;
     }
     if (sub === 'sync') {
-      const { lines, exit } = await reposSync(ctx.cwd, argv.includes('--shallow'));
+      const { lines, exit } = await reposSync(ctx.cwd, a.shallow === true);
       for (const l of lines) say(l);
       return exit;
     }

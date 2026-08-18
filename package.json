@@ -39,6 +39,7 @@
     "preinstall": "node -e \"if(process.env.INIT_CWD===process.cwd()&&!(process.env.npm_config_user_agent||'').startsWith('pnpm')){console.error('multivac develops with pnpm — run: corepack pnpm install');process.exit(1)}\""
   },
   "dependencies": {
+    "citty": "^0.2.2",
     "picomatch": "^4.0.2",
     "yaml": "^2.5.0"
   },

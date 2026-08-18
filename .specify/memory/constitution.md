@@ -1,5 +1,20 @@
 <!--
 Sync Impact Report
+Version change: 1.0.1 → 2.0.0 (MAJOR — a constraint is redefined: the runtime
+dependency count moves from two to three, with the third named)
+Modified principles: none — I to V are unchanged in wording and in force
+Modified sections:
+  - Engineering Constraints: "Two runtime dependencies, yaml and picomatch"
+    becomes three, adding citty. The clause that matters is unchanged: an
+    invariant still pins the NUMBER, so the fourth faces the same amendment
+    this one did. MV-02 carries the same move, dated, and MV-104 states why
+    the parser is a dependency while the refusal is not.
+Templates requiring update: none — no template states the count
+Follow-up TODOs: none
+-->
+
+<!--
+Sync Impact Report
 Version change: 1.0.0 → 1.0.1 (PATCH — a statement of fact corrected, no
 principle added, removed or redefined)
 Modified principles: none
@@ -106,8 +121,10 @@ catch, committed by the tool itself.
 - **Tests ship with behaviour.** `node:test`, no frameworks, no fixtures beyond
   the shared helpers. If it branches, loops, parses, or touches git, it ships
   with a test. A behaviour nothing would miss if reverted is not pinned.
-- **Two runtime dependencies**, `yaml` and `picomatch`, with an invariant
-  pinning the number.
+- **Three runtime dependencies**, `yaml`, `picomatch` and `citty`, with an
+  invariant pinning the number. The count is the constraint, not the names: a
+  fourth is a change with a row moved before the package, which is how the
+  third arrived.
 - **Everything multivac creates lives under `.multivac/`**, with the canonical
   door at the repo root as the only exception.
 - **The published tarball carries the tool and nothing else**, by allowlist.
@@ -154,4 +171,4 @@ unreadable, empty, or still carrying the fill-in tokens spec-kit's template
 ships. Its freshness stays a report, per MV-57: a version that never moves
 while the law does is a signal to revisit rather than a failing grade.
 
-**Version**: 1.0.1 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-16
+**Version**: 2.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-18

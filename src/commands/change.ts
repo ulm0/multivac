@@ -7,6 +7,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
+import { parseArgs, type ArgsDef } from 'citty';
 import { join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
 import {
@@ -1064,6 +1065,22 @@ function usage(): void {
   say('       --abandon (close only: drop a change that landed nothing, give its id back)');
 }
 
+/** What change takes. One declaration: citty parses it, the refusal reads it. */
+const ARGS = {
+  sub: { type: 'positional', required: false, description: 'new, plan, apply, land or close' },
+  slug: { type: 'positional', required: false },
+  title: { type: 'positional', required: false },
+  'no-sdd': { type: 'boolean', description: 'skip the SDD steps AND their gates, for one run' },
+  'no-grapher': { type: 'boolean', description: 'close only: skip the graph gate for one run' },
+  abandon: { type: 'boolean', description: 'close only: drop a change that landed nothing' },
+  landed: { type: 'string', description: 'land only: record that repo as merged' },
+} satisfies ArgsDef;
+
+/** The flags ARGS declares, as the refusal sees them. */
+const CHANGE_FLAGS = Object.entries(ARGS)
+  .filter(([, d]) => (d as { type?: string }).type !== 'positional')
+  .map(([k]) => `--${k}`);
+
 export const change: Command = {
   name: 'change',
   help: 'new/plan/apply/land/close — the ecosystem change lifecycle',
@@ -1082,22 +1099,25 @@ export const change: Command = {
     '  --abandon              close only: drop a change that landed nothing, give its id back',
   ],
   async run(argv, ctx): Promise<number> {
-    const pos: string[] = [];
-    let noSdd = false;
-    let noGrapher = false;
-    let abandon = false;
-    let landed: string | undefined;
-    for (let i = 0; i < argv.length; i++) {
-      const a = argv[i];
-      if (a === '--no-sdd') noSdd = true;
-      else if (a === '--no-grapher') noGrapher = true;
-      else if (a === '--abandon') abandon = true;
-      else if (a === '--landed') landed = argv[++i];
-      else if (a.startsWith('--')) {
-        warn(`unknown flag ${a} — run \`multivac change\` for usage`);
-        return 2;
-      } else pos.push(a);
+    // MV-85 in change's own words, before citty parses. The extra positionals
+    // this command takes are its subcommand, slug and title, and anything past
+    // them is refused rather than dropped.
+    const unknown = argv.find((a) => a.startsWith('--') && !CHANGE_FLAGS.includes(a));
+    if (unknown !== undefined) {
+      warn(`unknown flag ${unknown} — run \`multivac change\` for usage`);
+      return 2;
     }
+    const parsed = parseArgs(argv, ARGS);
+    const pos = parsed._;
+    // Read literally, not through the parser: citty owns the `--no-` prefix as
+    // its negation convention, so `--no-sdd` arrives as `sdd: false` and the
+    // flag this command actually declares never appears. Measured on 0.2.2.
+    // The declaration still lists them, because the refusal and the usage are
+    // about the surface a user types (MV-104).
+    const noSdd = argv.includes('--no-sdd');
+    const noGrapher = argv.includes('--no-grapher');
+    const abandon = parsed.abandon === true;
+    const landed = typeof parsed.landed === 'string' ? parsed.landed : undefined;
     let [sub, slug, title] = pos;
     if (!sub || !(SUBS as readonly string[]).includes(sub)) {
       usage();

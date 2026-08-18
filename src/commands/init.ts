@@ -3,6 +3,7 @@
 // Enumerated side effects only (design §CLI). Idempotent: re-running updates
 // managed blocks, never duplicates or destroys user content.
 
+import { parseArgs, type ArgsDef } from 'citty';
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext } from '../types.js';
@@ -22,6 +23,7 @@ import {
 import { ritualSeed } from '../lib/ritual.js';
 import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
 import { acid, bold, dim, say, warn } from '../lib/out.js';
+import { surfaceFrom, undeclared } from '../lib/args.js';
 import { banner } from '../lib/banner.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
@@ -49,45 +51,40 @@ interface Flags {
 /** Where init's report goes. `--quiet` swaps it for a sink that drops it. */
 type Report = (line: string) => void;
 
+/** What init takes. One declaration: citty parses it, `undeclared` refuses against it. */
+const ARGS = {
+  dir: { type: 'positional', required: false, description: 'the brain; defaults to the working directory' },
+  provider: { type: 'string', description: 'comma-separated coding agents to project the door for' },
+  sdd: { type: 'string', description: 'spec-driven-development adapter' },
+  grapher: { type: 'string', description: 'code-graph tool' },
+  quiet: { type: 'boolean', description: 'no banner' },
+} satisfies ArgsDef;
+
+/** The surface as init has always worded it; the check comes from ARGS. */
+const TAKES = '--provider <a,b>, --sdd <name>, --grapher <name>, --quiet';
+
 function parseFlags(argv: string[]): Flags {
-  const f: Flags = { agents: [], quiet: false };
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    const eq = a.indexOf('=');
-    const key = eq === -1 ? a : a.slice(0, eq);
-    const val = (): string => {
-      const v = eq === -1 ? argv[++i] : a.slice(eq + 1);
-      if (v === undefined || v === '') {
-        throw new Error(`init: ${key} needs a value — e.g. ${key} <name>`);
-      }
-      return v;
-    };
-    switch (key) {
-      case '--provider':
-        f.agents.push(...val().split(',').filter(Boolean));
-        break;
-      case '--sdd':
-        f.sdd = val();
-        break;
-      case '--grapher':
-        f.grapher = val();
-        break;
-      case '--quiet':
-        f.quiet = true;
-        break;
-      default:
-        if (a.startsWith('-')) {
-          // MV-85: a usage error is exit 2, and a throw is mapped to 1 by the
-          // dispatcher. init refused correctly and reported the wrong code, so
-          // the documented matrix was false for it alone.
-          throw new UsageError(
-            `init: unknown flag ${a} — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet`,
-          );
-        }
-        f.dir = a;
-    }
-  }
-  return f;
+  // MV-85 before the parser, and a UsageError so the dispatcher exits 2: init
+  // refused correctly once and reported the wrong code, which is why the
+  // refusal is its own step rather than something the parser is trusted with.
+  // citty accepts an undeclared flag and drops it (measured), so this is not a
+  // belt-and-braces line — it is the only line that refuses.
+  const bad = undeclared('init', argv, surfaceFrom(ARGS), TAKES);
+  if (bad) throw new UsageError(bad.replace(/^init: unknown flag "(.*?)" — init takes /, 'init: unknown flag $1 — known: '));
+  const a = parseArgs(argv, ARGS);
+  const value = (key: 'sdd' | 'grapher' | 'provider'): string | undefined => {
+    const v = a[key];
+    if (v === undefined) return undefined;
+    if (typeof v !== 'string' || v === '') throw new Error(`init: --${key} needs a value — e.g. --${key} <name>`);
+    return v;
+  };
+  return {
+    dir: typeof a.dir === 'string' ? a.dir : undefined,
+    agents: (value('provider') ?? '').split(',').filter(Boolean),
+    sdd: value('sdd'),
+    grapher: value('grapher'),
+    quiet: a.quiet === true,
+  };
 }
 
 /**

@@ -2,10 +2,12 @@
 // offline, sub-second. Exit matrix: blocking modes (absent/count/each) gate
 // always; present/unique gate only under --strict; moved self-heals, exit 0.
 
+import { parseArgs, type ArgsDef } from 'citty';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 import { changesDir, parseChange } from '../change/file.js';
+import { surfaceFrom, undeclared } from '../lib/args.js';
 import {
   channelRef,
   loadConfig,
@@ -884,26 +886,32 @@ export async function evaluate(
   return (await evaluateCore(brainDir, opts)).report;
 }
 
+/** What verify takes. One declaration: citty parses it, `undeclared` refuses against it. */
+const ARGS = {
+  dir: { type: 'positional', required: false, description: 'the brain; defaults to the working directory' },
+  strict: { type: 'boolean', description: 'broken present/unique legs also exit 1' },
+  check: { type: 'boolean', description: 'never writes: a moved leg is reported, not self-healed' },
+  worktree: { type: 'boolean', description: "read every declared repo's working tree" },
+  repo: { type: 'string', description: 'scope to one declared repo' },
+} satisfies ArgsDef;
+
+/** The surface as verify has always worded it; the check comes from ARGS. */
+const TAKES = '[dir], --strict, --check, --worktree, --repo <key>';
+
 async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
-  let strict = false;
-  let check = false;
-  let worktree = false;
-  let repoFlag: string | undefined;
-  let dir = '.';
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--strict') strict = true;
-    else if (a === '--check') check = true;
-    else if (a === '--worktree') worktree = true;
-    else if (a === '--repo') repoFlag = argv[++i];
-    else if (a.startsWith('-')) {
-      warn(
-        `unknown flag "${a}" — verify takes [dir], --strict, --check, --worktree, --repo <key>`,
-      );
-      return 2;
-    } else dir = a;
+  const bad = undeclared('verify', argv, surfaceFrom(ARGS), TAKES);
+  if (bad) {
+    // The sentence verify shipped, minus the `verify: ` prefix `undeclared`
+    // adds — documented output, kept byte for byte.
+    warn(bad.replace(/^verify: /, ''));
+    return 2;
   }
-  const startDir = resolve(ctx.cwd, dir);
+  const a = parseArgs(argv, ARGS);
+  const strict = a.strict === true;
+  const check = a.check === true;
+  const worktree = a.worktree === true;
+  const repoFlag = typeof a.repo === 'string' ? a.repo : undefined;
+  const startDir = resolve(ctx.cwd, a.dir ?? '.');
 
   let ev: Evaluated;
   let brainDir = startDir;

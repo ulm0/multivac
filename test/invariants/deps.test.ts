@@ -10,5 +10,5 @@ test('runtime dependencies are exactly picomatch and yaml (MV-02)', () => {
   const pkg = JSON.parse(readFileSync('package.json', 'utf8')) as {
     dependencies: Record<string, string>;
   };
-  assert.deepEqual(Object.keys(pkg.dependencies).sort(), ['picomatch', 'yaml']);
+  assert.deepEqual(Object.keys(pkg.dependencies).sort(), ['citty', 'picomatch', 'yaml']);
 });

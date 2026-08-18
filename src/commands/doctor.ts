@@ -5,7 +5,8 @@
 import { lstat, readFile, readlink, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import type { Command, Config } from '../types.js';
-import { undeclared } from '../lib/args.js';
+import { surfaceFrom, undeclared } from '../lib/args.js';
+import { parseArgs, type ArgsDef } from 'citty';
 import {
   BRAIN_PATHS,
   CONFIG_PATH,
@@ -722,6 +723,11 @@ export async function doctorReport(
   return { lines, exit: 0 };
 }
 
+/** What doctor takes. One declaration: citty parses it, `undeclared` refuses against it. */
+const ARGS = {
+  strict: { type: 'boolean', description: 'exit 1 when the enforcement gate is disarmed' },
+} satisfies ArgsDef;
+
 export const doctorCommand: Command = {
   name: 'doctor',
   help: 'what is declared, what was found, what is degraded, how to fix it',
@@ -738,12 +744,12 @@ export const doctorCommand: Command = {
     // MV-85: before the report. `--sttrict` used to run the report without the
     // assertion and exit 0, and a named directory used to be discarded while
     // doctorReport read ctx.cwd — a truthful report about somewhere else.
-    const bad = undeclared('doctor', argv, { flags: ['--strict'] });
+    const bad = undeclared('doctor', argv, surfaceFrom(ARGS));
     if (bad) {
       warn(bad);
       return 2;
     }
-    const strict = argv.includes('--strict');
+    const strict = parseArgs(argv, ARGS).strict === true;
     const { lines, exit } = await doctorReport(ctx.cwd, strict);
     for (const l of lines) say(l);
     return exit;
