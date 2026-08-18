@@ -10,6 +10,7 @@
 // and nothing here gates. Requiring a feature to appear on the roadmap first
 // would be unverifiable intent, the same category MV-27 keeps print-only.
 
+import { parseArgs, type ArgsDef } from 'citty';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
@@ -26,6 +27,7 @@ import {
   serializeChange,
 } from '../change/file.js';
 import { CHANGES_DIR, CONFIG_PATH, loadConfig } from '../lib/config.js';
+import { undeclared } from '../lib/args.js';
 import {
   LABEL_PREFIX,
   NO_TRACKER,
@@ -254,6 +256,14 @@ async function sync(brain: string, cfg: Config): Promise<number> {
 
 const USAGE = 'usage: multivac roadmap add <slug> "<title>" [--horizon now|next|later]';
 
+/** What roadmap takes. One declaration: citty parses it, `undeclared` refuses against it. */
+const ARGS = {
+  sub: { type: 'positional', required: false, description: 'add' },
+  slug: { type: 'positional', required: false },
+  title: { type: 'positional', required: false },
+  horizon: { type: 'string', description: 'now, next or later. add only; defaults to later' },
+} satisfies ArgsDef;
+
 export const roadmap: Command = {
   name: 'roadmap',
   help: 'the changes that have not started yet — list them, record one',
@@ -268,27 +278,25 @@ export const roadmap: Command = {
     'as unclosed. it is never a precondition: `change new` works without one.',
   ],
   async run(argv, ctx): Promise<number> {
-    // MV-85, hand-rolled: the surface is one subcommand and one valued flag,
-    // which the shared helper's positional model does not describe.
-    const pos: string[] = [];
-    let horizon: Horizon = 'later';
-    let horizonGiven = false;
-    for (let i = 0; i < argv.length; i++) {
-      const a = argv[i];
-      if (a === '--horizon') {
-        const v = argv[++i];
-        if (v === undefined || !HORIZONS.includes(v as Horizon)) {
-          warn(`roadmap: unknown horizon "${v ?? ''}" — use ${HORIZONS.join(', ')}`);
-          return 2;
-        }
-        horizon = v as Horizon;
-        horizonGiven = true;
-      } else if (a.startsWith('-')) {
-        warn(
-          `roadmap: unknown flag "${a}" — roadmap takes add <slug> "<title>" --horizon <value>`,
-        );
-        return 2;
-      } else pos.push(a);
+    // MV-85 first, in roadmap's own words. citty parses after: the surface is
+    // one subcommand, two free positionals and one valued flag.
+    const bad = undeclared(
+      'roadmap',
+      argv,
+      { flags: [], valued: ['--horizon'], positionals: 3 },
+      'add <slug> "<title>" --horizon <value>',
+    );
+    if (bad) {
+      warn(bad);
+      return 2;
+    }
+    const parsed = parseArgs(argv, ARGS);
+    const pos = parsed._;
+    const horizonGiven = typeof parsed.horizon === 'string';
+    const horizon = (horizonGiven ? parsed.horizon : 'later') as Horizon;
+    if (horizonGiven && !HORIZONS.includes(horizon)) {
+      warn(`roadmap: unknown horizon "${String(parsed.horizon)}" — use ${HORIZONS.join(', ')}`);
+      return 2;
     }
     const brain = ctx.cwd;
     if (pos.length === 0) {

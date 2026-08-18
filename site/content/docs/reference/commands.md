@@ -22,6 +22,15 @@ commands:
   help       help <topic|command> — `help anchor` prints the anchor grammar on one screen
 ```
 
+**Arguments are parsed by [citty](https://github.com/unjs/citty), and refused
+by multivac.** Each command declares what it takes once, as data; citty parses
+that declaration and the refusal below reads the same one, so adding a flag is
+one edit. The refusal is not delegated: measured, citty parses an undeclared
+flag into a key nobody declared and hands it over, which is precisely the
+silence MV-85 exists to end — so the check runs first, and the parser never
+sees an argument the command did not declare. `--help` stays this tool's own
+(MV-69); citty's generated usage is not used.
+
 Two global flags: `--help` / `-h` prints the block above and exits 0;
 `--version` / `-v` prints the version and exits 0. Running `mvac` with no
 arguments prints the same usage and exits **2**.

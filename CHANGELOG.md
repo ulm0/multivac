@@ -10,6 +10,22 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## Unreleased
+
+**Changed**
+
+- **The CLI is parsed by [citty](https://github.com/unjs/citty).** Every command
+  declares what it takes once, as data; citty parses that declaration and the
+  refusal reads the same one, so adding a flag is one edit instead of two that
+  can drift. Nothing a user types behaves differently: same flags, same
+  positionals, same refusals, same exit codes, and the existing suite passes
+  unedited. The refusal is **not** delegated — measured, citty parses an
+  undeclared flag into a key nobody declared and hands it to the command, which
+  is the silence MV-85 exists to end, so the check still runs before the parser.
+  `--help` stays this tool's own. Third runtime dependency, named in the law and
+  in the constitution before the package was added: citty is one package with
+  zero dependencies of its own. (MV-104, amending MV-02 and MV-85)
+
 ## 0.8.0 — 2026-08-18
 
 **Added**

@@ -12,6 +12,7 @@ import { loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
 import { realPath } from '../lib/paths.js';
 import { say, warn } from '../lib/out.js';
 import { findMount } from './verify.js';
+import { parseArgs, type ArgsDef } from 'citty';
 import type { Command, CommandContext } from '../types.js';
 
 const USAGE = [
@@ -21,8 +22,16 @@ const USAGE = [
   'dry-run only: writes nothing, exits 0 even at zero matches. grammar: multivac help anchor',
 ];
 
+/** What count takes: a spec and an optional dir, and no flags at all. */
+const ARGS = {
+  // Not `required`: citty THROWS a CLIError for a missing required
+  // positional, and count answers a missing spec with its usage block and
+  // exit 2. The parser parses; the exits stay the command's (MV-104).
+  spec: { type: 'positional', required: false, description: 'the anchor leg to dry-run' },
+  dir: { type: 'positional', required: false, description: 'the brain; defaults to the working directory' },
+} satisfies ArgsDef;
+
 async function run(argv: string[], ctx: CommandContext): Promise<number> {
-  const args = argv.filter((a) => !a.startsWith('-'));
   // MV-85: count already exited 2 on a flag, but printed its usage without ever
   // saying WHICH argument it did not understand — the reader was left to diff
   // their command line against the usage block. Name it, then print the usage.
@@ -31,6 +40,9 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     warn(`count: unknown flag "${flag}" — count takes '<spec>' [dir] and no flags`);
     return 2;
   }
+  // Two positionals exactly, so the count is checked here rather than by the
+  // parser: citty binds the first two and drops the rest in silence.
+  const args = parseArgs(argv, ARGS)._;
   if (args.length === 0 || args.length > 2) {
     for (const l of USAGE) warn(l);
     return 2;

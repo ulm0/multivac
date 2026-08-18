@@ -16,8 +16,9 @@ That is the whole thing. No install, no clone, no global.
 | **Node.js ≥ 24** | declared in `engines`; the CLI is ESM and uses modern `node:` APIs |
 | **git** | `verify` shells out to `git ls-files`; the brain and every repo are git-native |
 
-Nothing else. Two runtime dependencies, `picomatch` and `yaml`, and that
-count is itself law — a third is a design change, not a convenience.
+Nothing else. Three runtime dependencies — `picomatch`, `yaml` and `citty` —
+and that count is itself law: the third arrived as a design change with the row
+and the constitution moved before the package, and a fourth faces the same.
 
 ## Try it, then keep it
 
