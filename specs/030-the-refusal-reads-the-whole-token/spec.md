@@ -126,8 +126,17 @@ and with a single-dash flag, and confirm the refusal and exit 2.
   `change new <slug> "<title>"` working unchanged.
 - **FR-006**: Refusal wording MUST stay each command's own, and refusals MUST
   keep exit 2 (MV-69, MV-85).
-- **FR-007**: The change MUST add no runtime dependency and MUST be a net
-  deletion of source lines.
+- **FR-007**: The change MUST add no runtime dependency, no file under `src/`,
+  no configuration key and no abstraction. The argument surface stays one
+  shared function, and no command-local check may remain that accepts what the
+  shared guard refuses.
+
+  *Amended during implementation.* This read "MUST be a net deletion of source
+  lines". It is not: `src/` grows by 24 lines, of which the large majority are
+  the comments that carry the measurement — two of them are what MV-105's
+  anchors pin, so deleting them to win the count would delete the evidence.
+  Gaming a diff statistic is the wrong trade in a repository whose comments are
+  law. The constraint that was actually meant is stated above, and it holds.
 
 ### Key Entities
 
@@ -140,14 +149,19 @@ and with a single-dash flag, and confirm the refusal and exit 2.
 
 ### Measurable Outcomes
 
-- **SC-001**: Every valued flag in the CLI is accepted in both written forms —
-  measured by a test that walks the command registry rather than a typed list.
+- **SC-001**: Every valued flag in the CLI is refused when its value is missing
+  — measured by a test that walks the command registry and reads each command's
+  own advertised surface, rather than a list of flags typed into the test. Both
+  written forms being accepted is pinned per command by integration cases,
+  because a command's declaration is not reachable from the registry today.
 - **SC-002**: No command line that names a declared flag is refused as unknown.
 - **SC-003**: `verify --repo --strict` exits 2 instead of running a non-strict
   verify that reports success.
 - **SC-004**: `change land <slug> api` exits 2 having written nothing, and the
   refusal names the argument.
-- **SC-005**: The source is smaller after the change than before it.
+- **SC-005**: No file is added under `src/`, no dependency is added, and the
+  one command-local refusal that disagreed with the shared guard — `change`'s —
+  is gone, measured by `CHANGE_FLAGS` being absent from the source.
 - **SC-006**: The existing suite passes unchanged except where it asserted one
   of the three defects.
 

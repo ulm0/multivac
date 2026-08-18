@@ -52,6 +52,57 @@ test('a valued flag consumes its value, so a value is never a positional', () =>
   assert.equal(parseArgs(['--repo=api'], ARGS).repo, 'api');
 });
 
+// MV-105. The pair, about the SAME input — which is the seam MV-104 missed.
+// 0.9.0 shipped a refusal for `init --provider=claude`, a form 0.8.0 accepted,
+// because each reader was asked about a different input: the parser was asked
+// about the equals form and the guard about the separated one, and nothing
+// asked either about the other.
+test('both readers agree about the same token, in both written forms', () => {
+  for (const argv of [['--repo', 'api'], ['--repo=api']]) {
+    assert.equal(undeclared('verify', argv, surfaceFrom(ARGS)), null, `refused ${argv.join(' ')}`);
+    assert.equal(parseArgs(argv, ARGS).repo, 'api', `parsed ${argv.join(' ')} wrong`);
+  }
+});
+
+test('an undeclared flag written with an equals is refused, and named as typed', () => {
+  const line = String(undeclared('verify', ['--nope=1'], surfaceFrom(ARGS)));
+  assert.match(line, /unknown flag "--nope=1"/);
+});
+
+test('a declared boolean may carry the value citty gives it', () => {
+  // citty owns negation: `--strict=false` is the declared flag, so the guard
+  // has no business refusing it.
+  assert.equal(undeclared('verify', ['--strict=false'], surfaceFrom(ARGS)), null);
+  assert.equal(parseArgs(['--strict=false'], ARGS).strict, false);
+});
+
+test('a short alias with an equals is refused, because the parser mis-reads it', () => {
+  // Measured on citty 0.2.2: `-r=api` binds repo to "=api". Splitting the token
+  // here would hand the parser a form it does not understand and call it
+  // declared — the defect relocated, not fixed.
+  assert.equal(parseArgs(['-r=api'], ARGS).repo, '=api');
+  assert.match(String(undeclared('verify', ['-r=api'], surfaceFrom(ARGS))), /unknown flag "-r=api"/);
+});
+
+test('a valued flag never swallows the next flag, or the end of the line', () => {
+  // What the parser does with both, unguarded — the reason the guard must
+  // answer first. `verify --repo --strict` ran a NON-strict verify and said
+  // nothing, which is `doctor --sttrict` inside the guard that ends it.
+  assert.equal(parseArgs(['--repo', '--strict'], ARGS).repo, '--strict');
+  assert.equal(parseArgs(['--repo'], ARGS).repo, '');
+  assert.match(String(undeclared('verify', ['--repo', '--strict'], surfaceFrom(ARGS))), /--repo needs a value/);
+  assert.match(String(undeclared('verify', ['--repo'], surfaceFrom(ARGS))), /--repo needs a value/);
+  // The value is inside the token, so nothing was swallowed and a leading dash
+  // is just a value.
+  assert.equal(undeclared('verify', ['--repo=-x'], surfaceFrom(ARGS)), null);
+  assert.equal(parseArgs(['--repo=-x'], ARGS).repo, '-x');
+});
+
+test("the missing-value refusal keeps the command's own wording (MV-69)", () => {
+  const line = undeclared('verify', ['--repo'], surfaceFrom(ARGS), '[dir], --strict, --repo <key>');
+  assert.equal(line, 'verify: --repo needs a value — verify takes [dir], --strict, --repo <key>');
+});
+
 test('a command can keep its own wording while the check comes from the declaration', () => {
   const line = undeclared('verify', ['--loud'], surfaceFrom(ARGS), '[dir], --strict, --repo <key>');
   assert.equal(line, 'verify: unknown flag "--loud" — verify takes [dir], --strict, --repo <key>');

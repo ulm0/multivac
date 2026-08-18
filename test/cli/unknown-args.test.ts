@@ -89,6 +89,39 @@ test("a valued flag's value is not counted as an unexpected argument", async () 
   assert.equal(undeclared('t', ['--repo', 'api', 'extra'], { valued: ['--repo'] })?.includes('extra'), true);
 });
 
+// MV-105, registry-walked for the same reason MV-85 is: the tenth command is
+// written by someone equally able to forget.
+test('every command refuses an undeclared flag written with an equals', async () => {
+  for (const c of commands) {
+    const dir = mkdtempSync(join(tmpdir(), 'mvac-args-'));
+    const { code, out } = await run([c.name, '--zzz-not-a-flag=1'], dir);
+    assert.equal(code, 2, `${c.name} exited ${code} for --zzz-not-a-flag=1:\n${out}`);
+    assert.match(out, /--zzz-not-a-flag=1/, `${c.name} did not name the token as typed:\n${out}`);
+    assert.deepEqual(readdirSync(dir), [], `${c.name} touched the tree before refusing`);
+  }
+});
+
+// The valued flags are not a list typed here either: each command's refusal
+// renders its own declared surface, so asking it for one is how the walk
+// learns which flags take a value.
+test('no command lets a valued flag run without its value', async () => {
+  let covered = 0;
+  for (const c of commands) {
+    const probe = mkdtempSync(join(tmpdir(), 'mvac-args-'));
+    const { out } = await run([c.name, '--zzz-not-a-flag'], probe);
+    for (const [, flag] of out.matchAll(/(--[a-z][a-z-]*) <[a-z]+>/g)) {
+      const dir = mkdtempSync(join(tmpdir(), 'mvac-args-'));
+      const r = await run([c.name, flag], dir);
+      assert.equal(r.code, 2, `${c.name} ${flag} with no value exited ${r.code}:\n${r.out}`);
+      assert.match(r.out, /needs a value/, `${c.name} ${flag} was not refused for its value`);
+      assert.deepEqual(readdirSync(dir), [], `${c.name} touched the tree before refusing`);
+      covered++;
+    }
+  }
+  // A regex that matched nothing would make every assertion above vacuous.
+  assert.ok(covered >= 4, `the walk found only ${covered} valued flags — the surface is not being read`);
+});
+
 test('the refusal names the command and what it does take', async () => {
   // Never "see --help": the machine already knows the answer, so it says it.
   const dir = mkdtempSync(join(tmpdir(), 'mvac-args-'));
