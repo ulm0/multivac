@@ -59,6 +59,12 @@ export interface RepoEntry {
    * reached through the implicit `brain` handle, and has no mount to pin.
    */
   isBrain?: boolean;
+  /**
+   * MV-93. One line saying what this repo is FOR, rendered in every door's
+   * ecosystem list. Declared or omitted, never derived: what a repo is for is
+   * not in its path, and `api — api` is worse than silence.
+   */
+  role?: string;
 }
 
 /** Parsed .multivac/config.yml with defaults applied. */

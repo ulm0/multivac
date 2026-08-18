@@ -22,4 +22,5 @@ This repo is the brain: the source of law and change for its ecosystem. It is al
   - `change apply` → run /speckit.analyze in your agent for the cross-artifact consistency pass before implementing [ungateable: /speckit.analyze is STRICTLY READ-ONLY by its own spec — it writes zero bytes, so no file on disk can prove it ran]
   - `change apply` → run /speckit.implement in your agent to build <slug> [ungateable: implement's only claim of completion is every task marked [X] in tasks.md — the agent grading its own homework, not evidence the code exists or works]
   - `change apply` → run /speckit.converge in your agent until it reports Converged [ungateable: a clean converge is forbidden to touch tasks.md — the converged outcome is invisible to the filesystem, and its absence is indistinguishable from never having run it]
+  the change lifecycle runs the tool's own init where it is missing, or says why it could not
 <!-- multivac:end -->

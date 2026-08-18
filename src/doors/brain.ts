@@ -96,6 +96,49 @@ export function grapherLines(config: Config, grapher?: string): string[] {
   return lines;
 }
 
+/**
+ * The declared SDD tool, its project-level document and its per-change flow.
+ *
+ * MV-93: one rendering, used by the brain's door and by every consumer's — the
+ * shape `grapherLines` established under MV-90, and for the same reason. Two
+ * renderings of one block is how the two come to disagree, and a door is the
+ * surface where disagreement is least visible: nobody diffs two AGENTS.md.
+ *
+ * The caller passes the tool that applies THERE — a repo's own override first,
+ * the ecosystem's otherwise — and the brain passes nothing, meaning the
+ * ecosystem's.
+ */
+export function sddLines(config: Config, sdd?: string): string[] {
+  const name = sdd ?? config.sdd;
+  if (!name) return [];
+  const spec = sddSpec(name);
+  const lines = [
+    `- Features gate through the \`${name}\` SDD, in that tool's OWN flow. ` +
+      (config.sddAuto
+        ? 'The lifecycle prints each step and REFUSES to move on without the artifact that proves it ran; YOU run the steps:'
+        : '`sdd_auto: false` — nothing is printed and nothing is gated; run each step yourself:'),
+  ];
+  // The project-level document: the law of the project, not of one change.
+  // Written once, then amended as the product moves — so the door tells the
+  // agent to create it when it is not there.
+  lines.push(...projectLawLines(name));
+  // The per-change flow, in the tool's own order and length. Each line ends
+  // with what proves it ran, or with why nothing ever can.
+  for (const s of spec?.steps ?? []) {
+    lines.push(`  - \`change ${s.at}\` → ${s.run} [${proofOf(s)}]`);
+  }
+  // MV-93, and stated exactly this weakly on purpose. The scaffold runs from
+  // FOUR lifecycle points, not one, and on three paths it reports instead of
+  // scaffolding: no scaffold declared for the adapter, the binary absent from
+  // PATH, and the init exiting without writing the artifact. A door that says
+  // "`change plan` scaffolds it" is Principle II broken in the file an agent
+  // reads first.
+  lines.push(
+    '  the change lifecycle runs the tool\'s own init where it is missing, or says why it could not',
+  );
+  return lines;
+}
+
 /** Render the brain door block body (no markers). */
 export function renderBrainDoor(config: Config, activeInvariants: number): string {
   const entries = Object.entries(config.repos);
@@ -117,24 +160,7 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     '- Check the law against the code before acting: `multivac verify`.',
     ...grapherLines(config),
   ];
-  if (config.sdd) {
-    const spec = sddSpec(config.sdd);
-    lines.push(
-      `- Features gate through the \`${config.sdd}\` SDD, in that tool's OWN flow. ` +
-        (config.sddAuto
-          ? 'The lifecycle prints each step and REFUSES to move on without the artifact that proves it ran; YOU run the steps:'
-          : '`sdd_auto: false` — nothing is printed and nothing is gated; run each step yourself:'),
-    );
-    // The project-level document: the law of the project, not of one change.
-    // Written once, then amended as the product moves — so the door tells the
-    // agent to create it when it is not there.
-    lines.push(...projectLawLines(config.sdd));
-    // The per-change flow, in the tool's own order and length. Each line ends
-    // with what proves it ran, or with why nothing ever can.
-    for (const s of spec?.steps ?? []) {
-      lines.push(`  - \`change ${s.at}\` → ${s.run} [${proofOf(s)}]`);
-    }
-  }
+  lines.push(...sddLines(config));
   if (activeInvariants === 0) {
     lines.push('', 'brain empty — load the multivac skill to fill it.');
   }

@@ -193,6 +193,26 @@ registry entry — you know your own install better than the table does.
 **Without it:** a `grapher:` naming an unverified tool is reported as
 unverified, with these exact fields to fill in, and nothing is run.
 
+### `repos.<key>.role`
+
+Optional. One line saying what a repo is **for**, rendered in the ecosystem list
+every door carries.
+
+```yaml
+repos:
+  api:
+    path: ../acme-api
+    role: the contract every surface consumes
+  web: ../acme-web
+```
+
+Declared or omitted, never derived — what a repo is for is not in its path, and
+`api — api` is worse than silence. A repo with no `role` has its entry stop at
+the path.
+
+A role written across several lines is reduced to one, because the list is a
+list.
+
 ### `authorities`
 
 | | |

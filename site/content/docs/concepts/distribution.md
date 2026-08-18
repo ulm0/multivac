@@ -7,6 +7,33 @@ The brain lists repos; repos point at the brain. One brain = one ecosystem.
 Distribution is the reverse direction of the registry: how the brain reaches
 every consumer repo, and how stale it is allowed to get.
 
+## What the consumer door carries (MV-93)
+
+The door written into each declared repo used to be four bullets: the law, the
+mount refresh, "the change may cross repos", and "run verify". The brain's door
+listed the ecosystem and carried the adapter blocks; this one carried neither —
+and this is the door most sessions start from, because code is where work
+happens.
+
+It now carries:
+
+- **the mount refresh, first**, with its reason. The pin stays where the last
+  commit left it, so a present mount is not a current one. It is the only
+  instruction in that door with an ordering requirement, and it used to be the
+  second of four bullets.
+- **the ecosystem list** — every declared repo with its path, the one you are in
+  marked, a one-line `role` where the operator declared one, and `brain` named
+  explicitly because that handle is usable in anchors and can never appear in a
+  list built from `repos:`. Nothing is printed below two declared repos.
+- **the adapters that apply to this repo** — the SDD flow and the graph block,
+  resolved with the tool that applies here, rendered by the same code that
+  renders the brain's door so the two cannot drift.
+
+The list describes what the ecosystem **declares**, not what this machine has
+checked out: a door that changed with which repos happen to be cloned would
+differ between two machines for reasons unrelated to the ecosystem, and the
+door is committed. Rendering makes no filesystem check and no network call.
+
 ## The mount
 
 Every code repo mounts the brain — default folder `.brain/`, configurable

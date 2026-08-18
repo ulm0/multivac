@@ -12,6 +12,18 @@ keeping a second one (MV-78).
 
 ## Unreleased
 
+**Added**
+
+- **A door in a code repo now names the ecosystem it belongs to.** It carried
+  the law and the mount and nothing else, while the brain's door listed the
+  repos and every adapter — and the consumer door is the one most sessions start
+  from. It now carries the list of declared repos with the one you are in
+  marked, `brain` named as the handle anchors use, the adapters that apply to
+  that repo, and an optional one-line `role` per repo. The mount refresh is now
+  the first instruction rather than the second of four bullets, and carries its
+  reason: the pin stays where the last commit left it, so a present mount is not
+  a current one. (MV-93, amending MV-61 and MV-87)
+
 **Fixed**
 
 - **The commit hook now runs the multivac that governs the repository**, not
