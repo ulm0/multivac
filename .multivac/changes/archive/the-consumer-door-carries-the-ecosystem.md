@@ -1,10 +1,10 @@
 ---
 slug: the-consumer-door-carries-the-ecosystem
-status: open
+status: archived
 horizon: now
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:

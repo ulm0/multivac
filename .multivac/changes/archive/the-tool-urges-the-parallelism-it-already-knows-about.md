@@ -1,14 +1,20 @@
 ---
 slug: the-tool-urges-the-parallelism-it-already-knows-about
-status: planned
+status: archived
 horizon: next
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: landed
+landing_order:
+  - - brain
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-95
   retires: []
-claims: []
+claims:
+  - id: MV-95
+    statement: The tool says what it already computed about parallelism and about continuing — change apply names the repos that may be worked at once and the two boundaries that never parallelise, and the SDD chain is instructed to run unattended, both printed and never gated because no artifact proves either happened.
 ---
 
 # Urge the fan-out the tool already computes, and run the SDD chain unattended

@@ -548,6 +548,32 @@ Repos not on disk are reported and skipped, exit 0. `doors` writes working
 trees — never commits, never clones. An invalid config exits **1** here (not
 2). Per-target detail: [Agent integrations](../integrations).
 
+### `.multivac/flow.md` — what your declarations oblige (MV-96)
+
+`doors` writes a page sorting this ecosystem's obligations into three groups:
+
+- **Automatic** — multivac does it, you do not ask
+- **Gate** — multivac refuses without it
+- **Yours** — nobody can check these
+
+Every row is *rendered* from the adapter registry and your config — the same
+data the gates read — so it cannot describe behaviour the tool does not have. A
+gate row leads with the command that refuses and names the artifact; an
+unprovable step carries the adapter's own reason verbatim, because a paraphrase
+would age beside its source.
+
+**It cites no invariant identifier.** Ids are allocated from each brain's own
+table, so one generated here would name a different rule, or none, in any other
+ecosystem.
+
+It is **derived**: rewritten whole on every projection, through the managed
+block, so anything you write outside the markers survives. The ritual is the
+opposite — authored, and never overwritten.
+
+**It binds nothing**, and says so in its own header. The law binds; this
+describes what the law and your declared adapters already do, for a reader who
+has not read the table.
+
 ## `doctor [--strict]`
 
 Read-only diagnosis. Never mutates, never clones.
@@ -726,6 +752,35 @@ mvac: <slug> is already archived at .multivac/changes/archive/<slug>.md — this
 mvac: unknown horizon "someday" — use now, next, later
 ```
 
+### `sync` (MV-99)
+
+Projects the change files to the declared tracker. **One way, always**: the
+change files are the source, and nothing the tracker says ever reaches them.
+Closing an issue by hand closes nothing — the next sync restores it.
+
+```txt
+sync gitlab: 3 changes to project
+  planned  tracker-projects-the-roadmap → #41 created
+  open     the-consumer-door-carries-the-ecosystem → #42 up to date
+  archived the-gate-runs-what-you-built → #40 closed
+recorded 1 issue number in .multivac/changes/ — commit them: the number is the identity
+```
+
+The **number** recorded in the change file is the identity. It survives a title
+edit — which is what breaks the alternative of searching the tracker for a
+matching title — and it is a number rather than a link because the project comes
+from the repo's remote.
+
+It writes only labels in its own namespace and never removes one it does not
+own: one wiped triage is enough to have a projection turned off permanently.
+
+An absent `glab` or `gh` **refuses**: a projection that cannot run must not
+report success. A recorded number whose issue is gone is reported, never
+silently re-created.
+
+One issue per change. Story-level issues are the stated intent and are not built
+yet — they need a second reader of the SDD tool's task list.
+
 ### The roadmap is never a gate
 
 No command refuses an operation because its subject was not recorded first.
@@ -800,6 +855,29 @@ cannot open points-expire — bookkeeping paths carry uncommitted edits: .multiv
   commit them first: git -C /home/you/brain add -- .multivac/invariants.md && git commit
   then re-run: multivac change new points-expire "points expire"
 ```
+
+#### A brain behind its channel (MV-94)
+
+`new` and `apply` report any declared repo whose pin is behind its channel,
+before anything else happens:
+
+```txt
+brain pins behind their channel — refresh before deciding against the law:
+  stale     api: pin 3 behind origin/main (last fetch 6d ago) — `git -C ../acme-api submodule update --remote .knowledge`
+```
+
+It **reports and never refuses**. Offline, a pin behind its channel means
+somebody landed work *or* nobody fetched, and those are indistinguishable from
+here; refusing on the second reading would fail an ordinary morning.
+`staleness: block` still makes [`verify`](#verify-dir---strict---check---worktree---repo-key)
+exit 1 exactly where it always did.
+
+The read is offline, so it says what was last fetched, never what exists
+remotely — which is why every line carries the fetch age, and why a channel ref
+that does not resolve locally is reported as uncomparable rather than guessed.
+
+It runs before the bookkeeping commit, so the pin it names is the one you
+arrived with rather than one the command just created.
 
 ### `plan`
 
@@ -886,6 +964,24 @@ An existing branch is reused, not a failure:
 ```txt
 api: branch points-expire already exists — switched to it, reusing
 ```
+
+#### What can be worked at once (MV-95)
+
+When the ready stage holds more than one repo, `apply` says so:
+
+```txt
+these two are one stage: no ordering between them, and one checkout each — work them at once
+  never the same file twice at once (a lost update), and never the law: ids are reserved one at a time and stages serialise there
+```
+
+Nothing is inferred: repos in one stage of `landing_order` are your own
+statement that they have no ordering dependency, and the checkouts above are the
+isolation that makes concurrent edits safe. Later stages are not named — they
+are blocked by an earlier one.
+
+The boundaries ride with the line every time, because they are its useful half.
+It is printed and never checked: no artifact proves an agent ran two things at
+once.
 
 ### `land`
 

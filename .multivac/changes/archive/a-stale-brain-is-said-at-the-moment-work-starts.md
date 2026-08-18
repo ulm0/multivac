@@ -1,14 +1,20 @@
 ---
 slug: a-stale-brain-is-said-at-the-moment-work-starts
-status: planned
+status: archived
 horizon: now
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: landed
+landing_order:
+  - - brain
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-94
   retires: []
-claims: []
+claims:
+  - id: MV-94
+    statement: A pin behind its channel is said at the moment work starts — change new and change apply report it from the same offline read verify uses, and report is all it does, because a pin can be behind only because nobody fetched.
 ---
 
 # A stale mount is said when work starts, not only when verify runs

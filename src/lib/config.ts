@@ -28,6 +28,8 @@ export const LAW_PATH = '.multivac/invariants.md';
 export const CHANGES_DIR = '.multivac/changes';
 /** The team's half of the closing ceremony — prose multivac prints, never parses. */
 export const RITUAL_PATH = '.multivac/ritual.md';
+/** MV-96: derived, rewritten whole by `doors`. Never authored. */
+export const FLOW_PATH = '.multivac/flow.md';
 /**
  * Every tracked file `init` writes — the check-ignore targets. A repo-level
  * ignore (saleor's `.gitignore` starts with `.*`) can swallow the whole brain
@@ -291,6 +293,11 @@ export async function loadConfig(brainDir: string): Promise<Config> {
 
   // MV-90. Named after sdd_auto and parsed the same way: two adapters with two
   // vocabularies for one idea is a tax on every reader.
+  // MV-99: root-level only. Unlike sdd: and grapher:, which act on each repo's
+  // files, the tracker projects the CHANGE — and changes live only in the brain,
+  // so a per-repo override would answer a question nobody can ask.
+  const tracker = optString(o.tracker, 'tracker');
+
   const grapherAuto = o.grapher_auto ?? true;
   if (typeof grapherAuto !== 'boolean') {
     fail('"grapher_auto" must be true or false');
@@ -346,6 +353,7 @@ export async function loadConfig(brainDir: string): Promise<Config> {
     sdd: optString(o.sdd, 'sdd'),
     sddAuto,
     grapherAuto,
+    tracker,
     grapher: optString(o.grapher, 'grapher'),
     graphers,
     authorities: stringList(o.authorities, 'authorities'),

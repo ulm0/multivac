@@ -1,14 +1,20 @@
 ---
 slug: the-flow-is-derived-from-what-was-declared
-status: planned
+status: archived
 horizon: next
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: landed
+landing_order:
+  - - brain
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-96
   retires: []
-claims: []
+claims:
+  - id: MV-96
+    statement: A derived page states what this ecosystem's declarations oblige — sorted into automatic, gate and yours — rendered from the adapter registry and the config alone, citing commands and artifacts and never an invariant id, because ids are local to each brain.
 ---
 
 # One page saying what is automatic, what is a gate, and what is yours

@@ -150,6 +150,25 @@ See [`roadmap`](../reference/commands#roadmap-add-slug-title---horizon-nownextla
 for the command, and [Running changes](../guide/running-changes#roadmap--write-it-down-without-starting-it)
 for the flow.
 
+### The ritual arrives with candidates (MV-98)
+
+`init` used to write the ritual as a bare comment, and facing a blank page most
+people write nothing — so the closing step printed nothing forever. It now
+carries candidates drawn from what you declared, **every one commented out**.
+
+An unadopted ceremony is not a ceremony. Uncomment what your team actually owes
+each other and delete the rest; nothing is asserted on your behalf, and a
+commented line never prints. A fresh brain still prints nothing at close, which
+is exactly what it did before.
+
+Only things no check could decide are seeded. A declared grapher contributes
+none: its work is automatic and a gate already requires its artifact, so putting
+it in the ritual would move a checked thing onto a poster.
+
+The ritual is **authored** — written once by you, never overwritten by any
+command. That is the opposite of [`flow.md`](../reference/commands), which is
+derived and rewritten whole on every projection.
+
 ## The subcommands
 
 - **plan** resolves the declaration against reality: which declared repos

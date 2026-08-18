@@ -24,7 +24,7 @@ import { renderConsumerDoor } from '../doors/consumer.js';
 import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
 import { runScaffold, sddGate, sddInstructions } from '../adapters/sdd.js';
 import { ensureGraphs, graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
-import { evaluate, fmtAge } from './verify.js';
+import { evaluate, fmtAge, stalenessLines } from './verify.js';
 import {
   ChangeError,
   REPO_STATUSES,
@@ -500,6 +500,31 @@ const bump = (cur: RepoStatus, min: RepoStatus): RepoStatus =>
 
 // --- subcommands ---
 
+/**
+ * MV-94: a pin behind its channel, said at the moment work starts.
+ *
+ * The tool already knew — `stalenessLines` computes it offline and `verify`
+ * reports it — but the moment it matters most is the moment work begins, and
+ * `new` and `apply` said nothing. "Refresh before you start" is exactly the
+ * instruction that has to arrive at the start; anywhere else it is a fact
+ * about the past.
+ *
+ * REPORTS, never refuses. Offline, a pin behind its channel means somebody
+ * landed work OR nobody fetched, and those are indistinguishable from here —
+ * refusing on the second reading fails an ordinary morning, and a gate that
+ * fires on an ordinary morning is one people learn to skip. `staleness: block`
+ * still makes `verify` exit 1 where it always did; this adds no second refusal.
+ *
+ * The one computation, exported rather than copied: MV-90 has just finished
+ * paying for the alternative.
+ */
+async function sayStaleMounts(brain: string, cfg: Config): Promise<void> {
+  const lines = await stalenessLines(brain, cfg);
+  if (lines.length === 0) return; // every pin current: nothing to say
+  say('brain pins behind their channel — refresh before deciding against the law:');
+  for (const l of lines) say(l.text);
+}
+
 async function cmdNew(
   brain: string,
   cfg: Config,
@@ -507,6 +532,10 @@ async function cmdNew(
   title: string,
   noSdd: boolean,
 ): Promise<number> {
+  // BEFORE the bookkeeping commit below, deliberately: that commit moves the
+  // brain, so reporting afterwards would name a pin the tool itself had just
+  // put one behind. The operator is told the state they ARRIVED in.
+  await sayStaleMounts(brain, cfg);
   const rel = changeRel(slug);
   // MV-89: a slug that is already planned is promoted, not refused. The file
   // holding the intention becomes the file holding the work — one document,
@@ -676,6 +705,7 @@ async function cmdApply(
   if (!(await gateSdd(brain, cfg, 'apply', slug, noSdd))) return 1;
   const parsed = await loadChange(brain, slug);
   assertStarted(parsed.change);
+  await sayStaleMounts(brain, cfg);
   const keys = Object.keys(parsed.change.repos);
   if (keys.length === 0) {
     warn(`${changeRel(slug)} declares no repos — declare them, then re-run apply`);
@@ -714,6 +744,32 @@ async function cmdApply(
   runSdd(cfg, 'apply', slug, noSdd);
   say(`work here — one checkout per repo, nobody else's tree moves:`);
   for (const w of workspaces) say(`  ${w}`);
+  // MV-95. The tool has just computed the two things that make concurrent work
+  // safe and said neither: `landing_order` putting repos in ONE stage is the
+  // operator's own statement that they have no ordering dependency on each
+  // other, and the loop above handed back an isolated checkout per repo. Later
+  // stages are not named: they are blocked by an earlier one, which is the same
+  // declaration read the other way.
+  //
+  // The boundaries are the useful half. Without them the line reads "go
+  // faster", and both failures it would invite are quiet: two writers to one
+  // file is a lost update, and the law is a single table whose ids are
+  // allocated one at a time (MV-26), so changes serialise there by design.
+  //
+  // Printed, never verified: no artifact proves an agent ran two things at
+  // once, so a gate would read what it cannot see (MV-27's reason).
+  const ready = landingPlan(parsed.change).find((s) => s.state === 'ready');
+  const together = ready?.repos.filter((k) => keys.includes(k)) ?? [];
+  if (together.length > 1) {
+    const count = together.length === 2 ? 'two' : `${together.length}`;
+    say(
+      `these ${count} are one stage: no ordering between them, and one checkout each — work them at once`,
+    );
+    say(
+      '  never the same file twice at once (a lost update), and never the law: ' +
+        'ids are reserved one at a time and stages serialise there',
+    );
+  }
   say(`then commit on branch ${slug} and run \`multivac change land ${slug}\``);
   return 0;
 }

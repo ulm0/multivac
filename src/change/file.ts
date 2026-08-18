@@ -34,6 +34,13 @@ export interface ChangeFile {
   status: 'planned' | 'open' | 'archived';
   /** Set while planned; absence is legal in every state. */
   horizon?: Horizon;
+  /**
+   * MV-99. The tracker issue projecting this change. The NUMBER, not a link:
+   * the project comes from the repo's remote, so a link carries a derivable
+   * half that would have to be parsed back out on every run — and goes stale
+   * the day the repo moves. It is the identity, so it survives a title edit.
+   */
+  issue?: number;
   repos: Record<string, { status: RepoStatus }>;
   /** Ordered stages; repos in one stage may land in parallel. */
   landing_order: string[][];
@@ -80,6 +87,12 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
   let status: ChangeFile['status'] = 'open';
   if (o.status === 'planned' || o.status === 'open' || o.status === 'archived') status = o.status;
   else errs.push('"status" must be "planned", "open" or "archived"');
+
+  let issue: number | undefined;
+  if (o.issue !== undefined && o.issue !== null) {
+    if (typeof o.issue === 'number' && Number.isInteger(o.issue) && o.issue > 0) issue = o.issue;
+    else errs.push('"issue" must be a positive whole number — the tracker issue number');
+  }
 
   let horizon: Horizon | undefined;
   if (o.horizon !== undefined && o.horizon !== null) {
@@ -164,7 +177,16 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
   if (errs.length > 0) {
     throw new ChangeError(`${label}: ${errs.join('; ')} — fix the frontmatter`);
   }
-  return { slug, status, ...(horizon ? { horizon } : {}), repos, landing_order: lo, invariants, claims };
+  return {
+    slug,
+    status,
+    ...(horizon ? { horizon } : {}),
+    ...(issue ? { issue } : {}),
+    repos,
+    landing_order: lo,
+    invariants,
+    claims,
+  };
 }
 
 /** Prose that YAML cannot hold unquoted: a ": " mapping, a " #" comment, an indicator start. */
@@ -225,6 +247,7 @@ export function serializeChange(change: ChangeFile, body: string): string {
       // Written only when set: an unconditional key would grow a `horizon: null`
       // line on every existing change file the next lifecycle step rewrites.
       ...(change.horizon ? { horizon: change.horizon } : {}),
+      ...(change.issue ? { issue: change.issue } : {}),
       repos: change.repos,
       landing_order: change.landing_order,
       invariants: change.invariants,

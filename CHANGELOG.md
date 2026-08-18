@@ -14,6 +14,56 @@ keeping a second one (MV-78).
 
 **Added**
 
+- **`multivac roadmap sync` projects the change files to a declared tracker.**
+  `tracker: gitlab` or `tracker: github`, using that vendor's own CLI so
+  multivac holds no credentials and adds no dependency. **One way, always**: the
+  change files are the source, and nothing the tracker says ever reaches them —
+  closing an issue by hand closes nothing, and the next sync restores it. The
+  identity is the issue **number**, recorded in the change file, so a title edit
+  cannot duplicate anything. Only labels in multivac's own namespace are
+  written, and none it does not own is ever removed. An absent CLI refuses
+  rather than reporting success, and it never runs from `verify`, `doctor` or
+  `doors`. One issue per change for now. (MV-99)
+- **The ritual now arrives with candidates, all commented out.** `init` wrote it
+  as a bare comment, and facing a blank page most people write nothing — so the
+  closing step printed nothing forever. Candidates are drawn from what you
+  declared and nothing is asserted on your behalf: a commented line never
+  prints, so a fresh brain still prints nothing at close. Only things no check
+  could decide are seeded; a declared grapher contributes none, because its work
+  is automatic and already gated. (MV-98, amending MV-34)
+- **Changing `.multivac/config.yml` now needs an open change.** It decides which
+  repos exist, which adapters bind and which gates run — all as load-bearing as
+  a law row, and all editable in a commit with no explanation and nobody
+  noticing. A staged modification is refused while no change is open; creating
+  one is free, because a brain has to start somewhere and `init` is the only
+  thing that writes it. Any open change satisfies it, including one opened for
+  that edit. (MV-97)
+- **`multivac doors` now writes `.multivac/flow.md`** — one page sorting what
+  your declarations oblige into what happens unasked, what refuses, and what no
+  tool can check. A fresh brain had no place answering "what did I just sign up
+  for": the law is dozens of rows, the ritual starts empty, and everything else
+  scrolled past. Every row is rendered from the adapter registry and your
+  config, so it cannot describe behaviour the tool does not have, and each
+  unprovable step carries the adapter's own reason verbatim. It cites no
+  invariant identifier — those are per-brain, so a generated one would be wrong
+  in every other ecosystem. Derived and rewritten whole; anything you write
+  outside the markers survives; it binds nothing and says so. (MV-96)
+- **`change apply` now says what can be worked at once.** Repos in one stage of
+  `landing_order` have no ordering dependency by the declaration's own meaning,
+  and apply hands back an isolated checkout for each — it knew both and said
+  neither. The line carries its boundaries: never the same file twice at once,
+  and never the law. **And each printed SDD step now says to run the chain
+  through** rather than waiting to be asked, with the opt-out on the same line;
+  stopping is for a question the tool itself raises, not for permission. Both
+  are printed and never checked — no artifact proves either happened. (MV-95)
+- **`change new` and `change apply` now say when the brain is behind.** The pin
+  each repo records for the mounted brain was already compared to its channel,
+  offline, and reported by `verify` — but nothing said it at the moment work
+  starts, which is the only moment "refresh before you start" is an instruction
+  rather than a fact about the past. It reports and never refuses: offline a pin
+  behind its channel means somebody landed work *or* nobody fetched, and
+  refusing on the second reading would fail an ordinary morning. `staleness:
+  block` still gates in `verify`, unchanged. (MV-94)
 - **A door in a code repo now names the ecosystem it belongs to.** It carried
   the law and the mount and nothing else, while the brain's door listed the
   repos and every adapter — and the consumer door is the one most sessions start

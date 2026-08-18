@@ -73,6 +73,8 @@ export interface Config {
   sdd?: string;
   /** yml key: sdd_auto. Default true. */
   sddAuto: boolean;
+  /** yml key: tracker. Which tracker the roadmap projects to, or none. MV-99. */
+  tracker?: string;
   grapher?: string;
   /** yml key: grapher_auto. Default true. False keeps the tool and drops the gate. */
   grapherAuto: boolean;

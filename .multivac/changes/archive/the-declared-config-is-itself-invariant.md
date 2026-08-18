@@ -1,14 +1,20 @@
 ---
 slug: the-declared-config-is-itself-invariant
-status: planned
+status: archived
 horizon: later
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: landed
+landing_order:
+  - - brain
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-97
   retires: []
-claims: []
+claims:
+  - id: MV-97
+    statement: Modifying the declared config needs an open change — the commit is refused otherwise, offline and from the index, while creating one is free because a brain has to start somewhere.
 ---
 
 # A config diff needs a change that declares it
