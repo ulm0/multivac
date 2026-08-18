@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initRepo } from '../helpers/fixture.js';
 import { init } from '../../src/commands/init.js';
+import { doorsCommand } from '../../src/commands/doors.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -128,5 +129,59 @@ test('the door and the config can never name different adapters', async () => {
     const declared = /^sdd: (\S+)$/m.exec(cfgOf(dir))?.[1];
     assert.equal(declared, 'speckit');
     assert.equal(door.includes('opsx'), false, `door named opsx after --sdd ${flag}`);
+  }
+});
+
+test('a flag the config declares none of never reaches the door', async () => {
+  const dir = repo();
+  await capture(() => init.run(['--quiet', dir], { cwd: dir }));
+  assert.equal(/^sdd:/m.test(cfgOf(dir)), false);
+
+  const c = await capture(() => init.run(['--sdd', 'speckit', dir], { cwd: dir }));
+
+  // The report is unchanged, and after MV-101 it is also true.
+  assert.equal(c.code, 0);
+  assert.match(c.out, /--sdd speckit is not in it: add `sdd: speckit` there/);
+  assert.equal(readFileSync(join(dir, 'AGENTS.md'), 'utf8').includes('Features gate through'), false);
+});
+
+test('a declared adapter still reaches the door on a re-run with no flag', async () => {
+  const dir = repo();
+  await capture(() => init.run(['--sdd', 'speckit', '--quiet', dir], { cwd: dir }));
+
+  await capture(() => init.run([dir], { cwd: dir }));
+
+  assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /Features gate through the `speckit` SDD/);
+});
+
+/** The SDD the door names, or null where it names none. */
+const doorSdd = (dir: string): string | null =>
+  /Features gate through the `([a-z]+)` SDD/.exec(readFileSync(join(dir, 'AGENTS.md'), 'utf8'))?.[1] ??
+  null;
+
+test('init and doors name the same adapter in the door, whatever the flags said', async () => {
+  // The rule from the outside: one repo, one answer to "which tool gates work
+  // here". A door that names a different tool depending on which command ran
+  // last is one nobody can reason about — and the drift is silent, because the
+  // file moves while nothing the operator wrote did.
+  //
+  // The two commands write different door BODIES on purpose — init scaffolds
+  // the empty-brain text, doors projects the brain door — so this asserts the
+  // adapter, which is what MV-101 governs, not the bytes around it.
+  for (const flags of [[], ['--sdd', 'speckit'], ['--grapher', 'graphify']]) {
+    const dir = repo();
+    await capture(() => init.run(['--quiet', dir], { cwd: dir }));
+    await capture(() => init.run([...flags, '--quiet', dir], { cwd: dir }));
+    const afterInit = doorSdd(dir);
+
+    await capture(() => doorsCommand.run([], { cwd: dir }));
+
+    assert.equal(
+      doorSdd(dir),
+      afterInit,
+      `doors renamed the door's adapter, with flags ${JSON.stringify(flags)}`,
+    );
+    // And with a config that declares none, neither command names one.
+    assert.equal(afterInit, null);
   }
 });

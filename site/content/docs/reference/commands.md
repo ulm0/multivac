@@ -194,6 +194,25 @@ A flag that **agrees** is accepted and reported as redundant. A flag naming an
 adapter the config declares none of is reported with how to make it stick,
 never refused — nothing disagrees, and the config is only ever edited by hand.
 
+**The door names what the config declares, and nothing else** (MV-101). That
+includes the case just above: a flag the config does not answer is reported and
+does not reach the door, so `init` and `doors` never name different tools in the
+same repo. They used to — `init --sdd speckit` on a config declaring no `sdd:`
+wrote a door gating through speckit while reporting the flag as not in the
+config, and the next `mvac doors`, reading the config alone, deleted the block
+again:
+
+```txt
+$ mvac init --sdd speckit .
+init: .multivac/config.yml kept — edit it directly, then `multivac doors`
+init:   --sdd speckit is not in it: add `sdd: speckit` there, then `multivac doors`
+$ grep -c 'Features gate through' AGENTS.md
+0
+```
+
+To make a flag stick, put the key in `.multivac/config.yml` and run
+`multivac doors` — the two steps the report names.
+
 ## `seed [dir]`
 
 ```txt
