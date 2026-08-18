@@ -1,6 +1,8 @@
 ---
 title: Guide
 weight: 2
+description: >-
+  Install multivac, fill an empty brain in session zero, write anchors that survive a refactor, and run a change from new to close.
 ---
 
 The practical path, in order. Everything here is sourced from the built CLI —

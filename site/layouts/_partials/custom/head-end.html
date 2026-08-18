@@ -12,3 +12,51 @@
 */ -}}
 <link rel="preload" href="/fonts/archivo-latin.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="preload" href="/fonts/martian-mono-latin.woff2" as="font" type="font/woff2" crossorigin />
+
+{{- /*
+  MV-100. Additive only: every tag below is one the theme does NOT emit, so
+  nothing here is a second copy of something already stated. A duplicate tag is
+  two sources for one fact, and the day they disagree the wrong one may win.
+
+  `og:site_name` and `og:locale` are what a scraper uses to label the card's
+  source and its language; the theme emits neither.
+
+  The image dimensions let a scraper reserve the space before the file lands,
+  which is the difference between a card that appears whole and one that
+  reflows — and some scrapers refuse to render an image they have not measured.
+*/ -}}
+<meta property="og:site_name" content="{{ .Site.Title }}" />
+<meta property="og:locale" content="{{ replace (or .Site.LanguageCode "en-US") "-" "_" }}" />
+{{- with (index (or .Site.Params.images slice) 0) }}
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="The multivac mark: a console panel of six lamps, one lit acid green." />
+{{- end }}
+
+{{- /*
+  Structured data, as JSON-LD. The theme emits microdata `itemprop` attributes,
+  which search engines read but which cannot say what KIND of thing this is —
+  so a documentation site and a shop look alike. This says it once, in the
+  format every engine documents, and it is generated from the same title,
+  description and origin the rest of the head uses rather than restating them.
+*/ -}}
+{{- $ld := dict
+  "@context" "https://schema.org"
+  "@type" (cond .IsHome "SoftwareApplication" "TechArticle")
+  "name" (cond .IsHome .Site.Title .Title)
+  "headline" (cond .IsHome .Site.Title .Title)
+  "description" (partial "utils/page-description.html" .)
+  "url" .Permalink
+  "inLanguage" (or .Site.LanguageCode "en-US")
+-}}
+{{- if .IsHome -}}
+  {{- $ld = merge $ld (dict
+    "applicationCategory" "DeveloperApplication"
+    "operatingSystem" "macOS, Linux"
+    "offers" (dict "@type" "Offer" "price" "0" "priceCurrency" "USD")
+  ) -}}
+{{- end -}}
+{{- with (index (or .Site.Params.images slice) 0) }}
+  {{- $ld = merge $ld (dict "image" (. | absURL)) -}}
+{{- end }}
+<script type="application/ld+json">{{ $ld | jsonify | safeJS }}</script>

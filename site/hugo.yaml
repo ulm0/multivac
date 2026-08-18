@@ -1,6 +1,26 @@
 baseURL: https://multivac.ulm0.com/
-locale: en-us
+# MV-100. `locale:` was here and is not a Hugo key — an inert line that looked
+# like a setting. `languageCode` is the one Hugo reads, and it is what puts the
+# language on <html> and lets `og:locale` be stated rather than guessed.
+languageCode: en-US
 title: multivac
+
+# MV-100. Without this the crawler file 404s while the sitemap it should name
+# returns 200 — the map exists and nothing points at it.
+enableRobotsTXT: true
+
+# MV-100. Every sitemap entry shipped without a <lastmod>, because no page
+# declares a date and nothing derived one. Git already knows when each page
+# last changed, so the freshness signal costs a switch rather than a field
+# nobody would maintain.
+enableGitInfo: true
+
+# MV-100. `/categories/` and `/tags/` were in the sitemap: two pages with no
+# content, generated because the taxonomies exist by default and used by
+# nothing here. Thin pages in an index are a cost, not an omission.
+disableKinds:
+  - taxonomy
+  - term
 
 module:
   imports:
@@ -43,6 +63,27 @@ menu:
         type: search
 
 params:
+  # MV-100. Two declarations, and they fix a head that served an EMPTY
+  # description and no card image at all — which is why a pasted link rendered
+  # as a bare URL: a scraper that finds no image does not fall back to a
+  # favicon.
+  #
+  # No template is written for either. The theme emits `og:image` from
+  # `images` and emits none without it, and Hugo's own card partial picks the
+  # large format the moment an image exists — so the format follows from the
+  # same declaration rather than being stated twice. Nothing was broken here;
+  # nothing had been declared.
+  #
+  # `description` is the FALLBACK. Every page that can carry its own carries
+  # it, because the theme otherwise derives one from whatever prose happens to
+  # come first — a sentence written to open a section, not to describe a page.
+  description: >-
+    Brain-driven development: one brain repo of anchored claims, verified
+    against the code before an agent acts on it. Deterministic, offline, no
+    model in the verification path.
+  images:
+    - og.png
+
   # The version the badge shows. NOT a fact about this repository: the pages
   # job overrides it with the last git tag, which is the last version actually
   # published (MV-77). `dev` is what a local build or a fork with no releases

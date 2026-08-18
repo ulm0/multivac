@@ -1,5 +1,7 @@
 ---
 title: Documentation
+description: >-
+  What multivac is, how a brain-driven change moves through it, and every command and configuration key, with the invariant behind each one.
 ---
 
 **multivac** (CLI alias `mvac`) is a brain-driven development tool: one brain
