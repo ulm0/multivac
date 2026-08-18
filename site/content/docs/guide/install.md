@@ -111,6 +111,7 @@ commands:
   doctor     what is declared, what was found, what is degraded, how to fix it
   repos      list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest
   change     new/plan/apply/land/close — the ecosystem change lifecycle
+  roadmap    the changes that have not started yet — list them, record one
   help       help <topic|command> — `help anchor` prints the anchor grammar on one screen
 ```
 
