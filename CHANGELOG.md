@@ -10,7 +10,7 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
-## Unreleased
+## 0.8.0 — 2026-08-18
 
 **Added**
 
@@ -23,32 +23,6 @@ keeping a second one (MV-78).
   where the door still tells every agent to ask it. multivac stages nothing —
   the gate says, you commit — and `doctor` reports the same state per root
   without gating on it. (MV-103, amending MV-90)
-
-**Fixed**
-
-- **The door a fresh brain gets is the door the tool maintains.** `init` carried
-  its own copy of the brain door and the copy had drifted: the projected door
-  gained the graph block and the ecosystem's repo list, the copy gained neither.
-  So the first file an agent reads — the only one it has before anybody runs a
-  second command — never named the graph it tells you to ask before reading the
-  tree. There is one rendering now: `init` writes the bytes `doors` writes, and
-  running `doors` straight after `init` changes nothing. A config that will not
-  load leaves the door alone rather than being written from nothing. (MV-102,
-  amending MV-101 and MV-91)
-- **The door no longer names an SDD the config does not declare.** On a brain
-  whose config exists but declares no `sdd:`, `init --sdd speckit` reported the
-  flag as not in the config — correctly — and then wrote a door gating through
-  speckit anyway, because the door resolved the flag as a fallback. `doors`,
-  which reads the config alone, deleted that block on its next run: two
-  commands, one repo, two different doors, with nothing on disk recording the
-  choice or explaining the revert. The door now takes the config's answer
-  whenever a config exists, and a flag is the declaration exactly once — on the
-  first run, which is what writes the config. The report, the refusal for a
-  disagreeing flag and first-run behaviour are all unchanged. (MV-101, amending
-  MV-91)
-
-**Added**
-
 - **`multivac roadmap sync` projects the change files to a declared tracker.**
   `tracker: gitlab` or `tracker: github`, using that vendor's own CLI so
   multivac holds no credentials and adds no dependency. **One way, always**: the
@@ -111,6 +85,26 @@ keeping a second one (MV-78).
 
 **Fixed**
 
+- **The door a fresh brain gets is the door the tool maintains.** `init` carried
+  its own copy of the brain door and the copy had drifted: the projected door
+  gained the graph block and the ecosystem's repo list, the copy gained neither.
+  So the first file an agent reads — the only one it has before anybody runs a
+  second command — never named the graph it tells you to ask before reading the
+  tree. There is one rendering now: `init` writes the bytes `doors` writes, and
+  running `doors` straight after `init` changes nothing. A config that will not
+  load leaves the door alone rather than being written from nothing. (MV-102,
+  amending MV-101 and MV-91)
+- **The door no longer names an SDD the config does not declare.** On a brain
+  whose config exists but declares no `sdd:`, `init --sdd speckit` reported the
+  flag as not in the config — correctly — and then wrote a door gating through
+  speckit anyway, because the door resolved the flag as a fallback. `doors`,
+  which reads the config alone, deleted that block on its next run: two
+  commands, one repo, two different doors, with nothing on disk recording the
+  choice or explaining the revert. The door now takes the config's answer
+  whenever a config exists, and a flag is the declaration exactly once — on the
+  first run, which is what writes the config. The report, the refusal for a
+  disagreeing flag and first-run behaviour are all unchanged. (MV-101, amending
+  MV-91)
 - **The commit hook now runs the multivac that governs the repository**, not
   whatever is installed on the machine. The shim tried `mvac` on PATH first and
   the repository's own build last; the order is now the exact inverse — this
@@ -124,11 +118,6 @@ keeping a second one (MV-78).
   absent from that branch — and silently, a deleted test that keeps passing. The
   build clears its output before compiling, and a test asserts the property
   rather than the script, so it fails whatever the cause. (MV-92)
-
-## Unreleased
-
-**Fixed**
-
 - **A pasted link to the site now renders as a card.** The head served an empty
   description, a whitespace `og:type`, and **no `og:image` on any page** — and a
   scraper that finds no image does not fall back to a favicon, it renders a bare
