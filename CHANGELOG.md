@@ -10,6 +10,37 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## Unreleased
+
+**Added**
+
+- **A change can now exist before it starts.** `planned` is a new change state
+  in front of `open`, carried by the same `.multivac/changes/<slug>.md` file
+  with the same schema, plus a `horizon` of `now`, `next` or `later`. That is
+  the whole ordering model — no dates, no estimates, no rank, no dependencies
+  between items. Keeping the roadmap in the change files rather than in a
+  second list is the point: two lists describing the same work drift apart, and
+  whichever one the tool does not read becomes fiction. (MV-89)
+- **`multivac roadmap`** lists planned changes grouped by horizon, nearest
+  first, and reports how many changes are actually in flight under its own
+  label so intention is never read as progress. **`multivac roadmap add <slug>
+  "<title>" [--horizon now|next|later]`** records one. It reserves no invariant
+  id, opens no branch and creates no worktree.
+- **`change new` on a planned slug promotes the file that is already there** —
+  status flips to `open`, the invariant id is reserved at that moment, and the
+  body is carried across byte for byte, so the prose written when the idea was
+  young survives into the change that implements it. `change new` on a slug
+  nobody planned behaves exactly as before: the roadmap is never a
+  precondition, and no command anywhere refuses an operation because its
+  subject was not recorded first.
+- `plan`, `apply`, `land` and `close` refuse a change that has not started, and
+  name `change new` as the step that comes first.
+
+A roadmap of any length never delays a release: a planned change contributes no
+pending claim and no landed repo, so `verify --strict` can never name it as
+unclosed. Had it counted, the first entry recorded would have blocked every
+release for as long as the roadmap was not empty.
+
 ## 0.6.0 — 2026-08-17
 
 **Packaging — read if you verify what you install**

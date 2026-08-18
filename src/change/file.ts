@@ -19,6 +19,11 @@ export const REPO_STATUSES = [
 ] as const;
 export type RepoStatus = (typeof REPO_STATUSES)[number];
 
+/** MV-89: how near an intention is. The whole ordering model — no dates, no
+ * estimates, no rank, no dependencies between items. */
+export const HORIZONS = ['now', 'next', 'later'] as const;
+export type Horizon = (typeof HORIZONS)[number];
+
 export interface ChangeClaim {
   id: string;
   statement: string;
@@ -26,7 +31,9 @@ export interface ChangeClaim {
 
 export interface ChangeFile {
   slug: string;
-  status: 'open' | 'archived';
+  status: 'planned' | 'open' | 'archived';
+  /** Set while planned; absence is legal in every state. */
+  horizon?: Horizon;
   repos: Record<string, { status: RepoStatus }>;
   /** Ordered stages; repos in one stage may land in parallel. */
   landing_order: string[][];
@@ -66,9 +73,19 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
   if (typeof o.slug === 'string' && o.slug !== '') slug = o.slug;
   else errs.push('"slug" must be a non-empty string');
 
+  // MV-89: `planned` is a change that has not started — declared, with no
+  // branch and no reserved id. The same word `repos.<k>.status` already uses
+  // for a repo declared but not branched, because it means the same thing one
+  // scale down; a second word would imply a difference that does not exist.
   let status: ChangeFile['status'] = 'open';
-  if (o.status === 'open' || o.status === 'archived') status = o.status;
-  else errs.push('"status" must be "open" or "archived"');
+  if (o.status === 'planned' || o.status === 'open' || o.status === 'archived') status = o.status;
+  else errs.push('"status" must be "planned", "open" or "archived"');
+
+  let horizon: Horizon | undefined;
+  if (o.horizon !== undefined && o.horizon !== null) {
+    if (HORIZONS.includes(o.horizon as Horizon)) horizon = o.horizon as Horizon;
+    else errs.push(`"horizon" must be one of ${HORIZONS.join('|')}`);
+  }
 
   const repos: ChangeFile['repos'] = {};
   const reposRaw = o.repos ?? {};
@@ -147,7 +164,7 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
   if (errs.length > 0) {
     throw new ChangeError(`${label}: ${errs.join('; ')} — fix the frontmatter`);
   }
-  return { slug, status, repos, landing_order: lo, invariants, claims };
+  return { slug, status, ...(horizon ? { horizon } : {}), repos, landing_order: lo, invariants, claims };
 }
 
 /** Prose that YAML cannot hold unquoted: a ": " mapping, a " #" comment, an indicator start. */
@@ -205,6 +222,9 @@ export function serializeChange(change: ChangeFile, body: string): string {
     {
       slug: change.slug,
       status: change.status,
+      // Written only when set: an unconditional key would grow a `horizon: null`
+      // line on every existing change file the next lifecycle step rewrites.
+      ...(change.horizon ? { horizon: change.horizon } : {}),
       repos: change.repos,
       landing_order: change.landing_order,
       invariants: change.invariants,
@@ -230,6 +250,43 @@ export function scaffoldChange(slug: string, title: string): ParsedChange {
     },
     body: `# ${title}\n\nDeclare repos, landing_order, invariants and claims in the frontmatter,\nthen run \`multivac change plan ${slug}\`. For example:\n\n    # repos: { api: { status: planned } } — ${REPO_STATUSES.join('|')}\n    # landing_order: [[api]] — stages; earlier stages land first\n    # claims: [{ id: <ID>, statement: "..." }] — what close verifies\n\nStatements are prose: quote any value holding a colon —\n\`statement: "staleness: block"\`.\n\nmultivac owns the frontmatter formatting: every lifecycle step rewrites it, so\nhand-tuned layout will not survive. Values round-trip unchanged; the body,\nbelow the closing ---, is yours.\n`,
   };
+}
+
+/**
+ * MV-89: the change file an intention starts as. Same directory, same schema,
+ * one state earlier — so starting it is a status flip rather than a copy, and
+ * the prose written when the idea was young survives into the work.
+ *
+ * Reserves nothing. The invariant id is allocated when the change starts, and
+ * an id spent on work that never happens is a hole in the table no later
+ * change can fill.
+ */
+export function scaffoldPlanned(slug: string, title: string, horizon: Horizon): ParsedChange {
+  return {
+    change: {
+      slug,
+      status: 'planned',
+      horizon,
+      repos: {},
+      landing_order: [],
+      invariants: { touches: [], adds: [], retires: [] },
+      claims: [],
+    },
+    body: `# ${title}\n\nWhy this matters, written while you still remember. This file is the change\nit will become: starting it keeps this prose and adds the branch, the reserved\ninvariant id and the rest of the frontmatter.\n\n    multivac change new ${slug}\n\nUntil then it reserves nothing and blocks nothing.\n`,
+  };
+}
+
+/**
+ * MV-89: every lifecycle step after `new` refuses a change that has not
+ * started. Without this, `plan` would resolve repos for an intention and
+ * `close` would archive one, both of which read as progress on work nobody
+ * began.
+ */
+export function assertStarted(change: ChangeFile): void {
+  if (change.status !== 'planned') return;
+  throw new ChangeError(
+    `${change.slug} is planned, not started — start it first: multivac change new ${change.slug}`,
+  );
 }
 
 export async function loadChange(brain: string, slug: string): Promise<ParsedChange> {

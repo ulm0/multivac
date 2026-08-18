@@ -105,6 +105,51 @@ It gets its own file rather than a section of the law because the law is
 parsed — `verify` reads its anchors, `plan` reads its state cells — and the
 ritual is prose the tool only ever prints.
 
+## Planned — a change that has not started (MV-89)
+
+A roadmap is the list of things an ecosystem intends to do, and the brain
+already keeps that list. Every change file is born `open`, which means a branch
+is implied, an invariant id is reserved, and `verify --strict` counts it
+against the next release. So without one more state, the only way to write an
+intention down is to commit to starting it today — and the alternative people
+reach for is a second list in a wiki or a tracker, which drifts from the first
+within a week. Whichever list the tool does not read becomes fiction.
+
+`planned` sits in front of the lifecycle:
+
+```txt
+planned → open → landed → closed
+```
+
+It is the same file, in the same directory, with the same schema, plus a
+`horizon` of `now`, `next` or `later`. That is the entire ordering model: no
+dates, no estimates, no rank, no dependencies between items. Starting the work
+is `change new <slug>` on a slug that is already planned — the file is
+**promoted**, not replaced, so the prose written when the idea was young
+survives into the change that implements it. One document, one history.
+
+Three properties make the state safe to use rather than decorative:
+
+- **It reserves nothing.** An id allocated for work that may never happen is a
+  hole in the law table no later change can fill. Reservation stays at
+  `change new`, the moment the work actually begins.
+- **It blocks nothing.** `verify --strict` refuses to publish while a change is
+  unclosed, which is correct for work in flight and catastrophic for an
+  intention: the first roadmap entry would block every release for as long as
+  the roadmap was not empty, which is forever.
+- **It is not a gate.** `change new` on a slug nobody planned works exactly as
+  it always did. Requiring a feature to appear on the roadmap first is
+  unverifiable intent — the same category as the ritual, which is why the
+  ritual is printed and never checked. A gate everyone learns to skip at three
+  in the morning teaches people to work around the tool.
+
+Every later step — `plan`, `apply`, `land`, `close` — refuses a change that has
+not started, and names `change new` as the step that comes first.
+
+See [`roadmap`](../reference/commands#roadmap-add-slug-title---horizon-nownextlater)
+for the command, and [Running changes](../guide/running-changes#roadmap--write-it-down-without-starting-it)
+for the flow.
+
 ## The subcommands
 
 - **plan** resolves the declaration against reality: which declared repos

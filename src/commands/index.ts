@@ -7,6 +7,7 @@ import { doorsCommand } from './doors.js';
 import { doctorCommand } from './doctor.js';
 import { reposCommand } from './repos.js';
 import { change } from './change.js';
+import { roadmap } from './roadmap.js';
 import { helpCommand } from './help.js';
 
 export { usageFor } from './help.js';
@@ -21,5 +22,6 @@ export const commands: Command[] = [
   doctorCommand,
   reposCommand,
   change,
+  roadmap,
   helpCommand,
 ];

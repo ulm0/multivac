@@ -33,6 +33,7 @@ import {
   archiveChange,
   changePath,
   changeRel,
+  assertStarted,
   closeGate,
   landingPlan,
   loadChange,
@@ -57,7 +58,7 @@ const execFileP = promisify(execFile);
  * concurrent change would trample it. A commit that cannot happen degrades to
  * the exact command, never a half-done state.
  */
-async function commitBookkeeping(
+export async function commitBookkeeping(
   brain: string,
   paths: string[],
   message: string,
@@ -506,12 +507,25 @@ async function cmdNew(
   title: string,
   noSdd: boolean,
 ): Promise<number> {
-  if (existsSync(changePath(brain, slug))) {
-    warn(`${changeRel(slug)} already exists — edit it, or pick another slug`);
-    return 1;
-  }
   const rel = changeRel(slug);
-  const parsed = scaffoldChange(slug, title);
+  // MV-89: a slug that is already planned is promoted, not refused. The file
+  // holding the intention becomes the file holding the work — one document,
+  // one history — and the id is reserved HERE, at the start, never back when
+  // the intention was written down.
+  let parsed: ParsedChange;
+  let promoted = false;
+  if (existsSync(changePath(brain, slug))) {
+    const found = await loadChange(brain, slug);
+    if (found.change.status !== 'planned') {
+      warn(`${rel} already exists — edit it, or pick another slug`);
+      return 1;
+    }
+    found.change.status = 'open';
+    parsed = found;
+    promoted = true;
+  } else {
+    parsed = scaffoldChange(slug, title);
+  }
   // Allocate before anyone else reads the table: IDs picked by hand collide,
   // and the collision only shows up at merge. Dirty check, reservation,
   // scaffold and the bookkeeping commit happen under one lock — a concurrent
@@ -539,17 +553,26 @@ async function cmdNew(
       warn(`${(e as Error).message}`);
       return null;
     });
-    if (r) parsed.change.invariants.adds = [r.id];
+    if (r && !parsed.change.invariants.adds.includes(r.id)) parsed.change.invariants.adds.push(r.id);
     await saveChange(brain, parsed);
     await commitBookkeeping(
       brain,
       [rel, LAW_PATH],
-      `change open: ${slug}${r ? ` — reserves ${r.id}` : ''}`,
+      // Two literals, not one interpolated prefix: MV-26 anchors `change open: `
+      // and a message assembled at runtime is a message the law cannot read.
+      promoted
+        ? `change promoted: ${slug}${r ? ` — reserves ${r.id}` : ''}`
+        : `change open: ${slug}${r ? ` — reserves ${r.id}` : ''}`,
     );
     return r;
   });
   if (reserved === 'dirty') return 1;
-  say(`created ${rel} — declare repos, landing_order, invariants, claims`);
+  if (promoted) {
+    say(`promoted ${rel} — planned since it was recorded, now open`);
+    say('  title ignored on promotion — the body already carries the one recorded with the intention');
+  } else {
+    say(`created ${rel} — declare repos, landing_order, invariants, claims`);
+  }
   if (reserved) {
     say(
       `reserved ${reserved.id} — proposed row in ${LAW_PATH}, declared in invariants.adds; ` +
@@ -578,6 +601,7 @@ async function cmdPlan(
   // The propose-equivalent must have LANDED before there is anything to plan.
   if (!(await gateSdd(brain, cfg, 'plan', slug, noSdd))) return 1;
   const { change } = await loadChange(brain, slug);
+  assertStarted(change);
   const keys = Object.keys(change.repos);
   if (keys.length === 0) {
     warn(`${changeRel(slug)} declares no repos — add repos: { <key>: { status: planned } }`);
@@ -651,6 +675,7 @@ async function cmdApply(
   // the change exactly where it found it.
   if (!(await gateSdd(brain, cfg, 'apply', slug, noSdd))) return 1;
   const parsed = await loadChange(brain, slug);
+  assertStarted(parsed.change);
   const keys = Object.keys(parsed.change.repos);
   if (keys.length === 0) {
     warn(`${changeRel(slug)} declares no repos — declare them, then re-run apply`);
@@ -701,6 +726,7 @@ async function cmdLand(
   noSdd: boolean,
 ): Promise<number> {
   const parsed = await loadChange(brain, slug);
+  assertStarted(parsed.change);
   const { change } = parsed;
   if (Object.keys(change.repos).length === 0) {
     warn(`${changeRel(slug)} declares no repos — declare repos and landing_order first`);
@@ -819,6 +845,7 @@ async function cmdClose(
   // here on purpose: an abandoned change made no claims to verify.
   if (abandon) {
     const parsed = await loadChange(brain, slug);
+  assertStarted(parsed.change);
     if (parsed.change.claims.length > 0) {
       warn(`${changeRel(slug)} declares ${parsed.change.claims.length} claim(s) — --abandon is for a change that made none`);
       warn('  drop the claims first, or close it properly');
@@ -843,6 +870,7 @@ async function cmdClose(
   // The archive-equivalent has to have HAPPENED — not been printed at.
   if (!(await gateSdd(brain, cfg, 'close', slug, noSdd))) return 1;
   const parsed = await loadChange(brain, slug);
+  assertStarted(parsed.change);
   // A change declaring nothing lands nothing, and `unlanded` over an empty map
   // is empty — so close used to sail past the very check that stops `plan` and
   // `apply`, archiving a change that never named a repo and releasing its
