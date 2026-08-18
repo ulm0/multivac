@@ -1,9 +1,9 @@
 ---
 slug: the-graph-is-part-of-the-repository
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
