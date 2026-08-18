@@ -7,12 +7,43 @@ it merges; it is done when its anchors resolve.
 ## The rhythm
 
 ```
+mvac roadmap add points-expire "Points expire"   # optional: record it first
 mvac change new "points expire"
 mvac change plan     # which repos, in what order, which invariants it touches
 mvac change apply    # a worktree per repo, branched from the newest default branch
 mvac change land     # MRs respecting the declared order
 mvac change close    # verifies the declared claims, archives, prints the ritual
 ```
+
+## planned — the state before the rhythm starts (MV-89)
+
+A change may exist before it starts. `mvac roadmap add <slug> "<title>"` writes
+`.multivac/changes/<slug>.md` with `status: planned` and a `horizon` of `now`,
+`next` or `later` — the whole ordering model, with no dates, estimates, rank or
+dependencies between items. `mvac roadmap` lists them grouped by horizon and
+reports how many changes are in flight under a separate label.
+
+Three things to hold when you use it:
+
+- **A planned change reserves nothing and blocks nothing.** No invariant id, no
+  branch, no worktree, and it can never be counted as unclosed — so a roadmap
+  of any length never delays a release.
+- **Starting one PROMOTES it.** `mvac change new <slug>` on a slug that is
+  already planned flips the status, reserves the id at that moment and carries
+  the body across byte for byte. Never scaffold a second change for something
+  already on the roadmap, and never copy its prose into a new file — the
+  intention and the work are one document with one history.
+- **It is never a precondition.** `mvac change new` on a slug nobody planned is
+  correct and always was. Nothing refuses work for not having been planned
+  first, and you must not invent that rule yourself: it is unverifiable intent,
+  the same category as the ritual.
+
+Every step after `new` — `plan`, `apply`, `land`, `close` — refuses a change
+that has not started, and names `change new` as the step that comes first.
+
+These files are the SOURCE. Any projection of them to an issue tracker is a
+projection and never a second source, and it flows one way: a change closes at
+`mvac change close` and nowhere else.
 
 ## new — declare before you touch anything
 

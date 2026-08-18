@@ -18,6 +18,57 @@ mvac change close points-expire
 All output below is real, captured from a two-repo scratch ecosystem
 (`api` existing, `web` greenfield). Paths shortened.
 
+## roadmap — write it down without starting it
+
+Not every intention is ready to become work. `roadmap add` records one as a
+change in the `planned` state: same file, same directory, one state earlier.
+
+```txt
+$ mvac roadmap add tracker-projects-the-roadmap "Issues and boards from the change files"
+committed: roadmap: tracker-projects-the-roadmap planned (later)
+recorded .multivac/changes/tracker-projects-the-roadmap.md — planned, horizon later
+  no invariant id is reserved until it starts: multivac change new tracker-projects-the-roadmap
+```
+
+`--horizon now|next|later` says how near it is; the default is `later`, so
+nothing becomes urgent by omission. Reading the list back:
+
+```txt
+$ mvac roadmap
+roadmap: 3 planned
+  now
+    tracker-projects-the-roadmap — Issues and boards from the change files
+  next
+    agents-run-in-parallel-where-work-isolates — Urge the fan-out the tool already knows about
+  later
+    the-graph-builds-itself-everywhere — First build per declared root
+in flight: 1 open change — points-expire
+```
+
+Horizons print nearest first, slugs are alphabetical within a horizon, and an
+empty horizon is omitted rather than printed empty. The `in flight:` line is
+separate on purpose: a roadmap read without it invites reading intention as
+progress.
+
+Nothing on the roadmap reserves an id, opens a branch or delays a release, and
+nothing requires you to use it — `change new` on a slug nobody planned behaves
+exactly as it always has. See [Planned](../concepts/the-change#planned--a-change-that-has-not-started-mv-89)
+for why each of those is deliberate.
+
+When it becomes work, `change new` **promotes** the file rather than writing a
+second one, and the id is reserved at that moment:
+
+```txt
+$ mvac change new tracker-projects-the-roadmap
+committed: change promoted: tracker-projects-the-roadmap — reserves INV-03
+promoted .multivac/changes/tracker-projects-the-roadmap.md — planned since it was recorded, now open
+  title ignored on promotion — the body already carries the one recorded with the intention
+reserved INV-03 — proposed row in .multivac/invariants.md, declared in invariants.adds; drop it from both if this change adds no law
+```
+
+Whatever you wrote in the body while the idea was young is carried across byte
+for byte. From here the flow is the one below, unchanged.
+
 ## new — declare before you touch anything
 
 ```txt

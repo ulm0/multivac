@@ -28,6 +28,17 @@ every repo, every subsequent decision entering as a change. From there the
 rhythm is always `mvac change new → plan → apply → land → close`
 (`references/change.md`).
 
+A decision that is not ready to become work is recorded, not left to memory:
+`mvac roadmap add <slug> "<title>" [--horizon now|next|later]` writes it as a
+change in the `planned` state, and `mvac roadmap` reads the list back with the
+count in flight beside it. A planned change reserves no invariant id, opens no
+branch and never counts as unclosed, so recording one costs nothing and delays
+no release. Starting it is `mvac change new <slug>` on that same slug, which
+PROMOTES the file rather than writing a second one — so never scaffold a fresh
+change for something already on the roadmap. And never treat the roadmap as a
+precondition: `change new` on a slug nobody planned is correct, and no command
+refuses work for not having been planned first (MV-89).
+
 ## Steady state: the rules
 
 1. **Verify runs without you.** Hooks fire `mvac verify` at session start

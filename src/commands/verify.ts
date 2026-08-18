@@ -97,6 +97,11 @@ async function openChangeClaims(brainDir: string): Promise<OpenChanges> {
   for (const name of names) {
     try {
       const { change } = parseChange(await readFile(join(dir, name), 'utf8'), name);
+      // Open only, and MV-89 makes that deliberate rather than incidental: a
+      // `planned` change contributes neither a pending claim nor a landed repo,
+      // so `finishedChanges` can never name it and a roadmap of any length
+      // cannot delay a release. The comparison is the guarantee — do not
+      // widen it to "not archived".
       if (change.status !== 'open') continue;
       for (const c of change.claims) {
         if (!out.pendingBy.has(c.id)) out.pendingBy.set(c.id, change.slug);

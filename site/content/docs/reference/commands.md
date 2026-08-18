@@ -635,6 +635,80 @@ An unknown subcommand exits 2:
 unknown subcommand "pull" — usage: multivac repos [sync [--shallow]]
 ```
 
+## `roadmap [add <slug> "<title>"] [--horizon now|next|later]`
+
+The changes that have not started yet. With no arguments it lists them; with
+`add` it records one.
+
+```txt
+$ mvac roadmap
+roadmap: 2 planned
+  now
+    tracker-projects-the-roadmap — Issues and boards from the change files
+  later
+    the-graph-builds-itself-everywhere — First build per declared root
+in flight: 1 open change — points-expire
+```
+
+Horizons print in the order `now`, `next`, `later`, nearest first. Slugs are
+ordered by codepoint within a horizon — never by locale, which would make the
+listing's order a property of the machine that printed it. A horizon holding
+nothing is omitted rather than printed empty. The `in flight:` line counts open
+changes separately, so intention is never read as progress.
+
+An empty roadmap says so, and names the command that fills it:
+
+```txt
+roadmap: empty — record an intention with `multivac roadmap add <slug> "<title>"`
+in flight: no open change
+```
+
+A change file that will not parse is skipped by the listing rather than
+crashing it: a broken change file is `change`'s diagnostic to raise, and a
+roadmap that will not print because one entry is malformed is worse than one
+line short.
+
+### `add <slug> "<title>" [--horizon now|next|later]`
+
+Writes `.multivac/changes/<slug>.md` in the `planned` state and commits it.
+It reserves no invariant id, creates no branch and creates no worktree — the
+id is allocated when the change starts, because one spent on work that never
+happens is a hole in the law table no later change can fill.
+
+```txt
+$ mvac roadmap add tracker-projects-the-roadmap "Issues and boards from the change files"
+committed: roadmap: tracker-projects-the-roadmap planned (later)
+recorded .multivac/changes/tracker-projects-the-roadmap.md — planned, horizon later
+  no invariant id is reserved until it starts: multivac change new tracker-projects-the-roadmap
+```
+
+`--horizon` defaults to `later`, so nothing becomes urgent by omission. It
+applies to `add` only; the listing always shows every horizon.
+
+Refusals name the state found and the command that moves forward:
+
+```txt
+mvac: <slug> is already planned — see it with `multivac roadmap`, or start it with `multivac change new <slug>`
+mvac: <slug> is already open — it started; nothing to record
+mvac: <slug> is already archived at .multivac/changes/archive/<slug>.md — this change is closed; start a new one with a new slug, or read it there
+mvac: unknown horizon "someday" — use now, next, later
+```
+
+### The roadmap is never a gate
+
+No command refuses an operation because its subject was not recorded first.
+There is no flag to require it and no configuration key to turn it on:
+requiring a plan is unverifiable intent, the same category the ritual belongs
+to, and MV-89 carries an `absent` leg over `src/` so the refusal cannot be
+introduced without the law failing.
+
+Starting a planned change is [`change new`](#new), which promotes the file that
+is already there. Every later step refuses one that has not started:
+
+```txt
+mvac: <slug> is planned, not started — start it first: multivac change new <slug>
+```
+
 ## `change <sub> <slug> [args]`
 
 ```txt
