@@ -1,9 +1,9 @@
 ---
 slug: the-door-says-only-what-the-config-declares
-status: open
+status: archived
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
