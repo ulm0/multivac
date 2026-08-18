@@ -107,3 +107,12 @@ test('a command can keep its own wording while the check comes from the declarat
   const line = undeclared('verify', ['--loud'], surfaceFrom(ARGS), '[dir], --strict, --repo <key>');
   assert.equal(line, 'verify: unknown flag "--loud" — verify takes [dir], --strict, --repo <key>');
 });
+
+test('the two stated edge cases: an empty value, and a bare double dash', () => {
+  // `--repo=` names a declared flag, so the guard has nothing to say; what an
+  // empty value means is the command's business, not the surface's.
+  assert.equal(undeclared('verify', ['--repo='], surfaceFrom(ARGS)), null);
+  assert.equal(parseArgs(['--repo='], ARGS).repo, '');
+  // A bare `--` names no declared flag, so it is refused like any other.
+  assert.match(String(undeclared('verify', ['--'], surfaceFrom(ARGS))), /unknown flag "--"/);
+});

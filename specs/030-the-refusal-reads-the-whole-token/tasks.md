@@ -107,3 +107,9 @@ nothing extra and closes the whole class.
 Order: T001–T002 (baseline), T003 (the law row, first — Constitution III),
 T004–T012 in one edit of `src/lib/args.ts` and its tests, then T013–T016 in
 `src/commands/change.ts`, then the docs and the checks.
+
+## Phase 7: Convergence
+
+- [X] T021 Route `count` through `undeclared()` in `src/commands/count.ts`, deleting its hand-rolled flag scan and positional-count check, per FR-004 (partial) — it declares no flags and two positionals, so the shared guard says the same thing with less code; keep its usage block for a missing spec, which citty must not answer (MV-104)
+- [X] T022 Extend the registry walk in `test/cli/unknown-args.test.ts` so each valued flag it discovers is also exercised in the equals form and accepted, per SC-001 (partial)
+- [X] T023 Assert the two stated edge cases in `test/cli/args.test.ts` — `--flag=` with an empty value is accepted, and a bare `--` is refused — per spec Edge Cases and contracts/refusal.md (partial)

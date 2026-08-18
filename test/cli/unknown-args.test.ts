@@ -115,6 +115,17 @@ test('no command lets a valued flag run without its value', async () => {
       assert.equal(r.code, 2, `${c.name} ${flag} with no value exited ${r.code}:\n${r.out}`);
       assert.match(r.out, /needs a value/, `${c.name} ${flag} was not refused for its value`);
       assert.deepEqual(readdirSync(dir), [], `${c.name} touched the tree before refusing`);
+      // And the other half, about the same flag: written with an equals it is
+      // NOT refused as undeclared. Whatever the command then does with the
+      // value is its own business — what is asserted here is that the guard
+      // let the parser see it (MV-105).
+      const eqDir = mkdtempSync(join(tmpdir(), 'mvac-args-'));
+      const eq = await run([c.name, `${flag}=zzz`], eqDir);
+      assert.doesNotMatch(
+        eq.out,
+        /unknown flag/,
+        `${c.name} refused ${flag}=zzz as unknown — the equals form is not reaching the parser`,
+      );
       covered++;
     }
   }
