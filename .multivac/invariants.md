@@ -819,3 +819,4 @@ checks them on every commit.
 <!-- @anchor MV-104 brain:src/commands/count.ts /citty THROWS a CLIError/ unique -->
 <!-- @anchor MV-104 brain:package.json /"citty": "/ unique -->
 <!-- @anchor MV-104 brain:test/cli/args.test.ts /the refusal runs before the parser/ -->
+| MV-105 | RESERVED by change the-refusal-reads-the-whole-token — state the rule here before close. | open | proposed | 2026-08-18 | [changes/the-refusal-reads-the-whole-token.md](changes/the-refusal-reads-the-whole-token.md) |
