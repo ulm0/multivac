@@ -3,7 +3,7 @@ title: Commands
 weight: 1
 ---
 
-One binary, two names: `multivac` and `mvac`. Nine commands.
+One binary, two names: `multivac` and `mvac`. Ten commands.
 
 ```txt
 $ mvac --help
@@ -18,6 +18,7 @@ commands:
   doctor     what is declared, what was found, what is degraded, how to fix it
   repos      list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest
   change     new/plan/apply/land/close — the ecosystem change lifecycle
+  roadmap    the changes that have not started yet — list them, record one
   help       help <topic|command> — `help anchor` prints the anchor grammar on one screen
 ```
 
@@ -237,8 +238,21 @@ $ mvac verify
   ok          3
   unevaluated   1
   unevaluated INV-04 [present] .multivac/invariants.md:12 · repo not on disk — run `multivac repos sync` to clone it
+  enact     no row enacted in this commit — 3 staged paths, no row reached active
 
 0 blocking broken · exit 0
+```
+
+Two of those lines are printed by **every** run, whatever the claims say. A
+`read` line per repo names the ref or branch and its sha, so what was read is
+never inferred. And one `enact` line answers MV-81's question about the commit
+being composed: a row reaching `active` beside the code it anchors is refused,
+a row enacted alone is named, and when nothing is staged the line says the
+question could not be asked rather than implying an answer.
+
+```txt
+  enact     MV-91 → active, alone in this commit — the row is reviewable on its own
+  enact     not answered — nothing staged, so no commit is being composed; MV-81's check reads the index against HEAD
 ```
 
 | flag | effect |
@@ -587,6 +601,7 @@ repos      1/2 present · payments missing → `multivac repos sync` (git clone 
 branches   brain: on main @ abc1234 — brain==code, verify reads this working tree; 2 behind its own channel origin/main @ def5678 → git -C . pull · api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
 pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain) · payments: not cloned
 hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac on PATH)
+enact      who enacts is not a fact on disk — multivac never fabricates git identity (MV-04), so an agent commits as the person … UNGATEABLE by design (MV-81), not an oversight; enforcement is the forge's merge button
 untracked  nothing build-critical untracked
 ```
 
@@ -594,11 +609,12 @@ untracked  nothing build-critical untracked
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
 | `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): artifact, binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no `sdd` is declared anywhere** |
-| `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness |
+| `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh |
 | `repos` | how many are present, and the clone command for each that is not |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
+| `enact` | printed on every run, and it reports an **absence**: who enacts a row is not a fact on disk. multivac never fabricates a git identity (MV-04), and a hook runs with the caller's permissions, so a gate installed here is one the same process can skip. Ungateable by design (MV-81) rather than missing — the enforcement is the forge's merge button, held by an account the agent does not have. The half that IS checked — enactment landing in its own commit — is `verify`'s `enact` line, read from the index |
 | `untracked` | brain paths a `.gitignore` swallows (WARNING — the law cannot ship), then untracked, non-ignored files that look build-critical |
 
 **Installed is not enforcing.** The shims exit 0 when nothing on the machine
@@ -807,11 +823,12 @@ multivac change <sub> <slug> [args]
   apply <slug>           worktree per repo (greenfield repos get created)
   land <slug>            landing-order report; --landed <repo> records a merge
   close <slug>           verify claims, archive the change, print .multivac/ritual.md
-flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only),
+flags: --no-sdd (skip the SDD steps AND their gates), --no-grapher (close only:
+       skip the graph gate), --landed <repo> (land only),
        --abandon (close only: drop a change that landed nothing, give its id back)
 ```
 
-Exactly three flags, all listed above. An unknown one exits 2:
+Exactly four flags, all listed above. An unknown one exits 2:
 
 ```txt
 unknown flag --force — run `multivac change` for usage

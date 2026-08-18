@@ -208,6 +208,7 @@ $ mvac verify
   broken      1
   moved     INV-07 [present] .multivac/invariants.md:31 · glob rewritten to sql/002_roles.sql — review the diff
   broken    INV-15 [present] .multivac/invariants.md:52 · no match in backend — restore the code or retire the claim
+  enact     no row enacted in this commit — 2 staged paths, no row reached active
 
 0 blocking broken · exit 0
 ```
