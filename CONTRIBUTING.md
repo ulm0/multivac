@@ -4,6 +4,23 @@ multivac is built with itself. That is not a slogan: this repo is its own
 brain, its rules are anchored invariants in `.multivac/invariants.md`, and CI
 re-verifies them on every push. Contributions go through the same loop.
 
+## Touching the site
+
+The site's discoverability surface is checked on every commit, and a change
+that removes it fails (MV-100). Concretely: every section landing authors its
+own `description`, the site declares a fallback so no page can be
+description-less, a card image is declared, the crawler file names the sitemap,
+and the origin stays absolute.
+
+The check walks the content tree rather than reading a list, so a section added
+next week is covered without anybody remembering to add it. If you add one,
+give it a description longer than a label — the theme otherwise derives one
+from whatever prose comes first, and a description nobody wrote is a
+description nobody checked.
+
+What it cannot check: whether the description is any good, and whether a given
+network renders the card. Those are yours and theirs respectively.
+
 ## Getting set up
 
 ```sh

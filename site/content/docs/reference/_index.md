@@ -1,6 +1,8 @@
 ---
 title: Reference
 weight: 3
+description: >-
+  Every command, every configuration key, the hook ladder, and the graphers and SDD tools multivac has verified — with what each obliges.
 ---
 
 The exhaustive surface, written against the built binary. Every output block

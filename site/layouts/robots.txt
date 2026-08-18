@@ -1,0 +1,9 @@
+{{- /*
+  MV-100. Hugo's default emits the allow-all and stops, so the sitemap it
+  already generates is a map nothing points at. Naming it is the entire
+  content of this file.
+*/ -}}
+User-agent: *
+Allow: /
+
+Sitemap: {{ "sitemap.xml" | absURL }}

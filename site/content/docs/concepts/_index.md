@@ -1,6 +1,8 @@
 ---
 title: Concepts
 weight: 1
+description: >-
+  Why the brain holds the law, what an anchored claim is, how a change crosses repos, and how the brain reaches the code it governs.
 ---
 
 The model behind the tool. Read in order: why it exists, the practice, the

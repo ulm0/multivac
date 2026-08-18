@@ -1,6 +1,10 @@
 ---
 title: multivac
 layout: hextra-home
+description: >-
+  Your agent verifies its context before it acts on it. One brain repo holds
+  the law as anchored claims; multivac checks them against the code, offline
+  and without a model, and refuses the commit when they disagree.
 ---
 
 {{< hextra/hero-badge link="docs/guide/install" >}}

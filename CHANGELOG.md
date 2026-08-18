@@ -90,6 +90,33 @@ keeping a second one (MV-78).
   build clears its output before compiling, and a test asserts the property
   rather than the script, so it fails whatever the cause. (MV-92)
 
+## Unreleased
+
+**Fixed**
+
+- **A pasted link to the site now renders as a card.** The head served an empty
+  description, a whitespace `og:type`, and **no `og:image` on any page** — and a
+  scraper that finds no image does not fall back to a favicon, it renders a bare
+  URL. Documentation pages carried `twitter:title` and no `og:` tags at all.
+  Every page now carries a description and a 1200×630 card image, the Twitter
+  card is the large format, and `robots.txt` names the sitemap it already had.
+  No template was written: the machinery existed and had never been given
+  anything to render. (MV-100, amending MV-77)
+- **And the rest of the discoverability surface.** Sitemap entries now carry a
+  `lastmod` derived from git rather than from a date field nobody would
+  maintain; the empty `/categories/` and `/tags/` pages are no longer generated
+  or indexed; `languageCode` replaces a `locale:` key Hugo never read; and the
+  head gains `og:site_name`, `og:locale`, the card's dimensions and alt text,
+  and JSON-LD saying what kind of thing each page is — a developer tool, not a
+  shop — which the theme's microdata could not express. Every added tag is one
+  the theme does not emit, because a duplicate is two sources for one fact.
+- **The site's discoverability is now checked on every commit**, not fixed once.
+  The check walks the content tree recursively, so a section added later is
+  covered without anybody remembering — a listed set would pass forever while
+  the next section shipped without a description. It states its ceilings: it
+  cannot judge whether a description is good, and cannot decide whether a given
+  network renders the card.
+
 ## 0.7.0 — 2026-08-18
 
 **Fixed**
