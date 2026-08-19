@@ -58,12 +58,28 @@ export function undeclared(
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a.startsWith('-')) {
-      if (valued.includes(a)) {
-        // Its value is not a positional, whatever it looks like.
-        i++;
+      // Read the token the way the parser reads it (MV-105). citty splits
+      // `--name=value`; comparing the WHOLE token instead refused
+      // `init --provider=claude` as an unknown flag — a form 0.8.0 accepted
+      // and 0.9.0 published a refusal for. Only after `--`, because citty
+      // does not split a short alias: `-r=api` parses its value as "=api", so
+      // accepting it here would hand the parser a token it mis-reads.
+      const eq = a.startsWith('--') ? a.indexOf('=') : -1;
+      const flag = eq === -1 ? a : a.slice(0, eq);
+      if (valued.includes(flag)) {
+        if (eq !== -1) continue; // the value came inside the token
+        const value = argv[i + 1];
+        // Never swallow the next flag. `verify --repo --strict` used to bind
+        // repo to "--strict" and run NON-strict without a word — MV-85's own
+        // `doctor --sttrict` defect, inside the guard that ends it. A missing
+        // value is the same silence: citty binds it to "".
+        if (value === undefined || value.startsWith('-')) {
+          return `${name}: ${flag} needs a value — ${name} takes ${rendered}`;
+        }
+        i++; // its value is not a positional, whatever it looks like
         continue;
       }
-      if (!flags.includes(a)) return `${name}: unknown flag "${a}" — ${name} takes ${rendered}`;
+      if (!flags.includes(flag)) return `${name}: unknown flag "${a}" — ${name} takes ${rendered}`;
       continue;
     }
     if (++seen > max) return `${name}: unexpected argument "${a}" — ${name} takes ${rendered}`;
