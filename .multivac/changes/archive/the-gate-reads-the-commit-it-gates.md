@@ -1,6 +1,6 @@
 ---
 slug: the-gate-reads-the-commit-it-gates
-status: open
+status: archived
 repos:
   brain:
     status: landed
