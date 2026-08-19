@@ -3,7 +3,7 @@ slug: the-row-is-read-from-its-end
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
