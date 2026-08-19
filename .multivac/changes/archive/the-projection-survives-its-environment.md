@@ -1,6 +1,6 @@
 ---
 slug: the-projection-survives-its-environment
-status: open
+status: archived
 repos:
   brain:
     status: landed
