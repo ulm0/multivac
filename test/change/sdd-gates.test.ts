@@ -214,11 +214,11 @@ test('opsx: land prints archive, close REFUSES until the change is archived', as
   const landed = await capture(() => change.run(['land', 'gate-a', '--landed', 'brain'], ctx));
   assert.equal(landed.code, 0);
   assert.match(landed.out, /run \/opsx:archive gate-a in your agent/);
-  assert.match(landed.out, /proof: openspec\/changes\/archive\/\*-gate-a/);
+  assert.match(landed.out, /proof: openspec\/changes\/archive\/<n>-<n>-<n>-gate-a/);
 
   const refused = await capture(() => change.run(['close', 'gate-a'], ctx));
   assert.equal(refused.code, 1);
-  assert.match(refused.out, /refused — openspec\/changes\/archive\/\*-gate-a is missing/);
+  assert.match(refused.out, /refused — openspec\/changes\/archive\/<n>-<n>-<n>-gate-a is missing/);
   assert.match(refused.out, /run \/opsx:archive gate-a in your agent/);
 
   // The date prefix is the tool's, not ours: the `*` segment matches it.
@@ -248,7 +248,7 @@ test('speckit: its own longer flow drives the lifecycle', async () => {
   await declareBrain('gate-b');
   const refused = await capture(() => change.run(['plan', 'gate-b'], ctx));
   assert.equal(refused.code, 1);
-  assert.match(refused.out, /refused — specs\/\*-gate-b\/spec\.md is missing/);
+  assert.match(refused.out, /refused — specs\/<n>-gate-b\/spec\.md is missing/);
 
   // spec-kit numbers AND names the feature directory itself — verified against
   // a real create-new-feature.sh, which turned "user login with email" into
@@ -267,14 +267,14 @@ test('speckit: its own longer flow drives the lifecycle', async () => {
 test('speckit: apply gates on plan.md AND tasks.md, and its steps are ungateable', async () => {
   const refused = await capture(() => change.run(['apply', 'gate-b'], ctx));
   assert.equal(refused.code, 1);
-  assert.match(refused.out, /refused — specs\/\*-gate-b\/plan\.md is missing/);
-  assert.match(refused.out, /refused — specs\/\*-gate-b\/tasks\.md is missing/);
+  assert.match(refused.out, /refused — specs\/<n>-gate-b\/plan\.md is missing/);
+  assert.match(refused.out, /refused — specs\/<n>-gate-b\/tasks\.md is missing/);
 
   artifact('specs/001-gate-b/plan.md');
   const half = await capture(() => change.run(['apply', 'gate-b'], ctx));
   assert.equal(half.code, 1);
   assert.match(half.out, /specs\/001-gate-b\/plan\.md ok/);
-  assert.match(half.out, /refused — specs\/\*-gate-b\/tasks\.md is missing/);
+  assert.match(half.out, /refused — specs\/<n>-gate-b\/tasks\.md is missing/);
 
   artifact('specs/001-gate-b/tasks.md');
   const passed = await capture(() => change.run(['apply', 'gate-b'], ctx));
@@ -725,7 +725,7 @@ test('a scaffold that fails says what the tool said, and the gate stays closed',
   // A failed scaffold decides nothing on its own: the gate below still refuses
   // for its own reason, and the lifecycle did not throw.
   assert.equal(c.code, 1);
-  assert.match(c.out, /refused — specs\/\*-scaffold-a\/spec\.md is missing/);
+  assert.match(c.out, /refused — specs\/<n>-scaffold-a\/spec\.md is missing/);
 });
 
 test('a scaffold that exits 0 and writes nothing is a failure, not a success', async () => {

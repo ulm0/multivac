@@ -416,14 +416,14 @@ const sdd: Record<string, AdapterSpec> = {
       {
         at: 'land',
         run: 'run /opsx:archive <slug> in your agent to merge the spec deltas into openspec/specs/ and archive the change',
-        artifact: 'openspec/changes/archive/*-<slug>',
+        artifact: 'openspec/changes/archive/<n>-<n>-<n>-<slug>',
         gate: 'close',
         // `openspec archive --yes` prints `Warning: N incomplete task(s)
         // found. Continuing due to --yes flag.` and archives regardless. The
         // archived directory therefore proves the archive ran and nothing
         // else, so close reads the task list openspec itself just moved.
         unfinished: {
-          artifact: 'openspec/changes/archive/*-<slug>/tasks.md',
+          artifact: 'openspec/changes/archive/<n>-<n>-<n>-<slug>/tasks.md',
           pattern: '^\\s*- \\[ \\]',
           why: 'openspec archived this change with tasks still unchecked — `--yes` continues over its own warning',
           gate: 'close',
@@ -467,7 +467,7 @@ const sdd: Record<string, AdapterSpec> = {
       {
         at: 'new',
         run: 'run /speckit.specify in your agent to write the spec for <slug> — give it <slug> as the short name so the feature directory matches',
-        artifact: 'specs/*-<slug>/spec.md',
+        artifact: 'specs/<n>-<slug>/spec.md',
         gate: 'plan',
       },
       {
@@ -479,7 +479,7 @@ const sdd: Record<string, AdapterSpec> = {
       {
         at: 'plan',
         run: 'run /speckit.plan in your agent to design <slug> (Constitution Check, research, data model, contracts)',
-        artifact: 'specs/*-<slug>/plan.md',
+        artifact: 'specs/<n>-<slug>/plan.md',
         gate: 'apply',
         // setup-plan.sh writes the resolved template straight into plan.md
         // before /speckit.plan writes a byte, so existence proves the script
@@ -494,7 +494,7 @@ const sdd: Record<string, AdapterSpec> = {
       {
         at: 'plan',
         run: 'run /speckit.tasks in your agent to break <slug> into phased tasks',
-        artifact: 'specs/*-<slug>/tasks.md',
+        artifact: 'specs/<n>-<slug>/tasks.md',
         gate: 'apply',
       },
       {
@@ -510,7 +510,7 @@ const sdd: Record<string, AdapterSpec> = {
         // has open boxes is a fact on disk. Same hole opsx's `--yes` opens,
         // reached the other way — implement simply stopping early.
         unfinished: {
-          artifact: 'specs/*-<slug>/tasks.md',
+          artifact: 'specs/<n>-<slug>/tasks.md',
           pattern: '^\\s*- \\[ \\]',
           why: 'spec-kit\'s own task list still has unchecked tasks — implement did not finish, or stopped without saying so',
           gate: 'close',

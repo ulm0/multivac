@@ -337,12 +337,31 @@ export async function sddGate(
   for (const step of gating) {
     const want = withSlug(step.artifact!, slug);
     let found: { root: SddRoot; rel: string } | null = null;
+    // MV-113: several directories proving one step is not a choice this probe
+    // may make. Taking the first in sort order let an older foreign directory
+    // shadow the right one, silently — so a clash is refused by name, in the
+    // root where it collides. The first declared root holding ANY hit decides:
+    // a single hit wins there, several refuse there, and a later root is never
+    // consulted, which is the same root that decided under the old code.
+    let clash: { root: SddRoot; rels: string[] } | null = null;
     for (const root of roots) {
-      const hit = await artifactHit(root.dir, want);
-      if (hit) {
-        found = { root, rel: hit };
+      const hits = await artifactHit(root.dir, want);
+      if (hits.length > 1) {
+        clash = { root, rels: hits };
         break;
       }
+      if (hits.length === 1) {
+        found = { root, rel: hits[0] };
+        break;
+      }
+    }
+    if (clash) {
+      ok = false;
+      lines.push(
+        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${want} matches more than one place in ${clash.root.scope}: ${clash.rels.join(', ')} — one feature directory per slug; remove or renumber the strays`,
+      );
+      lines.push(`  then re-run: multivac change ${gate} ${slug}`);
+      continue;
     }
     if (!found) {
       ok = false;
@@ -418,12 +437,27 @@ export async function sddGate(
     const led = step.unfinished!;
     const want = withSlug(led.artifact, slug);
     let hit: { root: SddRoot; rel: string } | null = null;
+    // MV-113, the same rule for the ledger: a step proved by two books is a
+    // step nobody can read. Refused by name rather than resolved by sort order.
+    let clash: { root: SddRoot; rels: string[] } | null = null;
     for (const root of roots) {
-      const rel = await artifactHit(root.dir, want);
-      if (rel) {
-        hit = { root, rel };
+      const hits = await artifactHit(root.dir, want);
+      if (hits.length > 1) {
+        clash = { root, rels: hits };
         break;
       }
+      if (hits.length === 1) {
+        hit = { root, rel: hits[0] };
+        break;
+      }
+    }
+    if (clash) {
+      ok = false;
+      lines.push(
+        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${want} matches more than one place in ${clash.root.scope}: ${clash.rels.join(', ')} — one feature directory per slug; remove or renumber the strays`,
+      );
+      lines.push(`  then re-run: multivac change ${gate} ${slug}`);
+      continue;
     }
     // No ledger: the artifact gate above already refuses if this step was
     // supposed to leave one. Absence here is not evidence of completion, so

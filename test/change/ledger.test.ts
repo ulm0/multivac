@@ -58,10 +58,12 @@ test('a slug whose archive exists is refused, and nothing is written', async () 
   assert.equal(existsSync(join(b, '.multivac/changes/points-expire.md')), false, 'it wrote anyway');
 });
 
-test('the SDD proof matches the slug as a suffix, never as a substring', async () => {
-  // The registry's own note said "the gates match the slug as a suffix" while
-  // the glob wrapped the slug in wildcards on both sides — so any older
-  // feature directory containing it satisfied plan, apply and close.
+test('the SDD proof names one feature: never a substring, never a tail', async () => {
+  // Two defects, one line of registry data. The glob first wrapped the slug in
+  // wildcards on both sides, so any older directory CONTAINING it proved the
+  // step (MV-110). Narrowing it to `*-<slug>` ended that and left the tail:
+  // `^.*-expire$` still took `030-points-expire`, because the `*` swallows
+  // `030-points`. `<n>` cannot cross the separator, so both are dead (MV-113).
   const b = brain();
   writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nrepos:\n  brain: .\n');
   mkdirSync(join(b, '.specify/memory'), { recursive: true });
@@ -74,7 +76,39 @@ test('the SDD proof matches the slug as a suffix, never as a substring', async (
 
   const c = await capture(() => change.run(['plan', 'points-expire'], { cwd: b }));
 
-  assert.match(c.out, /refused — specs\/\*-points-expire\/spec\.md is missing/);
+  assert.match(c.out, /refused — specs\/<n>-points-expire\/spec\.md is missing/);
+});
+
+test('a tail is not a match, and a numbered directory still is — MV-113', async () => {
+  // The half MV-110 claimed and did not deliver. `expire` is the tail of
+  // `points-expire`, so the longer directory must not prove the shorter slug —
+  // and the pair matters: a rule that refused everything would pass the first
+  // assertion alone.
+  const b = brain();
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nrepos:\n  brain: .\n');
+  mkdirSync(join(b, '.specify/memory'), { recursive: true });
+  writeFileSync(join(b, '.specify/memory/constitution.md'), '# Constitution\n\n## I. A principle\n\nReal text.\n');
+  mkdirSync(join(b, 'specs/030-points-expire'), { recursive: true });
+  writeFileSync(join(b, 'specs/030-points-expire/spec.md'), '# Another feature\n');
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', "another feature's spec");
+  await capture(() => change.run(['new', 'expire', 'Expire'], { cwd: b }));
+
+  const tail = await capture(() => change.run(['plan', 'expire'], { cwd: b }));
+  assert.match(tail.out, /refused — specs\/<n>-expire\/spec\.md is missing/, 'a tail proved the step');
+
+  mkdirSync(join(b, 'specs/031-expire'), { recursive: true });
+  writeFileSync(join(b, 'specs/031-expire/spec.md'), '# The real one\n');
+  const ok = await capture(() => change.run(['plan', 'expire'], { cwd: b }));
+  assert.doesNotMatch(ok.out, /spec\.md is missing/, 'the numbered directory did not prove it');
+
+  // And two of them is a refusal naming both, not a coin toss on sort order.
+  mkdirSync(join(b, 'specs/032-expire'), { recursive: true });
+  writeFileSync(join(b, 'specs/032-expire/spec.md'), '# A stray\n');
+  const clash = await capture(() => change.run(['plan', 'expire'], { cwd: b }));
+  assert.match(clash.out, /matches more than one place in brain/);
+  assert.match(clash.out, /031-expire/);
+  assert.match(clash.out, /032-expire/);
 });
 
 test('land commits its own status bump — nothing is left floating', async () => {
