@@ -1,29 +1,43 @@
 ---
 slug: the-engine-reads-one-way-round-two
 status: open
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: branched
+landing_order:
+  - - brain
 invariants:
-  touches: []
+  touches:
+    - MV-71
+    - MV-109
   adds:
     - MV-116
   retires: []
-claims: []
+claims:
+  - id: MV-116
+    statement: "Both of MV-109's ceilings close: a heal never crosses the include's own file kind, so prose quoting a pattern is refused and named rather than becoming law; and a symlink or a gitlink is not file text, so it is enumerated by neither reader and cannot get two verdicts."
 ---
 
 # The engine reads one way, round two
 
-Declare repos, landing_order, invariants and claims in the frontmatter,
-then run `multivac change plan the-engine-reads-one-way-round-two`. For example:
+MV-109 stated two ceilings rather than closing them. Both close here.
 
-    # repos: { api: { status: planned } } — planned|branched|committed|mr|landed
-    # landing_order: [[api]] — stages; earlier stages land first
-    # claims: [{ id: <ID>, statement: "..." }] — what close verifies
+**Self-heal could rewrite a code glob onto prose.** The `moved` path searches
+the whole repo for a leg's pattern and rewrites the glob when it survives in
+exactly one other file. It was fenced only against `.multivac/`, so
+`site/`, `docs/` and `specs/` — every one of them prose that quotes patterns —
+were legal heal targets. Healing onto prose retargets law at text that merely
+talks about it, silently.
 
-Statements are prose: quote any value holding a colon —
-`statement: "staleness: block"`.
+The fence comes from the leg itself: a heal may not cross the include's own
+trailing extension. A `.ts` glob heals to a `.ts` file or does not heal. And
+when the fences empty the candidate list, the report says what was refused
+instead of claiming the pattern was found nowhere — a non-heal has to be
+debuggable.
 
-multivac owns the frontmatter formatting: every lifecycle step rewrites it, so
-hand-tuned layout will not survive, and a key it does not know is DROPPED
-rather than carried through. Declared values round-trip unchanged; the body,
-below the closing ---, is yours.
+**A symlink got two verdicts.** A working-tree read follows the link and sees
+the target's content; a ref read sees the link text. The same leg therefore
+answered differently depending on which context evaluated it — including for
+the `CLAUDE.md → AGENTS.md` door multivac installs itself. Git records mode
+`120000` for a symlink and `160000` for a gitlink; neither is file text, and
+both are filtered at the one point the two readers share.
