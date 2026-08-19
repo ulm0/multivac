@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { verify } from '../../src/commands/verify.js';
+import { run as gitRun } from '../../src/lib/git.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -137,4 +138,31 @@ test('a pathspec commit is judged on the paths it contains — MV-106', async ()
   execFileSync('git', ['-C', brain, 'commit', '-qm', 'only one.txt', '--', 'one.txt'], { stdio: 'pipe' });
 
   assert.equal(git(brain, 'show', '--name-only', '--format=', 'HEAD'), 'one.txt');
+});
+
+test("a sibling repo is still read through its own index — MV-106's other half", async () => {
+  // The reason the ambient pointers are dropped at all: a hook committing in
+  // one repo must not read another through that repo's index. This change
+  // narrows the drop, so the narrowing is what needs pinning — an ambient
+  // index belonging to A must not reach a read about B.
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-ambient-'));
+  const e = makeScratchEcosystem(tmp);
+  const other = e.repos.api;
+  writeFileSync(join(other, 'staged-in-api.txt'), 'x\n');
+  git(other, 'add', 'staged-in-api.txt');
+
+  const saved = process.env.GIT_INDEX_FILE;
+  process.env.GIT_INDEX_FILE = join(other, '.git/index');
+  try {
+    // Asked about the BRAIN while the ambient index is api's: api's staged
+    // path must not appear, because the index does not belong to the brain.
+    const staged = await gitRun(e.brain, ['diff', '--cached', '--name-only'], true);
+    assert.doesNotMatch(staged, /staged-in-api/, "the brain was read through api's index");
+    // And asked about api itself, the ambient index IS the right one.
+    const own = await gitRun(other, ['diff', '--cached', '--name-only'], true);
+    assert.match(own, /staged-in-api/, "api was not read through its own index");
+  } finally {
+    if (saved === undefined) delete process.env.GIT_INDEX_FILE;
+    else process.env.GIT_INDEX_FILE = saved;
+  }
 });

@@ -78,3 +78,7 @@ so is deleting one active row; retiring one is not.
 
 MVP is US1 + US3 together: they are the two silent-bypass halves, and they land
 in the same two files. US2 is one extra assertion once US1's read is correct.
+
+## Phase 7: Convergence
+
+- [X] T019 Assert FR-002 directly, per SC-006 (partial): with `GIT_INDEX_FILE` pointing at repo A's index, a read about repo B must still answer about B — the property `cleanEnv` exists for, and the one this change could silently break
