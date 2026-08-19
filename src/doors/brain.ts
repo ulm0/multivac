@@ -3,27 +3,19 @@
 import type { Config } from '../types.js';
 import { grapherSpec, sddSpec } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
+import { parseClaimRows } from '../anchor/parse.js';
 
 /**
  * Count non-retired data rows in the law table.
  * Zero means session zero: the door must say the brain is empty.
  */
 export function countActiveInvariants(md: string): number {
-  const rows = md
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith('|'));
-  if (rows.length === 0) return 0;
-  const header = rows[0].split('|').map((c) => c.trim().toLowerCase());
-  const stateCol = header.indexOf('state');
-  let n = 0;
-  for (const row of rows.slice(1)) {
-    const cells = row.split('|').map((c) => c.trim());
-    if (cells.every((c) => c === '' || /^:?-+:?$/.test(c))) continue; // separator
-    if (stateCol !== -1 && cells[stateCol]?.toLowerCase() === 'retired') continue;
-    n++;
-  }
-  return n;
+  // MV-119. This read the header for the `state` column and then indexed the
+  // DATA row at the position it found — right for a row whose statement has no
+  // pipe, wrong for every row that quotes one, and the header can never have
+  // one to warn you. The shared parser counts the trailing columns from the
+  // end, so the count is about the states the authors wrote.
+  return parseClaimRows(md).filter((r) => r.state.toLowerCase() !== 'retired').length;
 }
 
 /**

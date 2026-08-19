@@ -8,6 +8,8 @@ import { readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { LAW_PATH } from '../lib/config.js';
 import { ChangeError, changeRel } from './file.js';
+import { parseClaimRows } from '../anchor/parse.js';
+import type { ClaimRow } from '../anchor/parse.js';
 
 const lawPath = (brain: string): string => join(brain, LAW_PATH);
 
@@ -17,51 +19,27 @@ const lawPath = (brain: string): string => join(brain, LAW_PATH);
  */
 const lawRelChange = (slug: string): string => `changes/${slug}.md`;
 
-export interface LawRow {
-  id: string;
-  /** 2nd cell — a reservation still carries the scaffolded RESERVED text. */
-  statement: string;
-  state: string;
-  /** 5th cell — when the row last moved: the law's own high-water mark. */
-  date: string;
-  /** 6th cell — where the row came from; a reservation names the change file. */
-  source: string;
-}
+// MV-119. There was a second parser of the law table here, counting its four
+// cells from the left — `statement: cells[2]`, `state: cells[4]`,
+// `date: cells[5]`, `source: cells[6]` — while `parseClaimRows`' docstring
+// said a second parser is how the two eventually disagree about a row's state.
+// They did: for a row whose statement quotes a pipe, this one read prose as
+// the state, so the id-collision refusal below never fired. One parser now.
 
-/** Table rows of invariants.md: | ID | statement | authority | state | date | source | */
-export function lawRows(text: string): LawRow[] {
-  const rows: LawRow[] = [];
-  for (const line of text.split('\n')) {
-    const t = line.trim();
-    if (!t.startsWith('|') || /^[|\s:-]+$/.test(t)) continue;
-    const cells = t.split('|').map((c) => c.trim());
-    const id = cells[1] ?? '';
-    if (!id || id === 'ID') continue;
-    rows.push({
-      id,
-      statement: cells[2] ?? '',
-      state: cells[4] ?? '',
-      date: cells[5] ?? '',
-      source: cells[6] ?? '',
-    });
-  }
-  return rows;
-}
-
-export async function readLaw(brain: string): Promise<{ text: string; rows: LawRow[] } | null> {
+export async function readLaw(brain: string): Promise<{ text: string; rows: ClaimRow[] } | null> {
   let text: string;
   try {
     text = await readFile(lawPath(brain), 'utf8');
   } catch {
     return null;
   }
-  return { text, rows: lawRows(text) };
+  return { text, rows: parseClaimRows(text) };
 }
 
-const owns = (row: LawRow, slug: string): boolean => row.source.includes(lawRelChange(slug));
+const owns = (row: ClaimRow, slug: string): boolean => row.source.includes(lawRelChange(slug));
 
 /** Next unused ID, keeping the table's own prefix and zero padding (INV-01 default). */
-export function nextFreeId(rows: LawRow[]): string {
+export function nextFreeId(rows: ClaimRow[]): string {
   let prefix = 'INV';
   let width = 2;
   const taken = new Set(rows.map((r) => r.id));

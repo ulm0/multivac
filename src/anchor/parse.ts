@@ -212,10 +212,21 @@ export async function collectBrainAnchors(brainDir: string): Promise<ParseResult
   return result;
 }
 
-/** One law-table row, as far as verify cares: the join key and lifecycle state. */
+/**
+ * One law-table row: `| id | statement | authority | state | date | source |`.
+ *
+ * Every consumer of the table reads THIS shape — `verify`'s enactment and
+ * death checks, its gating predicate, `change`'s id reservation, the brain
+ * door's count. There were three parsers of it before MV-119 and they
+ * disagreed, which is the whole reason the fields live in one place.
+ */
 export interface ClaimRow {
   id: string;
+  statement: string;
+  authority: string;
   state: string;
+  date: string;
+  source: string;
 }
 
 /** Parse the law table out of invariants.md text. Empty text = zero claims. */
@@ -225,10 +236,34 @@ export function parseClaimRows(text: string): ClaimRow[] {
     const t = line.trim();
     if (!t.startsWith('|')) continue;
     if (/^[|\s:-]+$/.test(t)) continue; // separator row
-    const cells = t.split('|').map((c) => c.trim());
+    // Untrimmed, because the statement is rejoined below and a trim per piece
+    // would eat the spaces around the pipe it quotes.
+    const raw = t.split('|');
+    const cells = raw.map((c) => c.trim());
     const id = cells[1] ?? '';
     if (!id || id === 'ID') continue;
-    rows.push({ id, state: cells[4] ?? '' });
+    // MV-119. The trailing columns are counted from the END. The statement is
+    // prose about a command-line tool, so it quotes `||` and `2>&1 |`, and
+    // every such pipe used to move the four columns after it — `cells[4]` read
+    // the authority cell for MV-108 and read prose for MV-112, so both rows
+    // enacted invisibly and were deletable in silence. A date and a markdown
+    // link have no syntax for a pipe, so the end is the one edge that holds.
+    // Below six columns nothing is claimed: an incomplete row must not read a
+    // neighbour's cell as its state.
+    if (cells.length < 8) {
+      rows.push({ id, statement: '', authority: '', state: '', date: '', source: '' });
+      continue;
+    }
+    rows.push({
+      id,
+      // What is left once both ends are known — rejoined, because a body that
+      // contains a pipe was split by one.
+      statement: raw.slice(2, -5).join('|').trim(),
+      authority: cells[cells.length - 5] ?? '',
+      state: cells[cells.length - 4] ?? '',
+      date: cells[cells.length - 3] ?? '',
+      source: cells[cells.length - 2] ?? '',
+    });
   }
   return rows;
 }
