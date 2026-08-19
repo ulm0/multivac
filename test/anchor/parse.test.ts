@@ -7,6 +7,7 @@ import {
   parseAnchors,
   collectBrainAnchors,
   readClaimRows,
+  parseClaimRows,
 } from '../../src/anchor/parse.js';
 
 test('parses the full grammar: legs, excludes, flags, modes', () => {
@@ -170,11 +171,60 @@ test('readClaimRows parses the law table, skipping header and separator', async 
   );
   const rows = await readClaimRows(brain);
   assert.deepEqual(rows, [
-    { id: 'INV-01', state: 'active' },
-    { id: 'INV-02', state: 'retired' },
+    {
+      id: 'INV-01',
+      statement: 'no writes to ledger',
+      authority: 'published',
+      state: 'active',
+      date: '2026-01-01',
+      source: 'x',
+    },
+    {
+      id: 'INV-02',
+      statement: 'old flow gone',
+      authority: 'published',
+      state: 'retired',
+      date: '2026-02-01',
+      source: 'y',
+    },
   ]);
   // missing file = zero claims, not an error
   assert.deepEqual(await readClaimRows(mkdtempSync(join(tmpdir(), 'mvac-empty-'))), []);
+});
+
+// MV-119. The fixture above cannot tell the two arithmetics apart: its
+// statements contain no `|`, so the fourth cell from the front and the fourth
+// from the back are the SAME cell. That is why nothing caught the defect for
+// fourteen rows — the corpus that exercised it was the real law file, which no
+// test parsed. This one uses the input that separates the readings.
+test('a statement that quotes a pipe does not move the columns after it', () => {
+  const rows = parseClaimRows(
+    [
+      '| ID | statement | authority | state | date | source |',
+      '| --- | --- | --- | --- | --- | --- |',
+      '| MV-01 | the hook runs `mvac verify 2>&1 || true` | measured | proposed | 2026-01-01 | [a](a.md) |',
+      '| MV-02 | plain prose | measured | active | 2026-01-02 | [b](b.md) |',
+      '| MV-03 | a table of its own: `| x | y |` | measured | retired | 2026-01-03 | [c](c.md) |',
+      '| MV-04 | short row missing its columns |',
+    ].join('\n'),
+  );
+  assert.deepEqual(
+    rows.map((r) => [r.id, r.state]),
+    [
+      ['MV-01', 'proposed'],
+      ['MV-02', 'active'],
+      ['MV-03', 'retired'],
+      ['MV-04', ''],
+    ],
+  );
+  // The statement is rejoined, not truncated at the first pipe: `change plan`
+  // reads it to tell a reservation from a stated row.
+  assert.equal(rows[0].statement, 'the hook runs `mvac verify 2>&1 || true`');
+  assert.equal(rows[2].statement, 'a table of its own: `| x | y |`');
+  assert.equal(rows[0].source, '[a](a.md)');
+  // A row that does not carry its trailing columns claims nothing, rather than
+  // reading a neighbour's cell as its state.
+  assert.equal(rows[3].source, '');
 });
 
 test('code blocks are documentation, not law: fenced and indented anchors are skipped', () => {
