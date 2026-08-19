@@ -615,7 +615,12 @@ There is no ratchet line: `each` has no count to pin.
 
 ## `doors`
 
-Takes **no flags.** Anything after `doors` is ignored.
+Takes one flag, `--adopt`, and REFUSES anything else with exit 2 (MV-85):
+nothing after `doors` is ignored.
+
+| flag | effect |
+| --- | --- |
+| `--adopt` | re-project **and** record the version that did it in `.multivac/projected.yml`, which is what clears MV-86's skew notice. Bare `doors` re-projects and leaves the record alone, on purpose: people run `doors` after editing `doors:` or `grapher:`, and restamping there would make the notice vanish for a reason unrelated to the upgrade. |
 
 ```txt
 $ mvac doors
@@ -946,7 +951,7 @@ tree stays clean, pulls are never blocked on lifecycle edits, and a concurrent
 paths is refused with the exact command that unblocks it:
 
 ```txt
-cannot open points-expire — bookkeeping paths carry uncommitted edits: .multivac/invariants.md
+cannot open points-expire — bookkeeping paths are untracked or modified: .multivac/invariants.md
   commit them first: git -C /home/you/brain add -- .multivac/invariants.md && git commit
   then re-run: multivac change new points-expire "points expire"
 ```

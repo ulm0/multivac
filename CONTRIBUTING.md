@@ -67,8 +67,9 @@ directly.
 - **Tests with behavior.** `node:test`, no frameworks. If it branches, loops,
   parses, or touches git, it ships with a test.
 - **`pnpm test` and `verify --strict` green** before you open the MR.
-- **Two runtime dependencies.** `yaml` and `picomatch`, and an invariant pins
-  that number. Adding a third is a conversation, not a commit.
+- **A pinned runtime dependency count.** MV-02 states the number and the names;
+  read it there rather than here. Adding one more is a conversation, not a
+  commit — and the row moves before the package does.
 - **Deterministic core.** `verify`, `doctor` and `doors` make no network calls
   and never invoke a model. The only LLM touchpoints are optional helpers.
 - **Sub-second `verify`.** It runs in a pre-commit hook. Enumerate files with

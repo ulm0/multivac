@@ -1,5 +1,19 @@
 <!--
 Sync Impact Report
+Version change: 2.0.0 → 2.0.1 (PATCH — a statement of fact corrected; no
+principle added, removed or redefined)
+Modified principles: none in force. Principle IV's TEXT still said "the runtime
+dependency count is two" after 2.0.0 moved it to three in Engineering
+Constraints — one document answering the same question two ways, which is the
+failure this project calls "a paraphrase ages silently". IV now cites MV-02
+rather than restating the number, so the next amendment cannot leave it behind.
+Modified sections: Core Principles / IV. Deterministic, Offline, Small
+Templates requiring update: none
+Follow-up TODOs: none
+-->
+
+<!--
+Sync Impact Report
 Version change: 1.0.1 → 2.0.0 (MAJOR — a constraint is redefined: the runtime
 dependency count moves from two to three, with the third named)
 Modified principles: none — I to V are unchanged in wording and in force
@@ -94,8 +108,9 @@ decoration. Ordering the edit the other way is what keeps a citation checkable.
 model; freshness is bought only in an explicit command that says it fetches.
 `verify` MUST stay sub-second and enumerate through `git ls-files` rather than
 walking the tree, because it runs in a pre-commit hook. Git MUST run through an
-argument vector, never a shell. The runtime dependency count is two; a third is
-a design change, not a convenience. Tests MUST NOT depend on host configuration.
+argument vector, never a shell. The runtime dependency count is pinned by an
+invariant — MV-02, currently three — and the next one is a design change, not a
+convenience. Tests MUST NOT depend on host configuration.
 
 Rationale: a gate that is slow gets bypassed, and a gate that reaches the
 network fails for reasons that have nothing to do with the code it is judging.

@@ -95,9 +95,11 @@ See [Hooks](../../reference/hooks).
 $ mvac --version
 ```
 
-It prints the version in the package you installed. The site says the same
-number one page up, because a test holds the two equal (MV-77) and a release
-cannot publish under a tag that disagrees with the manifest (MV-68).
+It prints the version in the package you installed. The site does not repeat
+that number anywhere — MV-84 keeps every version string off these pages, so
+there is nothing here to fall out of step. What holds the published version
+honest is MV-68: a release cannot publish under a tag that disagrees with the
+manifest.
 
 ```txt
 $ mvac --help

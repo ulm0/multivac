@@ -21,6 +21,7 @@ init: wrote .multivac/ritual.md — empty; what you write there, `change close` 
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
 
 init: done — the brain is scaffolded and empty. Session zero fills it:
+init:   0. commit what was just written: git add -A && git commit -m "multivac init"
 init:   1. load the multivac skill in your agent — it carries both protocols
 init:   2. interview — no code here yet, so the law comes from a human, claim by claim
 init:   3. a human enacts each row in .multivac/invariants.md, then `multivac verify`

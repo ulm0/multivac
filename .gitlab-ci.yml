@@ -11,7 +11,7 @@ stages:
 test:
   stage: test
   image: node:24
-  # A tag runs the publish job and nothing else. The commit a tag names has
+  # A tag SKIPS this job. The commit a tag names has
   # already been through this job on its way to main, so re-running it here is
   # duplication that only delays the release and adds a second way for it to
   # fail.
@@ -38,7 +38,7 @@ test:
 selfverify:
   stage: test
   image: node:24
-  # A tag runs the publish job and nothing else. The commit a tag names has
+  # A tag SKIPS this job. The commit a tag names has
   # already been through the test job and this one on its way to main, so re-running it here is
   # duplication that only delays the release and adds a second way for it to
   # fail.

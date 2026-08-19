@@ -158,7 +158,7 @@ test('new refuses a tree that is dirty at the bookkeeping paths, naming the comm
   }
   assert.equal(code, 1);
   const msg = lines.join('\n');
-  assert.match(msg, /bookkeeping paths carry uncommitted edits: \.multivac\/invariants\.md/);
+  assert.match(msg, /bookkeeping paths are untracked or modified: \.multivac\/invariants\.md/);
   assert.match(msg, /git -C .* add -- \.multivac\/invariants\.md && git commit/);
   assert.ok(!existsSync(join(eco.brain, '.multivac/changes/blocked-open.md')), 'nothing scaffolded');
   execFileSync('git', ['-C', eco.brain, 'checkout', '--', '.multivac/invariants.md']);

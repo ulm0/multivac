@@ -1134,6 +1134,14 @@ authority is **surfaced metadata plus procedural review**: printed with
 every claim in reports, and gating who may enact (the agent proposes, the
 human enacts) — `verify` never interprets the labels mechanically.
 
+
+> **Naming note (2026-08-19, MV-111).** This document calls the registry
+> `targets.yml` in several places. It never shipped under that name: the data
+> lives in `src/adapters/registry.ts`, as a typed literal rather than a YAML
+> file, so it is type-checked and travels in the tarball with the code that
+> reads it. The passages below are the design record and are left as written;
+> what SHIPS is the registry module.
+
 ## Dependencies
 
 **`multivac` never installs anything, and no absent adapter turns `verify` red.**
@@ -1173,7 +1181,7 @@ crashing (the pattern graphify itself uses: "skill is from 0.9.21, package is
 
 ### One registry, tool-shipped
 
-`targets.yml` is **adapter data shipped inside the multivac package**, not a
+The adapter registry is **data shipped inside the multivac package**, not a
 project file: the harness door targets (`{ path, format, frontmatter? }`),
 the skills, and the sdd/grapher adapters live in the same registry. Extending it is an
 MR to multivac itself — adding Codex, or a new SDD tool, is an entry, not a
