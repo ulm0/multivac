@@ -192,7 +192,7 @@ async function projectInto(
   if (grapher !== undefined && spec === null) notices.push(unverifiedGrapher(grapher));
   const refresh = spec !== null && (await binaryPresent(spec)) ? spec.refresh : null;
   const doorFile = join(dir, 'AGENTS.md');
-  await writeFile(doorFile, applyManagedBlock(await readOrNull(doorFile), body));
+  await writeFile(doorFile, applyManagedBlock(await readOrNull(doorFile), body, doorFile));
   // Dispatch on the registry entry's kind, never on its name: a new harness
   // is an entry in src/adapters/registry.ts and nothing else.
   for (const target of config.doors) {
@@ -208,15 +208,20 @@ async function projectInto(
       const linkNotice = linkDoor(dir, t.door);
       if (linkNotice) notices.push(linkNotice);
     } else if (t.kind === 'stub') {
-      // Tool-owned stub file: frontmatter where the format needs one, then
-      // the managed block.
+      // Tool-owned stub file — but the file is not multivac's, only the block
+      // inside it is (MV-108). Writing it whole destroyed whatever the
+      // operator had put there, on every run, twenty lines below the branch
+      // that already reads first. Frontmatter is written only on creation:
+      // adding it to a file somebody else authored would rewrite their head.
       const file = join(dir, t.door);
       await mkdir(dirname(file), { recursive: true });
+      const existing = await readOrNull(file);
       const stub = applyManagedBlock(
-        null,
+        existing,
         'Read `AGENTS.md` at the repo root — the multivac door: what is law here, where the brain lives. Run `multivac verify` before you commit.',
+        file,
       );
-      await writeFile(file, t.frontmatter ? `${t.frontmatter}\n\n${stub}` : stub);
+      await writeFile(file, existing === null && t.frontmatter ? `${t.frontmatter}\n\n${stub}` : stub);
     }
     if (t.skill) installSkill(dir, t.skill, notices);
     if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, notices);
@@ -277,7 +282,7 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
   // the operator's and is never overwritten, this is the tool's and always is.
   // Through the managed block so anything written outside it survives.
   const flowFile = join(brainDir, FLOW_PATH);
-  await writeFile(flowFile, applyManagedBlock(await readOrNull(flowFile), renderFlow(config)));
+  await writeFile(flowFile, applyManagedBlock(await readOrNull(flowFile), renderFlow(config), flowFile));
   say(`brain: ${FLOW_PATH} — what your declarations oblige, sorted; generated, binds nothing`);
 
   // Per repo, not once for all of them: MV-90 resolves the graph block with the

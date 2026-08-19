@@ -77,6 +77,7 @@ export async function findRunner(repo: string): Promise<string | null> {
   if (
     (await pathExists(join(repo, 'dist/cli.js'))) &&
     (await pathExists(join(repo, 'node_modules'))) &&
+    (await buildsMultivac(repo)) &&
     (await onPath('node'))
   ) {
     return 'node dist/cli.js';
@@ -136,10 +137,38 @@ export async function preCommitGate(
  * - inside a foreign hooksPath dir (`chain` null): root comes from git, not
  *   from $0 arithmetic, because the directory depth is not ours to know.
  */
+/**
+ * MV-108. The line every shim multivac writes carries, and the only thing that
+ * makes a hook file identifiably OURS. A hook without it belongs to somebody
+ * else whatever words it contains; a hook with it says, in its own text, that
+ * it is regenerated rather than edited.
+ */
+export const SHIM_HEADER = '# multivac hook shim — managed by `multivac doors`; regenerate, do not edit.';
+
+/** True when multivac wrote this hook, and may therefore rewrite it. */
+export const isOurShim = (text: string): boolean => text.includes(SHIM_HEADER);
+
+/**
+ * MV-108. Does this hook RUN multivac, as opposed to mentioning it?
+ *
+ * It used to be `/\bmvac\b|multivac/` over the whole file, hand-copied into
+ * two readers — so `# TODO: wire up multivac` reported the hook as wired and
+ * armed `doctor --strict` over a gate that does not exist. The rule is the
+ * smallest one that separates a wired hook from a hook that talks about being
+ * wired: the mention must be on a line that is not a comment. Deliberately not
+ * a shell parser, and deliberately not an exact-line match — people wire it in
+ * their own words, and refusing those would teach them to turn the check off.
+ */
+export function runsMultivac(text: string): boolean {
+  return text
+    .split('\n')
+    .some((l) => !l.trimStart().startsWith('#') && /\bmvac\b|multivac/.test(l));
+}
+
 function shim(args: string, chain: HookName | null): string {
   return [
     '#!/bin/sh',
-    '# multivac hook shim — managed by `multivac doors`; regenerate, do not edit.',
+    SHIM_HEADER,
     ...(chain
       ? ["# Chains the repo's own .git/hooks hook first; its exit code wins."]
       : []),
@@ -166,7 +195,12 @@ function shim(args: string, chain: HookName | null): string {
           'fi',
         ]
       : ['root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0']),
-    'if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && command -v node >/dev/null 2>&1; then',
+    '# The build is used only when this repo IS multivac: `dist/cli.js` plus',
+    '# node_modules describes most Node CLI repos, and running THEIR binary as',
+    '# multivac is the tool executing somebody else\'s program under its own name.',
+    'if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && \\',
+    '   grep -q \'"name"[[:space:]]*:[[:space:]]*"multivac"\' "$root/package.json" 2>/dev/null && \\',
+    '   command -v node >/dev/null 2>&1; then',
     `  exec node "$root/dist/cli.js" ${args}`,
     'fi',
     'if [ -f "$root/node_modules/multivac/package.json" ] && command -v npx >/dev/null 2>&1; then',
@@ -301,11 +335,14 @@ async function installAlongside(
   for (const name of HOOK_NAMES) {
     const file = join(base, name);
     const existing = await readFile(file, 'utf8').catch(() => null);
-    if (existing === null) {
+    if (existing === null || isOurShim(existing)) {
+      // MV-108: ours is regenerated, so `strict_pre_push` and every later shim
+      // fix reach a repo that already has one. Recognising it only as
+      // "mentions multivac" froze it at whatever version wrote it first.
       await writeFile(file, shim(verifyArgs(name, strictPrePush), null));
       await chmod(file, 0o755);
       report.installed.push(name);
-    } else if (/\bmvac\b|multivac/.test(existing)) {
+    } else if (runsMultivac(existing)) {
       report.wired.push(`${dir}/${name}`);
     } else {
       report.refused.push({
@@ -371,4 +408,17 @@ export async function installHooks(
     preCommit: await preCommitGate(repo, chained),
     refused: [],
   };
+}
+
+/**
+ * MV-108. Does this repo build multivac itself?
+ *
+ * The one fact that separates "this repo's build IS the tool" from "this repo
+ * builds a CLI": its own package.json says so. Read as text rather than parsed
+ * — the shim asks the same question with `grep`, and the two sides of that
+ * mirror have to agree (MV-92).
+ */
+async function buildsMultivac(repo: string): Promise<boolean> {
+  const text = await readFile(join(repo, 'package.json'), 'utf8').catch(() => null);
+  return text !== null && /"name"\s*:\s*"multivac"/.test(text);
 }

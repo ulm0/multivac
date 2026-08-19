@@ -45,6 +45,7 @@ import {
   findRunner,
   preCommitGate,
   resolveHooksPath,
+  runsMultivac,
 } from '../hooks/install.js';
 import { collectBrainAnchors } from '../anchor/parse.js';
 import { excludeGlobs, makeMatcher } from '../lib/glob.js';
@@ -484,7 +485,7 @@ async function alongsideParts(
     if (text === null) {
       installed = false;
       parts.push(`${shim} missing in ${dir} → run \`multivac init .\` to install alongside`);
-    } else if (/\bmvac\b|multivac/.test(text)) {
+    } else if (runsMultivac(text)) {
       parts.push(`${shim} runs multivac (${dir}/${shim})`);
     } else {
       installed = false;

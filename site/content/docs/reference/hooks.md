@@ -27,9 +27,17 @@ reports the lie to its next reader, with the code already written on top.
 
 The shim tries three, most specific first, and the first one available wins:
 
-1. **`<repo>/dist/cli.js`** — the multivac built in this repository
+1. **`<repo>/dist/cli.js`** — the multivac built in this repository, and only
+   when that repository's `package.json` names multivac (MV-108)
 2. **`<repo>/node_modules/multivac`** — the multivac this repository declares
 3. **`mvac` on PATH** — whatever the machine has
+
+The name test on the first rung is not caution, it is identity: `dist/cli.js`
+plus `node_modules` describes an enormous share of Node CLI repositories, and
+without it a multivac hook executed **that project's** binary with `verify` as
+its argument. What this order chooses is WHICH multivac runs; it says nothing
+about whether that build is current, and MV-92 states that ceiling rather than
+implying it away.
 
 A repository that builds or declares a multivac has said which one governs it;
 what is installed globally is whatever that machine happens to have. The order
@@ -59,7 +67,9 @@ Two files, both this shim:
 #!/bin/sh
 # multivac hook shim — managed by `multivac doors`; regenerate, do not edit.
 # Chains the repo's own .git/hooks hook first; its exit code wins.
-# Runner order: mvac on PATH, npx --no-install, repo-local build. No runnable
+# Runner order, most specific first: this repo's build, its declared
+# dependency, then mvac on PATH. A repo that builds or declares a multivac
+# has said which one governs it; PATH is whatever the machine has. No runnable
 # multivac never blocks a commit: it warns loudly and exits 0.
 case $0 in */*) hookdir=${0%/*} ;; *) hookdir=. ;; esac
 root=$(CDPATH= cd -- "$hookdir/../.." && pwd) || exit 0
@@ -75,14 +85,19 @@ elif [ -f "$root/.pre-commit-config.yaml" ]; then
     echo "multivac: .pre-commit-config.yaml present but pre-commit is not installed — the project's gate did NOT run. Fix: install pre-commit (pipx install pre-commit, or brew install pre-commit)" >&2
   fi
 fi
-if command -v mvac >/dev/null 2>&1; then
-  exec mvac verify
+# The build is used only when this repo IS multivac: `dist/cli.js` plus
+# node_modules describes most Node CLI repos, and running THEIR binary as
+# multivac is the tool executing somebody else's program under its own name.
+if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && \
+   grep -q '"name"[[:space:]]*:[[:space:]]*"multivac"' "$root/package.json" 2>/dev/null && \
+   command -v node >/dev/null 2>&1; then
+  exec node "$root/dist/cli.js" verify
 fi
 if [ -f "$root/node_modules/multivac/package.json" ] && command -v npx >/dev/null 2>&1; then
   exec npx --no-install multivac verify
 fi
-if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && command -v node >/dev/null 2>&1; then
-  exec node "$root/dist/cli.js" verify
+if command -v mvac >/dev/null 2>&1; then
+  exec mvac verify
 fi
 echo "multivac: hooks INACTIVE — no runnable multivac, nothing was verified. Fix: install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)" >&2
 exit 0
