@@ -1,6 +1,6 @@
 ---
 slug: a-paraphrase-ages-silently
-status: open
+status: archived
 repos:
   brain:
     status: landed
