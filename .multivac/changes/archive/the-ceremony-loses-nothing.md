@@ -1,6 +1,6 @@
 ---
 slug: the-ceremony-loses-nothing
-status: open
+status: archived
 repos:
   brain:
     status: landed
