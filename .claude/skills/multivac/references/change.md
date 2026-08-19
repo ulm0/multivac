@@ -206,9 +206,9 @@ that proves it ran, and the next lifecycle command refuses without it.**
 
 | refuses | until |
 | --- | --- |
-| `change plan` | the propose-equivalent artifact exists (`openspec/changes/<slug>/proposal.md`, `specs/*-<slug>/spec.md`) |
+| `change plan` | the propose-equivalent artifact exists (`openspec/changes/<slug>/proposal.md`, `specs/<n>-<slug>/spec.md`) |
 | `change apply` | the plan/tasks artifact exists (`.../tasks.md`, and for spec-kit `.../plan.md` too) |
-| `change close` | the archive-equivalent has happened (`openspec/changes/archive/*-<slug>`) |
+| `change close` | the archive-equivalent has happened (`openspec/changes/archive/<n>-<n>-<n>-<slug>`) |
 
 Every refusal names the path it looked for and the exact command to run, so
 the fix is the line above the error. When the tool ships its own validator its

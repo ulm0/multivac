@@ -17,9 +17,9 @@ this describes what it and the declared adapters already do.
 - `change plan` refuses while a declared repo is missing from `landing_order`
 - `change close` refuses while a declared claim does not resolve
 - `verify` refuses a commit whose anchors are broken — it runs in the pre-commit hook
-- `change plan` refuses without `specs/*-<slug>/spec.md`
-- `change apply` refuses without `specs/*-<slug>/plan.md`
-- `change apply` refuses without `specs/*-<slug>/tasks.md`
+- `change plan` refuses without `specs/<n>-<slug>/spec.md`
+- `change apply` refuses without `specs/<n>-<slug>/plan.md`
+- `change apply` refuses without `specs/<n>-<slug>/tasks.md`
 - `change close` refuses while a declared, present repo has no `graphify-out/graph.json`
 
 ## Yours — nobody can check these

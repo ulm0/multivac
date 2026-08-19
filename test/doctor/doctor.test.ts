@@ -113,7 +113,7 @@ repos:
     assert.match(all, /ungateable: apply leaves no artifact of its own/);
     // ...and one line says exactly which lifecycle commands refuse.
     assert.match(all, /gates — change plan: refuses without openspec\/changes\/<slug>\/proposal\.md/);
-    assert.match(all, /change close: refuses without openspec\/changes\/archive\/\*-<slug>/);
+    assert.match(all, /change close: refuses without openspec\/changes\/archive\/<n>-<n>-<n>-<slug>/);
     // OpenSpec has no project-level document; doctor says so rather than inventing one.
     assert.match(all, /project law — this tool has no project-level document/);
   } finally {

@@ -98,27 +98,38 @@ export async function sddRoots(brain: string, cfg: Config): Promise<SddRoot[]> {
 }
 
 /**
- * Does `rel` exist under `root`? A single `*` inside one path segment is
- * matched by readdir — spec-kit numbers its own feature directory
- * (`specs/003-user-auth/`), so the exact path is unknowable in advance.
- * Returns the resolved repo-relative path that hit, or null.
+ * Every path under `root` that proves `rel`. `<n>` stands for one run of
+ * digits and nothing else — spec-kit numbers its feature directory
+ * (`specs/003-user-auth/`), openspec dates its archive (`2026-08-19-<slug>`)
+ * — so the exact name is unknowable in advance but its SHAPE is not. The one
+ * segment carrying `<n>` is matched by readdir, and `[0-9]+` cannot cross the
+ * `-` separator, which is what ends the tail match MV-110 measured:
+ * `^.*-expire$` took `030-points-expire`, so slug `expire` was proved by
+ * another feature's directory. `*` is gone from this language rather than
+ * merely unused — a wildcard that can swallow `030-points` IS the syntax the
+ * defect was made of — and a stray star now matches a literal star.
+ *
+ * ALL hits come back, sorted. Choosing among several is a refusal the GATE
+ * owes the operator by name: a probe that took the first in sort order let an
+ * older foreign directory shadow the right one, silently.
  */
-export async function artifactHit(root: string, rel: string): Promise<string | null> {
-  if (!rel.includes('*')) return (await pathExists(join(root, rel))) ? rel : null;
+export async function artifactHit(root: string, rel: string): Promise<string[]> {
+  if (!rel.includes('<n>')) return (await pathExists(join(root, rel))) ? [rel] : [];
   const parts = rel.split('/');
-  const i = parts.findIndex((s) => s.includes('*'));
+  const i = parts.findIndex((s) => s.includes('<n>'));
   const re = new RegExp(
-    `^${parts[i].replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
+    `^${parts[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replaceAll('<n>', '[0-9]+')}$`,
   );
   const parent = join(root, ...parts.slice(0, i));
   const rest = parts.slice(i + 1);
+  const hits: string[] = [];
   for (const name of (await readdir(parent).catch(() => [])).sort()) {
     if (!re.test(name)) continue;
     if (await pathExists(join(parent, name, ...rest))) {
-      return [...parts.slice(0, i), name, ...rest].join('/');
+      hits.push([...parts.slice(0, i), name, ...rest].join('/'));
     }
   }
-  return null;
+  return hits;
 }
 
 /** True when `bin` is executable on PATH — the hook shim's `command -v`, in Node. */
