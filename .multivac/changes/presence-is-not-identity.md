@@ -3,7 +3,7 @@ slug: presence-is-not-identity
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
