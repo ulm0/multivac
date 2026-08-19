@@ -540,7 +540,7 @@ async function brainAtChannel(
  * cannot be resolved falls back to the working tree and SAYS SO — never a
  * silent change of meaning.
  */
-async function resolveSources(
+export async function resolveSources(
   brainDir: string,
   cfg: Config,
   worktreeMode: boolean,

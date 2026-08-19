@@ -7,6 +7,7 @@
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { parseAnchors } from '../anchor/parse.js';
+import { resolveSources } from './verify.js';
 import { RepoScanner, scanLeg } from '../anchor/match.js';
 import { loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
 import { realPath } from '../lib/paths.js';
@@ -82,24 +83,26 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     return 2;
   }
 
-  // Targets exactly as verify builds them: declared repos plus the brain,
-  // one scan per real directory (an alias key is the same tree).
-  const handles = [
-    ...Object.entries(cfg.repos)
-      .filter(([key]) => key !== 'brain')
-      .map(([key, e]) => ({ key, dir: resolve(brainDir, e.path) })),
-    { key: 'brain', dir: brainDir },
-  ].filter((h) => existsSync(h.dir));
+  // MV-109: the SAME resolution verify uses, not a copy of it. This loop used
+  // to be hand-written under a comment claiming it was "exactly as verify
+  // builds them" — and it built them without a ref, so count read working trees
+  // while verify read each sibling at its channel (MV-53). A `count=N` pinned
+  // from here could therefore disagree with the number the gate computes, and
+  // nothing on screen said why. Copying is what drifted; calling cannot.
   const seen = new Set<string>();
-  const targets = handles.filter((h) => {
-    if (a.repoKey !== '*' && h.key !== a.repoKey) return false;
+  const targets = (await resolveSources(brainDir, cfg, false)).filter((t) => {
+    if (t.dir === null) return false;
+    if (a.repoKey !== '*' && t.key !== a.repoKey) return false;
     if (a.repoKey === '*') {
-      const p = realPath(h.dir);
+      const p = realPath(t.dir);
       if (seen.has(p)) return false;
       seen.add(p);
     }
     return true;
-  });
+  }) as Array<{ key: string; dir: string; ref?: string; line: string }>;
+  // What was read, in verify's own sentence: a number that goes into the law
+  // has to say which bytes produced it.
+  for (const t of targets) say(`  read      ${t.line}`);
   if (targets.length === 0) {
     warn(`repo "${a.repoKey}" is declared but not on disk — run \`multivac repos sync\``);
     return 2;
@@ -111,7 +114,7 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
   const each = a.mode === 'each';
   const star = a.repoKey === '*';
   for (const t of targets) {
-    const scan = await scanLeg(a, new RepoScanner(t.dir), [t.key]);
+    const scan = await scanLeg(a, new RepoScanner(t.dir, t.ref), [t.key]);
     files += scan.globFiles.length;
     const perFile = new Map<string, number>();
     for (const m of scan.matches) perFile.set(m.file, (perFile.get(m.file) ?? 0) + 1);
