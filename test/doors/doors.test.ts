@@ -150,7 +150,7 @@ test('claude target: symlink + settings merge preserving foreign keys', async ()
   };
   assert.equal(merged.model, 'opus');
   assert.ok(merged.hooks.Stop); // foreign event preserved
-  assert.equal(merged.hooks.SessionStart[0].hooks[0].command, 'mvac verify');
+  assert.equal(merged.hooks.SessionStart[0].hooks[0].command, 'mvac verify 2>&1 || true');
 });
 
 test('cursor target: stub with frontmatter, no unknown-target notice', async () => {

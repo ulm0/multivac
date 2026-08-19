@@ -13,32 +13,32 @@ captures merge both streams, so a channel regression is invisible to them.
 
 ## Phase 1: Setup
 
-- [ ] T001 Baseline: `pnpm run build && pnpm test`, record the count
-- [ ] T002 Measure the three commands against a stub on a constructed PATH, per quickstart.md
+- [X] T001 Baseline: `pnpm run build && pnpm test`, record the count
+- [X] T002 Measure the three commands against a stub on a constructed PATH, per quickstart.md
 
 ## Phase 2: Foundational
 
-- [ ] T003 Write MV-112 in `.multivac/invariants.md` with its anchors, including the ceilings the row must state
+- [X] T003 Write MV-112 in `.multivac/invariants.md` with its anchors, including the ceilings the row must state
 
 ## Phase 3: User Stories 1 and 2 — the two channels (P1)
 
-- [ ] T004 [US1] In `src/doors/settings.ts`, replace `HOOK_CMD` with `VERIFY` plus `SESSION_GATE` and `EDIT_GATE`, each carrying the contract in its comment — the comments are what MV-112 pins
-- [ ] T005 [US1] Project `SESSION_GATE` at `SessionStart` and `EDIT_GATE` at `PostToolUse`
-- [ ] T006 [US1] Update the module header and the duplicate notice to name the engine rather than the removed constant
-- [ ] T007 [US1] In `test/doors/settings.test.ts`, add the runnable proof: a stub `mvac` on a CONSTRUCTED PATH, both commands executed, exit codes and streams asserted, including the no-binary case
+- [X] T004 [US1] In `src/doors/settings.ts`, replace `HOOK_CMD` with `VERIFY` plus `SESSION_GATE` and `EDIT_GATE`, each carrying the contract in its comment — the comments are what MV-112 pins
+- [X] T005 [US1] Project `SESSION_GATE` at `SessionStart` and `EDIT_GATE` at `PostToolUse`
+- [X] T006 [US1] Update the module header and the duplicate notice to name the engine rather than the removed constant
+- [X] T007 [US1] In `test/doors/settings.test.ts`, add the runnable proof: a stub `mvac` on a CONSTRUCTED PATH, both commands executed, exit codes and streams asserted, including the no-binary case
 
 ## Phase 4: User Story 3 — an existing brain upgrades (P1)
 
-- [ ] T008 [US3] Widen `ownsVerify` to the three exact strings, with the upgrade path in its comment
-- [ ] T009 [US3] In `test/doors/settings.test.ts`, assert a legacy bare entry on each event is rewritten in place, one entry, matcher untouched, and that a second merge is byte-identical
-- [ ] T010 [US3] Update the existing assertions that quote the bare command, in `settings.test.ts` and `doors.test.ts`
+- [X] T008 [US3] Widen `ownsVerify` to the three exact strings, with the upgrade path in its comment
+- [X] T009 [US3] In `test/doors/settings.test.ts`, assert a legacy bare entry on each event is rewritten in place, one entry, matcher untouched, and that a second merge is byte-identical
+- [X] T010 [US3] Update the existing assertions that quote the bare command, in `settings.test.ts` and `doors.test.ts`
 
 ## Phase 5: Polish & Cross-Cutting
 
-- [ ] T011 Re-project this repository's own `.claude/settings.json` by running `doors` — never by hand — and commit it
-- [ ] T012 Update `site/content/docs/reference/hooks.md` and `integrations.md` so they quote what is projected, with the reason
-- [ ] T013 `pnpm test` green with `mvac` off PATH, the way CI runs it
-- [ ] T014 `node dist/cli.js verify --strict` 0 blocking broken, MV-112 anchored
+- [X] T011 Re-project this repository's own `.claude/settings.json` by running `doors` — never by hand — and commit it
+- [X] T012 Update `site/content/docs/reference/hooks.md` and `integrations.md` so they quote what is projected, with the reason
+- [X] T013 `pnpm test` green with `mvac` off PATH, the way CI runs it
+- [X] T014 `node dist/cli.js verify --strict` 0 blocking broken, MV-112 anchored
 
 ## Dependencies
 

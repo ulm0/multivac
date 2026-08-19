@@ -2,11 +2,44 @@
 // preserve every key and entry we don't own. Idempotent.
 //
 // Two entries, two different jobs. `verify` is the gate: it runs at session
-// start and after edits. The grapher refresh is NOT a gate — it is the
-// agent's navigation aid, so it follows the agent's edits rather than the
-// commit: fire-and-forget, output discarded, exit 0 whatever the tool did.
+// start and after edits, each event wrapped for the one channel Claude Code
+// reads back (SESSION_GATE / EDIT_GATE below). The grapher refresh is NOT a
+// gate — it is the agent's navigation aid, so it follows the agent's edits
+// rather than the commit: fire-and-forget, output discarded, exit 0 whatever
+// the tool did.
 
-const HOOK_CMD = 'mvac verify';
+/** The gate's engine — both gate commands below run exactly this. */
+const VERIFY = 'mvac verify';
+
+// MV-112. The wrappers are the delivery, not decoration. Claude Code's hook
+// contract feeds the model ONLY exit-0 stdout at SessionStart and ONLY exit-2
+// stderr at PostToolUse; every other exit shows stderr to the user and gives
+// the model nothing. The bare command both events ran until this row exits 1
+// with its findings on stdout — so on the one occasion the gate had something
+// to say, neither event delivered a byte of it. Measured with a stub on a
+// constructed PATH, not inferred.
+
+/**
+ * SessionStart: stderr merged into stdout, exit forced to 0 — findings are the
+ * payload, and exit-0 stdout is the only channel that carries them into the
+ * model's context. Forcing 0 is routing, not ignoring: the contract has no
+ * blocking at session start, and a gate that could block here would lock a
+ * session out of the repair it was opened to make.
+ */
+const SESSION_GATE = `${VERIFY} 2>&1 || true`;
+
+/**
+ * PostToolUse: everything to stderr, EVERY failure mapped to the one exit the
+ * harness returns to the model as feedback it must answer. Every failure, not
+ * only a red law: a ConfigError the edit itself caused is verify's own exit 2,
+ * and a vanished binary is the shell's 127 — after an agent's edit each of
+ * those is the agent's to see. The opposite of the commit shim's rule, and
+ * deliberately: the shim protects a human's commit and degrades to a warning,
+ * while this reports to the machine that just made the change. The edit is
+ * already on disk, so the block is a forced read in the same turn, not a
+ * revert.
+ */
+const EDIT_GATE = `${VERIFY} >&2 || exit 2`;
 
 /** Claude Code's file-editing tools — the default post-edit matcher. */
 const EDIT_TOOLS = 'Edit|Write|MultiEdit';
@@ -57,8 +90,13 @@ export function refreshHookCmd(refresh: string): string {
  */
 type Owns = (command: string) => boolean;
 
-/** The gate: one fixed command, so the whole string is the identity. */
-const ownsVerify: Owns = (c) => c === HOOK_CMD;
+/** The gate: three exact strings — the two per-event commands, and the bare
+ *  engine every brain projected before them. Recognising the legacy string is
+ *  the upgrade path: the merge rewrites a hook of ours in place, so a `doors`
+ *  re-run turns an old entry into this event's gate rather than leaving it and
+ *  appending a second one beside it. Identity stays exact — `mvac verify
+ *  --strict` is a user's hook and stays theirs. */
+const ownsVerify: Owns = (c) => c === VERIFY || c === SESSION_GATE || c === EDIT_GATE;
 
 /**
  * The refresh: its tail carries the declared grapher's own command, which is
@@ -176,7 +214,7 @@ function duplicateNotice(hooks: Json, event: string): string | null {
   const n = ourHooks(list, ownsVerify).length;
   if (n < 2) return null;
   return (
-    `.claude/settings.json: hooks.${event} runs \`${HOOK_CMD}\` ${n} times — verify fires ` +
+    `.claude/settings.json: hooks.${event} runs \`${VERIFY}\` ${n} times — verify fires ` +
     'once per copy. Delete the entries you do not want by hand; multivac removes no hook ' +
     'entry it did not write, because doing that silently is the defect this notice reports.'
   );
@@ -223,8 +261,8 @@ export function mergeClaudeSettings(
     if (dup) notices.push(dup);
   }
   for (const added of [
-    ensureEvent(hooks as Json, 'SessionStart', ownsVerify, HOOK_CMD, { gate: true }),
-    ensureEvent(hooks as Json, 'PostToolUse', ownsVerify, HOOK_CMD, { matcher, gate: true }),
+    ensureEvent(hooks as Json, 'SessionStart', ownsVerify, SESSION_GATE, { gate: true }),
+    ensureEvent(hooks as Json, 'PostToolUse', ownsVerify, EDIT_GATE, { matcher, gate: true }),
   ]) {
     if (added) notices.push(added);
   }

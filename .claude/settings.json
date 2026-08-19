@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "mvac verify"
+            "command": "mvac verify 2>&1 || true"
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "mvac verify"
+            "command": "mvac verify >&2 || exit 2"
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
