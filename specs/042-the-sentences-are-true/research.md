@@ -18,12 +18,20 @@ Against a brain whose `config.yml` is `repos: [not a map`:
 | `doors` | 1 | 1 |
 | `doctor` | 1 | 1 |
 
-**Decision**: the code moves. `seed`, `repos` and `roadmap` catch `ConfigError`
-and exit 2.
+An earlier reading of this table had `roadmap` at **0**. That was the probe:
+the loop passed `roadmap sync` as ONE argument, because zsh does not word-split
+an unquoted parameter — the same artefact MV-85 records. Bare `roadmap` does
+exit 0, and correctly: it lists from `.multivac/changes/` and never opens the
+config.
+
+**Decision**: the code moves, and in ONE place — the dispatcher, which is where
+all four already pass. It reads the error's type instead of mapping every
+rejection to 1.
 
 **Rationale**: the documented rule is coherent — an environment error is not a
-failed check, and a script needs to tell them apart — and `roadmap`'s exit 0 is
-indefensible on any reading: it reports a sync that did not happen.
+failed check, and a script needs to tell them apart. Four catches in four
+commands would be four chances to forget the fifth, which is how MV-85
+happened; `doors` and `doctor` keep their own because their answer differs.
 
 ## Measurement 2 — doctor's own promise
 
@@ -46,14 +54,15 @@ door's managed block.* `doors` regenerates that block whole from the config on
 every run. The skill's `interview.md` was corrected in an earlier change; the
 guide says the same thing and was not.
 
-## Measurement 4 — two rows that describe the past
+## Measurement 4 — one row that describes the past, and one that does not
 
 MV-85's body: *`verify` and `change` … keep their own correct loops.* Both call
 `undeclared` now, and `count` joined them.
 
-And searching the corpus for the rule about the tool editing its own law finds
-self-heal mentioned only inside three other rows' asides. The one code path
-that WRITES the law file is stated by nothing.
+The audit also recorded that no row states self-heal. Re-checked against the
+corpus: MV-116 opens with *self-heal is the one code path that rewrites the law
+file*, landed one change earlier. Dropped from scope — a second row saying it
+is the copy MV-111 exists to prevent.
 
 ## Constitution and law
 

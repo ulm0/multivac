@@ -73,12 +73,14 @@ test('a declared positional is still accepted', async () => {
   // An empty scratch dir has no config, so seed gets as far as loading one and
   // fails there — which is the proof that the argument check let it through.
   // Reaching loadConfig IS the assertion; a refusal would never get that far.
+  //
+  // MV-118: the two failures wear the same exit code now — the missing config
+  // is exit 2 like the refusal — so the exit alone stopped being the proof.
+  // The MESSAGE is: only one of the two names the config file.
   const dir = mkdtempSync(join(tmpdir(), 'mvac-args-'));
-  await assert.rejects(
-    () => run(['seed', dir], dir),
-    /config\.yml/,
-    'seed refused the [dir] it declares instead of reaching its config',
-  );
+  const { code, out } = await run(['seed', dir], dir);
+  assert.equal(code, 2, out);
+  assert.match(out, /config\.yml/, 'seed refused the [dir] it declares instead of reaching its config');
 });
 
 test("a valued flag's value is not counted as an unexpected argument", async () => {

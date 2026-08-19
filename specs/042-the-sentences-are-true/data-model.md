@@ -5,8 +5,9 @@
 | Command | Documented | Was | Is |
 | --- | ---: | ---: | ---: |
 | `verify`, `count` | 2 | 2 | 2 |
-| `seed`, `repos` | 2 | **1** | 2 |
-| `roadmap` | 2 | **0** | 2 |
+| `seed`, `repos`, `repos sync` | 2 | **1** | 2 |
+| `roadmap sync` | 2 | **1** | 2 |
+| bare `roadmap` (reads no config) | — | 0 | 0 |
 | `doors`, `doctor` | 1 | 1 | 1 |
 
 ## `doctor`'s exit
@@ -25,4 +26,4 @@
 | --- | --- | --- |
 | `session-zero.md` | interview output goes in the managed block | outside it, where `doors` does not write |
 | MV-85's body | verify and change keep their own loops | they call the shared refusal, and so does count |
-| the corpus | self-heal appears only in asides | MV-118 states it |
+| the corpus | *(dropped: MV-116 already states self-heal)* | unchanged |

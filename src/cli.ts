@@ -5,6 +5,7 @@ import { realpathSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { commands, usageFor } from './commands/index.js';
+import { ConfigError } from './lib/config.js';
 import { warn, say } from './lib/out.js';
 import { paint, selfVersion as version, versionNotice } from './lib/version.js';
 
@@ -58,7 +59,22 @@ export async function main(argv: string[], cwd: string): Promise<number> {
     for (const line of usageFor(cmd)) say(line);
     return 0;
   }
-  return cmd.run(rest, { cwd });
+  // A config that will not load is an environment error, not a failed check,
+  // and the reference has said so since 0.7: every command that reads one
+  // exits 2. `count` and `verify` caught it themselves and did; `seed`,
+  // `repos` and `roadmap sync` let it out, and every rejection reaching the
+  // entry point below was mapped to 1 — so a script could not tell a broken
+  // environment from a gate that refused. One catch, where all of them
+  // already pass. `doors` and `doctor` are the documented exceptions and
+  // never reach it: for them an unloadable config IS the diagnosis they were
+  // asked for, so they catch their own and keep exit 1.
+  try {
+    return await cmd.run(rest, { cwd });
+  } catch (e) {
+    if (!(e instanceof ConfigError)) throw e;
+    warn(e.message);
+    return 2;
+  }
 }
 
 // Run only as an entry point (bin/direct node), never on import from a test.
@@ -76,7 +92,7 @@ if (isEntry) {
     },
     (e: unknown) => {
       warn((e as Error).message ?? String(e));
-      process.exitCode = 1;
+      process.exitCode = e instanceof ConfigError ? 2 : 1;
     },
   );
 }
