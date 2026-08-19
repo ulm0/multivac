@@ -3,7 +3,7 @@ slug: a-boundary-refuses-what-it-cannot-honour
 status: open
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
