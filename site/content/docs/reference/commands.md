@@ -290,6 +290,24 @@ question could not be asked rather than implying an answer.
   enact     not answered — nothing staged, so no commit is being composed; MV-81's check reads the index against HEAD
 ```
 
+Beside it, and from the same read, a `law` line answers MV-107: the law's death
+is gated the way its birth is. A row that was `active` at HEAD and is gone from
+the index refuses the commit, and so does an index that removes the law file.
+Retiring a row is not death — it is the sanctioned way for a rule to stop
+applying — and a `proposed` row disappearing is a reservation being given back,
+which `change close --abandon` does by design. Neither is refused.
+
+```txt
+  law       REFUSED MV-91 was active and is gone · blocking — a row stops applying by being RETIRED, in the open, not by being deleted: …
+  law       REFUSED .multivac/invariants.md is removed by this commit · blocking — a brain with no law verifies nothing and says so in green. …
+```
+
+All three index-reading lines — `enact`, `config` and `law` — read the index
+the commit is being composed in, not the one on disk (MV-106). They differ:
+measured on git 2.55, `git commit -a` composes in `.git/index.lock` and a
+pathspec commit in `.git/next-index-NNN.lock`, so a check reading `.git/index`
+answers about a commit nobody is making.
+
 | flag | effect |
 | --- | --- |
 | `--strict` | broken `present`/`unique` legs join the gating set and exit 1 too, not just the tombstones. Armed on the pre-push shim by `strict_pre_push`. |

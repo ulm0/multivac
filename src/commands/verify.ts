@@ -294,7 +294,10 @@ export const ENACTMENT_UNGATEABLE =
  * copies is how two answers appear.
  */
 async function stagedPaths(brainDir: string): Promise<string[] | null> {
-  return git(brainDir, ['diff', '--cached', '--name-only', '-z'])
+  // MV-106: the ambient index, when this IS the repo the hook runs for. The
+  // index on disk answers about a different commit under `git commit -a` and
+  // under a pathspec commit, which is how both gates were walked past.
+  return git(brainDir, ['diff', '--cached', '--name-only', '-z'], true)
     .then((t) => t.split('\0').filter(Boolean))
     .catch(() => null);
 }
@@ -356,14 +359,66 @@ async function configLine(brainDir: string): Promise<Diagnostic | null> {
   };
 }
 
+/**
+ * MV-107. What the index does to rows that were `active`, as a diagnostic or
+ * null when it does nothing.
+ *
+ * Retirement is the sanctioned way for a row to stop applying (MV-40's
+ * procedure) and stays allowed; so does dropping a `proposed` row, which is a
+ * reservation given back and exactly what `change close --abandon` does. What
+ * is refused is a row that was law and is simply gone — and the whole file
+ * leaving the commit, which is that offence for every row at once.
+ */
+function lawDeath(
+  before: string,
+  now: string,
+  was: Map<string, string>,
+): Diagnostic | null {
+  if (before === '') return null; // nothing to have lost
+  if (now === '') {
+    return {
+      text:
+        `  ${red('law')}       REFUSED ${LAW_PATH} is removed by this commit · blocking — a brain ` +
+        `with no law verifies nothing and says so in green. Restore it: git restore --staged ` +
+        `--worktree -- ${LAW_PATH}`,
+      gates: true,
+    };
+  }
+  const here = new Set(parseClaimRows(now).map((r) => r.id));
+  const gone = [...was].filter(([id, state]) => state === 'active' && !here.has(id)).map(([id]) => id);
+  if (gone.length === 0) return null;
+  return {
+    text:
+      `  ${red('law')}       REFUSED ${gone.join(', ')} ${gone.length > 1 ? 'were' : 'was'} active and ` +
+      `${gone.length > 1 ? 'are' : 'is'} gone · blocking — a row stops applying by being RETIRED, in ` +
+      `the open, not by being deleted: set its state to retired and leave the row where a reader can ` +
+      `find it`,
+    gates: true,
+  };
+}
+
+/**
+ * The two verdicts one index-vs-HEAD read of the law answers: what reached
+ * `active` (MV-81) and what stopped existing (MV-107). Returned together
+ * because they come from the same two blobs, and reading them twice is how two
+ * answers appear.
+ */
+interface LawVerdicts {
+  enact: Diagnostic;
+  death: Diagnostic | null;
+}
+
 async function enactmentLine(
   brainDir: string,
   cfg: Config,
   anchors: Anchor[],
-): Promise<Diagnostic> {
-  const unanswered = (why: string): Diagnostic => ({
-    text: `  ${dim('enact')}     not answered — ${why}; MV-81's check reads the index against HEAD`,
-    gates: false,
+): Promise<LawVerdicts> {
+  const unanswered = (why: string): LawVerdicts => ({
+    enact: {
+      text: `  ${dim('enact')}     not answered — ${why}; MV-81's check reads the index against HEAD`,
+      gates: false,
+    },
+    death: null,
   });
   const staged = await stagedPaths(brainDir);
   if (staged === null) return unanswered('the index could not be read here');
@@ -371,24 +426,32 @@ async function enactmentLine(
     return unanswered('nothing staged, so no commit is being composed');
   }
   const plural = `${staged.length} staged path${staged.length > 1 ? 's' : ''}`;
-  const nothing = (why: string): Diagnostic => ({
-    text: `  ${dim('enact')}     no row enacted in this commit — ${why}`,
-    gates: false,
+  const nothing = (why: string): LawVerdicts => ({
+    enact: { text: `  ${dim('enact')}     no row enacted in this commit — ${why}`, gates: false },
+    death: null,
   });
   if (!staged.includes(LAW_PATH)) return nothing(`${plural}, ${LAW_PATH} untouched`);
   const head = await revParse(brainDir, 'HEAD');
   if (head === null) return unanswered('no commit here yet, so there is no previous state');
+  // `rev` empty means `:<path>` — the INDEX version, so it asks the commit
+  // (MV-106). A named rev is history and never does.
   const blob = (rev: string): Promise<string> =>
-    git(brainDir, ['cat-file', 'blob', `${rev}:${LAW_PATH}`]).catch(() => '');
+    git(brainDir, ['cat-file', 'blob', `${rev}:${LAW_PATH}`], rev === '').catch(() => '');
   const [before, now] = await Promise.all([blob(head), blob('')]);
   const was = new Map(parseClaimRows(before).map((r) => [r.id, r.state]));
+  // MV-107, from the blobs already in hand. Birth is gated and the config's
+  // death is gated; the law's own death was the one edit nothing looked at, so
+  // `git rm .multivac/invariants.md` printed `0 claims` and exited 0.
+  const death = lawDeath(before, now, was);
   // A row absent from HEAD counts as not-previously-active: a row born
   // `active` skipped the same review, which is the stronger offence and not a
   // way around this check.
   const enacted = parseClaimRows(now)
     .filter((r) => r.state === 'active' && was.get(r.id) !== 'active')
     .map((r) => r.id);
-  if (enacted.length === 0) return nothing(`${plural}, no row reached active`);
+  if (enacted.length === 0) {
+    return { enact: nothing(`${plural}, no row reached active`).enact, death };
+  }
   // Which anchors name THIS checkout: `brain`, `*`, and any config key that
   // resolves to the brain (MV-12's alias rule). A leg pointing at a sibling
   // repo cannot be offended here — those files are not in this commit.
@@ -415,18 +478,24 @@ async function enactmentLine(
   }
   if (offences.length === 0) {
     return {
-      text:
-        `  ${green('enact')}     ${enacted.join(', ')} → active, alone in this commit — ` +
-        'the row is reviewable on its own',
-      gates: false,
+      enact: {
+        text:
+          `  ${green('enact')}     ${enacted.join(', ')} → active, alone in this commit — ` +
+          'the row is reviewable on its own',
+        gates: false,
+      },
+      death,
     };
   }
   return {
-    text:
-      `  ${red('enact')}     REFUSED ${offences.join('; ')} · blocking — enactment lands in ` +
-      `its own commit, never beside the code it anchors (MV-81): git restore --staged ` +
-      `${[...unstage].sort().join(' ')}, commit ${LAW_PATH} alone, then the code`,
-    gates: true,
+    enact: {
+      text:
+        `  ${red('enact')}     REFUSED ${offences.join('; ')} · blocking — enactment lands in ` +
+        `its own commit, never beside the code it anchors (MV-81): git restore --staged ` +
+        `${[...unstage].sort().join(' ')}, commit ${LAW_PATH} alone, then the code`,
+      gates: true,
+    },
+    death,
   };
 }
 
@@ -1043,10 +1112,13 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   // MV-81, on every run: which of the three things happened. A consumer
   // checkout has no law in its index, so there is no question to answer there
   // — said out loud rather than skipped, for the same reason as above.
-  const enact: Diagnostic = scope
+  const { enact, death: lawGone } = scope
     ? {
-        text: `  ${dim('enact')}     not answered — ${LAW_PATH} is not in this checkout's index; MV-81 is decided in the brain`,
-        gates: false,
+        enact: {
+          text: `  ${dim('enact')}     not answered — ${LAW_PATH} is not in this checkout's index; MV-81 is decided in the brain`,
+          gates: false,
+        },
+        death: null,
       }
     : await enactmentLine(brainDir, cfg, anchors);
   say(enact.text);
@@ -1054,14 +1126,19 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   // read deciding whether this commit may proceed. Silent unless it applies.
   const conf = scope ? null : await configLine(brainDir);
   if (conf) say(conf.text);
+  // MV-107, answered by the same index-vs-HEAD read the enactment check just
+  // made, so the law is compared once and reported twice rather than read twice.
+  if (lawGone) say(lawGone.text);
   const finalExit: 0 | 1 =
-    staleBlocking > 0 || enact.gates || conf?.gates === true ? 1 : exitCode;
+    staleBlocking > 0 || enact.gates || conf?.gates === true || lawGone?.gates === true
+      ? 1
+      : exitCode;
   // The summary counts THE predicate — the same `gating` set the per-leg lines
   // read for their `· blocking` marker — never a second tally computed with
   // different arguments. `blockingBroken` answers a different question (blocking
   // modes alone, --strict ignored) and printing it here made `--strict` runs say
   // "0 blocking broken · exit 1" under a line marked blocking.
-  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0) + (conf?.gates ? 1 : 0);
+  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0) + (conf?.gates ? 1 : 0) + (lawGone?.gates ? 1 : 0);
   // A pending claim is a real failure a change file is holding back: exit 0 is
   // the grace, silence is not. Name what is masked and who masks it.
   const masking = [
