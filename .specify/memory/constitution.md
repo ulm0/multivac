@@ -109,8 +109,8 @@ model; freshness is bought only in an explicit command that says it fetches.
 `verify` MUST stay sub-second and enumerate through `git ls-files` rather than
 walking the tree, because it runs in a pre-commit hook. Git MUST run through an
 argument vector, never a shell. The runtime dependency count is pinned by an
-invariant — MV-02, currently three — and the next one is a design change, not a
-convenience. Tests MUST NOT depend on host configuration.
+invariant — MV-02 states the number and the names — and the next one is a
+design change, not a convenience. Tests MUST NOT depend on host configuration.
 
 Rationale: a gate that is slow gets bypassed, and a gate that reaches the
 network fails for reasons that have nothing to do with the code it is judging.
