@@ -248,15 +248,15 @@ test('speckit: its own longer flow drives the lifecycle', async () => {
   await declareBrain('gate-b');
   const refused = await capture(() => change.run(['plan', 'gate-b'], ctx));
   assert.equal(refused.code, 1);
-  assert.match(refused.out, /refused — specs\/\*gate-b\*\/spec\.md is missing/);
+  assert.match(refused.out, /refused — specs\/\*-gate-b\/spec\.md is missing/);
 
   // spec-kit numbers AND names the feature directory itself — verified against
   // a real create-new-feature.sh, which turned "user login with email" into
   // `001-user-login-email`. The `*`s on both sides of the slug match that.
-  artifact('specs/001-gate-b-login/spec.md');
+  artifact('specs/001-gate-b/spec.md');
   const planned = await capture(() => change.run(['plan', 'gate-b'], ctx));
   assert.equal(planned.code, 0);
-  assert.match(planned.out, /specs\/001-gate-b-login\/spec\.md ok/);
+  assert.match(planned.out, /specs\/001-gate-b\/spec\.md ok/);
   // The project document is reported by the same gate, in the same shape.
   assert.match(planned.out, /sdd speckit: brain: \.specify\/memory\/constitution\.md ok/);
   // plan prints TWO steps here — the flow is not a triple.
@@ -267,16 +267,16 @@ test('speckit: its own longer flow drives the lifecycle', async () => {
 test('speckit: apply gates on plan.md AND tasks.md, and its steps are ungateable', async () => {
   const refused = await capture(() => change.run(['apply', 'gate-b'], ctx));
   assert.equal(refused.code, 1);
-  assert.match(refused.out, /refused — specs\/\*gate-b\*\/plan\.md is missing/);
-  assert.match(refused.out, /refused — specs\/\*gate-b\*\/tasks\.md is missing/);
+  assert.match(refused.out, /refused — specs\/\*-gate-b\/plan\.md is missing/);
+  assert.match(refused.out, /refused — specs\/\*-gate-b\/tasks\.md is missing/);
 
-  artifact('specs/001-gate-b-login/plan.md');
+  artifact('specs/001-gate-b/plan.md');
   const half = await capture(() => change.run(['apply', 'gate-b'], ctx));
   assert.equal(half.code, 1);
-  assert.match(half.out, /specs\/001-gate-b-login\/plan\.md ok/);
-  assert.match(half.out, /refused — specs\/\*gate-b\*\/tasks\.md is missing/);
+  assert.match(half.out, /specs\/001-gate-b\/plan\.md ok/);
+  assert.match(half.out, /refused — specs\/\*-gate-b\/tasks\.md is missing/);
 
-  artifact('specs/001-gate-b-login/tasks.md');
+  artifact('specs/001-gate-b/tasks.md');
   const passed = await capture(() => change.run(['apply', 'gate-b'], ctx));
   assert.equal(passed.code, 0);
   // analyze/implement/converge all print, none gate — each with its reason.
@@ -502,7 +502,7 @@ test('--abandon gives the reservation back; the refusal points at it', async () 
   const done = await capture(() => change.run(['close', 'regret', '--abandon'], ctx));
   assert.equal(done.code, 0);
   assert.match(done.out, new RegExp(reserved));
-  assert.match(done.out, /nothing was verified, nothing landed/);
+  assert.match(done.out, /nothing was verified; nothing landed/);
   // Only THIS change's row leaves — other open changes keep theirs.
   assert.doesNotMatch(
     readFileSync(join(brain, '.multivac/invariants.md'), 'utf8'),
@@ -725,7 +725,7 @@ test('a scaffold that fails says what the tool said, and the gate stays closed',
   // A failed scaffold decides nothing on its own: the gate below still refuses
   // for its own reason, and the lifecycle did not throw.
   assert.equal(c.code, 1);
-  assert.match(c.out, /refused — specs\/\*scaffold-a\*\/spec\.md is missing/);
+  assert.match(c.out, /refused — specs\/\*-scaffold-a\/spec\.md is missing/);
 });
 
 test('a scaffold that exits 0 and writes nothing is a failure, not a success', async () => {

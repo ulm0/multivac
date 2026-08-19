@@ -322,8 +322,15 @@ test('close on a trunk with a remote prints the branch+MR variant; on a branch, 
   git(b, 'commit', '-q', '-m', 'settle mr-close leftovers');
   await declare(b, 'branch-close');
   assert.equal(await change.run(['land', 'branch-close', '--landed', 'brain'], { cwd: b }), 0);
-  git(b, 'add', '-A');
-  git(b, 'commit', '-q', '-m', 'settle landed status');
+  // MV-110: this used to be `git add -A && git commit` — the sweep that hid the
+  // defect. `land` commits its own status bump now, so the assertion is that
+  // there is nothing left to settle. A test that sweeps the tree cannot see an
+  // uncommitted lifecycle write, which is why the write went unnoticed.
+  assert.equal(
+    execFileSync('git', ['-C', b, 'status', '--porcelain', '--', '.multivac'], { encoding: 'utf8' }).trim(),
+    '',
+    'land left the bookkeeping paths dirty',
+  );
   git(b, 'switch', '-q', '-c', 'some-working-branch');
   const onBranch = await capture(() => change.run(['close', 'branch-close'], { cwd: b }));
   assert.equal(onBranch.code, 0);

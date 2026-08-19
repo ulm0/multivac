@@ -35,6 +35,14 @@ export interface TrackerEntry {
   edit: string[];
   /** argv for "close issue <n>", minus the number. */
   close: string[];
+  /**
+   * The flag that sets a label on an EDIT, which the vendors spell differently:
+   * `glab issue update --label`, `gh issue edit --add-label`. It lived in the
+   * code as one hard-coded `--label`, so every GitHub update failed — and the
+   * failure was caught and printed as "not found in the tracker", a different
+   * fact. A vendor whose flag is not documented gets no entry (Principle V).
+   */
+  labelFlag: string;
   /** How the created issue's number is read out of the tool's own output. */
   numberFrom: RegExp;
 }
@@ -50,6 +58,7 @@ const known: Record<string, TrackerEntry> = {
     create: ['issue', 'create', '--yes'],
     edit: ['issue', 'update'],
     close: ['issue', 'close'],
+    labelFlag: '--label',
     // `glab issue create` prints the issue URL; the number is its last segment.
     numberFrom: /\/(?:issues|-\/issues)\/(\d+)/,
   },
@@ -59,6 +68,10 @@ const known: Record<string, TrackerEntry> = {
     create: ['issue', 'create'],
     edit: ['issue', 'edit'],
     close: ['issue', 'close'],
+    // `gh issue edit` has no `--label`; it documents --add-label/--remove-label.
+    // Adding without removing means a GitHub issue accumulates status labels —
+    // a ceiling MV-110 states rather than hides.
+    labelFlag: '--add-label',
     numberFrom: /\/issues\/(\d+)/,
   },
 };
@@ -135,7 +148,7 @@ export async function updateIssue(
   title: string,
   label: string,
 ): Promise<void> {
-  await run(dir, e, [...e.edit, String(n), '--title', title, '--label', label]);
+  await run(dir, e, [...e.edit, String(n), '--title', title, e.labelFlag, label]);
 }
 
 export async function closeIssue(dir: string, e: TrackerEntry, n: number): Promise<void> {

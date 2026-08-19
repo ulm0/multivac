@@ -467,7 +467,7 @@ const sdd: Record<string, AdapterSpec> = {
       {
         at: 'new',
         run: 'run /speckit.specify in your agent to write the spec for <slug> — give it <slug> as the short name so the feature directory matches',
-        artifact: 'specs/*<slug>*/spec.md',
+        artifact: 'specs/*-<slug>/spec.md',
         gate: 'plan',
       },
       {
@@ -479,7 +479,7 @@ const sdd: Record<string, AdapterSpec> = {
       {
         at: 'plan',
         run: 'run /speckit.plan in your agent to design <slug> (Constitution Check, research, data model, contracts)',
-        artifact: 'specs/*<slug>*/plan.md',
+        artifact: 'specs/*-<slug>/plan.md',
         gate: 'apply',
         // setup-plan.sh writes the resolved template straight into plan.md
         // before /speckit.plan writes a byte, so existence proves the script
@@ -494,7 +494,7 @@ const sdd: Record<string, AdapterSpec> = {
       {
         at: 'plan',
         run: 'run /speckit.tasks in your agent to break <slug> into phased tasks',
-        artifact: 'specs/*<slug>*/tasks.md',
+        artifact: 'specs/*-<slug>/tasks.md',
         gate: 'apply',
       },
       {
@@ -510,7 +510,7 @@ const sdd: Record<string, AdapterSpec> = {
         // has open boxes is a fact on disk. Same hole opsx's `--yes` opens,
         // reached the other way — implement simply stopping early.
         unfinished: {
-          artifact: 'specs/*<slug>*/tasks.md',
+          artifact: 'specs/*-<slug>/tasks.md',
           pattern: '^\\s*- \\[ \\]',
           why: 'spec-kit\'s own task list still has unchecked tasks — implement did not finish, or stopped without saying so',
           gate: 'close',

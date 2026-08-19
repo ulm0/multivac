@@ -217,17 +217,29 @@ async function sync(brain: string, cfg: Config): Promise<number> {
     const state = change.status.padEnd(8);
     if (archived || change.status === 'archived') {
       if (change.issue === undefined) continue; // nothing to close, nothing to say
-      await closeIssue(brain, entry, change.issue).catch(() => {});
-      say(`  ${state} ${change.slug} → #${change.issue} closed`);
+      // MV-110: a swallowed error printed as "closed" is the tool reporting an
+      // outcome it never had.
+      const failure = await closeIssue(brain, entry, change.issue).then(
+        () => null,
+        (e: unknown) => (e as Error).message.split('\n')[0],
+      );
+      say(
+        failure === null
+          ? `  ${state} ${change.slug} → #${change.issue} closed`
+          : `  ${state} ${change.slug} → #${change.issue} NOT closed — ${failure}`,
+      );
       continue;
     }
     if (change.issue !== undefined) {
       try {
         await updateIssue(brain, entry, change.issue, title, label);
         say(`  ${state} ${change.slug} → #${change.issue} up to date`);
-      } catch {
+      } catch (e) {
         // Never a second issue: silently re-creating is how a change ends up
-        // with two, and nobody can tell which one people commented on.
+        // with two, and nobody can tell which one people commented on. But the
+        // reason is the tool's, not a guess: every failure used to be printed
+        // as "not found", including a flag the vendor does not have (MV-110).
+        say(`  ${state} ${change.slug} → #${change.issue} NOT updated — ${(e as Error).message.split('\n')[0]}`);
         say(
           `  ${state} ${change.slug} → #${change.issue} not found in the tracker — reported, not re-created; clear \`issue:\` to make a new one`,
         );

@@ -271,7 +271,7 @@ export function scaffoldChange(slug: string, title: string): ParsedChange {
       invariants: { touches: [], adds: [], retires: [] },
       claims: [],
     },
-    body: `# ${title}\n\nDeclare repos, landing_order, invariants and claims in the frontmatter,\nthen run \`multivac change plan ${slug}\`. For example:\n\n    # repos: { api: { status: planned } } — ${REPO_STATUSES.join('|')}\n    # landing_order: [[api]] — stages; earlier stages land first\n    # claims: [{ id: <ID>, statement: "..." }] — what close verifies\n\nStatements are prose: quote any value holding a colon —\n\`statement: "staleness: block"\`.\n\nmultivac owns the frontmatter formatting: every lifecycle step rewrites it, so\nhand-tuned layout will not survive. Values round-trip unchanged; the body,\nbelow the closing ---, is yours.\n`,
+    body: `# ${title}\n\nDeclare repos, landing_order, invariants and claims in the frontmatter,\nthen run \`multivac change plan ${slug}\`. For example:\n\n    # repos: { api: { status: planned } } — ${REPO_STATUSES.join('|')}\n    # landing_order: [[api]] — stages; earlier stages land first\n    # claims: [{ id: <ID>, statement: "..." }] — what close verifies\n\nStatements are prose: quote any value holding a colon —\n\`statement: "staleness: block"\`.\n\nmultivac owns the frontmatter formatting: every lifecycle step rewrites it, so\nhand-tuned layout will not survive, and a key it does not know is DROPPED\nrather than carried through. Declared values round-trip unchanged; the body,\nbelow the closing ---, is yours.\n`,
   };
 }
 
