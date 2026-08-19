@@ -3,7 +3,7 @@ slug: the-gate-speaks-the-channel-the-harness-reads
 status: open
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
