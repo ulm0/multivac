@@ -877,3 +877,4 @@ checks them on every commit.
 <!-- @anchor MV-111 brain:skills/** /^[[:space:]]*[a-z_-]+ -> [a-z_-]+/ absent -->
 <!-- @anchor MV-111 brain:src/commands/init.ts /0\. commit what was just written/ unique -->
 <!-- @anchor MV-111 brain:src/commands/change.ts /untracked or modified/ unique -->
+| MV-112 | RESERVED by change the-gate-speaks-the-channel-the-harness-reads — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-gate-speaks-the-channel-the-harness-reads.md](changes/the-gate-speaks-the-channel-the-harness-reads.md) |
