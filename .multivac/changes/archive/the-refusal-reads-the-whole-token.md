@@ -1,6 +1,6 @@
 ---
 slug: the-refusal-reads-the-whole-token
-status: open
+status: archived
 repos:
   brain:
     status: landed
