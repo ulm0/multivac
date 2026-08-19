@@ -48,15 +48,25 @@ export function compileAnchorRegex(source: string, flags = ''): RegExp {
   // only the literal text "PIN0-9" and never "PIN4". Written as an `absent`
   // leg that is green forever while real violations sit in the glob: the false
   // green this tool exists to prevent, produced by the gate meant to catch it.
+  // Where a class was seen INSIDE a bracket expression, which is the only place
+  // one can be. The translation below reads this list instead of scanning the
+  // whole pattern: a global replace rewrites text that is not a class at all.
+  // `PIN\\[:digit:]` — a deliberately escaped bracket, valid ERE for the literal
+  // text `PIN[:digit:]` — became `PIN\\0-9`, a NUL followed by "-9", matching
+  // nothing. That is this gate's own false green, one escape away from the
+  // mistake it was written to catch.
+  const classes: Array<{ start: number; end: number; name: string }> = [];
   for (let i = 0; i < source.length; i++) {
     const c = source[i];
     if (c === '\\') {
       const next = source[i + 1] ?? '';
       const hint = ESCAPE_HINTS[next];
       if (hint) throw new RegexDialectError(hint);
-      if (next >= '1' && next <= '9') {
+      if (next >= '0' && next <= '9') {
         throw new RegexDialectError(
-          `\\${next} is a backreference — POSIX ERE has none; write the text out, or match it in two legs`,
+          next === '0'
+            ? '\\0 is a NUL escape in JavaScript and means nothing in POSIX ERE — write the character, or use a bracket expression'
+            : `\\${next} is a backreference — POSIX ERE has none; write the text out, or match it in two legs`,
         );
       }
       if (/[a-zA-Z]/.test(next)) {
@@ -87,6 +97,7 @@ export function compileAnchorRegex(source: string, flags = ''): RegExp {
         if (source[j] === '[' && source[j + 1] === ':') {
           const end = source.indexOf(':]', j + 2);
           if (end === -1) break; // unterminated: let RegExp report it
+          classes.push({ start: j, end: end + 2, name: source.slice(j + 2, end) });
           j = end + 2;
           continue;
         }
@@ -107,15 +118,19 @@ export function compileAnchorRegex(source: string, flags = ''): RegExp {
       );
     }
   }
-  const translated = source.replace(/\[:([a-z]+):\]/g, (m, name: string) => {
-    const body = POSIX_CLASSES[name];
+  let translated = '';
+  let at = 0;
+  for (const cl of classes) {
+    const body = POSIX_CLASSES[cl.name];
     if (body === undefined) {
       throw new RegexDialectError(
-        `unknown POSIX class ${m} — use one of [:${Object.keys(POSIX_CLASSES).join(':] [:')}:]`,
+        `unknown POSIX class [:${cl.name}:] — use one of [:${Object.keys(POSIX_CLASSES).join(':] [:')}:]`,
       );
     }
-    return body;
-  });
+    translated += source.slice(at, cl.start) + body;
+    at = cl.end;
+  }
+  translated += source.slice(at);
   try {
     return new RegExp(translated, flags);
   } catch (e) {

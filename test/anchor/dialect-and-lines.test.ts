@@ -84,3 +84,31 @@ test('a lone carriage return is still text, not a line ending', () => {
   // assertion: `b` is on line ONE, because `a\rb` was never split.
   assert.deepEqual(matchesInFile('f.txt', 'a\rb\n', compileAnchorRegex('b')).map((m) => m.line), [1]);
 });
+
+test('an ESCAPED bracket stays literal — the class translation is not global', () => {
+  // The false green this gate exists to catch, one escape away from the
+  // mistake it already refused. `PIN\[:digit:]` is valid ERE for the literal
+  // text `PIN[:digit:]`: the walk consumed the escaped bracket and the
+  // translation, which scanned the whole pattern, rewrote what followed
+  // anyway — producing `PIN\0-9`, a NUL and "-9", matching nothing at all.
+  // Only a class the walk saw INSIDE a bracket expression is translated now.
+  assert.equal(compileAnchorRegex('PIN\\[:digit:]').source, 'PIN\\[:digit:]');
+  assert.equal(compileAnchorRegex('PIN\\[:digit:]').test('PIN[:digit:]'), true);
+  assert.equal(compileAnchorRegex('PIN\\[:digit:]').test('PIN4'), false);
+  // And the real class still translates, including two in one expression.
+  assert.equal(compileAnchorRegex('PIN[[:digit:]]').source, 'PIN[0-9]');
+  assert.equal(compileAnchorRegex('[[:alpha:][:digit:]]').source, '[a-zA-Z0-9]');
+});
+
+test('every digit escape is refused, including \\0', () => {
+  // `\0` is NUL in JavaScript and nothing in POSIX ERE. The backreference
+  // check ran from 1 to 9 and let it through silently.
+  assert.throws(
+    () => compileAnchorRegex('a\\0b'),
+    (e: Error) => e instanceof RegexDialectError && /NUL escape/.test(e.message),
+  );
+  assert.throws(
+    () => compileAnchorRegex('a\\7b'),
+    (e: Error) => e instanceof RegexDialectError && /backreference/.test(e.message),
+  );
+});
