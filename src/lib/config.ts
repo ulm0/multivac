@@ -172,6 +172,35 @@ function fail(msg: string): never {
   throw new ConfigError(`${CONFIG_PATH}: ${msg}`);
 }
 
+/** Case and separators are the observed typo classes: strict_prepush, sddauto. */
+const foldKey = (k: string): string => k.toLowerCase().replace(/[-_]/g, '');
+
+/**
+ * MV-114. A key this reader does not know is not "extra" — it is a declaration
+ * nothing honours, which is MV-85's defect relocated into a config file, the
+ * words `version.ts` already uses about `requires:`. Measured:
+ * `strict_prepush: true` loaded clean, armed nothing, and `doctor` still
+ * called the gate armed.
+ *
+ * The near miss is named because that is what the typo classes are: case and
+ * separators. Refusing rather than warning is weighed against MV-86's rule
+ * that enforcement degrades — a stray key is refused because a gate that reads
+ * as declared and does nothing is the worse failure, the refusal names both
+ * the key and what it is near, and an editor is always at hand.
+ */
+function refuseUnknown(o: Record<string, unknown>, known: string[], where: string): void {
+  const folded = new Map(known.map((k) => [foldKey(k), k]));
+  for (const k of Object.keys(o)) {
+    if (known.includes(k)) continue;
+    const near = folded.get(foldKey(k));
+    fail(
+      near !== undefined
+        ? `unknown key "${where}${k}" — did you mean "${where}${near}"?`
+        : `unknown key "${where}${k}" — known: ${known.map((n) => where + n).join(', ')}`,
+    );
+  }
+}
+
 function stringList(v: unknown, key: string): string[] {
   if (v === undefined) return [];
   if (!Array.isArray(v) || v.some((x) => typeof x !== 'string')) {
@@ -192,6 +221,9 @@ function repoEntry(key: string, v: unknown): RepoEntry {
     fail(`repos.${key} must be a path string or { path, url?, role?, grapher?, sdd?, channel? }`);
   }
   const o = v as Record<string, unknown>;
+  // `isBrain` is deliberately absent: the loader derives it, and a hand-written
+  // one would be a lie this code overwrites.
+  refuseUnknown(o, ['channel', 'grapher', 'path', 'role', 'sdd', 'url'], `repos.${key}.`);
   let path: string;
   if (typeof o.path === 'string' && o.path !== '') {
     path = o.path;
@@ -233,6 +265,7 @@ function grapherDecl(name: string, v: unknown): GrapherDecl {
     fail(`graphers.${name} must be a mapping with artifact: and refresh:`);
   }
   const o = v as Record<string, unknown>;
+  refuseUnknown(o, ['artifact', 'binary', 'create', 'install', 'refresh'], `graphers.${name}.`);
   const artifact = optString(o.artifact, `graphers.${name}.artifact`);
   const refresh = optString(o.refresh, `graphers.${name}.refresh`);
   if (!artifact || !refresh) {
@@ -274,6 +307,17 @@ export async function loadConfig(brainDir: string): Promise<Config> {
     fail('top level must be a mapping of keys, not a list or scalar');
   }
   const o = doc as Record<string, unknown>;
+  refuseUnknown(
+    o,
+    // Every key this function reads, plus `requires`, which version.ts reads
+    // from the raw text rather than from here.
+    [
+      'authorities', 'blocking', 'channel', 'doors', 'grapher', 'grapher_auto',
+      'graphers', 'mount', 'repos', 'requires', 'sdd', 'sdd_auto', 'staleness',
+      'strict_pre_push', 'tracker',
+    ],
+    '',
+  );
 
   const blockingRaw = o.blocking ?? ['absent', 'count', 'each'];
   const blocking = stringList(blockingRaw, 'blocking') as Mode[];

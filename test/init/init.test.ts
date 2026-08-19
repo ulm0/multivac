@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { init } from '../../src/commands/init.js';
+import { doorsCommand } from '../../src/commands/doors.js';
 import { layoutError, loadConfig } from '../../src/lib/config.js';
 import { gitInit } from '../helpers/fixture.js';
 
@@ -249,9 +250,9 @@ test('doctor names the migration command for a legacy brain', async () => {
 
 test('init is idempotent: second run is a zero-diff', async () => {
   const dir = tmp();
-  await init.run(['--provider', 'claude', '--sdd', 'openspec'], { cwd: dir });
+  await init.run(['--provider', 'claude', '--sdd', 'opsx'], { cwd: dir });
   const first = snapshot(dir);
-  assert.equal(await init.run(['--provider', 'claude', '--sdd', 'openspec'], { cwd: dir }), 0);
+  assert.equal(await init.run(['--provider', 'claude', '--sdd', 'opsx'], { cwd: dir }), 0);
   assert.deepEqual(snapshot(dir), first);
 });
 
@@ -335,10 +336,12 @@ test('init closes on the session-zero call to action, its branch already decided
 });
 
 test('init keeps an existing config.yml untouched', async () => {
+  // Both names are registry names now: MV-114 refuses one that is not, so a
+  // fixture naming a fiction would fail for the wrong reason.
   const dir = tmp();
-  await init.run(['--sdd', 'openspec'], { cwd: dir });
+  await init.run(['--sdd', 'opsx'], { cwd: dir });
   const before = readFileSync(join(dir, '.multivac/config.yml'), 'utf8');
-  await init.run(['--sdd', 'other', '--provider', 'cursor'], { cwd: dir });
+  await init.run(['--sdd', 'speckit', '--provider', 'cursor'], { cwd: dir });
   assert.equal(readFileSync(join(dir, '.multivac/config.yml'), 'utf8'), before);
 });
 
@@ -412,4 +415,37 @@ test('the closing report names the commit that unblocks the next command — MV-
   assert.equal(c.code, 0);
   assert.match(c.out, /0\. commit what was just written/);
   assert.match(c.out, /git add -A && git commit/);
+});
+
+test('init refuses a config it cannot read, and the gate stays armed — MV-114', async () => {
+  // The measurement: a strict pre-push shim went from three `verify --strict`
+  // lines to zero after `init .` — the line doctor itself prints — because a
+  // broken config was read as no config and every projection was re-rendered
+  // from nothing. `doors` in the same state exited 1 and left the gate armed.
+  const dir = tmp();
+  gitInit(dir);
+  assert.equal((await capture(() => init.run(['--quiet', dir], { cwd: dir }))).code, 0);
+  const cfg = join(dir, '.multivac/config.yml');
+  writeFileSync(cfg, `${readFileSync(cfg, 'utf8')}\nstrict_pre_push: true\n`);
+  await capture(() => doorsCommand.run([], { cwd: dir }));
+  const armed = readFileSync(join(dir, '.multivac/hooks/pre-push'), 'utf8');
+  assert.match(armed, /verify --strict/, 'the fixture never armed the gate');
+
+  writeFileSync(cfg, `${readFileSync(cfg, 'utf8')}\nrepos: [not a map\n`);
+  assert.equal((await capture(() => init.run(['--quiet', dir], { cwd: dir }))).code, 1, 'init proceeded on a broken config');
+
+  assert.equal(
+    readFileSync(join(dir, '.multivac/hooks/pre-push'), 'utf8'),
+    armed,
+    'init rewrote the shim from a config it could not read',
+  );
+});
+
+test('an unknown adapter name is refused before anything is written — MV-114', async () => {
+  const dir = tmp();
+  assert.equal((await capture(() => init.run(['--sdd', 'speckti', '--quiet', dir], { cwd: dir }))).code, 2);
+  assert.deepEqual(readdirSync(dir), [], 'it wrote before refusing');
+  // And the empty value in either written form, which used to exit 1.
+  assert.equal((await capture(() => init.run(['--sdd=', '--quiet', dir], { cwd: dir }))).code, 2);
+  assert.equal((await capture(() => init.run(['--grapher', '', '--quiet', dir], { cwd: dir }))).code, 2);
 });

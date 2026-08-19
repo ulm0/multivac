@@ -119,7 +119,13 @@ export function versionNotice(
 
   // The floor first: it outranks staleness, because it changes what you do.
   if (rawConfig !== null) {
-    const decl = /^\s*requires:\s*['"]?([^'"\n#]+)['"]?\s*$/m.exec(rawConfig);
+    // MV-114: a trailing comment is ordinary YAML on the one line the tool tells
+  // humans to write, and the pattern demanded end-of-line right after the
+  // value — so `requires: ">=0.4.0" # floor for CI` declared a floor that
+  // enforced nothing, beside the comment naming this exact disease. A
+  // malformed floor with a comment now falls into the refused-by-name notice
+  // instead of vanishing.
+  const decl = /^\s*requires:\s*['"]?([^'"\n#]+)['"]?\s*(?:#.*)?$/m.exec(rawConfig);
     if (decl) {
       const raw = decl[1].trim();
       const m = FLOOR.exec(raw);
@@ -130,7 +136,7 @@ export function versionNotice(
           level: 'red',
           line:
             `mvac: requires: "${raw}" is not a floor — write ">=X.Y.Z". ` +
-            'It is the only form accepted, because a range grammar is a parser and the law pins two dependencies',
+            'It is the only form accepted, because a range grammar is a parser and MV-02 pins the dependency count',
         };
       }
       const floor: [number, number, number] = [Number(m[1]), Number(m[2]), Number(m[3])];
