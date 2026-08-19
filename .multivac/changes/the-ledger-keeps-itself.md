@@ -3,7 +3,7 @@ slug: the-ledger-keeps-itself
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
@@ -14,7 +14,7 @@ invariants:
   retires: []
 claims:
   - id: MV-110
-    statement: "The lifecycle commits what it wrote, refuses a slug it would overwrite, proves a step with that step's own artifact, and reports a failed tracker call as a failure. Nothing it writes is left floating, and nothing it says happened is inferred."
+    statement: The lifecycle commits what it wrote, refuses a slug it would overwrite, proves a step with that step's own artifact, and reports a failed tracker call as a failure. Nothing it writes is left floating, and nothing it says happened is inferred.
 ---
 
 # The ledger keeps itself
