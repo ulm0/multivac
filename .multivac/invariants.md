@@ -885,3 +885,4 @@ checks them on every commit.
 <!-- @anchor MV-112 brain:test/doors/settings.test.ts /the projected commands map the harness channels/ -->
 <!-- @anchor MV-112 brain:test/doors/settings.test.ts /a legacy bare gate is upgraded in place/ -->
 <!-- @anchor MV-112 brain:.claude/settings.json /mvac verify >&2 \|\| exit 2/ unique -->
+| MV-113 | RESERVED by change a-proof-names-one-feature — state the rule here before close. | open | proposed | 2026-08-19 | [changes/a-proof-names-one-feature.md](changes/a-proof-names-one-feature.md) |
