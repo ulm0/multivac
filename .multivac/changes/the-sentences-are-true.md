@@ -3,7 +3,7 @@ slug: the-sentences-are-true
 status: open
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
