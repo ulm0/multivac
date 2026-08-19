@@ -99,9 +99,18 @@ export async function refreshGraph(
   }
   const label = `graph ${name} @ ${scope}`;
   const release = await takeLock(dir, label);
-  const [bin, ...args] = run.split(' ');
   try {
-    await execFileP(bin, args, { cwd: dir });
+    // MV-115: a shell, because the declared command's OTHER runner already is
+    // one — the harness post-edit hook embeds this same string raw in a `sh`
+    // line (src/doors/settings.ts). `split(' ')` made a quoted argument, a
+    // redirect or an `&&` work after an edit and break at close: one declared
+    // string, two dialects. The string is the operator's, so it means what a
+    // shell says it means, everywhere.
+    //
+    // Ceiling: `binaryPresent` still probes the FIRST WORD of the command, so
+    // one that begins with `env` or a variable assignment is probed wrongly.
+    // That is MV-59's existing behaviour, named rather than fixed here.
+    await execFileP('sh', ['-c', run], { cwd: dir });
     say(`${label}: ${first ? 'built' : 'refreshed'} (\`${run}\`) — artifact left uncommitted`);
   } catch (e) {
     // The TOOL'S words, not node's. `Command failed: <cmd>` only repeats the

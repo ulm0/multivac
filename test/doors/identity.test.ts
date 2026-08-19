@@ -142,3 +142,56 @@ test('init run twice leaves the strictness and the record where doors put them',
     'init restamped the version record without an act of adoption (MV-86)',
   );
 });
+
+test('a linked worktree runs the repo own common-dir hooks — MV-115', async () => {
+  // git runs hooks from the COMMON dir: hooks/ is not a per-worktree path. The
+  // shim probed `--git-dir`, which in a linked worktree names
+  // .git/worktrees/<id> and has no hooks/ at all, so the repo's own gate was
+  // skipped — the one thing this shim exists never to do.
+  const { execFileSync } = await import('node:child_process');
+  const dir = tmp();
+  gitInit(dir);
+  await quiet(() => init.run(['--quiet', dir], { cwd: dir }));
+  // The shims must be COMMITTED: core.hooksPath is repo-relative, so a linked
+  // worktree resolves it against its own checkout of the branch.
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+  execFileSync('git', ['-C', dir, 'add', '-A']);
+  execFileSync('git', ['-C', dir, 'commit', '-q', '-m', 'base', '--no-verify'], { env });
+
+  // The repo's own gate, in the common dir where git keeps it.
+  const marker = join(dir, 'RAN');
+  writeFileSync(join(dir, '.git/hooks/pre-commit'), `#!/bin/sh\ntouch ${JSON.stringify(marker)}\n`);
+  execFileSync('chmod', ['+x', join(dir, '.git/hooks/pre-commit')]);
+
+  const wt = join(dir, '..', `wt-${Date.now()}`);
+  execFileSync('git', ['-C', dir, 'worktree', 'add', '-q', wt, '-b', 'side']);
+  try {
+    execFileSync('git', ['-C', wt, 'commit', '-q', '--allow-empty', '-m', 'from the worktree'], { env });
+    assert.equal(existsSync(marker), true, "the repo's own common-dir hook was skipped");
+  } finally {
+    execFileSync('git', ['-C', dir, 'worktree', 'remove', '--force', wt]);
+  }
+});
+
+test('a gutted shim of ours is not armed — MV-115', async () => {
+  // `pathExists` called a shim edited down to `exit 0` "installed", and
+  // --strict armed over it: presence is not identity, asked of our own file.
+  const dir = tmp();
+  gitInit(dir);
+  await quiet(() => init.run(['--quiet', dir], { cwd: dir }));
+  writeFileSync(join(dir, '.multivac/hooks/pre-commit'), '#!/bin/sh\nexit 0\n');
+
+  const { doctorReport } = await import('../../src/commands/doctor.js');
+  const r = await doctorReport(dir, true);
+
+  assert.match(r.lines.join('\n'), /pre-commit does not run multivac/);
+  assert.equal(r.exit, 1, '--strict armed a gate that does nothing');
+});
+
+test('a second marker pair is refused, not half-updated — MV-115', () => {
+  const two = '<!-- multivac:begin -->\na\n<!-- multivac:end -->\ntext\n<!-- multivac:begin -->\nb\n<!-- multivac:end -->\n';
+  assert.throws(
+    () => applyManagedBlock(two, 'body', '/repo/AGENTS.md'),
+    /managed block appears 2 times/,
+  );
+});

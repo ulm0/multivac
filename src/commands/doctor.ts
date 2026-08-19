@@ -547,12 +547,19 @@ async function hooksLine(brain: string): Promise<{ line: string; armed: boolean 
   let installed = true;
   const chained = await chainedHooks(brain);
   for (const shim of ['pre-commit', 'pre-push']) {
-    const present = await pathExists(join(brain, HOOKS_DIR, shim));
+    // MV-115: presence is not identity, asked of OUR OWN directory too. This
+    // tested that the file exists, so a shim edited down to `exit 0` reported
+    // installed and armed `--strict` over a gate that does nothing — the class
+    // MV-108 closed for a foreign hook, still open for ours.
+    const text = await readFile(join(brain, HOOKS_DIR, shim), 'utf8').catch(() => null);
+    const present = text !== null && runsMultivac(text);
     installed &&= present;
     parts.push(
-      present
-        ? `${shim} installed`
-        : `${shim} missing → run \`multivac init .\` to rewrite the shims`,
+      text === null
+        ? `${shim} missing → run \`multivac init .\` to rewrite the shims`
+        : present
+          ? `${shim} installed`
+          : `${shim} does not run multivac → run \`multivac init .\` to rewrite the shims`,
     );
     // The repo's own .git/hooks hook still runs: the shim chains it first.
     if (present && chained.includes(`.git/hooks/${shim}`)) {

@@ -466,7 +466,17 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // A config that will not load declares nothing, and a door written from
   // nothing would be this command inventing the brain it is scaffolding. The
   // config's own error stands; the door waits for `doors`.
-  const next = body === null ? existing : applyManagedBlock(existing, body, doorPath);
+  // MV-115: a mangled door is the door's notice, never a half-initialised
+  // brain — this throw used to escape past the config write and abort init
+  // before the law table and the ritual existed.
+  let next = existing;
+  if (body !== null) {
+    try {
+      next = applyManagedBlock(existing, body, doorPath);
+    } catch (e) {
+      report(`init: notice: ${(e as Error).message}`);
+    }
+  }
   if (next !== null && next !== existing) {
     await writeFile(doorPath, next);
     report(

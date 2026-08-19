@@ -130,10 +130,15 @@ export async function preCommitGate(
  * The shim. Two placements, one difference:
  * - in .multivac/hooks (core.hooksPath ours): `chain` names the hook, and the
  *   repo's own .git/hooks/<name> runs first — its exit code wins. Resolved at
- *   run time via `git rev-parse --git-dir` (NEVER `--git-path hooks`, which
- *   follows core.hooksPath straight back to this shim — a fork bomb), so
- *   hooks a manager installs later are chained too, and worktrees (where
- *   .git is a file) resolve.
+ *   run time via `git rev-parse --git-common-dir` (NEVER `--git-path hooks`,
+ *   which follows core.hooksPath straight back to this shim — a fork bomb),
+ *   so hooks a manager installs later are chained too. The COMMON dir, not
+ *   `--git-dir`: hooks/ is not a per-worktree path, so in a linked worktree
+ *   `--git-dir` names .git/worktrees/<id>, which has no hooks/ at all — the
+ *   probe found nothing and the repo's own gate was skipped, which is the one
+ *   thing this shim exists never to do. Measured on git 2.55: the two
+ *   spellings are byte-identical outside a worktree, so this is a no-op
+ *   there (MV-115).
  * - inside a foreign hooksPath dir (`chain` null): root comes from git, not
  *   from $0 arithmetic, because the directory depth is not ours to know.
  */
@@ -180,7 +185,7 @@ function shim(args: string, chain: HookName | null): string {
       ? [
           'case $0 in */*) hookdir=${0%/*} ;; *) hookdir=. ;; esac',
           'root=$(CDPATH= cd -- "$hookdir/../.." && pwd) || exit 0',
-          `prev=$(git rev-parse --git-dir 2>/dev/null)/hooks/${chain}`,
+          `prev=$(git rev-parse --git-common-dir 2>/dev/null)/hooks/${chain}`,
           'if [ -x "$prev" ]; then',
           '  "$prev" "$@" || exit $?',
           'elif [ -f "$root/.pre-commit-config.yaml" ]; then',
@@ -275,12 +280,19 @@ export function resolveHooksPath(
 }
 
 /**
- * The repo's real hooks dir: $GIT_DIR/hooks, resolved through worktrees.
- * NOT `rev-parse --git-path hooks` — that follows core.hooksPath, which
- * after install points at multivac's own shims.
+ * The repo's real hooks dir: $GIT_COMMON_DIR/hooks. NOT `rev-parse --git-path
+ * hooks` — that follows core.hooksPath, which after install points at
+ * multivac's own shims. And the COMMON dir rather than `--git-dir`, because
+ * git runs hooks from there: hooks/ is not a per-worktree path, so in a linked
+ * worktree `--git-dir` names .git/worktrees/<id> and this reported a directory
+ * git never reads (MV-115). The two are identical everywhere else.
  */
 export async function gitHooksDir(repo: string): Promise<string> {
-  const { stdout } = await execFileP('git', ['-C', repo, 'rev-parse', '--git-dir']);
+  // MV-115: the COMMON dir, the same answer the shim asks for. git runs hooks
+  // from there — hooks/ is not a per-worktree path — so in a linked worktree
+  // `--git-dir` names .git/worktrees/<id> and doctor reported a directory git
+  // never reads. Identical to `--git-dir` outside a worktree, measured.
+  const { stdout } = await execFileP('git', ['-C', repo, 'rev-parse', '--git-common-dir']);
   const p = stdout.trim();
   return join(p.startsWith('/') ? p : join(repo, p), 'hooks');
 }
