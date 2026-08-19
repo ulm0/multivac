@@ -500,6 +500,12 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // skill; init does not restate a protocol that lives there.
   emit('');
   emit(bold(acid('init: done — the brain is scaffolded and empty. Session zero fills it:')));
+  // MV-111: step ZERO, because everything above was written UNTRACKED and the
+  // next lifecycle command refuses while the bookkeeping paths are unclean. A
+  // fresh brain therefore always refused at `change new`, and the closing
+  // report — the one place a stranger is looking — never mentioned the commit
+  // that unblocks it.
+  emit('init:   0. commit what was just written: git add -A && git commit -m "multivac init"');
   emit('init:   1. load the multivac skill in your agent — it carries both protocols');
   emit(
     brainIsCode

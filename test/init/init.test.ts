@@ -370,3 +370,16 @@ test('a brain with no rows still says it is empty — MV-102', async () => {
 
   assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /brain empty — load the multivac skill to fill it/);
 });
+
+test('the closing report names the commit that unblocks the next command — MV-111', async () => {
+  // init scaffolds everything UNTRACKED, and `change new` refuses while its
+  // bookkeeping paths are unclean — so the very next lifecycle command in a
+  // fresh brain always refused, and the one place a stranger is looking never
+  // mentioned the commit that unblocks it.
+  const dir = tmp();
+  const c = await capture(() => init.run([dir], { cwd: dir }));
+
+  assert.equal(c.code, 0);
+  assert.match(c.out, /0\. commit what was just written/);
+  assert.match(c.out, /git add -A && git commit/);
+});

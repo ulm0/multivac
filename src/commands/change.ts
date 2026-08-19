@@ -574,7 +574,10 @@ async function cmdNew(
     if (dirty.length > 0) {
       const list = dirty.join(' ');
       warn(
-        `cannot open ${slug} — bookkeeping paths carry uncommitted edits: ${list}\n` +
+        // MV-111: "uncommitted edits" is the wrong word for a file nobody has
+        // edited, and in a brain fresh from `init` every one of these paths is
+        // simply untracked — which is the first thing a new user meets.
+        `cannot open ${slug} — bookkeeping paths are untracked or modified: ${list}\n` +
           `  commit them first: git -C ${brain} add -- ${list} && git commit\n` +
           `  then re-run: multivac change new ${slug} "${title}"`,
       );

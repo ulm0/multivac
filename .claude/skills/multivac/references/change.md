@@ -79,15 +79,23 @@ Fill the four declared fields before writing code:
 
 1. **Repos it touches.** Registry keys. A repo that doesn't exist yet is
    legal — greenfield apply creates it.
-2. **Landing order — a graph, not a list.** Declare edges with the reason:
+2. **Landing order — STAGES.** A list of lists: everything in a stage lands
+   in parallel, and an earlier stage lands first.
 
-   ```
-   api -> web        # web claims the feature only after api serves it
-   api -> worker     # worker consumes the new event
+   ```yaml
+   landing_order:
+     - [api]          # web and worker both need api first
+     - [web, worker]
    ```
 
-   No edge between two repos = they land in parallel. The order is law for
-   `land`; write only the edges that are real constraints.
+   Every declared repo must appear in exactly one stage, and an empty
+   `landing_order` means one stage of all of them. The order is law for
+   `land`; use as few stages as the real constraints need.
+
+   *An arrow-edge form (`api -> web`) was designed and never built. The
+   parser takes stages, and refuses anything else without mentioning
+   edges — so a file written from the edge form fails with an error that
+   does not explain itself.*
 3. **Invariants it touches.** "amends INV-xx" for every rule the change
    relaxes or reshapes. An invariant is never relaxed in code — the row
    changes first (dated, in this change), the code follows in the same
@@ -111,7 +119,7 @@ The file also carries per-repo status
   status bump before branching, so every checkout inherits the change's
   bookkeeping from the base. **Work there, not in the shared checkout**: another agent
   may be running another change in the same repo, and a shared tree moves
-  under them. It re-projects doors where the canonical door changed. A repo
+  under them. A repo
   that doesn't exist is created: `git init`, first commit, consumer door
   with the brain mounted. If an SDD adapter is declared, apply **refuses**
   until that tool's plan/tasks artifact exists, then prints its apply-step

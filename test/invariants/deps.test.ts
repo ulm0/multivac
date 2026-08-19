@@ -1,7 +1,9 @@
-// MV-02 enforcement with teeth. The invariant says "exactly two runtime
-// dependencies", but a count anchor on package.json can only count the two
-// known names — a third dependency slips past it. This test pins the actual
-// set; the MV-02 anchor leg pins this test. pnpm test runs from the repo root.
+// MV-02 enforcement with teeth. A count anchor on package.json can only count
+// the names it already knows, so one more dependency slips past it. This test
+// pins the actual SET, whatever the number currently is; the MV-02 anchor leg
+// pins this test. Read the number in MV-02, not here — a restatement of it in
+// this comment is how the count came to be wrong in six places at once.
+// pnpm test runs from the repo root.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';

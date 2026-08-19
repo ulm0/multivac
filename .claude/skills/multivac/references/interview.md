@@ -44,8 +44,12 @@ brain that lies from day one — the exact thing verify exists to prevent.
 
 ## How output lands
 
-- **Door sections**: the loop and the boundary list go into the brain
-  door's managed block — what any agent must know before acting.
+- **Door sections**: NOT into the managed block. `doors` regenerates that
+  block whole, from `.multivac/config.yml` and the adapter registry, on
+  every run — anything written inside it is gone at the next `multivac
+  doors`. The loop and the boundary list go OUTSIDE the markers in
+  `AGENTS.md`, where the tool never writes, or onto their own page that the
+  door links to.
 - **Map page**: the boundaries, one page.
 - **Proposed claims**: every non-negotiable becomes a `proposed` row in the
   law table, authority suggested by you, enacted by the human

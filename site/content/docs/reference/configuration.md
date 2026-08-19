@@ -411,7 +411,7 @@ requires: ">=X.Y.Z"
 
 Grammar is `>=X.Y.Z` and nothing else. A floor gets a floor's grammar: `^0.3` or
 `>=0.3 <1` needs a semver range parser, which would be a third runtime
-dependency, and the law pins two. A malformed value is **refused by name**, not
+dependency, and the law pins the count (MV-02). A malformed value is **refused by name**, not
 ignored — silently dropping it would leave you believing a gate is declared that
 is not.
 
