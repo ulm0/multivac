@@ -824,3 +824,4 @@ checks them on every commit.
 | MV-107 | RESERVED by change the-gate-reads-the-commit-it-gates — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-gate-reads-the-commit-it-gates.md](changes/the-gate-reads-the-commit-it-gates.md) |
 | MV-108 | RESERVED by change presence-is-not-identity — state the rule here before close. | open | proposed | 2026-08-19 | [changes/presence-is-not-identity.md](changes/presence-is-not-identity.md) |
 | MV-109 | RESERVED by change the-engine-reads-one-way — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-engine-reads-one-way.md](changes/the-engine-reads-one-way.md) |
+| MV-110 | RESERVED by change the-ledger-keeps-itself — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-ledger-keeps-itself.md](changes/the-ledger-keeps-itself.md) |
