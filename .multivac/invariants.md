@@ -916,3 +916,4 @@ checks them on every commit.
 <!-- @anchor MV-116 brain:src/lib/git.ts /mode === '120000' \|\| mode === '160000'/ count=2 -->
 <!-- @anchor MV-116 brain:test/anchor/heal-fence.test.ts /a tracked symlink is listed by neither reader/ -->
 <!-- @anchor MV-116 brain:test/anchor/heal-fence.test.ts /is still listed once/ -->
+| MV-117 | RESERVED by change the-ceremony-loses-nothing — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-ceremony-loses-nothing.md](changes/the-ceremony-loses-nothing.md) |
