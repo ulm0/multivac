@@ -1,6 +1,6 @@
 ---
 slug: a-proof-names-one-feature
-status: open
+status: archived
 repos:
   brain:
     status: landed
