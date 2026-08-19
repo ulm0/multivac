@@ -132,13 +132,29 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
       if (untracked) return leg('vacuous', untracked);
       if (pendingSlug !== undefined) return leg('broken');
       // Self-heal: search the whole repo(s) for the one place it moved to.
-      // Never into `.multivac/`: the statement column and the anchor line
-      // quote the very pattern the leg looks for, so a claim whose code is
-      // gone would "move" onto its own law row and read green forever.
+      // TWO fences, both because text QUOTING a pattern is not the code the
+      // pattern pins. Never into `.multivac/`: the statement column and the
+      // anchor line quote the very pattern the leg looks for, so a claim whose
+      // code is gone would "move" onto its own law row and read green forever.
+      // And never onto a different file KIND (MV-116): the include says what
+      // kind of file it is about, so a `.ts` glob heals to a `.ts` file or it
+      // does not heal. Without it `site/`, `docs/` and `specs/` — prose that
+      // quotes patterns — were legal targets, and a heal onto prose retargets
+      // law at text that merely describes it, silently.
+      //
+      // An include that declares no kind and keeps only the `.multivac/` fence
+      // is possible — one with no trailing extension, or ending in a brace
+      // group. There are none in this brain today; the row states it.
+      const kind = /\.[a-z0-9]+$/i.exec(a.include)?.[0] ?? null;
       const candidates: TaggedMatch[] = [];
+      const fenced: TaggedMatch[] = [];
       for (const t of targets) {
         for (const m of await scanWholeRepo(a, t.scanner, t.keys)) {
           if (m.file === '.multivac' || m.file.startsWith('.multivac/')) continue;
+          if (kind !== null && !m.file.toLowerCase().endsWith(kind.toLowerCase())) {
+            fenced.push({ key: t.key, ...m });
+            continue;
+          }
           candidates.push({ key: t.key, ...m });
         }
       }
@@ -156,12 +172,21 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
         );
       }
       if (files.length === 0) {
+        // "found nowhere" would be a lie when a fence emptied the list, and a
+        // fence that silently changes an outcome is the same class of defect
+        // as the heal it prevents. Name what was refused (MV-116).
+        const refusedFiles = [...new Set(fenced.map((f) => at(f.key, f.file)))];
+        const refused =
+          refusedFiles.length === 0
+            ? ''
+            : ` — found in ${refusedFiles.slice(0, 3).join(', ')}${refusedFiles.length > 3 ? ', …' : ''},` +
+              ` refused as a heal target: not ${kind ?? 'the include\'s kind'}`;
         return globFileCount === 0
           ? leg(
               'vacuous',
-              `glob matched no tracked files and /${a.regexSource}/ found nowhere — fix the glob or retire the claim`,
+              `glob matched no tracked files and /${a.regexSource}/ found nowhere${refused} — fix the glob or retire the claim`,
             )
-          : leg('broken', `no match in ${where} — restore the code or retire the claim`);
+          : leg('broken', `no match in ${where}${refused} — restore the code or retire the claim`);
       }
       const fl = files
         .slice(0, 3)

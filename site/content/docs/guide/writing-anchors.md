@@ -125,7 +125,8 @@ members are `:`, `d`, `i`, `g`, `t` — so `PIN[:digit:]` used to become
   vacuous   INV-01 [absent] .multivac/invariants.md:7 · glob matched no tracked files — a rename greens this tombstone silently; fix the glob
   ```
 
-- **`moved` self-heals.** A `present` leg with exactly one match outside
+- **`moved` self-heals.** A `present` leg with exactly one match of the include's own kind — the same trailing extension, never inside `.multivac/`,
+  outside
   its glob gets its glob rewritten in place, exit 0:
 
   ```txt

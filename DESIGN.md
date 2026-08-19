@@ -646,7 +646,8 @@ When a `present` fails in its declared glob, search the whole repo before
 reporting. Four states, not two:
 
 - **ok** — every leg holds.
-- **moved** — a `present` leg with **exactly one** match outside its glob:
+- **moved** — a `present` leg with **exactly one** match outside its glob
+  of the include's own kind — the same trailing extension, never inside `.multivac/`:
   the glob is rewritten in place. Zero or many out-of-glob matches is not a
   move — it is `broken`, with the candidates listed.
 - **broken** — the leg's requirement fails in place.
