@@ -143,8 +143,23 @@ export async function run(
  * costs nothing and keeps this correct on older git.
  */
 export async function lsFiles(repo: string): Promise<string[]> {
-  const out = await run(repo, ['ls-files', '-z', '--deduplicate']);
-  return [...new Set(out.split('\0').filter(Boolean))];
+  // MV-116: `-s` carries the MODE, which is how a symlink (120000) and a
+  // gitlink (160000) are refused. Neither is file text, and a symlink is the
+  // one entry the two readers disagreed about — a working-tree read follows
+  // the link and sees the target's content, a ref read sees the link TEXT — so
+  // one leg got two verdicts depending on which context asked. The Set keeps
+  // the one-entry-per-path guarantee `--deduplicate` gave (MV-71): during an
+  // unresolved merge git records three stages for a conflicted path.
+  const out = await run(repo, ['ls-files', '-z', '-s']);
+  const files = new Set<string>();
+  for (const entry of out.split('\0')) {
+    const tab = entry.indexOf('\t');
+    if (tab < 0) continue; // "<mode> <oid> <stage>\t<path>"
+    const mode = entry.slice(0, entry.indexOf(' '));
+    if (mode === '120000' || mode === '160000') continue;
+    files.add(entry.slice(tab + 1));
+  }
+  return [...files];
 }
 
 /**
@@ -169,10 +184,23 @@ export async function untrackedFiles(repo: string): Promise<string[]> {
   return out.split('\0').filter(Boolean);
 }
 
-/** Tracked files at a ref, repo-relative, /-separated. The ls-files of a tree. */
+/**
+ * Tracked files at a ref, repo-relative, /-separated. The ls-files of a tree,
+ * under the same rule: mode 120000 (symlink) and 160000 (gitlink) are not file
+ * text and are not listed — see lsFiles (MV-116). Without `--name-only` so the
+ * mode is there to read.
+ */
 export async function lsTree(repo: string, ref: string): Promise<string[]> {
-  const out = await run(repo, ['ls-tree', '-r', '-z', '--name-only', '--full-tree', ref]);
-  return out.split('\0').filter(Boolean);
+  const out = await run(repo, ['ls-tree', '-r', '-z', '--full-tree', ref]);
+  const files: string[] = [];
+  for (const entry of out.split('\0')) {
+    const tab = entry.indexOf('\t');
+    if (tab < 0) continue; // "<mode> <type> <oid>\t<path>"
+    const mode = entry.slice(0, entry.indexOf(' '));
+    if (mode === '120000' || mode === '160000') continue;
+    files.push(entry.slice(tab + 1));
+  }
+  return files;
 }
 
 /**

@@ -69,7 +69,8 @@ them silently, which turns a tombstone into a vacuous pass. Translate:
   invisible to fifteen green anchors this way). "For every file, P" is
   `each`; "for no file, P" is `each!` — per file, and the failing file is
   named.
-- **`moved` self-heals.** A `present` leg with exactly one match outside
+- **`moved` self-heals.** A `present` leg with exactly one match of the include's own kind — the same trailing extension, never inside `.multivac/`,
+  outside
   its glob gets its glob rewritten in place, exit 0. Review the diff.
 
 ## Choosing the mode

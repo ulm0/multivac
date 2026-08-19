@@ -390,7 +390,7 @@ Per-leg states:
 | state | meaning |
 | --- | --- |
 | `ok` | the leg holds |
-| `moved` | a `present` leg with zero in-glob matches and exactly one match elsewhere: the glob is rewritten in place |
+| `moved` | a `present` leg with zero in-glob matches and exactly one match elsewhere of the include's own kind — the same trailing extension, never inside `.multivac/`: the glob is rewritten in place. A candidate of another kind — prose quoting the pattern — is refused and named |
 | `broken` | the leg's requirement fails where it was told to look |
 | `vacuous` | the glob matched zero tracked files — the claim was passing by describing nothing |
 | `unevaluated` | the leg's repo is declared but not on disk — counted, never red |
@@ -493,7 +493,9 @@ Widening it is allowed; dropping `absent` is refused.
 ### Self-healing
 
 A `present` leg whose glob no longer matches, but whose content is found in
-exactly one other file, is a rename — not a broken claim. `verify` rewrites
+exactly one other file of the same kind — the include's own trailing
+extension, never inside `.multivac/` — is a rename, not a broken claim. A
+candidate of another kind is refused and named. `verify` rewrites
 the glob:
 
 ```txt
