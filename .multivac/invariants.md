@@ -934,3 +934,4 @@ checks them on every commit.
 <!-- @anchor MV-118 brain:site/content/docs/guide/session-zero.md /OUTSIDE the/ unique -->
 <!-- @anchor MV-118 brain:test/cli/exit-contract.test.ts /a config that will not load is exit 2 wherever it is read/ -->
 <!-- @anchor MV-118 brain:test/doctor/law-exit.test.ts /an anchor that does not parse is exit 1/ -->
+| MV-119 | RESERVED by change the-row-is-read-from-its-end — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-row-is-read-from-its-end.md](changes/the-row-is-read-from-its-end.md) |
