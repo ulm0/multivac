@@ -923,3 +923,4 @@ checks them on every commit.
 <!-- @anchor MV-117 brain:src/commands/verify.ts /state === 'active' \|\| state === 'retired'/ unique -->
 <!-- @anchor MV-117 brain:test/change/ledger.test.ts /close refuses a claim it would orphan by archiving/ -->
 <!-- @anchor MV-117 brain:test/verify/law-death.test.ts /a RETIRED row is as undeletable as an active one/ -->
+| MV-118 | RESERVED by change the-sentences-are-true — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-sentences-are-true.md](changes/the-sentences-are-true.md) |
