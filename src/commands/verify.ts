@@ -385,11 +385,18 @@ function lawDeath(
     };
   }
   const here = new Set(parseClaimRows(now).map((r) => r.id));
-  const gone = [...was].filter(([id, state]) => state === 'active' && !here.has(id)).map(([id]) => id);
+  // MV-117: `retired` too. MV-107 made retirement the sanctioned way out of
+  // `active`, which makes the retired rows the record of what a rule used to
+  // be — so deleting one is exactly as silent as deleting an active one was
+  // before that row existed. `proposed` stays free: a reservation given back
+  // is what `close --abandon` does.
+  const gone = [...was]
+    .filter(([id, state]) => (state === 'active' || state === 'retired') && !here.has(id))
+    .map(([id]) => id);
   if (gone.length === 0) return null;
   return {
     text:
-      `  ${red('law')}       REFUSED ${gone.join(', ')} ${gone.length > 1 ? 'were' : 'was'} active and ` +
+      `  ${red('law')}       REFUSED ${gone.join(', ')} ${gone.length > 1 ? 'were' : 'was'} law and ` +
       `${gone.length > 1 ? 'are' : 'is'} gone · blocking — a row stops applying by being RETIRED, in ` +
       `the open, not by being deleted: set its state to retired and leave the row where a reader can ` +
       `find it`,

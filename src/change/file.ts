@@ -3,10 +3,11 @@
 
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { parse, stringify } from 'yaml';
 import { CHANGES_DIR, LAW_PATH } from '../lib/config.js';
 import type { VerifyReport } from '../types.js';
+import { warn } from '../lib/out.js';
 
 export class ChangeError extends Error {}
 
@@ -69,6 +70,11 @@ function strList(v: unknown, key: string, errs: string[]): string[] {
 }
 
 /** Validate a parsed frontmatter object into a ChangeFile, or throw listing every problem. */
+/** Every frontmatter key the lifecycle carries through a rewrite. */
+const KNOWN_KEYS = [
+  'slug', 'status', 'horizon', 'issue', 'repos', 'landing_order', 'invariants', 'claims',
+];
+
 export function normalizeChange(raw: unknown, label: string): ChangeFile {
   const errs: string[] = [];
   const o = (
@@ -176,6 +182,19 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
 
   if (errs.length > 0) {
     throw new ChangeError(`${label}: ${errs.join('; ')} — fix the frontmatter`);
+  }
+  // MV-117: a key this reader does not name is gone at the next rewrite. The
+  // scaffold says so at creation (MV-110); this says it at the moment it
+  // happens, which is when somebody is looking. A notice, not a refusal: a
+  // change file is a working document and a stray note in it must not stop
+  // the lifecycle.
+  const dropped = Object.keys(o).filter((k) => !KNOWN_KEYS.includes(k));
+  if (dropped.length > 0) {
+    warn(
+      `${label}: dropping frontmatter key${dropped.length > 1 ? 's' : ''} multivac does not know — ` +
+        `${dropped.join(', ')}. The lifecycle rewrites this file and keeps only what it declares; ` +
+        'prose belongs below the closing ---',
+    );
   }
   return {
     slug,
@@ -389,6 +408,16 @@ export async function archiveChange(brain: string, parsed: ParsedChange): Promis
   const dir = join(changesDir(brain), 'archive');
   await mkdir(dir, { recursive: true });
   const dest = join(dir, `${parsed.change.slug}.md`);
+  // MV-117: never over an existing record. MV-110 guards the FRONT door —
+  // `change new` refuses a slug whose archive exists — and the parallel-branch
+  // path this project is designed for cannot pass through it: two branches,
+  // each holding its own copy of the change file, each closing the same slug.
+  if (existsSync(dest)) {
+    throw new ChangeError(
+      `${relative(brain, dest)} already exists — closing this change would overwrite an archived ` +
+        'record. Rename the archive, or close under another slug',
+    );
+  }
   await writeFile(dest, serializeChange(parsed.change, parsed.body));
   await unlink(changePath(brain, parsed.change.slug));
   // The move is only half the archive: the law still cites the old path.

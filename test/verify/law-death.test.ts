@@ -69,7 +69,7 @@ test('a row that was active and is gone refuses the commit — MV-107', async ()
   const c = await capture(() => verify.run([brain], { cwd: brain }));
 
   assert.equal(c.code, 1, c.out);
-  assert.match(c.out, /MV-77 was active and is gone/);
+  assert.match(c.out, /MV-77 was law and is gone/);
   assert.match(c.out, /RETIRED/, 'the refusal does not name the way out');
 });
 
@@ -93,7 +93,7 @@ test('retiring a row is allowed, and dropping a reservation is too — MV-107', 
 
   const c = await capture(() => verify.run([brain], { cwd: brain }));
 
-  assert.doesNotMatch(c.out, /was active and is gone/, 'retirement was refused');
+  assert.doesNotMatch(c.out, /was law and is gone/, 'retirement was refused');
   assert.doesNotMatch(c.out, /MV-78/, 'giving a reservation back was refused');
 });
 
@@ -165,4 +165,22 @@ test("a sibling repo is still read through its own index — MV-106's other half
     if (saved === undefined) delete process.env.GIT_INDEX_FILE;
     else process.env.GIT_INDEX_FILE = saved;
   }
+});
+
+test('a RETIRED row is as undeletable as an active one — MV-117', async () => {
+  // MV-107 made retirement the sanctioned exit from `active`, which makes the
+  // retired rows the record of what a rule used to be. Deleting one was
+  // exactly as silent as deleting an active row was before MV-107 existed.
+  const brain = brainWithLaw();
+  const p = join(brain, '.multivac/invariants.md');
+  writeFileSync(p, readFileSync(p, 'utf8').replace('| specified | active |', '| specified | retired |'));
+  git(brain, 'add', '-A');
+  git(brain, 'commit', '-q', '-m', 'retire it');
+
+  dropLine(brain, ROW.replace('| specified | active |', '| specified | retired |'));
+  git(brain, 'add', '-A');
+  const c = await capture(() => verify.run([brain], { cwd: brain }));
+
+  assert.equal(c.code, 1, c.out);
+  assert.match(c.out, /MV-77 was law and is gone/);
 });
