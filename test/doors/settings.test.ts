@@ -9,7 +9,7 @@ const merged = (raw: string | null, opts?: { refresh?: string | null; matcher?: 
 test('absent settings file becomes hooks-only JSON', () => {
   const obj = JSON.parse(merged(null));
   assert.ok(Array.isArray(obj.hooks.SessionStart));
-  assert.equal(obj.hooks.SessionStart[0].hooks[0].command, 'mvac verify');
+  assert.equal(obj.hooks.SessionStart[0].hooks[0].command, 'mvac verify 2>&1 || true');
   assert.equal(obj.hooks.PostToolUse[0].matcher, 'Edit|Write|MultiEdit');
 });
 
@@ -27,7 +27,7 @@ test('merge preserves foreign keys and foreign hook entries', () => {
   assert.deepEqual(obj.permissions, { allow: ['Bash(ls:*)'] });
   assert.equal(obj.hooks.Stop[0].hooks[0].command, 'echo bye');
   assert.equal(obj.hooks.SessionStart[0].hooks[0].command, 'echo hi');
-  assert.equal(obj.hooks.SessionStart[1].hooks[0].command, 'mvac verify');
+  assert.equal(obj.hooks.SessionStart[1].hooks[0].command, 'mvac verify 2>&1 || true');
 });
 
 test('merge is idempotent', () => {
@@ -64,7 +64,7 @@ test('a foreign entry that mentions the marker is left alone', () => {
   assert.equal(theirs.hooks[1].command, 'my-own-linter'); // sibling kept
   // Ours is a new entry of our own, appended after theirs.
   const mine = obj.hooks.PostToolUse[1];
-  assert.equal(mine.hooks[0].command, 'mvac verify');
+  assert.equal(mine.hooks[0].command, 'mvac verify >&2 || exit 2');
   assert.equal(mine.matcher, 'Edit|Write|MultiEdit');
   // Nothing of theirs moves on a second run either.
   assert.equal(merged(merged(raw)), merged(raw));
@@ -85,7 +85,7 @@ test('a gate under a matcher we do not own gets ours beside it, and says so', ()
   assert.equal(post.length, 2);
   assert.equal(post[0].matcher, 'Bash'); // their matcher is never rewritten
   assert.equal(post[1].matcher, 'Edit|Write|MultiEdit'); // the gate covers what it gates
-  assert.equal(post[1].hooks[0].command, 'mvac verify');
+  assert.equal(post[1].hooks[0].command, 'mvac verify >&2 || exit 2');
   assert.equal(out.notices.length, 1); // and the user is told, not left to find it
   assert.match(out.notices[0], /PostToolUse/);
   assert.match(out.notices[0], /Edit\|Write\|MultiEdit/);
@@ -194,4 +194,66 @@ test('dropping the grapher takes our hook, not the entry a user shares with it',
   // An entry that held only our refresh is dropped whole.
   const bare = JSON.parse(merged(null, { refresh: 'graphify update .' }));
   assert.equal(JSON.parse(merged(JSON.stringify(bare))).hooks.PostToolUse.length, 1);
+});
+
+test('a legacy bare gate is upgraded in place, per event — MV-112', () => {
+  // Every brain alive carries the bare command. Ownership is exact-string
+  // identity (MV-74), so if the new strings alone were ours the merge would
+  // treat the existing entry as foreign, append the gate beside it, and then
+  // report a duplicate about a mess multivac itself made.
+  const raw = JSON.stringify({
+    hooks: {
+      SessionStart: [{ hooks: [{ type: 'command', command: 'mvac verify' }] }],
+      PostToolUse: [{ matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: 'mvac verify' }] }],
+    },
+  });
+  const out = mergeClaudeSettings(raw);
+  const obj = JSON.parse(out.text);
+
+  assert.equal(obj.hooks.SessionStart.length, 1, 'a second session entry was appended');
+  assert.equal(obj.hooks.SessionStart[0].hooks[0].command, 'mvac verify 2>&1 || true');
+  assert.equal(obj.hooks.PostToolUse.length, 1, 'a second edit entry was appended');
+  assert.equal(obj.hooks.PostToolUse[0].hooks[0].command, 'mvac verify >&2 || exit 2');
+  assert.equal(obj.hooks.PostToolUse[0].matcher, 'Edit|Write|MultiEdit', 'the matcher moved');
+  assert.deepEqual(out.notices, [], 'an upgrade is not news');
+  assert.equal(merged(out.text), out.text, 'the upgrade is not idempotent');
+});
+
+test('the projected commands map the harness channels — MV-112', async () => {
+  // The defect was a command that looked right and delivered nothing, so this
+  // RUNS the projected strings rather than reading them. The PATH is
+  // constructed, never inherited: a globally installed mvac has masked a CI
+  // failure in this project before.
+  const { mkdtempSync, writeFileSync, chmodSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { spawnSync } = await import('node:child_process');
+
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-channel-'));
+  // A red verify: findings on stdout, a warning on stderr, exit 1.
+  writeFileSync(join(dir, 'mvac'), '#!/bin/sh\necho "MV-01 broken · blocking"\necho "a warning" >&2\nexit 1\n');
+  chmodSync(join(dir, 'mvac'), 0o755);
+  const run = (cmd: string, path: string) =>
+    spawnSync('sh', ['-c', cmd], { env: { PATH: path }, encoding: 'utf8' });
+  const withStub = `${dir}:/usr/bin:/bin`;
+
+  const session = JSON.parse(merged(null)).hooks.SessionStart[0].hooks[0].command as string;
+  const edit = JSON.parse(merged(null)).hooks.PostToolUse[0].hooks[0].command as string;
+
+  // SessionStart carries findings into context, and never fails the session.
+  const a = run(session, withStub);
+  assert.equal(a.status, 0, 'the session gate failed the session');
+  assert.match(a.stdout, /MV-01 broken/, 'findings did not reach stdout, the only channel read');
+  assert.equal(a.stderr, '', 'anything left on stderr is discarded at session start');
+
+  // PostToolUse returns the failure to the model, on the one channel it reads.
+  const b = run(edit, withStub);
+  assert.equal(b.status, 2, 'only exit 2 is fed back to the model');
+  assert.match(b.stderr, /MV-01 broken/, 'findings did not reach stderr');
+  assert.equal(b.stdout, '', 'stdout after a tool call reaches nobody');
+
+  // A gate whose binary has gone refuses rather than waving through.
+  const c = run(edit, '/usr/bin:/bin');
+  assert.equal(c.status, 2, 'a missing binary passed silently');
+  assert.notEqual(c.stderr, '', 'and said nothing about it');
 });

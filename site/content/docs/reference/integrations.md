@@ -84,7 +84,7 @@ where the brain is mounted, what binds, and that a change may cross repos.
 | file written | `CLAUDE.md` |
 | kind | `symlink` → `AGENTS.md` |
 | skill | `.claude/skills/multivac/` |
-| hook config | `.claude/settings.json` — `hooks.SessionStart` and `hooks.PostToolUse` → `mvac verify` |
+| hook config | `.claude/settings.json` — `hooks.SessionStart` and `hooks.PostToolUse` → `mvac verify`, wrapped per event so a red run reaches the model (MV-112) |
 | detected by | an existing `CLAUDE.md` |
 | source | <https://code.claude.com/docs/en/memory> |
 
@@ -101,11 +101,11 @@ and entry it does not own:
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [ { "type": "command", "command": "mvac verify" } ] }
+      { "hooks": [ { "type": "command", "command": "mvac verify 2>&1 || true" } ] }
     ],
     "PostToolUse": [
       {
-        "hooks": [ { "type": "command", "command": "mvac verify" } ],
+        "hooks": [ { "type": "command", "command": "mvac verify >&2 || exit 2" } ],
         "matcher": "Edit|Write|MultiEdit"
       }
     ]
@@ -123,7 +123,13 @@ including a file you put there yourself, because nothing on disk says who
 wrote it (MV-73). Your own skills live beside it: `doors` never touches a
 sibling under `.claude/skills/`, only the one directory it writes.
 What multivac owns here is the individual command, matched exactly — never an
-entry that merely mentions it. `mvac verify --strict` is your hook and stays
+entry that merely mentions it — and the set it owns is the three commands
+multivac has written, so a brain projected before MV-112 is upgraded in place
+rather than gaining a second gate beside the mute one. The wrapping differs per
+event because Claude Code reads each hook back on one channel only; the
+contract and its reasons are in
+[hooks](/docs/reference/hooks/#harness-hooks--the-early-ceiling).
+`mvac verify --strict` is your hook and stays
 untouched, commands you add beside multivac's stay in place, and the matcher on
 an entry is yours. The rule and the notice it prints are in
 [hooks](/docs/reference/hooks/#what-preserving-means-here).

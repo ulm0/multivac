@@ -246,18 +246,18 @@ every key and entry it does not own:
 
 | event | matcher | command |
 | --- | --- | --- |
-| `SessionStart` | — | `mvac verify` |
-| `PostToolUse` | `Edit\|Write\|MultiEdit` | `mvac verify` |
+| `SessionStart` | — | `mvac verify 2>&1 || true` |
+| `PostToolUse` | `Edit\|Write\|MultiEdit` | `mvac verify >&2 || exit 2` |
 
 ```json
 {
   "hooks": {
     "SessionStart": [
-      { "hooks": [ { "type": "command", "command": "mvac verify" } ] }
+      { "hooks": [ { "type": "command", "command": "mvac verify 2>&1 || true" } ] }
     ],
     "PostToolUse": [
       {
-        "hooks": [ { "type": "command", "command": "mvac verify" } ],
+        "hooks": [ { "type": "command", "command": "mvac verify >&2 || exit 2" } ],
         "matcher": "Edit|Write|MultiEdit"
       }
     ]
@@ -269,6 +269,22 @@ every key and entry it does not own:
 brain, and this tells it whether the brain is currently true. `PostToolUse`
 re-checks after every write, so a change that breaks a claim surfaces in the
 same turn that made it, not three files later.
+
+**The wrappers are the delivery, not decoration** (MV-112). Claude Code feeds
+the model only exit-0 stdout at `SessionStart` and only exit-2 stderr at
+`PostToolUse`; every other exit shows stderr to you and gives the model
+nothing. A bare `mvac verify` writes its findings to stdout and exits 1 when it
+gates — so until MV-112 the gate delivered nothing on the one occasion it had
+something to say. The session command therefore merges stderr into stdout and
+always exits 0, because findings are the payload there and the contract has no
+blocking at session start. The post-edit command sends everything to stderr and
+turns **every** failure into exit 2 — a red law, a config the edit itself just
+broke, a binary that has gone — because after an agent's edit each of those is
+the agent's to answer. The edit is already on disk: the block is a forced read
+in the same turn, not a revert.
+
+A green run says nothing on either event, deliberately. A gate that speaks when
+it has nothing to say teaches the reader to stop reading it.
 
 The merge is idempotent — re-running `doors` does not duplicate entries — and
 defensive. A settings file that is not valid JSON is left alone and reported:

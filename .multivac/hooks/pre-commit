@@ -19,7 +19,12 @@ elif [ -f "$root/.pre-commit-config.yaml" ]; then
     echo "multivac: .pre-commit-config.yaml present but pre-commit is not installed — the project's gate did NOT run. Fix: install pre-commit (pipx install pre-commit, or brew install pre-commit)" >&2
   fi
 fi
-if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && command -v node >/dev/null 2>&1; then
+# The build is used only when this repo IS multivac: `dist/cli.js` plus
+# node_modules describes most Node CLI repos, and running THEIR binary as
+# multivac is the tool executing somebody else's program under its own name.
+if [ -f "$root/dist/cli.js" ] && [ -d "$root/node_modules" ] && \
+   grep -q '"name"[[:space:]]*:[[:space:]]*"multivac"' "$root/package.json" 2>/dev/null && \
+   command -v node >/dev/null 2>&1; then
   exec node "$root/dist/cli.js" verify
 fi
 if [ -f "$root/node_modules/multivac/package.json" ] && command -v npx >/dev/null 2>&1; then
