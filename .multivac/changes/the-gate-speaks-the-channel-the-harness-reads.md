@@ -1,29 +1,45 @@
 ---
 slug: the-gate-speaks-the-channel-the-harness-reads
 status: open
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: branched
+landing_order:
+  - - brain
 invariants:
   touches: []
   adds:
     - MV-112
   retires: []
-claims: []
+claims:
+  - id: MV-112
+    statement: "The harness gate speaks the one channel the harness reads back: session-start findings ride exit-0 stdout into the model's context, and a red post-edit run returns as the exit-2 stderr the model must answer. Identity stays exact, and a `doors` re-run upgrades the mute command in place."
 ---
 
 # The gate speaks the channel the harness reads
 
-Declare repos, landing_order, invariants and claims in the frontmatter,
-then run `multivac change plan the-gate-speaks-the-channel-the-harness-reads`. For example:
+The tool's differentiator is that law reaches the agent at the moment of
+action. It does not. Both harness entries in `.claude/settings.json` run bare
+`mvac verify`, and Claude Code's hook contract feeds the model **only** exit-0
+stdout at `SessionStart` and **only** exit-2 stderr at `PostToolUse`. `verify`
+writes its findings to stdout and exits 1 when it gates — so on the one
+occasion the gate has something to say, neither event delivers a byte of it.
+The enforcement ladder's *caught in the same turn* rung fires only when
+everything is green.
 
-    # repos: { api: { status: planned } } — planned|branched|committed|mr|landed
-    # landing_order: [[api]] — stages; earlier stages land first
-    # claims: [{ id: <ID>, statement: "..." }] — what close verifies
+The projection now writes a command per event, because the two events read
+back on opposite channels:
 
-Statements are prose: quote any value holding a colon —
-`statement: "staleness: block"`.
+- `SessionStart` — `mvac verify 2>&1 || true`. Findings are the payload, and
+  exit-0 stdout is the only thing that carries them into context. Forcing 0 is
+  routing, not ignoring: the contract has no blocking at session start, and a
+  gate that could block there would lock a session out of the repair it was
+  opened to make.
+- `PostToolUse` — `mvac verify >&2 || exit 2`. Every failure maps to the one
+  exit the harness returns to the model: a red law, the `ConfigError` the edit
+  itself just caused, a binary that has gone. The edit is already on disk, so
+  the block is a forced read in the same turn, not a revert.
 
-multivac owns the frontmatter formatting: every lifecycle step rewrites it, so
-hand-tuned layout will not survive, and a key it does not know is DROPPED
-rather than carried through. Declared values round-trip unchanged; the body,
-below the closing ---, is yours.
+Ownership stays exact — MV-74's rule — and widens to the three strings multivac
+has ever written, so a `doors` re-run rewrites the legacy bare command in place
+instead of appending a second entry beside it.
