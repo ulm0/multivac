@@ -549,6 +549,11 @@ test('a `~` core.hooksPath expands to $HOME: the shims land where git looks, not
   // doctor reads the same directory: nothing missing, and --strict passes
   await withHome(home, () => capture(() => init.run([], { cwd: dir })));
   mkdirSync(join(dir, 'dist'), { recursive: true });
+  // MV-108: the build is only preferred when the repo IS multivac, so the
+  // fixture has to say so. Without it these three tests depended on a global
+  // `mvac` being on PATH — green on a developer machine, red in CI, which is
+  // the host dependency the constitution forbids.
+  writeFileSync(join(dir, 'package.json'), '{"name":"multivac"}\n');
   writeFileSync(join(dir, 'dist/cli.js'), '// built\n');
   mkdirSync(join(dir, 'node_modules'), { recursive: true });
   const strict = await withHome(home, () => doctorReport(dir, true));
@@ -641,6 +646,11 @@ test('our own hooks dir spelled absolutely is ours, not a foreign gate', async (
   // the long spelling is ours, so the gate is armed and --strict says so
   git(dir, 'config', 'core.hooksPath', join(dir, '.multivac/hooks'));
   mkdirSync(join(dir, 'dist'), { recursive: true });
+  // MV-108: the build is only preferred when the repo IS multivac, so the
+  // fixture has to say so. Without it these three tests depended on a global
+  // `mvac` being on PATH — green on a developer machine, red in CI, which is
+  // the host dependency the constitution forbids.
+  writeFileSync(join(dir, 'package.json'), '{"name":"multivac"}\n');
   writeFileSync(join(dir, 'dist/cli.js'), '// built\n');
   mkdirSync(join(dir, 'node_modules'), { recursive: true });
   const abs = await doctorReport(dir, true);
@@ -682,6 +692,11 @@ test('doctor reads the resolved directory: an inherited absolute hooksPath is no
 
   // a runner the shim can find, so `armed` is about the path, not the runner
   mkdirSync(join(dir, 'dist'), { recursive: true });
+  // MV-108: the build is only preferred when the repo IS multivac, so the
+  // fixture has to say so. Without it these three tests depended on a global
+  // `mvac` being on PATH — green on a developer machine, red in CI, which is
+  // the host dependency the constitution forbids.
+  writeFileSync(join(dir, 'package.json'), '{"name":"multivac"}\n');
   writeFileSync(join(dir, 'dist/cli.js'), '// built\n');
   mkdirSync(join(dir, 'node_modules'), { recursive: true });
 
