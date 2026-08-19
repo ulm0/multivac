@@ -1,6 +1,6 @@
 ---
 slug: a-boundary-refuses-what-it-cannot-honour
-status: open
+status: archived
 repos:
   brain:
     status: landed
