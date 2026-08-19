@@ -3,7 +3,7 @@ slug: the-engine-reads-one-way
 status: open
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
