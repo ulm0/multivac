@@ -891,3 +891,4 @@ checks them on every commit.
 <!-- @anchor MV-113 brain:src/adapters/sdd.ts /matches more than one place in/ count=2 -->
 <!-- @anchor MV-113 brain:src/adapters/registry.ts /specs\/\*/ absent -->
 <!-- @anchor MV-113 brain:test/change/ledger.test.ts /a tail is not a match, and a numbered directory still is/ -->
+| MV-114 | RESERVED by change a-boundary-refuses-what-it-cannot-honour — state the rule here before close. | open | proposed | 2026-08-19 | [changes/a-boundary-refuses-what-it-cannot-honour.md](changes/a-boundary-refuses-what-it-cannot-honour.md) |
