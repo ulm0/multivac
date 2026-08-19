@@ -900,3 +900,4 @@ checks them on every commit.
 <!-- @anchor MV-114 brain:src/lib/version.ts /\(\?:#\.\*\)\?\$\/m/ unique -->
 <!-- @anchor MV-114 brain:test/init/init.test.ts /init refuses a config it cannot read, and the gate stays armed/ -->
 <!-- @anchor MV-114 brain:test/lib/config.test.ts /an unknown config key is refused by name, with its near miss/ -->
+| MV-115 | RESERVED by change the-projection-survives-its-environment — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-projection-survives-its-environment.md](changes/the-projection-survives-its-environment.md) |
