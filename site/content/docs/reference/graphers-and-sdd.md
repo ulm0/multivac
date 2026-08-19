@@ -341,7 +341,9 @@ the instruction, the agent runs it, and the gate checks what it left behind.
 ### The scaffold: declaring a tool that has never run here
 
 Declaring `sdd: speckit` in a repo where spec-kit has never run used to be a
-deadlock. `change plan` refuses without `specs/*<slug>*/spec.md`; that file
+deadlock. `change plan` refuses without `specs/*-<slug>/spec.md` — a SUFFIX
+match, so another change's directory that merely contains the slug is not proof
+of this one's step (MV-110); that file
 comes from `/speckit.specify`; that chat command does not exist until
 `specify init` has run — and `specify init` was what the blocked change was
 going to do. The only exits were `--no-sdd` and `sdd_auto: false`, both of
@@ -435,12 +437,12 @@ command refuses without it:
 
 | refuses | until | opsx | speckit |
 | --- | --- | --- | --- |
-| `change plan` | the propose-equivalent exists | `openspec/changes/<slug>/proposal.md` | `specs/*<slug>*/spec.md` |
-| `change apply` | the plan/tasks artifact exists | `openspec/changes/<slug>/tasks.md` | `specs/*<slug>*/plan.md`, `specs/*<slug>*/tasks.md` |
+| `change plan` | the propose-equivalent exists | `openspec/changes/<slug>/proposal.md` | `specs/*-<slug>/spec.md` |
+| `change apply` | the plan/tasks artifact exists | `openspec/changes/<slug>/tasks.md` | `specs/*-<slug>/plan.md`, `specs/*-<slug>/tasks.md` |
 | `change close` | the archive-equivalent happened | `openspec/changes/archive/*-<slug>` | *no archive step exists — but see the ledger below* |
 
 Beyond the artifact, `change close` also reads the task list each tool keeps —
-the archived `tasks.md` for opsx, `specs/*<slug>*/tasks.md` for spec-kit — and
+the archived `tasks.md` for opsx, `specs/*-<slug>/tasks.md` for spec-kit — and
 refuses while either still has open boxes. That is [the tool's own
 ledger](#the-tools-own-ledger), and it is why spec-kit's close is checked at all
 despite having no archive step to prove.

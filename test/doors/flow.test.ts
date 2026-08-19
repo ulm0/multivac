@@ -63,9 +63,9 @@ test('the page sorts declared obligations into automatic, gate and yours', async
 test('a gating row leads with the command that refuses and names the artifact', async () => {
   const { cfg } = await eco(DECLARED);
   const page = renderFlow(cfg);
-  assert.match(page, /- `change plan` refuses without `specs\/\*<slug>\*\/spec\.md`/);
-  assert.match(page, /- `change apply` refuses without `specs\/\*<slug>\*\/plan\.md`/);
-  assert.match(page, /- `change apply` refuses without `specs\/\*<slug>\*\/tasks\.md`/);
+  assert.match(page, /- `change plan` refuses without `specs\/\*-<slug>\/spec\.md`/);
+  assert.match(page, /- `change apply` refuses without `specs\/\*-<slug>\/plan\.md`/);
+  assert.match(page, /- `change apply` refuses without `specs\/\*-<slug>\/tasks\.md`/);
 });
 
 test("an unprovable step carries the adapter's own reason, verbatim", async () => {

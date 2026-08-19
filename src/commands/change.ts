@@ -544,6 +544,18 @@ async function cmdNew(
   // holding the intention becomes the file holding the work — one document,
   // one history — and the id is reserved HERE, at the start, never back when
   // the intention was written down.
+  // MV-110: the archive counts as taken. Nothing checked it, so a second
+  // change could reuse a closed change's slug and the eventual close would
+  // overwrite the archived record — the one the docs describe as never
+  // deleted. `roadmap add` has had this check all along.
+  const archived = join(brain, CHANGES_DIR, 'archive', `${slug}.md`);
+  if (existsSync(archived)) {
+    warn(
+      `${slug} is already archived at ${relative(brain, archived)} — closing a second change with ` +
+        'that slug would overwrite it; pick another slug, or rename the archive first',
+    );
+    return 1;
+  }
   let parsed: ParsedChange;
   let promoted = false;
   if (existsSync(changePath(brain, slug))) {
@@ -812,6 +824,11 @@ async function cmdLand(
       change.repos[landed].status = 'landed';
       await saveChange(brain, parsed);
       const abs = repoAbs(brain, cfg, landed);
+      // BEFORE the bookkeeping commit, deliberately: committing here moves this
+      // branch, and the merge evidence is a question about where the branches
+      // are. Asking after would make the commit its own answer — measured by
+      // the test that caught it, where a branch level with main read as
+      // "merged into main" the moment the bump was committed first.
       const ev = abs && existsSync(abs) ? await mergedLocally(abs, slug) : null;
       if (ev?.merged) {
         say(`${landed}: recorded as landed — ${slug} is merged into ${ev.ref} ${ev.sha.slice(0, 7)}`);
@@ -826,6 +843,17 @@ async function cmdLand(
             'normal for an MR merged on the remote, or squashed',
         );
       }
+      // MV-110: the one lifecycle write that used to float. commitBookkeeping's
+      // own docstring says everything the lifecycle writes into the brain is
+      // committed by the lifecycle, scoped to those paths — and this was the
+      // exception, leaving a dirty change file the next `change new` refuses
+      // over. AFTER the merge evidence above, because a commit here moves this
+      // branch and would answer that question itself.
+      await commitBookkeeping(
+        brain,
+        [changeRel(slug)],
+        `change land: ${slug} — ${landed} landed`,
+      );
     } else {
       say(`${landed}: already landed`);
     }
@@ -924,7 +952,25 @@ async function cmdClose(
     const dest = await archiveChange(brain, parsed);
     const freed = await releaseUnused(brain, slug, anchored);
     for (const l of freed) say(l);
-    say(`abandoned -> ${relative(brain, dest)} — nothing was verified, nothing landed`);
+    // MV-110: "nothing landed" was asserted, never checked. A change can be
+    // abandoned with repos already merged, and writing the opposite into the
+    // permanent record is a lie the archive keeps.
+    const landedRepos = Object.entries(parsed.change.repos)
+      .filter(([, r]) => r.status === 'landed')
+      .map(([k]) => k);
+    say(
+      `abandoned -> ${relative(brain, dest)} — nothing was verified; ` +
+        (landedRepos.length === 0
+          ? 'nothing landed'
+          : `ALREADY LANDED: ${landedRepos.join(', ')} — that work stays landed`),
+    );
+    // MV-110: abandon archives the file and gives the row back, so it edits
+    // exactly what close edits — and printed no commit at all, while the
+    // reference documents one. Same scoped paths, never `add -A`.
+    say(
+      `commit it: git -C ${brain} add -- ${relative(brain, dest)} ${changeRel(slug)} ${LAW_PATH} ` +
+        `&& git commit -m "Abandon the ${slug} change"`,
+    );
     return 0;
   }
   // The archive-equivalent has to have HAPPENED — not been printed at.
@@ -996,7 +1042,11 @@ async function cmdClose(
   // The rename is a working-tree edit like any other: say so, with the
   // command — scoped to THIS change's paths, never `add -A`, which in a
   // shared checkout sweeps another change's files into the archive commit.
-  const paths = [relative(brain, dest), changeRel(slug), ...(released.length > 0 ? [LAW_PATH] : [])];
+  // MV-110: the law is in the list whenever archiveChange touched it, and
+  // repointLawLinks touches it on EVERY close that has a row to repoint — not
+  // only when a reservation was released. Omitting it left the law dirty in
+  // exactly the normal case, and the next `change new` refuses over that.
+  const paths = [relative(brain, dest), changeRel(slug), LAW_PATH];
   const list = paths.join(' ');
   const commit = `git -C ${brain} add -- ${list} && git commit -m "Archive the ${slug} change"`;
   // Where that commit lands depends on where the brain is standing. On a
