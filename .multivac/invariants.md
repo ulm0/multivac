@@ -825,3 +825,4 @@ checks them on every commit.
 | MV-108 | RESERVED by change presence-is-not-identity — state the rule here before close. | open | proposed | 2026-08-19 | [changes/presence-is-not-identity.md](changes/presence-is-not-identity.md) |
 | MV-109 | RESERVED by change the-engine-reads-one-way — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-engine-reads-one-way.md](changes/the-engine-reads-one-way.md) |
 | MV-110 | RESERVED by change the-ledger-keeps-itself — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-ledger-keeps-itself.md](changes/the-ledger-keeps-itself.md) |
+| MV-111 | RESERVED by change a-paraphrase-ages-silently — state the rule here before close. | open | proposed | 2026-08-19 | [changes/a-paraphrase-ages-silently.md](changes/a-paraphrase-ages-silently.md) |
