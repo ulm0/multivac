@@ -40,7 +40,7 @@ function findMarker(text: string, marker: string): number {
   return -1;
 }
 
-export function applyManagedBlock(existing: string | null, body: string): string {
+export function applyManagedBlock(existing: string | null, body: string, where?: string): string {
   const block = renderBlock(body);
   if (existing === null) return block;
 
@@ -52,7 +52,8 @@ export function applyManagedBlock(existing: string | null, body: string): string
   }
   if (begin !== -1 || end !== -1) {
     throw new Error(
-      `managed block is malformed (found one marker without the other) — restore both "${BEGIN}" and "${END}" or delete the stray marker`,
+      `${where ? `${where}: ` : ''}managed block is malformed (found one marker without the other) — ` +
+        `restore both "${BEGIN}" and "${END}" or delete the stray marker`,
     );
   }
   const sep = existing === '' ? '' : existing.endsWith('\n') ? '\n' : '\n\n';

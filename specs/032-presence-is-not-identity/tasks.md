@@ -16,46 +16,46 @@ exactly that mistake, so US1 and US2 assert the EFFECT — content survival, and
 
 ## Phase 1: Setup
 
-- [ ] T001 Baseline: `pnpm run build && pnpm test`, and record the count
-- [ ] T002 Reproduce all five with the "before" block of quickstart.md
+- [X] T001 Baseline: `pnpm run build && pnpm test`, and record the count
+- [X] T002 Reproduce all five with the "before" block of quickstart.md
 
 ## Phase 2: Foundational
 
-- [ ] T003 Write MV-108 in `.multivac/invariants.md` and amend MV-92 in place with its ceiling (FR-010), anchoring MV-108 to the shim, the shared predicate, the stub branch and their tests
-- [ ] T004 In `src/hooks/install.ts`, export the shim's managed header as a named constant and a predicate that answers "did multivac write this hook"
-- [ ] T005 In `src/hooks/install.ts`, add one shared `runsMultivac(text)` — the mention on a line whose first non-space character is not `#`
+- [X] T003 Write MV-108 in `.multivac/invariants.md` and amend MV-92 in place with its ceiling (FR-010), anchoring MV-108 to the shim, the shared predicate, the stub branch and their tests
+- [X] T004 In `src/hooks/install.ts`, export the shim's managed header as a named constant and a predicate that answers "did multivac write this hook"
+- [X] T005 In `src/hooks/install.ts`, add one shared `runsMultivac(text)` — the mention on a line whose first non-space character is not `#`
 
 ## Phase 3: User Story 1 — a door never eats what the operator wrote (P1)
 
-- [ ] T006 [US1] In `src/commands/doors.ts`, make the `stub` branch read the file first and pass it to `applyManagedBlock`, writing frontmatter only when the file was absent
-- [ ] T007 [US1] In `src/doors/block.ts`, take the file path and name it in the malformed-block error (FR-009), and pass it at every call site
-- [ ] T008 [US1] In `test/doors/`, assert operator content survives a `doors` run and a second one, and that the malformed-block error names the file
+- [X] T006 [US1] In `src/commands/doors.ts`, make the `stub` branch read the file first and pass it to `applyManagedBlock`, writing frontmatter only when the file was absent
+- [X] T007 [US1] In `src/doors/block.ts`, take the file path and name it in the malformed-block error (FR-009), and pass it at every call site
+- [X] T008 [US1] In `test/doors/`, assert operator content survives a `doors` run and a second one, and that the malformed-block error names the file
 
 ## Phase 4: User Story 2 — the hook runs multivac, or nothing (P1)
 
-- [ ] T009 [US2] In `src/hooks/install.ts`, gate the first runner rung on `$root/package.json` naming multivac — in the shim (sh) and in `findRunner` (Node), which are a declared mirror pair
-- [ ] T010 [US2] In `test/init/hook-shim.test.ts`, assert a repo whose `dist/cli.js` would leave evidence never has it executed, and that a repo whose package.json names multivac still uses its build
+- [X] T009 [US2] In `src/hooks/install.ts`, gate the first runner rung on `$root/package.json` naming multivac — in the shim (sh) and in `findRunner` (Node), which are a declared mirror pair
+- [X] T010 [US2] In `test/init/hook-shim.test.ts`, assert a repo whose `dist/cli.js` would leave evidence never has it executed, and that a repo whose package.json names multivac still uses its build
 
 ## Phase 5: User Story 3 — "armed" means armed (P1)
 
-- [ ] T011 [US3] In `src/commands/doctor.ts`, replace the local regex with the shared predicate from T005
-- [ ] T012 [US3] In `test/doctor/`, assert a hook mentioning multivac only in a comment is reported as not running it, and that `--strict` does not call the gate armed
+- [X] T011 [US3] In `src/commands/doctor.ts`, replace the local regex with the shared predicate from T005
+- [X] T012 [US3] In `test/doctor/`, assert a hook mentioning multivac only in a comment is reported as not running it, and that `--strict` does not call the gate armed
 
 ## Phase 6: User Story 4 — a shim we wrote is a shim we may rewrite (P2)
 
-- [ ] T013 [US4] In `installAlongside`, regenerate an existing hook that carries our header; keep "wired" for a foreign hook that runs multivac, and the refusal for one that does not
-- [ ] T014 [US4] In `test/init/coexist.test.ts`, assert `strict_pre_push` reaches an already-installed multivac shim, and that a foreign hook is still never rewritten
+- [X] T013 [US4] In `installAlongside`, regenerate an existing hook that carries our header; keep "wired" for a foreign hook that runs multivac, and the refusal for one that does not
+- [X] T014 [US4] In `test/init/coexist.test.ts`, assert `strict_pre_push` reaches an already-installed multivac shim, and that a foreign hook is still never rewritten
 
 ## Phase 7: User Story 5 — `init` does not undo `doors` (P2)
 
-- [ ] T015 [US5] In `src/commands/init.ts`, pass the config's strictness to `installHooks`, and stamp `.multivac/projected.yml` only when it is absent
-- [ ] T016 [US5] In `test/init/reinit.test.ts`, assert both: the shim stays strict and the record does not move
+- [X] T015 [US5] In `src/commands/init.ts`, pass the config's strictness to `installHooks`, and stamp `.multivac/projected.yml` only when it is absent
+- [X] T016 [US5] In `test/init/reinit.test.ts`, assert both: the shim stays strict and the record does not move
 
 ## Phase 8: Polish & Cross-Cutting
 
-- [ ] T017 Update `site/content/docs/reference/hooks.md` and `integrations.md` where they describe the runner order and what a projection owns
-- [ ] T018 `pnpm test` green, with any test asserting the old behaviour updated rather than deleted
-- [ ] T019 `node dist/cli.js verify` in this brain: 0 blocking broken, MV-108 anchored
+- [X] T017 Update `site/content/docs/reference/hooks.md` and `integrations.md` where they describe the runner order and what a projection owns
+- [X] T018 `pnpm test` green, with any test asserting the old behaviour updated rather than deleted
+- [X] T019 `node dist/cli.js verify` in this brain: 0 blocking broken, MV-108 anchored
 
 ## Dependencies
 

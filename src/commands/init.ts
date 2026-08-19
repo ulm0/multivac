@@ -350,7 +350,10 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // (change apply puts one checkout per change there — never committed).
   await mkdir(join(dir, '.multivac', 'cache'), { recursive: true });
   await writeIfMissing(join(dir, '.multivac', '.gitignore'), 'cache/\nworktrees/\n');
-  await stamp(dir);
+  // MV-86/MV-108: the record moves only under an explicit act of adoption
+  // (`doors --adopt`). Restamping on every `init` made the skew notice vanish
+  // for a reason unrelated to the upgrade — quiet, and looking resolved.
+  if (!(await exists(join(dir, PROJECTED_PATH)))) await stamp(dir);
   const cfgPath = join(dir, '.multivac', 'config.yml');
   // Tracked source already here = the brain is its own code repo. Decided
   // before the config branch because the closing call to action needs it too:
@@ -416,7 +419,7 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // A config that will not load declares nothing, and a door written from
   // nothing would be this command inventing the brain it is scaffolding. The
   // config's own error stands; the door waits for `doors`.
-  const next = body === null ? existing : applyManagedBlock(existing, body);
+  const next = body === null ? existing : applyManagedBlock(existing, body, doorPath);
   if (next !== null && next !== existing) {
     await writeFile(doorPath, next);
     report(
@@ -438,7 +441,12 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
 
   // 4. enforcement floor: versioned hooks + core.hooksPath — but never over
   // the repo's own gates. The strategy used is part of the report.
-  const hooks = await installHooks(dir);
+  // MV-108: with the strictness the config declares, or `init .` — the line
+  // doctor itself prints — silently downgrades a strict pre-push shim that
+  // `doors` installed, and doctor keeps calling it armed.
+  const hooks = await installHooks(dir, {
+    strictPrePush: (await loadConfig(dir).catch(() => null))?.strictPrePush === true,
+  });
   switch (hooks.strategy) {
     case 'fresh':
       report('init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit');

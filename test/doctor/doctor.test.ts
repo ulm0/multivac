@@ -328,7 +328,9 @@ test('doctor: hooks installed but inactive is a warning, active names the runner
     // built but not installed: still inactive. node would exit 1 on the first
     // bare import, and an exit 1 out of pre-commit blocks the commit.
     mkdirSync(join(eco.brain, 'dist'), { recursive: true });
-    writeFileSync(join(eco.brain, 'dist/cli.js'), '// built\n');
+    writeFileSync(join(eco.brain, 'package.json'), '{"name":"multivac"}\n');
+    writeFileSync(join(eco.brain, 'package.json'), '{"name":"multivac"}\n');
+  writeFileSync(join(eco.brain, 'dist/cli.js'), '// built\n');
     const binDir = join(eco.brain, '..', 'nodebin');
     mkdirSync(binDir, { recursive: true });
     writeFileSync(join(binDir, 'node'), '#!/bin/sh\nexit 0\n');
@@ -414,6 +416,7 @@ test('doctor --strict exits 1 when the gate is disarmed; bare doctor stays 0', a
   // runnable multivac, so the shim bites: a built dist with node_modules beside
   // it (node and git stay on the real PATH — nuking PATH would blind git too).
   mkdirSync(join(eco.brain, 'dist'), { recursive: true });
+  writeFileSync(join(eco.brain, 'package.json'), '{"name":"multivac"}\n');
   writeFileSync(join(eco.brain, 'dist/cli.js'), '// built\n');
   mkdirSync(join(eco.brain, 'node_modules'), { recursive: true });
 

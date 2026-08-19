@@ -40,7 +40,11 @@ supported, which is the answer that helps.
 
 Everything multivac writes into a file it does not fully own lands between
 `<!-- multivac:begin -->` and `<!-- multivac:end -->`. Content outside that
-block is yours and is never touched.
+block is yours and is never touched — including in a `stub` door, which reads
+the file before it writes it and adds its frontmatter only when creating the
+file (MV-108). Before MV-108 the stub kind wrote its file whole, and that
+sentence was false for `.github/copilot-instructions.md` and
+`.cursor/rules/multivac.mdc`.
 
 ## What one run looks like
 

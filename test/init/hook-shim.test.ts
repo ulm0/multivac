@@ -70,6 +70,10 @@ test('shim prefers the build in this repo, over everything else available', asyn
   mkdirSync(join(repo, 'node_modules/multivac'), { recursive: true });
   writeFileSync(join(repo, 'node_modules/multivac/package.json'), '{}');
   mkdirSync(join(repo, 'dist'), { recursive: true });
+  // MV-108: preferring this repo's build now requires the repo to BE
+  // multivac — `dist/cli.js` plus node_modules describes most Node CLI
+  // repos, and running theirs as multivac is the defect that closed.
+  writeFileSync(join(repo, 'package.json'), '{"name":"multivac"}\n');
   writeFileSync(join(repo, 'dist/cli.js'), '// built cli\n');
 
   const path = `${bin}:${SYS}`;
@@ -109,6 +113,10 @@ test('the repo-local build is found from the hook, not from cwd', async () => {
   const { repo, bin } = await fixture();
   fake(bin, 'node');
   mkdirSync(join(repo, 'dist'), { recursive: true });
+  // MV-108: preferring this repo's build now requires the repo to BE
+  // multivac — `dist/cli.js` plus node_modules describes most Node CLI
+  // repos, and running theirs as multivac is the defect that closed.
+  writeFileSync(join(repo, 'package.json'), '{"name":"multivac"}\n');
   writeFileSync(join(repo, 'dist/cli.js'), '// built cli\n');
   mkdirSync(join(repo, 'node_modules'), { recursive: true });
   mkdirSync(join(repo, 'sub'), { recursive: true });
@@ -157,6 +165,7 @@ test('a built dist with no node_modules is INACTIVE, never a blocked commit', as
   const { repo, bin } = await fixture();
   fake(bin, 'node');
   mkdirSync(join(repo, 'dist'), { recursive: true });
+  writeFileSync(join(repo, 'package.json'), '{"name":"multivac"}\n');
   writeFileSync(join(repo, 'dist/cli.js'), "import 'yaml';\n");
 
   const path = `${bin}:${SYS}`;

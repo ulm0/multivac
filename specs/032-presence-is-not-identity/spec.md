@@ -143,6 +143,12 @@ confirm the shim is still strict and the record is unchanged.
   mangled file aborts a multi-repo run with a message naming none of them.
 - A stub door whose file exists but has no managed block: the block is appended,
   the existing content kept.
+- A shim carrying multivac's header that somebody has hand-edited: it is
+  regenerated, and the edit is lost. That is what the header says — *managed by
+  `multivac doors`; regenerate, do not edit* — and the alternative is the defect
+  this story exists to fix: a shim frozen at whatever version first wrote it. An
+  operator who needs different behaviour has `strict_pre_push`, or a hook of
+  their own, which is never rewritten.
 
 ## Requirements *(mandatory)*
 
