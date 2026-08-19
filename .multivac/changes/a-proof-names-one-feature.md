@@ -3,7 +3,7 @@ slug: a-proof-names-one-feature
 status: open
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
