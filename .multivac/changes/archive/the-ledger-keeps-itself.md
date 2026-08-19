@@ -8,48 +8,48 @@ landing_order:
   - - brain
 invariants:
   touches:
-    - MV-13
-    - MV-26
-  adds:
     - MV-46
+  adds:
+    - MV-110
   retires: []
 claims:
-  - id: MV-46
-    statement: The lifecycle commits its own bookkeeping — nothing it writes is left floating in the shared checkout.
+  - id: MV-110
+    statement: The lifecycle commits what it wrote, refuses a slug it would overwrite, proves a step with that step's own artifact, and reports a failed tracker call as a failure. Nothing it writes is left floating, and nothing it says happened is inferred.
 ---
 
 # The ledger keeps itself
 
-The change's bookkeeping — the reserved law row and the declaration file's
-status — used to live as UNCOMMITTED edits in the shared brain checkout while
-the work happened in a worktree. Concurrent changes trampled each other, pulls
-were blocked, and a reservation row evaporated and was restored by hand
-(dominant friction theme of the last two dogfood runs).
+`commitBookkeeping`'s docstring states the contract: *everything the lifecycle
+writes into the brain … is committed by the lifecycle, scoped to exactly those
+paths … Nothing is left floating.* Five places do not keep it.
 
-The fix, at the root:
+- **The SDD proof matches a slug as a SUBSTRING.** `specs/*<slug>*/spec.md`
+  wraps the slug in wildcards on both sides, so any older feature directory
+  whose name merely contains the slug satisfies `plan`, `apply` and `close`.
+  The registry's own note says the opposite — *the gates match the slug as a
+  suffix* — and spec-kit's layout is `NNN-<short-name>`, which is exactly a
+  suffix. With sixteen directories under `specs/` in this repo, the collision
+  is routine rather than theoretical.
+- **`change new` accepts a slug whose archive exists.** Nothing checks
+  `changes/archive/<slug>.md`, so the eventual `close` overwrites an archived
+  change — the ledger the docs call never deleted. `roadmap add` already has
+  the check `change new` lacks.
+- **`close` prints a commit that omits the law it just edited.** `archiveChange`
+  repoints the law's links on every close, so the file is dirty in exactly the
+  case the printed command does not stage — and the next `change new` refuses
+  over it.
+- **`land --landed` writes the status bump and commits nothing.** It is the one
+  lifecycle write with no `commitBookkeeping` call, contradicting the docstring
+  above.
+- **`--abandon` reads claims only.** A change whose repos are landed is
+  archived saying *nothing landed*, which is false in the ledger that survives.
 
-1. `change new` commits its bookkeeping: declaration + reserved row, one
-   commit on the current branch (`change open: <slug> — reserves <ID>`).
-   A dirty tree at those two paths is refused with the exact command.
-2. `apply` commits the status bump before branching, so every worktree
-   inherits the declaration, the reservation and the post-bump status from
-   the branch base. The manual carry is deleted.
-3. `close` scopes every printed command to the closing slug's paths and
-   prints the branch+MR variant when the brain has an origin and sits on the
-   default branch; the direct commit is named appropriate only for a solo
-   brain with no remote.
-4. The scaffold teaches: a commented `repos:` example naming the status
-   enum, and `new` prints the three edits the author must make.
-5. `count` learns each-mode: zero-match files listed, mode-aware summary.
-6. The anchor-grammar shadow copy in test/skill.test.ts is replaced by the
-   parser itself; the mode vocabulary gets a source-of-truth checklist in
-   config.ts.
+And the tracker, which reports success it did not have: `gh issue edit` has no
+`--label` — it takes `--add-label` — so every GitHub update fails, and the
+failure is caught and printed as *not found in the tracker*, which is a
+different fact. `closeIssue` swallows its error entirely and prints `closed`.
 
-Friction: after close, the tree is dirty at the archive paths until the author
-runs the printed commit; a `new` in the same brain refuses until then.
-Deliberate — the refusal is the invariant working — but it serializes
-close→new. commitBookkeeping degrades to a printed command when git identity
-is missing: the concurrency guarantee holds only where commits succeed.
-And (environment, not tool) macOS TCC revoked Documents access mid-change;
-the lifecycle survived because all bookkeeping was already committed — the
-very defect this change fixes.
+Out of scope, and named so it is not read as fixed: `close`'s speckit ledger
+still `continue`s when the artifact never existed, so `new → land --landed →
+close` crosses every SDD gate. That is a gate design question, not a
+bookkeeping one.
