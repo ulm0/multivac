@@ -169,3 +169,63 @@ test('an abandoned change with a landed repo does not claim nothing landed', asy
   assert.doesNotMatch(c.out, /nothing landed/, 'it denied work that had landed');
   assert.match(c.out, /ALREADY LANDED: brain/);
 });
+
+test('close refuses a claim it would orphan by archiving — MV-117', async () => {
+  // close verifies a claim against every anchor it can see, INCLUDING the ones
+  // inside the change file, and then archives that file — and the parser never
+  // walks changes/archive/. So the ceremony whose job is to stop a claim
+  // nobody checks could create one, and report success doing it.
+  const b = brain();
+  // The claim must be GREEN, or close refuses at the claims gate and never
+  // reaches the orphan check — so the anchor points at a real file.
+  writeFileSync(join(b, 'kept.txt'), 'the pattern lives here\n');
+  await capture(() => change.run(['new', 'orphan-me', 'Orphan me'], { cwd: b }));
+  const file = join(b, '.multivac/changes/orphan-me.md');
+  writeFileSync(
+    file,
+    readFileSync(file, 'utf8')
+      .replace('repos: {}', 'repos:\n  brain:\n    status: landed')
+      .replace('claims: []', 'claims:\n  - id: MV-01\n    statement: "anchored only here"')
+      + '\n<!-- @anchor MV-01 brain:kept.txt /the pattern/ -->\n',
+  );
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'a claim anchored only in its own change file');
+
+  const c = await capture(() => change.run(['close', 'orphan-me'], { cwd: b }));
+
+  assert.equal(c.code, 1, c.out);
+  assert.match(c.out, /anchored ONLY in/);
+  assert.match(c.out, /MV-01/);
+  assert.equal(existsSync(join(b, '.multivac/changes/archive/orphan-me.md')), false, 'it archived anyway');
+});
+
+test('an existing archive is never overwritten — MV-117', async () => {
+  const b = brain();
+  await capture(() => change.run(['new', 'twice', 'Twice'], { cwd: b }));
+  const { archiveChange, loadChange } = await import('../../src/change/file.js');
+  const parsed = await loadChange(b, 'twice');
+  // The archive appears AFTER the change was loaded — the parallel-branch
+  // shape this project designs for, and the one the front-door guard (MV-110)
+  // cannot see. So the write itself has to refuse.
+  mkdirSync(join(b, '.multivac/changes/archive'), { recursive: true });
+  writeFileSync(join(b, '.multivac/changes/archive/twice.md'), '---\nslug: twice\n---\nthe first record\n');
+
+  await assert.rejects(() => archiveChange(b, parsed), /already exists/);
+  assert.match(
+    readFileSync(join(b, '.multivac/changes/archive/twice.md'), 'utf8'),
+    /the first record/,
+    'the archived record was overwritten',
+  );
+});
+
+test('an unknown frontmatter key is named where it is dropped — MV-117', async () => {
+  const b = brain();
+  await capture(() => change.run(['new', 'stray-key', 'Stray key'], { cwd: b }));
+  const file = join(b, '.multivac/changes/stray-key.md');
+  writeFileSync(file, readFileSync(file, 'utf8').replace('status: open', 'status: open\nowner: someone'));
+
+  const c = await capture(() => change.run(['plan', 'stray-key'], { cwd: b }));
+
+  assert.match(c.out, /dropping frontmatter key/);
+  assert.match(c.out, /owner/);
+});

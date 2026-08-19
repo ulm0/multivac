@@ -484,9 +484,10 @@ async function invariantStates(brain: string): Promise<Map<string, string>> {
 }
 
 /** Every claim ID that has at least one @anchor line somewhere in the brain. */
-async function anchoredClaimIds(brain: string): Promise<Set<string>> {
+async function anchoredClaimIds(brain: string, skip?: string): Promise<Set<string>> {
   const found = new Set<string>();
   for (const rel of await lsFiles(brain)) {
+    if (skip !== undefined && rel === skip) continue;
     let text: string;
     try {
       text = await readFile(join(brain, rel), 'utf8');
@@ -1023,6 +1024,24 @@ async function cmdClose(
     for (const l of gate.lines) say(l);
     if (!gate.ok) {
       warn('claims are not green — close refused; fix the red claims, then re-run close');
+      return 1;
+    }
+    // MV-117: green here, unanchored from the next run onwards. `close`
+    // verifies a claim against every anchor it can see — INCLUDING the ones
+    // written inside the change file — and then archives that file, and the
+    // parser never walks `changes/archive/`. So the ceremony whose job is to
+    // stop a claim nobody checks could create one, and report success doing
+    // it. The anchors belong beside the code they pin; reading the archive
+    // instead would keep every closed change's anchors alive forever, which is
+    // the opposite of archiving.
+    const elsewhere = await anchoredClaimIds(brain, changeRel(slug));
+    const orphans = ids.filter((id) => !elsewhere.has(id));
+    if (orphans.length > 0) {
+      warn(
+        `close refused — ${orphans.join(', ')} ${orphans.length > 1 ? 'are' : 'is'} anchored ONLY in ` +
+          `${changeRel(slug)}, which this close archives: the claim would be green now and unanchored ` +
+          'from the next run on. Move the anchor beside the code it pins, then re-run close',
+      );
       return 1;
     }
   } else {
