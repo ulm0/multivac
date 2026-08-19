@@ -6,13 +6,14 @@
 import { parseArgs, type ArgsDef } from 'citty';
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import type { Command, CommandContext } from '../types.js';
+import type { Command, CommandContext, Config } from '../types.js';
 import { PROJECTED_PATH, recordBody, selfVersion } from '../lib/version.js';
 import { doorTargets, grapherNames, sddNames } from '../adapters/registry.js';
 import { doorsCommand } from './doors.js';
 import {
   BRAIN_PATHS,
   CHANGES_DIR,
+  ConfigError,
   LAW_PATH,
   RITUAL_PATH,
   layoutError,
@@ -75,13 +76,30 @@ function parseFlags(argv: string[]): Flags {
   const value = (key: 'sdd' | 'grapher' | 'provider'): string | undefined => {
     const v = a[key];
     if (v === undefined) return undefined;
-    if (typeof v !== 'string' || v === '') throw new Error(`init: --${key} needs a value — e.g. --${key} <name>`);
+    // MV-114: a UsageError, so the dispatcher exits 2. A missing value is a
+    // refused argument (MV-85), and `--sdd=` reached here rather than the
+    // guard because the guard judges the SURFACE — whether an empty value is a
+    // legal VALUE is this command's question, and this is where it answers it.
+    if (typeof v !== 'string' || v === '') {
+      throw new UsageError(`init: --${key} needs a value — e.g. --${key} <name>`);
+    }
     return v;
   };
+  // MV-114: the name becomes the config AND the door's banner, so an unknown
+  // one projects `Features gate through the \`speckti\` SDD … REFUSES to move
+  // on` over zero steps — a gate claimed that can never fire (measured, exit
+  // 0). `sdd` has no declared form, so the registry is the whole vocabulary
+  // and the check belongs here, before anything is written. `grapher` does
+  // have one — `graphers:` in the config extends it — so it is checked after
+  // the config is read, where that vocabulary is known.
+  const sdd = value('sdd');
+  if (sdd !== undefined && !sddNames.includes(sdd)) {
+    throw new UsageError(`init: unknown --sdd ${sdd} — known: ${sddNames.join(', ')}`);
+  }
   return {
     dir: typeof a.dir === 'string' ? a.dir : undefined,
     agents: (value('provider') ?? '').split(',').filter(Boolean),
-    sdd: value('sdd'),
+    sdd,
     grapher: value('grapher'),
     quiet: a.quiet === true,
   };
@@ -319,7 +337,33 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   //
   // A refusal must write NOTHING, which is why this sits here rather than
   // beside the door: everything below creates something.
-  const declared = await loadConfig(dir).catch(() => null);
+  // MV-114: `null` means "no config yet" and nothing else. Reading a BROKEN one
+  // as absent is what let `init .` — the line doctor itself prints — re-render
+  // every projection from nothing: measured, a brain with `strict_pre_push:
+  // true` went from three `verify --strict` lines in its pre-push shim to
+  // zero, exit 0, no notice, while `doors` in the same state exited 1 and left
+  // the gate armed. Two commands projecting the same artifacts must not
+  // disagree about whether a broken config is a config.
+  // ABSENT is not BROKEN, and `loadConfig` throws for both — so the file test
+  // is what tells them apart, and it is the whole fix: `.catch(() => null)`
+  // read a broken config as no config, and every projection was re-rendered
+  // from nothing.
+  const hasConfig = await exists(join(dir, CONFIG_PATH));
+  let declared: Config | null = null;
+  if (hasConfig) {
+    try {
+      declared = await loadConfig(dir);
+    } catch (e) {
+      if (!(e instanceof ConfigError)) throw e;
+      warn(`init: ${(e as Error).message}`);
+      warn(
+        '  init projects FROM the config and will not guess one — a broken config read as ' +
+          'absent re-renders every projection from nothing, which is how a strict pre-push ' +
+          'shim became a plain one. Fix it, or move it aside to start over.',
+      );
+      return 1;
+    }
+  }
   if (declared !== null) {
     const clash = ([
       ['--sdd', 'sdd', f.sdd, declared.sdd],
@@ -410,6 +454,9 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // adapters the CONFIG declares, and a flag reaches it exactly once — on the
   // first run, through the config this command has just written from it. There
   // is no second expression of that rule to keep in step, which is the point.
+  // The config this command has just written, or the one it validated at the
+  // top of this run — never a third read, and never a broken one: that case
+  // returned above (MV-114).
   const cfg = await loadConfig(dir).catch(() => null);
   const body = cfg
     ? renderBrainDoor(cfg, countActiveInvariants(await readFile(join(dir, LAW_PATH), 'utf8').catch(() => '')))
@@ -444,9 +491,7 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // MV-108: with the strictness the config declares, or `init .` — the line
   // doctor itself prints — silently downgrades a strict pre-push shim that
   // `doors` installed, and doctor keeps calling it armed.
-  const hooks = await installHooks(dir, {
-    strictPrePush: (await loadConfig(dir).catch(() => null))?.strictPrePush === true,
-  });
+  const hooks = await installHooks(dir, { strictPrePush: cfg?.strictPrePush === true });
   switch (hooks.strategy) {
     case 'fresh':
       report('init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit');

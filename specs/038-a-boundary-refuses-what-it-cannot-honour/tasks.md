@@ -13,37 +13,37 @@ message.
 
 ## Phase 1: Setup
 
-- [ ] T001 Baseline: `pnpm run build && pnpm test`
-- [ ] T002 Reproduce all four with the quickstart
+- [X] T001 Baseline: `pnpm run build && pnpm test`
+- [X] T002 Reproduce all four with the quickstart
 
 ## Phase 2: Foundational
 
-- [ ] T003 Write MV-114 in `.multivac/invariants.md` with its anchors, and retarget MV-108's and MV-91's legs that pin the `init` lines this package rewrites
+- [X] T003 Write MV-114 in `.multivac/invariants.md` with its anchors, and retarget MV-108's and MV-91's legs that pin the `init` lines this package rewrites
 
 ## Phase 3: User Story 1 — init never disarms a gate it cannot read (P1)
 
-- [ ] T004 [US1] In `src/commands/init.ts`, load the config ONCE, distinguishing absent from broken, and refuse on broken before any projection
-- [ ] T005 [US1] Delete the other two `loadConfig(dir).catch(() => null)` calls and read the one result
-- [ ] T006 [US1] In `test/init/`, assert the shim keeps `--strict` when `init` meets a broken config, and that a brain with no config still scaffolds
+- [X] T004 [US1] In `src/commands/init.ts`, load the config ONCE, distinguishing absent from broken, and refuse on broken before any projection
+- [X] T005 [US1] Delete the other two `loadConfig(dir).catch(() => null)` calls and read the one result
+- [X] T006 [US1] In `test/init/`, assert the shim keeps `--strict` when `init` meets a broken config, and that a brain with no config still scaffolds
 
 ## Phase 4: User Story 2 — an unknown config key is named (P1)
 
-- [ ] T007 [US2] In `src/lib/config.ts`, refuse a stray key at the top level and under `repos.<key>` and `graphers.<name>`, naming the near miss when one exists
-- [ ] T008 [US2] In `test/lib/`, assert `strict_prepush` is refused and names `strict_pre_push`, and that a legal config still loads
+- [X] T007 [US2] In `src/lib/config.ts`, refuse a stray key at the top level and under `repos.<key>` and `graphers.<name>`, naming the near miss when one exists
+- [X] T008 [US2] In `test/lib/`, assert `strict_prepush` is refused and names `strict_pre_push`, and that a legal config still loads
 
 ## Phase 5: User Story 3 — a floor with a comment is still a floor (P2)
 
-- [ ] T009 [US3] In `src/lib/version.ts`, allow a trailing comment on the `requires:` line
-- [ ] T010 [US3] Assert the floor is read with a comment, ignored when commented out, and refused by name when malformed
+- [X] T009 [US3] In `src/lib/version.ts`, allow a trailing comment on the `requires:` line
+- [X] T010 [US3] Assert the floor is read with a comment, ignored when commented out, and refused by name when malformed
 
 ## Phase 6: User Story 4 — an adapter name is checked before it is written (P2)
 
-- [ ] T011 [US4] In `src/commands/init.ts`, refuse an `--sdd`/`--grapher` value that names no known adapter — the empty string included — with exit 2, before anything is written
-- [ ] T012 [US4] Assert both, and update any fixture naming a fictional adapter to a real one
+- [X] T011 [US4] In `src/commands/init.ts`, refuse an `--sdd`/`--grapher` value that names no known adapter — the empty string included — with exit 2, before anything is written
+- [X] T012 [US4] Assert both, and update any fixture naming a fictional adapter to a real one
 
 ## Phase 7: Polish
 
-- [ ] T013 `pnpm test` green with `mvac` off PATH; `verify --strict` 0 blocking broken with MV-114 anchored
+- [X] T013 `pnpm test` green with `mvac` off PATH; `verify --strict` 0 blocking broken with MV-114 anchored
 
 ## Dependencies
 
