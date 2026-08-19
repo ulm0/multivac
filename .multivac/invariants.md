@@ -822,3 +822,4 @@ checks them on every commit.
 | MV-105 | RESERVED by change the-refusal-reads-the-whole-token — state the rule here before close. | open | proposed | 2026-08-18 | [changes/the-refusal-reads-the-whole-token.md](changes/the-refusal-reads-the-whole-token.md) |
 | MV-106 | RESERVED by change the-gate-reads-the-commit-it-gates — state the rule here before close. | open | proposed | 2026-08-18 | [changes/the-gate-reads-the-commit-it-gates.md](changes/the-gate-reads-the-commit-it-gates.md) |
 | MV-107 | RESERVED by change the-gate-reads-the-commit-it-gates — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-gate-reads-the-commit-it-gates.md](changes/the-gate-reads-the-commit-it-gates.md) |
+| MV-108 | RESERVED by change presence-is-not-identity — state the rule here before close. | open | proposed | 2026-08-19 | [changes/presence-is-not-identity.md](changes/presence-is-not-identity.md) |
