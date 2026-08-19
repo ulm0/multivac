@@ -14,6 +14,7 @@ import { realPath } from '../lib/paths.js';
 import { say, warn } from '../lib/out.js';
 import { findMount } from './verify.js';
 import { parseArgs, type ArgsDef } from 'citty';
+import { surfaceFrom, undeclared } from '../lib/args.js';
 import type { Command, CommandContext } from '../types.js';
 
 const USAGE = [
@@ -32,19 +33,22 @@ const ARGS = {
   dir: { type: 'positional', required: false, description: 'the brain; defaults to the working directory' },
 } satisfies ArgsDef;
 
+/** count's own wording for its surface, kept by the shared refusal (MV-69). */
+const TAKES = "'<spec>' [dir] and no flags";
+
 async function run(argv: string[], ctx: CommandContext): Promise<number> {
-  // MV-85: count already exited 2 on a flag, but printed its usage without ever
-  // saying WHICH argument it did not understand — the reader was left to diff
-  // their command line against the usage block. Name it, then print the usage.
-  const flag = argv.find((a) => a.startsWith('-'));
-  if (flag !== undefined) {
-    warn(`count: unknown flag "${flag}" — count takes '<spec>' [dir] and no flags`);
+  // MV-85 through the one guard (MV-105). count declares no flags and exactly
+  // two positionals, so the shared refusal says what count used to say by hand
+  // — naming the argument, in the same words as every other command.
+  const bad = undeclared('count', argv, surfaceFrom(ARGS), TAKES);
+  if (bad !== null) {
+    warn(bad);
     return 2;
   }
-  // Two positionals exactly, so the count is checked here rather than by the
-  // parser: citty binds the first two and drops the rest in silence.
+  // A MISSING spec stays count's own answer: citty would throw a CLIError for
+  // a required positional, and this command answers with its usage block.
   const args = parseArgs(argv, ARGS)._;
-  if (args.length === 0 || args.length > 2) {
+  if (args.length === 0) {
     for (const l of USAGE) warn(l);
     return 2;
   }

@@ -370,3 +370,33 @@ test('a brain with no rows still says it is empty — MV-102', async () => {
 
   assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /brain empty — load the multivac skill to fill it/);
 });
+
+test('the equals form is accepted again — MV-105', async () => {
+  // 0.8.0 accepted `--provider=claude` and wrote it to disk; 0.9.0 refused it
+  // with exit 2 and called the flag unknown. The guard compared whole tokens
+  // while the parser behind it splits on `=`, so the parser was never reached.
+  const dir = tmp();
+  assert.equal(await init.run(['--provider=claude', '--sdd=speckit', '--quiet', dir], { cwd: dir }), 0);
+
+  const cfg = readFileSync(join(dir, '.multivac', 'config.yml'), 'utf8');
+  assert.match(cfg, /claude/, 'the provider written by the equals form is missing');
+  assert.match(cfg, /speckit/, 'the sdd written by the equals form is missing');
+});
+
+test('the two written forms of a valued flag agree — MV-105', async () => {
+  const a = tmp();
+  const b = tmp();
+  assert.equal(await init.run(['--provider', 'claude', '--quiet', a], { cwd: a }), 0);
+  assert.equal(await init.run(['--provider=claude', '--quiet', b], { cwd: b }), 0);
+
+  assert.equal(
+    readFileSync(join(a, '.multivac', 'config.yml'), 'utf8'),
+    readFileSync(join(b, '.multivac', 'config.yml'), 'utf8'),
+  );
+});
+
+test('a valued flag with no value is refused, not defaulted — MV-105', async () => {
+  const dir = tmp();
+  assert.equal(await init.run(['--provider', '--quiet', dir], { cwd: dir }), 2);
+  assert.deepEqual(readdirSync(dir), [], 'init wrote before refusing');
+});
