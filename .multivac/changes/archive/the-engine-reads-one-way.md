@@ -1,6 +1,6 @@
 ---
 slug: the-engine-reads-one-way
-status: open
+status: archived
 repos:
   brain:
     status: landed
