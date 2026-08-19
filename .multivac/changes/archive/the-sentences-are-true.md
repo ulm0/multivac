@@ -1,6 +1,6 @@
 ---
 slug: the-sentences-are-true
-status: open
+status: archived
 repos:
   brain:
     status: landed
