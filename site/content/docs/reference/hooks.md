@@ -73,7 +73,7 @@ Two files, both this shim:
 # multivac never blocks a commit: it warns loudly and exits 0.
 case $0 in */*) hookdir=${0%/*} ;; *) hookdir=. ;; esac
 root=$(CDPATH= cd -- "$hookdir/../.." && pwd) || exit 0
-prev=$(git rev-parse --git-dir 2>/dev/null)/hooks/pre-commit
+prev=$(git rev-parse --git-common-dir 2>/dev/null)/hooks/pre-commit
 if [ -x "$prev" ]; then
   "$prev" "$@" || exit $?
 elif [ -f "$root/.pre-commit-config.yaml" ]; then

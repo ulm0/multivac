@@ -192,7 +192,15 @@ async function projectInto(
   if (grapher !== undefined && spec === null) notices.push(unverifiedGrapher(grapher));
   const refresh = spec !== null && (await binaryPresent(spec)) ? spec.refresh : null;
   const doorFile = join(dir, 'AGENTS.md');
-  await writeFile(doorFile, applyManagedBlock(await readOrNull(doorFile), body, doorFile));
+  // MV-115: a broken managed file is THAT file's notice, and the run goes on.
+  // One mangled door used to abort the whole multi-repo pass, so every repo
+  // after it got no door and no hooks — a projection that stops at the first
+  // damaged file leaves the ecosystem worse than it found it.
+  try {
+    await writeFile(doorFile, applyManagedBlock(await readOrNull(doorFile), body, doorFile));
+  } catch (e) {
+    notices.push((e as Error).message);
+  }
   // Dispatch on the registry entry's kind, never on its name: a new harness
   // is an entry in src/adapters/registry.ts and nothing else.
   for (const target of config.doors) {
@@ -216,12 +224,19 @@ async function projectInto(
       const file = join(dir, t.door);
       await mkdir(dirname(file), { recursive: true });
       const existing = await readOrNull(file);
-      const stub = applyManagedBlock(
-        existing,
-        'Read `AGENTS.md` at the repo root — the multivac door: what is law here, where the brain lives. Run `multivac verify` before you commit.',
-        file,
-      );
-      await writeFile(file, existing === null && t.frontmatter ? `${t.frontmatter}\n\n${stub}` : stub);
+      try {
+        const stub = applyManagedBlock(
+          existing,
+          'Read `AGENTS.md` at the repo root — the multivac door: what is law here, where the brain lives. Run `multivac verify` before you commit.',
+          file,
+        );
+        await writeFile(file, existing === null && t.frontmatter ? `${t.frontmatter}\n\n${stub}` : stub);
+      } catch (e) {
+        // The same rule as the canonical door: a stub target is a file
+        // somebody else authored with our block inside it, and just as
+        // mangle-able (MV-115).
+        notices.push((e as Error).message);
+      }
     }
     if (t.skill) installSkill(dir, t.skill, notices);
     if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, notices);
@@ -282,8 +297,12 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
   // the operator's and is never overwritten, this is the tool's and always is.
   // Through the managed block so anything written outside it survives.
   const flowFile = join(brainDir, FLOW_PATH);
-  await writeFile(flowFile, applyManagedBlock(await readOrNull(flowFile), renderFlow(config), flowFile));
-  say(`brain: ${FLOW_PATH} — what your declarations oblige, sorted; generated, binds nothing`);
+  try {
+    await writeFile(flowFile, applyManagedBlock(await readOrNull(flowFile), renderFlow(config), flowFile));
+    say(`brain: ${FLOW_PATH} — what your declarations oblige, sorted; generated, binds nothing`);
+  } catch (e) {
+    say(`brain: notice: ${(e as Error).message}`);
+  }
 
   // Per repo, not once for all of them: MV-90 resolves the graph block with the
   // grapher that applies THERE, and a body rendered before the loop cannot know.
