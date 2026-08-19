@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
 import { parseArgs, type ArgsDef } from 'citty';
+import { surfaceFrom, undeclared } from '../lib/args.js';
 import { join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
 import {
@@ -1126,10 +1127,8 @@ const ARGS = {
   landed: { type: 'string', description: 'land only: record that repo as merged' },
 } satisfies ArgsDef;
 
-/** The flags ARGS declares, as the refusal sees them. */
-const CHANGE_FLAGS = Object.entries(ARGS)
-  .filter(([, d]) => (d as { type?: string }).type !== 'positional')
-  .map(([k]) => `--${k}`);
+/** change's own wording for its surface, kept by the shared refusal (MV-69). */
+const TAKES = '<sub> <slug> ["<title>"], --no-sdd, --no-grapher, --landed <repo>, --abandon';
 
 export const change: Command = {
   name: 'change',
@@ -1149,16 +1148,25 @@ export const change: Command = {
     '  --abandon              close only: drop a change that landed nothing, give its id back',
   ],
   async run(argv, ctx): Promise<number> {
-    // MV-85 in change's own words, before citty parses. The extra positionals
-    // this command takes are its subcommand, slug and title, and anything past
-    // them is refused rather than dropped.
-    const unknown = argv.find((a) => a.startsWith('--') && !CHANGE_FLAGS.includes(a));
-    if (unknown !== undefined) {
-      warn(`unknown flag ${unknown} — run \`multivac change\` for usage`);
+    // MV-85 through the one shared guard (MV-105). change kept a private check
+    // that saw only `--` tokens, so `change land <slug> api` and
+    // `change land <slug> -landed api` exited 0 having recorded nothing — in
+    // the one command that mutates the record.
+    const bad = undeclared('change', argv, surfaceFrom(ARGS), TAKES);
+    if (bad !== null) {
+      warn(bad);
       return 2;
     }
     const parsed = parseArgs(argv, ARGS);
     const pos = parsed._;
+    // The declaration's three positionals are `new <slug> "<title>"`. Every
+    // other subcommand takes `<sub> <slug>`, and the third is what used to be
+    // dropped, so the cap is the subcommand's rather than the declaration's.
+    const cap = pos[0] === 'new' ? 3 : 2;
+    if (pos.length > cap) {
+      warn(`change: unexpected argument "${pos[cap]}" — change takes ${TAKES}`);
+      return 2;
+    }
     // Read literally, not through the parser: citty owns the `--no-` prefix as
     // its negation convention, so `--no-sdd` arrives as `sdd: false` and the
     // flag this command actually declares never appears. Measured on 0.2.2.
