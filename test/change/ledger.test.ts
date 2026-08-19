@@ -114,3 +114,24 @@ test('every tracker states the label flag its own vendor documents', () => {
   assert.equal(trackerEntry('gitlab')?.labelFlag, '--label');
   assert.equal(trackerEntry('github')?.labelFlag, '--add-label');
 });
+
+test('an abandoned change with a landed repo does not claim nothing landed', async () => {
+  // The sentence was asserted, never checked. A change can be abandoned with
+  // repos already merged, and writing the opposite into the permanent record
+  // is a lie the archive keeps.
+  const b = brain();
+  await capture(() => change.run(['new', 'half-done', 'Half done'], { cwd: b }));
+  const file = join(b, '.multivac/changes/half-done.md');
+  writeFileSync(
+    file,
+    readFileSync(file, 'utf8').replace('repos: {}', 'repos:\n  brain:\n    status: landed'),
+  );
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'declare');
+
+  const c = await capture(() => change.run(['close', 'half-done', '--abandon'], { cwd: b }));
+
+  assert.equal(c.code, 0, c.out);
+  assert.doesNotMatch(c.out, /nothing landed/, 'it denied work that had landed');
+  assert.match(c.out, /ALREADY LANDED: brain/);
+});

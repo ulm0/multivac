@@ -65,3 +65,7 @@ an uncommitted write.
 MVP is US1 + US3: one accepts another change's work as proof, the other leaves
 the brain dirty in a way that blocks the next command. US2, US4 and US5 are
 each a single edit beside them.
+
+## Phase 9: Convergence
+
+- [X] T019 Pin SC-005 (partial): an abandoned change with a landed repo does not record that nothing landed
