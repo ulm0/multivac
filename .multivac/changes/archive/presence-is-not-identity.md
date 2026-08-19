@@ -1,6 +1,6 @@
 ---
 slug: presence-is-not-identity
-status: open
+status: archived
 repos:
   brain:
     status: landed
