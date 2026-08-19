@@ -3,7 +3,7 @@ slug: a-paraphrase-ages-silently
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
@@ -18,7 +18,7 @@ invariants:
   retires: []
 claims:
   - id: MV-111
-    statement: "An amendment that retires a sentence retires every copy of it. The rule is stated once with an anchor and restated nowhere unanchored; where a restatement is unavoidable, the amendment ships a tombstone on the retired phrase so the next copy cannot age quietly."
+    statement: An amendment that retires a sentence retires every copy of it. The rule is stated once with an anchor and restated nowhere unanchored; where a restatement is unavoidable, the amendment ships a tombstone on the retired phrase so the next copy cannot age quietly.
 ---
 
 # A paraphrase ages silently
