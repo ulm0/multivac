@@ -19,17 +19,17 @@ parallel — the [P] marker is used only where files genuinely differ.
 
 ## Phase 1: Setup
 
-- [ ] T001 Confirm the baseline: run `pnpm run build && pnpm test` and record that 512 tests pass before any edit
-- [ ] T002 Record the three defects as they behave today by running the "before" block of `specs/030-the-refusal-reads-the-whole-token/quickstart.md`
+- [X] T001 Confirm the baseline: run `pnpm run build && pnpm test` and record that 512 tests pass before any edit
+- [X] T002 Record the three defects as they behave today by running the "before" block of `specs/030-the-refusal-reads-the-whole-token/quickstart.md`
 
 ## Phase 2: Foundational
 
 **Blocking**: the law row lands first — Constitution III, law moves before code —
 then the token model, because both US1 and US2 read it.
 
-- [ ] T003 Write the MV-105 row in `.multivac/invariants.md`, turning the reserved id into a stated rule, and anchor it to `src/lib/args.ts` and to `test/cli/unknown-args.test.ts` so the claim is pinned by the registry walk rather than by a typed list
-- [ ] T004 In `src/lib/args.ts`, resolve each dash-prefixed token to a `name` by splitting on the first `=` **only when the token begins with `--`**, per `data-model.md` — short-alias tokens stay whole because citty does not split them either
-- [ ] T005 In `src/lib/args.ts`, keep every refusal message naming the token **as the user typed it**, not the split name, so `--loud=1` is quoted in full
+- [X] T003 Write the MV-105 row in `.multivac/invariants.md`, turning the reserved id into a stated rule, and anchor it to `src/lib/args.ts` and to `test/cli/unknown-args.test.ts` so the claim is pinned by the registry walk rather than by a typed list
+- [X] T004 In `src/lib/args.ts`, resolve each dash-prefixed token to a `name` by splitting on the first `=` **only when the token begins with `--`**, per `data-model.md` — short-alias tokens stay whole because citty does not split them either
+- [X] T005 In `src/lib/args.ts`, keep every refusal message naming the token **as the user typed it**, not the split name, so `--loud=1` is quoted in full
 
 ## Phase 3: User Story 1 — The equals form works again (P1)
 
@@ -40,10 +40,10 @@ same value as `--name value`.
 writes `claude` into the config; `mvac verify --repo=brain` scopes as
 `--repo brain` does.
 
-- [ ] T006 [US1] In `src/lib/args.ts`, match the resolved `name` against `valued` and `flags`, accepting `--name=value` when `name` is declared and consuming no following token
-- [ ] T007 [US1] In `test/cli/args.test.ts`, assert the pair that was missing: one input asked of **both** readers — `undeclared` accepts `--repo=api` AND `parseArgs` binds `repo` to `api`, for the separated and the equals form alike; assert in the same test that a command's own `takes` sentence is still what the refusal renders (FR-006, MV-69)
-- [ ] T008 [US1] In `test/cli/args.test.ts`, assert `--strict=false` is accepted (declared boolean, citty owns negation) and `-r=api` is refused (citty parses its value as `=api`, so it is not a form the parser understands)
-- [ ] T009 [US1] In `test/cli/unknown-args.test.ts`, extend the registry walk so every command's declared valued flags are exercised in both written forms, and an undeclared `--nope=1` is refused with exit 2
+- [X] T006 [US1] In `src/lib/args.ts`, match the resolved `name` against `valued` and `flags`, accepting `--name=value` when `name` is declared and consuming no following token
+- [X] T007 [US1] In `test/cli/args.test.ts`, assert the pair that was missing: one input asked of **both** readers — `undeclared` accepts `--repo=api` AND `parseArgs` binds `repo` to `api`, for the separated and the equals form alike; assert in the same test that a command's own `takes` sentence is still what the refusal renders (FR-006, MV-69)
+- [X] T008 [US1] In `test/cli/args.test.ts`, assert `--strict=false` is accepted (declared boolean, citty owns negation) and `-r=api` is refused (citty parses its value as `=api`, so it is not a form the parser understands)
+- [X] T009 [US1] In `test/cli/unknown-args.test.ts`, extend the registry walk so every command's declared valued flags are exercised in both written forms, and an undeclared `--nope=1` is refused with exit 2
 
 ## Phase 4: User Story 2 — A flag cannot eat the next flag (P1)
 
@@ -53,9 +53,9 @@ refused, naming the flag.
 **Independent test**: `mvac verify --repo --strict` exits 2; `mvac verify --repo`
 exits 2; neither runs a verify.
 
-- [ ] T010 [US2] In `src/lib/args.ts`, refuse a declared valued flag whose next token is absent or begins with `-`, naming the flag and keeping exit 2 at the call site
-- [ ] T011 [US2] In `test/cli/args.test.ts`, assert both shapes are refused, and assert the measured reason they must be: `parseArgs(['--repo','--strict'])` binds `repo` to `--strict`, and `parseArgs(['--repo'])` binds it to `''`
-- [ ] T012 [US2] In `test/cli/unknown-args.test.ts`, add the registry-walking case: for every command declaring a valued flag, the flag alone at the end of argv exits 2
+- [X] T010 [US2] In `src/lib/args.ts`, refuse a declared valued flag whose next token is absent or begins with `-`, naming the flag and keeping exit 2 at the call site
+- [X] T011 [US2] In `test/cli/args.test.ts`, assert both shapes are refused, and assert the measured reason they must be: `parseArgs(['--repo','--strict'])` binds `repo` to `--strict`, and `parseArgs(['--repo'])` binds it to `''`
+- [X] T012 [US2] In `test/cli/unknown-args.test.ts`, add the registry-walking case: for every command declaring a valued flag, the flag alone at the end of argv exits 2
 
 ## Phase 5: User Story 3 — `change` refuses what every other command refuses (P1)
 
@@ -65,17 +65,17 @@ guard.
 **Independent test**: `mvac change land <slug> api` exits 2 with the change file
 byte-identical; `--no-sdd` and `--no-grapher` still work.
 
-- [ ] T013 [US3] In `src/commands/change.ts`, delete the private `CHANGE_FLAGS` check and call `undeclared('change', argv, …)` built from `surfaceFrom(ARGS)` — the `--no-sdd`/`--no-grapher` spellings need no special case, because `surfaceFrom` derives them from the ArgsDef keys `no-sdd` and `no-grapher`; what stays special is that the command reads those two literally from argv, since citty consumes the prefix and the declared key never arrives
-- [ ] T014 [US3] In `src/commands/change.ts`, compute the positional cap from the subcommand BEFORE calling the shared guard — `Surface.positionals` is one number — three for `new` (`new <slug> "<title>"`), two otherwise, so `change land <slug> api` is refused while `change new <slug> "<title>"` stays legal
-- [ ] T015 [US3] In `src/commands/change.ts`, delete the now-dead `CHANGE_FLAGS` constant and update the comment above the guard to describe what the code does
-- [ ] T016 [US3] In `test/cli/unknown-args.test.ts` (or `test/change/`), assert `change land <slug> api` and `change land <slug> -landed api` exit 2 and write nothing, and that `--no-sdd`, `--no-grapher`, `change new "<title>"` and `change new <slug> "<title>"` are unaffected
+- [X] T013 [US3] In `src/commands/change.ts`, delete the private `CHANGE_FLAGS` check and call `undeclared('change', argv, …)` built from `surfaceFrom(ARGS)` — the `--no-sdd`/`--no-grapher` spellings need no special case, because `surfaceFrom` derives them from the ArgsDef keys `no-sdd` and `no-grapher`; what stays special is that the command reads those two literally from argv, since citty consumes the prefix and the declared key never arrives
+- [X] T014 [US3] In `src/commands/change.ts`, compute the positional cap from the subcommand BEFORE calling the shared guard — `Surface.positionals` is one number — three for `new` (`new <slug> "<title>"`), two otherwise, so `change land <slug> api` is refused while `change new <slug> "<title>"` stays legal
+- [X] T015 [US3] In `src/commands/change.ts`, delete the now-dead `CHANGE_FLAGS` constant and update the comment above the guard to describe what the code does
+- [X] T016 [US3] In `test/cli/unknown-args.test.ts` (or `test/change/`), assert `change land <slug> api` and `change land <slug> -landed api` exit 2 and write nothing, and that `--no-sdd`, `--no-grapher`, `change new "<title>"` and `change new <slug> "<title>"` are unaffected
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T017 Update `site/content/docs/reference/commands.md` wherever it states the refusal surface, so the documented behaviour and the code agree on the equals form and on the missing value
-- [ ] T018 Run `pnpm test` and confirm every test passes, with any test that asserted one of the three defects updated rather than deleted
-- [ ] T019 Confirm FR-007 from the diff: `git diff --stat main -- src/` shows more deletions than insertions
-- [ ] T020 Run `node dist/cli.js verify` and confirm 0 blocking broken, with MV-105 anchored
+- [X] T017 Update `site/content/docs/reference/commands.md` wherever it states the refusal surface, so the documented behaviour and the code agree on the equals form and on the missing value
+- [X] T018 Run `pnpm test` and confirm every test passes, with any test that asserted one of the three defects updated rather than deleted
+- [X] T019 Confirm FR-007 from the diff: `git diff --stat main -- src/` shows more deletions than insertions
+- [X] T020 Run `node dist/cli.js verify` and confirm 0 blocking broken, with MV-105 anchored
 
 ## Dependencies
 
@@ -107,3 +107,9 @@ nothing extra and closes the whole class.
 Order: T001–T002 (baseline), T003 (the law row, first — Constitution III),
 T004–T012 in one edit of `src/lib/args.ts` and its tests, then T013–T016 in
 `src/commands/change.ts`, then the docs and the checks.
+
+## Phase 7: Convergence
+
+- [X] T021 Route `count` through `undeclared()` in `src/commands/count.ts`, deleting its hand-rolled flag scan and positional-count check, per FR-004 (partial) — it declares no flags and two positionals, so the shared guard says the same thing with less code; keep its usage block for a missing spec, which citty must not answer (MV-104)
+- [X] T022 Extend the registry walk in `test/cli/unknown-args.test.ts` so each valued flag it discovers is also exercised in the equals form and accepted, per SC-001 (partial)
+- [X] T023 Assert the two stated edge cases in `test/cli/args.test.ts` — `--flag=` with an empty value is accepted, and a bare `--` is refused — per spec Edge Cases and contracts/refusal.md (partial)

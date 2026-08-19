@@ -4,7 +4,8 @@
 import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { samePath } from './paths.js';
 
 const execFileP = promisify(execFile);
 
@@ -32,6 +33,58 @@ function cleanEnv(): NodeJS.ProcessEnv {
 }
 
 /**
+ * A repo's own git directory, absolute. One `rev-parse` per repo per process,
+ * memoised, and asked with the ambient pointers dropped — the question is
+ * "where does THIS path keep its git dir", which the ambient environment would
+ * answer wrongly by design.
+ *
+ * Not `join(repo, '.git')`: in a linked worktree that is a FILE, in a bare repo
+ * it does not exist, and either would make the comparison below silently false.
+ */
+const gitDirs = new Map<string, string | null>();
+async function absoluteGitDir(repo: string): Promise<string | null> {
+  const memo = gitDirs.get(repo);
+  if (memo !== undefined) return memo;
+  const dir = await execFileP('git', ['-C', repo, 'rev-parse', '--absolute-git-dir'], {
+    env: cleanEnv(),
+  })
+    .then(({ stdout }) => stdout.trim() || null)
+    .catch(() => null);
+  gitDirs.set(repo, dir);
+  return dir;
+}
+
+/**
+ * MV-106. `GIT_INDEX_FILE` for `repo`, or undefined when it must not be used.
+ *
+ * Dropping the ambient pointers is right for every repo but ONE: the repo the
+ * hook is running for. There, the ambient index IS the commit being composed,
+ * and the index on disk is a different set of files. Measured: `git commit -a`
+ * composes in `.git/index.lock` and the on-disk index is missing the very
+ * edits being committed; a pathspec commit composes in a `next-index` lock and
+ * the on-disk index holds MORE than the commit does. So a gate reading the
+ * on-disk index answers about a commit nobody is making.
+ *
+ * Only the index pointer comes back. `GIT_DIR` stays dropped, because it is
+ * what makes `-C` meaningless, and that is the whole reason this file cleans
+ * the environment at all.
+ */
+async function ambientIndexFor(repo: string): Promise<string | undefined> {
+  const env = process.env.GIT_INDEX_FILE;
+  if (env === undefined) return undefined;
+  // Absolute first: git hands a hook the relative `.git/index` for a plain
+  // commit, and an absolute lock path for `-a` and for a pathspec commit.
+  const index = resolve(process.cwd(), env);
+  const own = await absoluteGitDir(repo);
+  // The index BELONGS to a repo when it sits in that repo's git directory —
+  // `index`, `index.lock`, `next-index-NNN.lock` all do, and a linked
+  // worktree's git dir is where its own index lives. Asked this way rather
+  // than through `GIT_DIR`, which git 2.55 does not set for hooks at all
+  // (measured): only `GIT_INDEX_FILE` arrives, with the cwd at the toplevel.
+  return own !== null && samePath(dirname(index), own) ? index : undefined;
+}
+
+/**
  * The one line of git's stderr worth showing.
  *
  * git puts the CAUSE in its `fatal:` line and then keeps talking — hints,
@@ -46,12 +99,24 @@ export function gitFailure(stderr: string | undefined, fallback: string): string
   return lines.find((l) => l.startsWith('fatal:')) ?? lines.at(-1) ?? fallback;
 }
 
-/** Run git in a repo, return trimmed stdout. Throws with stderr on failure. */
-export async function run(repo: string, args: string[]): Promise<string> {
+/**
+ * Run git in a repo, return trimmed stdout. Throws with stderr on failure.
+ *
+ * `askTheCommit` opts the call into the ambient index (MV-106): pass it for a
+ * read whose subject is the commit being composed — what is staged, what a
+ * path looks like at `:` — and leave it off for everything else. It is a
+ * no-op unless `repo` IS the repo the hook is running for.
+ */
+export async function run(
+  repo: string,
+  args: string[],
+  askTheCommit = false,
+): Promise<string> {
+  const index = askTheCommit ? await ambientIndexFor(repo) : undefined;
   try {
     const { stdout } = await execFileP('git', ['-C', repo, ...args], {
       maxBuffer: 64 * 1024 * 1024,
-      env: cleanEnv(),
+      env: index === undefined ? cleanEnv() : { ...cleanEnv(), GIT_INDEX_FILE: index },
     });
     return stdout.replace(/\n$/, '');
   } catch (e) {

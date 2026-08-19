@@ -96,12 +96,23 @@ git and harness hooks, where it would be noise. It is skipped when stdout is
 not a terminal, and `NO_COLOR` keeps the drawing while dropping the colour
 (`#` lit, `.` unlit, `*` in flight).
 
-Both `--flag value` and `--flag=value` work. A flag with no value, or an
-unknown flag, is refused:
+Both `--flag value` and `--flag=value` work, and parse to the same value
+(MV-105). A flag with no value, or an unknown flag, is refused:
 
 ```txt
 init: unknown flag --providers — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet
 ```
+
+A valued flag whose value is missing — or whose value is itself a flag — is
+refused too, rather than binding the next token or an empty string:
+
+```txt
+--repo needs a value — verify takes [dir], --strict, --check, --worktree, --repo <key>
+```
+
+The equals form is for long names only. A short alias is not split by the
+parser, so `-r=api` would bind the value `"=api"`; it is refused as an unknown
+flag rather than accepted as a form that does not work.
 
 **Flags configure AND project.** `--provider claude` writes `claude` into
 `doors:` and projects it in the same run — the door, the skill, the harness
@@ -289,6 +300,24 @@ question could not be asked rather than implying an answer.
   enact     MV-91 → active, alone in this commit — the row is reviewable on its own
   enact     not answered — nothing staged, so no commit is being composed; MV-81's check reads the index against HEAD
 ```
+
+Beside it, and from the same read, a `law` line answers MV-107: the law's death
+is gated the way its birth is. A row that was `active` at HEAD and is gone from
+the index refuses the commit, and so does an index that removes the law file.
+Retiring a row is not death — it is the sanctioned way for a rule to stop
+applying — and a `proposed` row disappearing is a reservation being given back,
+which `change close --abandon` does by design. Neither is refused.
+
+```txt
+  law       REFUSED MV-91 was active and is gone · blocking — a row stops applying by being RETIRED, in the open, not by being deleted: …
+  law       REFUSED .multivac/invariants.md is removed by this commit · blocking — a brain with no law verifies nothing and says so in green. …
+```
+
+All three index-reading lines — `enact`, `config` and `law` — read the index
+the commit is being composed in, not the one on disk (MV-106). They differ:
+measured on git 2.55, `git commit -a` composes in `.git/index.lock` and a
+pathspec commit in `.git/next-index-NNN.lock`, so a check reading `.git/index`
+answers about a commit nobody is making.
 
 | flag | effect |
 | --- | --- |
@@ -868,11 +897,17 @@ flags: --no-sdd (skip the SDD steps AND their gates), --no-grapher (close only:
        --abandon (close only: drop a change that landed nothing, give its id back)
 ```
 
-Exactly four flags, all listed above. An unknown one exits 2:
+Exactly four flags, all listed above. `change` reads the same shared refusal
+every other command reads (MV-105), so an unknown flag, a single-dash token and
+a surplus positional all exit 2:
 
 ```txt
-unknown flag --force — run `multivac change` for usage
+change: unknown flag "--force" — change takes <sub> <slug> ["<title>"], --no-sdd, --no-grapher, --landed <repo>, --abandon
+change: unexpected argument "api" — change takes <sub> <slug> ["<title>"], --no-sdd, --no-grapher, --landed <repo>, --abandon
 ```
+
+The second line is `change land <slug> api`, meaning `--landed api`. It used to
+exit **0** having recorded nothing.
 
 A slug must be letters, digits, dots or dashes. `change new "points expire"`
 derives `points-expire`.
