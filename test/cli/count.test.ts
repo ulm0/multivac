@@ -130,3 +130,21 @@ test('bad input is a usage answer, exit 2: malformed spec, unknown repo, PCRE sh
   assert.equal(pcre.code, 2);
   assert.match(pcre.out, /is not POSIX ERE/);
 });
+
+test('count says what it read, and reads what verify reads — MV-109', async () => {
+  // count used to build its own scanner handles, under a comment claiming they
+  // were "exactly as verify builds them", and built them WITHOUT a ref — so it
+  // read working trees while verify read each sibling at its channel (MV-53).
+  // A count=N pinned from here could disagree with the number the gate
+  // computes, and nothing on screen said why.
+  const e = eco();
+  commitFile(e.repos.api, 'a.ts', 'export const one = 1;\n');
+  // An uncommitted second match: on the channel it does not exist, in the
+  // working tree it does. That difference is the whole test.
+  writeFileSync(join(e.repos.api, 'b.ts'), 'export const two = 2;\n');
+
+  const c = await run(["api:**.ts /export const/"], e.brain);
+
+  assert.match(c.out, /read {6}api:/, 'count did not say what it read');
+  assert.doesNotMatch(c.out, /b\.ts/, 'count read the working tree, not the channel');
+});

@@ -108,7 +108,12 @@ export function matchesInFile(file: string, text: string, re: RegExp): Match[] {
     }
     return out;
   }
-  const lines = text.split('\n');
+  // MV-109: a CRLF line is a line. Splitting on `\n` alone left `\r` on the end
+  // of every line in a CRLF file, so `/foo$/` and every exact-line pattern
+  // silently never matched — a `present` leg read broken and an `absent` leg
+  // read green, on a file that looks entirely normal to its author. The number
+  // of separators is unchanged, so line numbers do not move.
+  const lines = text.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
     if (ANCHOR_LINE.test(lines[i]) && lines[i].includes('-->')) continue;
     if (re.test(lines[i])) out.push({ file, line: i + 1 });

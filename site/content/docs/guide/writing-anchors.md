@@ -79,6 +79,23 @@ Translate:
 | `\w` | `[[:alnum:]_]` |
 | `\b` | `(^|[^[:alnum:]_])` … `([^[:alnum:]_]|$)` |
 
+Four more constructs are refused for the same reason — they mean something in
+JavaScript and something else, or nothing, to `git grep` (MV-109):
+
+| Written | Why it is refused |
+| --- | --- |
+| `(?=` `(?!` `(?:` | POSIX ERE has no lookaround and no non-capturing groups |
+| `*?` `+?` `??` | POSIX ERE quantifiers are greedy; there is no lazy form |
+| `\1` … `\9` | POSIX ERE has no backreferences |
+| `\t` `\n`, any alphabetic escape | POSIX ERE escapes punctuation only |
+
+And the mistake that used to compile: a character class needs BOTH pairs of
+brackets. `[[:digit:]]` is the class; `[:digit:]` is a bracket expression whose
+members are `:`, `d`, `i`, `g`, `t` — so `PIN[:digit:]` used to become
+`PIN0-9`, matching that literal text and never `PIN4`. It is refused now, in
+`git grep`'s own words: *character class syntax is `[[:digit:]]`, not
+`[:digit:]`*.
+
 ## Matching rules you must know
 
 - **`.sql` files match per statement, not per line.** Comments stripped,

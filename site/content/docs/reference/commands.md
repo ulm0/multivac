@@ -573,10 +573,18 @@ grep said.
 
 ```txt
 $ mvac count 'api:db/migrations/*.sql /balance/'
+  read      api: origin/main @ 1a2b3c4 — the channel, as published
   db/migrations/0001.sql  1
   db/migrations/0002.sql  1
 2 matches in 2 tracked files — a ratchet pins count=2
 ```
+
+Same bytes, too, not only the same parser: `count` resolves the repos it reads
+through the function `verify` uses, so a sibling is read at its channel ref and
+the brain at its working tree (MV-53), and it prints the same `read` line per
+repo. Before MV-109 it built its own handles with no ref — so it read working
+trees while the gate read channels, and a number pinned from it could disagree
+with the number that gates, with nothing on screen to explain the gap.
 
 Dry-run only: writes nothing, exits 0 even at zero matches. A malformed spec,
 a PCRE shorthand, or an unknown repo key is a usage answer, exit 2. Quote the
