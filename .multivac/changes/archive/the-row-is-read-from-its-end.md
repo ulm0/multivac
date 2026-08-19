@@ -1,6 +1,6 @@
 ---
 slug: the-row-is-read-from-its-end
-status: open
+status: archived
 repos:
   brain:
     status: landed
