@@ -100,3 +100,45 @@ test('a malformed managed block names the file it is in', () => {
     /\/repo\/AGENTS\.md: managed block is malformed/,
   );
 });
+
+test('an existing shim of ours is regenerated, so a declared gate reaches it', async () => {
+  // The husky case: the shim is already installed, `strict_pre_push` is turned
+  // on later, and nothing changes because "mentions multivac" made our own
+  // shim look foreign. A declared gate that never arms is worse than none.
+  const dir = tmp();
+  gitInit(dir);
+  await quiet(() => init.run(['--quiet', dir], { cwd: dir })), 0;
+  const cfg = join(dir, '.multivac/config.yml');
+  writeFileSync(cfg, `${readFileSync(cfg, 'utf8')}\nstrict_pre_push: true\n`);
+
+  await quiet(() => doorsCommand.run([], { cwd: dir }));
+
+  const prePush = readFileSync(join(dir, '.multivac/hooks/pre-push'), 'utf8');
+  assert.match(prePush, /verify --strict/, 'strict_pre_push never reached the installed shim');
+  assert.ok(isOurShim(prePush), 'the regenerated shim lost its ownership header');
+});
+
+test('init run twice leaves the strictness and the record where doors put them', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  await quiet(() => init.run(['--quiet', dir], { cwd: dir }));
+  const cfg = join(dir, '.multivac/config.yml');
+  writeFileSync(cfg, `${readFileSync(cfg, 'utf8')}\nstrict_pre_push: true\n`);
+  await quiet(() => doorsCommand.run([], { cwd: dir }));
+
+  const record = readFileSync(join(dir, '.multivac/projected.yml'), 'utf8');
+  const prePush = readFileSync(join(dir, '.multivac/hooks/pre-push'), 'utf8');
+
+  await quiet(() => init.run(['--quiet', dir], { cwd: dir }));
+
+  assert.equal(
+    readFileSync(join(dir, '.multivac/hooks/pre-push'), 'utf8'),
+    prePush,
+    'init downgraded the strict pre-push shim doors installed',
+  );
+  assert.equal(
+    readFileSync(join(dir, '.multivac/projected.yml'), 'utf8'),
+    record,
+    'init restamped the version record without an act of adoption (MV-86)',
+  );
+});

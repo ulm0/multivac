@@ -74,3 +74,8 @@ exactly that mistake, so US1 and US2 assert the EFFECT — content survival, and
 MVP is US1 + US2: one destroys user data on every run, the other executes an
 unrelated program. US3–US5 are the same discipline applied where the cost is a
 gate that quietly does not fire.
+
+## Phase 9: Convergence
+
+- [X] T020 Pin SC-004 (partial): an existing multivac shim is regenerated so `strict_pre_push` reaches it, and a foreign hook is still never rewritten
+- [X] T021 Pin SC-005 (partial): `init` run twice leaves the shim strictness and `.multivac/projected.yml` exactly as `doors` left them
