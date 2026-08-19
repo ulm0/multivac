@@ -909,3 +909,4 @@ checks them on every commit.
 <!-- @anchor MV-115 brain:src/commands/doctor.ts /does not run multivac → run/ unique -->
 <!-- @anchor MV-115 brain:test/doors/identity.test.ts /a linked worktree runs the repo own common-dir hooks/ -->
 <!-- @anchor MV-115 brain:test/doors/identity.test.ts /a gutted shim of ours is not armed/ -->
+| MV-116 | RESERVED by change the-engine-reads-one-way-round-two — state the rule here before close. | open | proposed | 2026-08-19 | [changes/the-engine-reads-one-way-round-two.md](changes/the-engine-reads-one-way-round-two.md) |
