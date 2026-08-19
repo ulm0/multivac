@@ -4,7 +4,7 @@
 
 import { lstat, readFile, readlink, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import type { Command, Config } from '../types.js';
+import type { Anchor, Command, Config } from '../types.js';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { parseArgs, type ArgsDef } from 'citty';
 import {
@@ -48,6 +48,7 @@ import {
   runsMultivac,
 } from '../hooks/install.js';
 import { collectBrainAnchors } from '../anchor/parse.js';
+import type { ParseResult } from '../anchor/parse.js';
 import { excludeGlobs, makeMatcher } from '../lib/glob.js';
 import { ENACTMENT_UNGATEABLE } from './verify.js';
 
@@ -635,7 +636,7 @@ function buildCritical(
  * `git add` stays silent and every command stays green. That is a WARNING
  * with the fix, ahead of the untracked report.
  */
-async function untrackedLine(brain: string, cfg: Config): Promise<string> {
+async function untrackedLine(brain: string, cfg: Config, anchors: Anchor[]): Promise<string> {
   const ignored = await git.ignoredPaths(brain, BRAIN_PATHS).catch(() => []);
   const ignoredWarning =
     ignored.length === 0
@@ -643,10 +644,6 @@ async function untrackedLine(brain: string, cfg: Config): Promise<string> {
       : `WARNING ${ignored.length} brain path${ignored.length === 1 ? '' : 's'} ` +
         `IGNORED by .gitignore — ${ignored.join(', ')} — the law cannot ship; ` +
         'fix: run `multivac init .` (appends !.multivac/ negations to .gitignore)';
-  const anchors = await collectBrainAnchors(brain).then(
-    (r) => r.anchors,
-    () => [],
-  );
   const brainKeys = ['brain', '*'];
   const scopes = [{ name: 'brain', dir: brain, keys: brainKeys }];
   for (const [key, e] of Object.entries(cfg.repos)) {
@@ -679,6 +676,29 @@ async function untrackedLine(brain: string, cfg: Config): Promise<string> {
   return ignoredWarning === null ? untracked : `${ignoredWarning} · ${untracked}`;
 }
 
+/** What a law that could not be read at all looks like: nothing, and no complaint. */
+const EMPTY_LAW: ParseResult = { anchors: [], diagnostics: [] };
+
+/**
+ * What the law says about itself. An anchor that does not parse is a rule
+ * nobody checks — `verify` prints it and refuses, and `doctor` said it exits 1
+ * for it long before anything read the diagnostics that prove it.
+ */
+function lawLine(law: ParseResult): string {
+  const { anchors, diagnostics } = law;
+  if (diagnostics.length === 0) {
+    return anchors.length === 0
+      ? 'no anchors — a claim nobody checks decays (MV-01)'
+      : `${anchors.length} anchor${anchors.length === 1 ? ' parses' : 's parse'}`;
+  }
+  const named = diagnostics
+    .slice(0, 3)
+    .map((d) => `${d.file}:${d.line} — ${d.message}`)
+    .join(' · ');
+  const more = diagnostics.length > 3 ? ` · +${diagnostics.length - 3} more` : '';
+  return `invalid — ${diagnostics.length} anchor${diagnostics.length === 1 ? '' : 's'} do not parse: ${named}${more}`;
+}
+
 /**
  * Build the full report. Bare `doctor` exits 1 only when the config/law is
  * invalid. Under `strict`, a disarmed enforcement gate is also exit 1: the
@@ -699,6 +719,10 @@ export async function doctorReport(
     }
     throw e;
   }
+  // The law, read once: `untrackedLine` wants the anchors, and the promise
+  // this command's own help makes — "exit 1 only when the config/law is
+  // invalid" — wants the diagnostics that used to be thrown away here.
+  const law = await collectBrainAnchors(brainDir).catch(() => EMPTY_LAW);
   const doorParts: string[] = [];
   for (const name of cfg.doors) doorParts.push(await doorState(brainDir, name));
   const hooks = await hooksLine(brainDir);
@@ -717,7 +741,8 @@ export async function doctorReport(
     // that as covering the whole law would be reading coverage out of silence
     // — the one rule no local gate can arm has to say so in the same report.
     label('enact') + ENACTMENT_UNGATEABLE,
-    label('untracked') + (await untrackedLine(brainDir, cfg)),
+    label('law') + lawLine(law),
+    label('untracked') + (await untrackedLine(brainDir, cfg, law.anchors)),
   ];
   // The one strict-only exit: a report that exits 0 while nothing is enforced
   // is the lie measurement 3 caught. `--strict` refuses to be that report.
@@ -728,7 +753,10 @@ export async function doctorReport(
     );
     return { lines, exit: 1 };
   }
-  return { lines, exit: 0 };
+  // A law that does not parse is the other half of the exit this command
+  // advertises. It is NOT a strict-only exit: an unreadable rule is invalid,
+  // the same way an unreadable config is, and both are exit 1 bare.
+  return { lines, exit: law.diagnostics.length === 0 ? 0 : 1 };
 }
 
 /** What doctor takes. One declaration: citty parses it, `undeclared` refuses against it. */

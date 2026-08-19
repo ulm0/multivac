@@ -85,7 +85,7 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
     return 2;
   }
   const brainDir = resolve(ctx.cwd, parseArgs(argv, ARGS).dir ?? '.');
-  const cfg = await loadConfig(brainDir); // throws actionable ConfigError
+  const cfg = await loadConfig(brainDir); // throws actionable ConfigError — exit 2, cli.ts
 
   const lines: string[] = [
     '# seed report',

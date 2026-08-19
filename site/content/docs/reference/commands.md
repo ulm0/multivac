@@ -681,6 +681,7 @@ branches   brain: on main @ abc1234 — brain==code, verify reads this working t
 pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain) · payments: not cloned
 hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac on PATH)
 enact      who enacts is not a fact on disk — multivac never fabricates git identity (MV-04), so an agent commits as the person … UNGATEABLE by design (MV-81), not an oversight; enforcement is the forge's merge button
+law        118 anchors parse
 untracked  nothing build-critical untracked
 ```
 
@@ -739,8 +740,16 @@ strict     FAIL — the enforcement gate is not armed; a commit here is not veri
 1
 ```
 
-Invalid config/law stays exit 1 under both. Bare `doctor` never gates on a
-disarmed gate — it only describes it.
+Invalid config/law stays exit 1 under both — the `law` line names the anchors
+that do not parse, and bare `doctor` exits 1 for them:
+
+```txt
+$ mvac doctor; echo $?
+law        invalid — 1 anchor does not parse: .multivac/invariants.md:912 — unterminated pattern
+1
+```
+
+Bare `doctor` never gates on a disarmed gate — it only describes it.
 
 ## `repos` / `repos sync [--shallow]`
 

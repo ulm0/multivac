@@ -14,7 +14,7 @@ invariants:
   retires: []
 claims:
   - id: MV-118
-    statement: "Where a sentence and the code disagree, the code moves: the documented exit contract is honoured by every command that reads a config, `doctor` gates on the law validity its own help promises, and self-heal — the only machinery that rewrites the law file — is stated by a row instead of appearing in asides."
+    statement: "Where a sentence and the code disagree, the code moves — unless the sentence is the defect, and which one it is gets decided out loud: the documented exit contract is honoured by every command that reads a config, `doctor` gates on the law validity its own help promises, and no guide sends an operator's work into a block the tool regenerates."
 ---
 
 # The sentences are true
@@ -39,6 +39,8 @@ to honour what was written down, because what was written down is the design.
 - **MV-85 describes a shape the code left behind.** Its body says `verify` and
   `change` "keep their own correct loops". Both call the shared refusal now,
   and so does `count`.
-- **Self-heal is stated by no row.** The one code path that WRITES the law file
-  appears only in asides inside three other rows. MV-116 fenced it; nothing
-  states it exists.
+- **Self-heal, checked and dropped from scope.** The audit recorded that the
+  one code path which WRITES the law file was stated by no row. MV-116 states
+  it — "self-heal is the one code path that rewrites the law file" — as the
+  opening of the row that fenced it, one change earlier. A second row saying
+  the same thing is the copy MV-111 exists to prevent.

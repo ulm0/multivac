@@ -160,9 +160,12 @@ whys, one thin end-to-end slice — then stop. Everything else is decided
 inside future changes, when reality pushes back. A speculative spec is a
 brain that lies from day one, the exact thing verify exists to prevent.
 
-Output lands as: the loop and boundary list in the brain door's managed
-block; one map page; every non-negotiable as a `proposed` row (mostly
-unanchored — there is no code yet; that is legal and counted). Then:
+Output lands as: the loop and boundary list in the brain door, OUTSIDE the
+managed block — `doors` regenerates what is between the markers, whole, from
+`.multivac/config.yml` on every run, so anything written inside them is gone
+at the next `multivac doors`; one map page; every non-negotiable as a
+`proposed` row (mostly unanchored — there is no code yet; that is legal and
+counted). Then:
 
 ```sh
 mvac change new "first slice"
