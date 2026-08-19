@@ -1,6 +1,6 @@
 ---
 slug: the-gate-speaks-the-channel-the-harness-reads
-status: open
+status: archived
 repos:
   brain:
     status: landed
