@@ -96,12 +96,23 @@ git and harness hooks, where it would be noise. It is skipped when stdout is
 not a terminal, and `NO_COLOR` keeps the drawing while dropping the colour
 (`#` lit, `.` unlit, `*` in flight).
 
-Both `--flag value` and `--flag=value` work. A flag with no value, or an
-unknown flag, is refused:
+Both `--flag value` and `--flag=value` work, and parse to the same value
+(MV-105). A flag with no value, or an unknown flag, is refused:
 
 ```txt
 init: unknown flag --providers — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet
 ```
+
+A valued flag whose value is missing — or whose value is itself a flag — is
+refused too, rather than binding the next token or an empty string:
+
+```txt
+--repo needs a value — verify takes [dir], --strict, --check, --worktree, --repo <key>
+```
+
+The equals form is for long names only. A short alias is not split by the
+parser, so `-r=api` would bind the value `"=api"`; it is refused as an unknown
+flag rather than accepted as a form that does not work.
 
 **Flags configure AND project.** `--provider claude` writes `claude` into
 `doors:` and projects it in the same run — the door, the skill, the harness
@@ -881,11 +892,17 @@ flags: --no-sdd (skip the SDD steps AND their gates), --no-grapher (close only:
        --abandon (close only: drop a change that landed nothing, give its id back)
 ```
 
-Exactly four flags, all listed above. An unknown one exits 2:
+Exactly four flags, all listed above. `change` reads the same shared refusal
+every other command reads (MV-105), so an unknown flag, a single-dash token and
+a surplus positional all exit 2:
 
 ```txt
-unknown flag --force — run `multivac change` for usage
+change: unknown flag "--force" — change takes <sub> <slug> ["<title>"], --no-sdd, --no-grapher, --landed <repo>, --abandon
+change: unexpected argument "api" — change takes <sub> <slug> ["<title>"], --no-sdd, --no-grapher, --landed <repo>, --abandon
 ```
+
+The second line is `change land <slug> api`, meaning `--landed api`. It used to
+exit **0** having recorded nothing.
 
 A slug must be letters, digits, dots or dashes. `change new "points expire"`
 derives `points-expire`.
