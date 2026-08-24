@@ -1,11 +1,11 @@
 {
   ".multivac/hooks/pre-commit": {
-    "mtime": 1787173207.0654078,
+    "mtime": 1787594592.3561046,
     "ast_hash": "a47cbe041c068964795058253e6ae9c6",
     "semantic_hash": ""
   },
   ".multivac/hooks/pre-push": {
-    "mtime": 1787173207.0655646,
+    "mtime": 1787594592.356252,
     "ast_hash": "18bf87a3b843d260840f423d754ddcbc",
     "semantic_hash": ""
   },
@@ -130,8 +130,8 @@
     "semantic_hash": ""
   },
   "src/doors/brain.ts": {
-    "mtime": 1787177571.6017487,
-    "ast_hash": "f05b632baaf2a974e6f2002a38323630",
+    "mtime": 1787594348.7633953,
+    "ast_hash": "61560f48f665f3f9bf8f450dc60710d0",
     "semantic_hash": ""
   },
   "src/doors/consumer.ts": {
@@ -640,8 +640,8 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1787590711.3630185,
-    "ast_hash": "518c620c0311d1627a381c419af06755",
+    "mtime": 1787594592.3474586,
+    "ast_hash": "67c7e66498bee39b83955c24573415be",
     "semantic_hash": ""
   },
   "CODE_OF_CONDUCT.md": {
@@ -865,7 +865,7 @@
     "semantic_hash": ""
   },
   ".claude/settings.json": {
-    "mtime": 1787170326.9435935,
+    "mtime": 1787594730.2202427,
     "ast_hash": "216e623ca51de7ba8acfd3bd95e2c645",
     "semantic_hash": ""
   },
@@ -875,38 +875,38 @@
     "semantic_hash": ""
   },
   ".claude/skills/multivac/SKILL.md": {
-    "mtime": 1787170326.9419606,
+    "mtime": 1787594592.349817,
     "ast_hash": "05a61027e374450ef46a7c955ca2b699",
     "semantic_hash": ""
   },
   ".claude/skills/multivac/references/anchors.md": {
-    "mtime": 1787173828.1133132,
+    "mtime": 1787594592.3484218,
     "ast_hash": "9401f3e478e4f389dba78673ccec2d67",
     "semantic_hash": ""
   },
   ".claude/skills/multivac/references/change.md": {
-    "mtime": 1787170842.5866783,
+    "mtime": 1787594592.3487828,
     "ast_hash": "ae237972f756d6b3d1549e41511e8ed7",
     "semantic_hash": ""
   },
   ".claude/skills/multivac/references/discovery.md": {
-    "mtime": 1787170326.9412556,
+    "mtime": 1787594592.3492947,
     "ast_hash": "ddb88a8c1a7adb2948191298e2876e0e",
     "semantic_hash": ""
   },
   ".claude/skills/multivac/references/interview.md": {
-    "mtime": 1787170326.9416175,
+    "mtime": 1787594592.3495452,
     "ast_hash": "a4fa224c2ec1b30b0820aa9bec232efb",
     "semantic_hash": ""
   },
   ".claude/skills/multivac/references/verify.md": {
-    "mtime": 1787170326.9410007,
+    "mtime": 1787594592.3490443,
     "ast_hash": "d427a6073bf5beff00e414eb90a38347",
     "semantic_hash": ""
   },
   "CLAUDE.md": {
-    "mtime": 1787590711.3630185,
-    "ast_hash": "518c620c0311d1627a381c419af06755",
+    "mtime": 1787594592.3474586,
+    "ast_hash": "67c7e66498bee39b83955c24573415be",
     "semantic_hash": ""
   },
   ".multivac/changes/archive/built-with-itself-includes-the-door.md": {
@@ -1535,8 +1535,8 @@
     "semantic_hash": ""
   },
   ".multivac/projected.yml": {
-    "mtime": 1787112165.9732168,
-    "ast_hash": "eff2c036dbcaaf079e07b58d3e097e6b",
+    "mtime": 1787594592.3649154,
+    "ast_hash": "ba149a284c471632493e76e56dff4c9f",
     "semantic_hash": ""
   },
   "specs/010-the-brain-knows-what-projected-it/checklists/requirements.md": {
@@ -1955,7 +1955,7 @@
     "semantic_hash": ""
   },
   ".multivac/flow.md": {
-    "mtime": 1787170842.5870428,
+    "mtime": 1787594592.3645566,
     "ast_hash": "3d07b8eaf095b3fe98f4060ea55514da",
     "semantic_hash": ""
   },
@@ -3167,6 +3167,11 @@
   "site/static/og.png": {
     "mtime": 1787083369.252457,
     "ast_hash": "d94282c832a3314ead34019c6ab22b3c",
+    "semantic_hash": ""
+  },
+  ".claude/settings.local.json": {
+    "mtime": 1787594592.1892946,
+    "ast_hash": "9276b7ee3da098bbd60541919be57f13",
     "semantic_hash": ""
   }
 }

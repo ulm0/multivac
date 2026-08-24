@@ -73,7 +73,7 @@ export function grapherLines(config: Config, grapher?: string): string[] {
       // Not "never committed": whether the artifact is tracked is the
       // project's call (MV-50 leaves it to dedicated chore commits). What is
       // always true is that multivac's own refresh path touches no git.
-      'refreshed after your edits, never staged or committed by multivac.',
+      'refreshed after your edits; multivac never stages it, but you can track and commit it.',
   ];
   if (spec.queries && spec.queries.length > 0) {
     lines.push(

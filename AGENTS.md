@@ -7,7 +7,7 @@ This repo is the brain: the source of law and change for its ecosystem. It is al
 - Every ecosystem decision enters as a change: see `.multivac/changes/` and run `multivac change`.
 - The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.
 - Check the law against the code before acting: `multivac verify`.
-- A code graph is kept fresh for you by `graphify` at `graphify-out/graph.json` — refreshed after your edits, committed with the code it describes. Cache and dated snapshots stay local.
+- A code graph is kept fresh for you by `graphify` at `graphify-out/graph.json` — refreshed after your edits; multivac never stages it, but you can track and commit it.
   ASK IT BEFORE READING THE TREE RAW. It answers in one call what grep takes many, and it is this tool's verbs, not a generic one:
   - `graphify query "<question>"` — a question in plain words — returns the subgraph that answers it, walked outward from the best-matching nodes
   - `graphify explain "<node>"` — one node and its neighbours, described in prose
