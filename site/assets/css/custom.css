@@ -195,10 +195,15 @@ a.hx\:bg-primary-600,
 
 /* The headline's cursor, blinking on the typed command (MV-83: typed, not
    fetched — see the inline script on the homepage). steps(1) so it snaps
-   rather than fades, like a terminal caret. */
+   rather than fades, like a terminal caret.
+
+   Plain `inline`, not `inline-block`: the h1 fills its text with a gradient
+   via `background-clip: text`, and that clip only reaches descendant text
+   that stays in the same inline flow — an inline-block child opts out of it
+   and paints as invisible (inherited `color: transparent`, no background of
+   its own). Measured: the cursor was there and animating, just unpaintable. */
 
 .mvac-cursor {
-  display: inline-block;
   animation: mvac-blink 1s steps(1) infinite;
 }
 
