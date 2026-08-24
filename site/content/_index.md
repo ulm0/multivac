@@ -29,8 +29,7 @@ description: >-
 <script>
 (function () {
   var el = document.getElementById('mvac-cmd');
-  var cursor = document.querySelector('.mvac-cursor');
-  if (!el || !cursor) return;
+  if (!el) return;
   var commands = [
     'init', 'seed', 'verify', 'verify --strict', 'doctor', 'doors',
     'change new', 'change plan', 'change apply', 'change land', 'change close',
@@ -45,24 +44,16 @@ description: >-
   function tick() {
     var word = commands[ci];
     if (!deleting) {
-      cursor.classList.remove('mvac-cursor--idle');
       pos++;
       el.textContent = word.slice(0, pos);
-      if (pos === word.length) {
-        deleting = true;
-        cursor.classList.add('mvac-cursor--idle');
-        setTimeout(tick, HOLD_MS);
-        return;
-      }
+      if (pos === word.length) { deleting = true; setTimeout(tick, HOLD_MS); return; }
       setTimeout(tick, TYPE_MS);
     } else {
-      cursor.classList.remove('mvac-cursor--idle');
       pos--;
       el.textContent = word.slice(0, pos);
       if (pos === 0) {
         deleting = false;
         ci = (ci + 1) % commands.length;
-        cursor.classList.add('mvac-cursor--idle');
         setTimeout(tick, GAP_MS);
         return;
       }

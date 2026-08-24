@@ -193,18 +193,12 @@ a.hx\:bg-primary-600,
   font-size: 0.75rem;
 }
 
-/* The headline's cursor (MV-83: typed, not fetched — see the inline script
-   on the homepage). Solid while the script is actively typing or deleting,
-   so it reads as the caret DOING the work; blinking only while idle
-   (`--idle`, toggled by the script during its hold and gap pauses), the way
-   a real terminal cursor behaves. steps(1) so it snaps rather than fades. */
+/* The headline's cursor, blinking on the typed command (MV-83: typed, not
+   fetched — see the inline script on the homepage). steps(1) so it snaps
+   rather than fades, like a terminal caret. */
 
 .mvac-cursor {
   display: inline-block;
-  opacity: 1;
-}
-
-.mvac-cursor--idle {
   animation: mvac-blink 1s steps(1) infinite;
 }
 
@@ -215,7 +209,7 @@ a.hx\:bg-primary-600,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .mvac-cursor--idle {
+  .mvac-cursor {
     animation: none;
   }
 }
