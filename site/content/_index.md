@@ -14,10 +14,64 @@ description: >-
 {{< /hextra/hero-badge >}}
 
 <div class="hx:mt-6 hx:mb-6">
-{{< hextra/hero-headline >}}
-  `ask multivac_`
-{{< /hextra/hero-headline >}}
+<h1 class="not-prose hx:text-4xl hx:font-bold hx:leading-none hx:tracking-tighter hx:md:text-5xl hx:py-2 hx:bg-clip-text hx:text-transparent hx:bg-gradient-to-r hx:from-gray-900 hx:to-gray-600 hx:dark:from-gray-100 hx:dark:to-gray-400">
+<code>multivac <span id="mvac-cmd"></span><span class="mvac-cursor" aria-hidden="true">_</span></code>
+</h1>
 </div>
+
+<!--
+  MV-83's machine voice, typed. The commands cycled here are the tool's own
+  top-level surface (src/commands/*.ts) plus the change lifecycle's verbs —
+  nothing invented for the demo. Vanilla, inline, no dependency: the site
+  that tells you it refuses the network in the commands that gate work does
+  not reach a CDN to animate its own headline.
+-->
+<script>
+(function () {
+  var el = document.getElementById('mvac-cmd');
+  var cursor = document.querySelector('.mvac-cursor');
+  if (!el || !cursor) return;
+  var commands = [
+    'init', 'seed', 'verify', 'verify --strict', 'doctor', 'doors',
+    'change new', 'change plan', 'change apply', 'change land', 'change close',
+    'roadmap', 'count', 'repos sync',
+  ];
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    el.textContent = commands[0];
+    return;
+  }
+  var TYPE_MS = 70, DELETE_MS = 40, HOLD_MS = 1400, GAP_MS = 300;
+  var ci = 0, pos = 0, deleting = false;
+  function tick() {
+    var word = commands[ci];
+    if (!deleting) {
+      cursor.classList.remove('mvac-cursor--idle');
+      pos++;
+      el.textContent = word.slice(0, pos);
+      if (pos === word.length) {
+        deleting = true;
+        cursor.classList.add('mvac-cursor--idle');
+        setTimeout(tick, HOLD_MS);
+        return;
+      }
+      setTimeout(tick, TYPE_MS);
+    } else {
+      cursor.classList.remove('mvac-cursor--idle');
+      pos--;
+      el.textContent = word.slice(0, pos);
+      if (pos === 0) {
+        deleting = false;
+        ci = (ci + 1) % commands.length;
+        cursor.classList.add('mvac-cursor--idle');
+        setTimeout(tick, GAP_MS);
+        return;
+      }
+      setTimeout(tick, DELETE_MS);
+    }
+  }
+  setTimeout(tick, TYPE_MS);
+})();
+</script>
 
 <div class="hx:mb-12">
 {{< hextra/hero-subtitle >}}
