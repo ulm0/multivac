@@ -10,6 +10,16 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## 0.10.0 — 2026-08-24
+
+**Fixed**
+
+- **Clarified graphify-out tracking in generated door.** The brain door said
+  "never staged or committed by multivac", which was confusing for projects
+  where graphify-out/ IS tracked. Changed to: "refreshed after your edits;
+  multivac never stages it, but you can track and commit it." Clearer about
+  separation: tool doesn't commit, project can. (MV-50)
+
 ## 0.9.0 — 2026-08-18
 
 **Changed**
