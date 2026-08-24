@@ -54,8 +54,8 @@ menu:
     - name: Docs
       pageRef: /docs
       weight: 1
-    - name: GitLab
-      url: https://gitlab.com/ulm0/multivac
+    - name: GitHub
+      url: https://github.com/ulm0/multivac
       weight: 2
     - name: Search
       weight: 3

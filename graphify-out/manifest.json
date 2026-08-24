@@ -670,8 +670,8 @@
     "semantic_hash": ""
   },
   "site/content/_index.md": {
-    "mtime": 1787083369.24957,
-    "ast_hash": "ab09dfaee474b751fe7aa715ff932c4b",
+    "mtime": 1787599364.8714116,
+    "ast_hash": "c95d3c6b9700ffa9cc087ad39832b2a4",
     "semantic_hash": ""
   },
   "site/content/docs/_index.md": {
@@ -775,8 +775,8 @@
     "semantic_hash": ""
   },
   "site/hugo.yaml": {
-    "mtime": 1787083369.2513103,
-    "ast_hash": "3e8332f22f439e2a616dea392df10ca8",
+    "mtime": 1787599117.3235865,
+    "ast_hash": "61b5db435e43ff87648aef38edaaaec6",
     "semantic_hash": ""
   },
   "site/i18n/en.yaml": {
@@ -1085,8 +1085,8 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1787091778.4092884,
-    "ast_hash": "7a7eee9441aba0a7dd65b45eed8539d5",
+    "mtime": 1787597742.748989,
+    "ast_hash": "1d1d2a69d1ce43f69b2b4ae615f816ba",
     "semantic_hash": ""
   },
   "test/invariants/changelog.test.ts": {
@@ -3170,8 +3170,8 @@
     "semantic_hash": ""
   },
   ".claude/settings.local.json": {
-    "mtime": 1787594592.1892946,
-    "ast_hash": "9276b7ee3da098bbd60541919be57f13",
+    "mtime": 1787598554.300899,
+    "ast_hash": "3ffc7157e5d74d714ba6a9e0072e12d7",
     "semantic_hash": ""
   }
 }
