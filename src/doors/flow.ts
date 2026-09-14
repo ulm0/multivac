@@ -25,6 +25,7 @@
 import type { Config } from '../types.js';
 import { grapherSpec, sddSpec, unverifiedGrapher } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
+import { adaptersByRoot } from '../adapters/detect.js';
 import { LAW_PATH, RITUAL_PATH } from '../lib/config.js';
 
 const HEADER = [
@@ -50,54 +51,69 @@ export function renderFlow(config: Config): string {
   auto.push('- the doors and the git hooks are re-projected by `multivac doors`');
   yours.push(`- the ritual in \`${RITUAL_PATH}\`, printed by \`change close\` and checked by nothing`);
 
-  if (config.sdd) {
-    const spec = sddSpec(config.sdd);
+  // MV-122: a row per adapter a declared root resolves, not the ecosystem's
+  // alone. A row names its roots only when some declared root resolves
+  // otherwise, so a config naming only top-level adapters renders what it did.
+  const declared = 1 + Object.values(config.repos).filter((r) => !r.isBrain).length;
+  const every = (roots: string[]): boolean => roots.length === declared;
+  const inRoots = (roots: string[]): string => (every(roots) ? '' : ` — in ${roots.join(', ')}`);
+  const forRoots = (roots: string[]): string => (every(roots) ? '' : ` for ${roots.join(', ')}`);
+
+  const sdds = adaptersByRoot(config, 'sdd');
+  for (const [name, roots] of sdds) {
+    const spec = sddSpec(name);
     if (!spec) {
       yours.push(
-        `- \`${config.sdd}\` is declared as the SDD tool but is unknown to multivac — nothing of its flow is run or gated`,
+        `- \`${name}\` is declared as the SDD tool${forRoots(roots)} but is unknown to multivac — nothing of its flow is run or gated`,
       );
-    } else {
-      if (spec.scaffold) {
-        auto.push(
-          `- the \`${config.sdd}\` init is run in a declared repo whose \`${spec.scaffold.artifact}\` is missing, or the lifecycle says why it could not`,
-        );
-      }
-      for (const s of spec.steps ?? []) {
-        // The COMMAND leads: a reader scanning this column is asking "what will
-        // stop me", not "which file". Both halves come from the step itself —
-        // the same two fields the gate reads — so neither can drift from it.
-        if (s.artifact && s.gate) {
-          gate.push(`- \`change ${s.gate}\` refuses without \`${s.artifact}\``);
-          continue;
-        }
-        // Ungateable: the adapter's own reason, carried whole. A paraphrase
-        // would age beside its source.
-        const verb = /\/[\w.:-]+/.exec(s.run)?.[0] ?? s.at;
-        yours.push(`- \`${verb}\` — ${proofOf(s).slice('ungateable: '.length)}`);
-      }
+      continue;
     }
-  } else {
+    if (spec.scaffold) {
+      auto.push(
+        `- the \`${name}\` init is run in a declared repo whose \`${spec.scaffold.artifact}\` is missing, or the lifecycle says why it could not${inRoots(roots)}`,
+      );
+    }
+    for (const s of spec.steps ?? []) {
+      // The COMMAND leads: a reader scanning this column is asking "what will
+      // stop me", not "which file". Both halves come from the step itself —
+      // the same two fields the gate reads — so neither can drift from it.
+      if (s.artifact && s.gate) {
+        gate.push(`- \`change ${s.gate}\` refuses without \`${s.artifact}\`${inRoots(roots)}`);
+        continue;
+      }
+      // Ungateable: the adapter's own reason, carried whole. A paraphrase
+      // would age beside its source.
+      const verb = /\/[\w.:-]+/.exec(s.run)?.[0] ?? s.at;
+      yours.push(`- \`${verb}\` — ${proofOf(s).slice('ungateable: '.length)}${inRoots(roots)}`);
+    }
+  }
+  if (sdds.size === 0) {
     yours.push('- no SDD tool is declared, so no specification flow is printed or gated');
   }
 
-  if (config.grapher) {
-    const spec = grapherSpec(config.grapher, config.graphers);
+  const graphers = adaptersByRoot(config, 'grapher');
+  let verified = false;
+  for (const [name, roots] of graphers) {
+    const spec = grapherSpec(name, config.graphers);
     if (!spec) {
-      auto.push(`- \`${config.grapher}\` is declared as the grapher but ${unverifiedGrapher(config.grapher)}`);
-    } else {
-      auto.push(
-        `- the code graph is built where a declared repo has no \`${spec.artifacts[0]}\`, and refreshed at \`change close\`, in every declared repo`,
-      );
-      if (config.grapherAuto) {
-        gate.push(
-          `- \`change close\` refuses while a declared, present repo has no \`${spec.artifacts[0]}\``,
-        );
-      } else {
-        yours.push('- `grapher_auto: false` — the graph is still built, and `change close` no longer requires it');
-      }
+      auto.push(`- \`${name}\` is declared as the grapher${forRoots(roots)} but ${unverifiedGrapher(name)}`);
+      continue;
     }
-  } else {
+    verified = true;
+    auto.push(
+      `- the code graph is built where a declared repo has no \`${spec.artifacts[0]}\`, and refreshed at \`change close\`, in ${every(roots) ? 'every declared repo' : roots.join(', ')}`,
+    );
+    if (config.grapherAuto) {
+      gate.push(
+        `- \`change close\` refuses while a declared, present repo has no \`${spec.artifacts[0]}\`${inRoots(roots)}`,
+      );
+    }
+  }
+  if (graphers.size === 0) {
     auto.push('- no grapher is declared, so no graph is built or required');
+  }
+  if (verified && !config.grapherAuto) {
+    yours.push('- `grapher_auto: false` — the graph is still built, and `change close` no longer requires it');
   }
 
   return [

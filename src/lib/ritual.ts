@@ -5,6 +5,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { RITUAL_PATH } from './config.js';
+import { adaptersByRoot, type AdapterDecls } from '../adapters/detect.js';
 
 /**
  * MV-98. What `init` scaffolds: the explanation, then candidates drawn from
@@ -27,26 +28,23 @@ import { RITUAL_PATH } from './config.js';
  * would move a checked thing onto a poster, which is the inversion this whole
  * change exists to undo.
  */
-export function ritualSeed(config?: {
-  sdd?: string;
-  repos?: Record<string, unknown>;
-  mount?: string;
-}): string {
+export function ritualSeed(config: AdapterDecls & { mount?: string } = {}): string {
   const candidates = [
     'Somebody who did not write it read it, and said so out loud.',
     'What this taught that is not yet law is written down somewhere a person will find it.',
   ];
-  if (config?.sdd) {
+  // Some root resolves an SDD (MV-122): a repo's own counts, and `none` does not.
+  if (adaptersByRoot(config, 'sdd').size > 0) {
     candidates.push(
       'The spec is still true of the code: a better design found while implementing went back into the spec, with its reason.',
     );
   }
-  if (Object.keys(config?.repos ?? {}).length > 1) {
+  if (Object.keys(config.repos ?? {}).length > 1) {
     candidates.push(
       'The landing order was walked, not assumed: nothing shipped ahead of what it depends on.',
     );
     candidates.push(
-      `The pin moved in every consumer after the merge, so nobody reads \`${config?.mount ?? '.brain'}/\` at yesterday's law.`,
+      `The pin moved in every consumer after the merge, so nobody reads \`${config.mount ?? '.brain'}/\` at yesterday's law.`,
     );
   }
   return `# Ritual

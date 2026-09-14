@@ -137,7 +137,7 @@ test('a declared grapher whose binary is absent refuses, naming binary and insta
   const c = await capture(() => change.run(['close', slug], ctx));
   assert.equal(c.code, 1);
   assert.match(c.out, /roots cannot be checked/);
-  assert.match(c.out, /`mvac-no-such-binary` is not on PATH — install it however that tool says/);
+  assert.match(c.out, /`mvac-no-such-binary` found on neither PATH nor \S+'s node_modules\/\.bin — install never-installed: install it however that tool says \(declared in \.multivac\/config\.yml/);
 });
 
 test('an unverified grapher name refuses nothing', async () => {
@@ -165,15 +165,23 @@ test('a repo opted out with grapher: none is not a gap', async () => {
       '  api:',
       '    path: ../acme-api',
       '    grapher: none',
+      '  web: ../acme-web',
       '',
     ].join('\n'),
   );
   const ctx = { cwd: eco.brain };
   await readyToClose(eco.brain, ctx, 'points-expire');
   graph(eco.brain);
+  graph(eco.repos.web);
   const c = await capture(() => change.run(['close', 'points-expire'], ctx));
+  // Closed, so past every gate and through the refresh, which never fails a
+  // close — asked by exit code, not by a `refreshed` line that needs `true` on
+  // the host PATH.
+  assert.equal(c.code, 0, c.out);
   assert.equal(c.out.includes('api: no graph-out'), false);
   assert.equal(c.out.includes('refused — '), false);
+  // `none` is no grapher, not a grapher nobody verified (MV-122).
+  assert.equal(c.out.includes('not verified'), false);
 });
 
 test('an ecosystem with no grapher declared says nothing about graphs at close', async () => {

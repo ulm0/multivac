@@ -5,13 +5,13 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { mkdir, rmdir } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { delimiter, dirname, join, resolve } from 'node:path';
 import type { Config, GrapherDecl } from '../types.js';
-import { grapherSpec, unverifiedGrapher } from './registry.js';
-import { artifactPresent, binaryPresent, pathExists } from './detect.js';
+import { binaryMissing, grapherSpec, unverifiedGrapher } from './registry.js';
+import { adapterFor, adaptersByRoot, artifactPresent, localBin, missingRequired, pathExists } from './detect.js';
 import { GRAPH_LOCK } from '../doors/settings.js';
 import { CONFIG_PATH } from '../lib/config.js';
-import { say, warn } from '../lib/out.js';
+import { quoteFailure, say, warn } from '../lib/out.js';
 
 const execFileP = promisify(execFile);
 
@@ -71,8 +71,9 @@ async function takeLock(dir: string, label: string): Promise<(() => Promise<void
  * existed in the report and nowhere else (MV-87).
  *
  * An unverified grapher = the fields to declare, and nothing is run — a
- * derived command would be a guess. Absent binary = notice with the install
- * hint; a run that exits non-zero = warning handing the command back.
+ * derived command would be a guess. A required binary not found = notice
+ * naming it, the install line and the vendor; a run that exits non-zero =
+ * warning quoting the tool's cause and handing the command back.
  * Never throws: a foreign tool's failure is never the lifecycle's failure.
  */
 export async function refreshGraph(
@@ -90,10 +91,12 @@ export async function refreshGraph(
   // missing HERE or it is not, and the answer decides which command runs.
   const first = !(await artifactPresent(spec, dir));
   const run = first ? (spec.create ?? spec.refresh) : spec.refresh;
-  if (!(await binaryPresent(spec))) {
+  // MV-123: the one lookup, in this scope's own checkout.
+  const missing = await missingRequired(spec, dir);
+  if (missing.length > 0) {
     say(
-      `graph ${name} @ ${scope}: binary not found — ${first ? 'build' : 'refresh'} skipped; ` +
-        `${spec.installHint}, then \`${run}\` there`,
+      `graph ${name} @ ${scope}: ${first ? 'build' : 'refresh'} skipped — ${binaryMissing(name, spec, missing, scope)}, ` +
+        `then \`${run}\` there`,
     );
     return;
   }
@@ -107,28 +110,26 @@ export async function refreshGraph(
     // string, two dialects. The string is the operator's, so it means what a
     // shell says it means, everywhere.
     //
-    // Ceiling: `binaryPresent` still probes the FIRST WORD of the command, so
-    // one that begins with `env` or a variable assignment is probed wrongly.
-    // That is MV-59's existing behaviour, named rather than fixed here.
-    await execFileP('sh', ['-c', run], { cwd: dir });
+    // Ceiling: a declared grapher's `required` is the FIRST WORD of its
+    // refresh unless it declares `binary:`, so a command beginning with `env`
+    // or a variable assignment is looked up by the wrong name (MV-115).
+    //
+    // MV-123: the shell reaches this scope's node_modules/.bin after PATH, the
+    // second place the lookup above found the binary in — so what runs is what
+    // was found, and a copy on PATH still wins.
+    await execFileP('sh', ['-c', run], {
+      cwd: dir,
+      env: { ...process.env, PATH: [process.env.PATH, localBin(dir)].filter(Boolean).join(delimiter) },
+    });
     say(`${label}: ${first ? 'built' : 'refreshed'} (\`${run}\`) — artifact left uncommitted`);
   } catch (e) {
-    // The TOOL'S words, not node's. `Command failed: <cmd>` only repeats the
-    // command this very line prints again two clauses later, while the cause
-    // the tool wrote to stderr — depcruise's ENOENT, a parse error, a missing
-    // config — was thrown away. Same three-line quote `toolVerdict` gives a
-    // validator (src/adapters/sdd.ts).
+    // The tool's cause, not node's `Command failed: <cmd>`, which only repeats
+    // the command this line prints again, and not the tool's first lines, which
+    // for graphify 0.9.29 are a traceback header and a path on this machine.
+    // The one quote the scaffold and the validator get too (MV-123).
     const err = e as { stderr?: string; stdout?: string; message: string };
-    const said = `${err.stderr ?? ''}${err.stdout ?? ''}`
-      .split('\n')
-      .map((l) => l.trim())
-      .filter(Boolean)
-      .slice(0, 3)
-      .join(' ');
-    warn(
-      `${label}: ${first ? 'build' : 'refresh'} failed (${said || err.message.split('\n')[0]}) — ` +
-        `run \`${run}\` there by hand`,
-    );
+    const said = quoteFailure(err);
+    warn(`${label}: ${first ? 'build' : 'refresh'} failed (${said}) — run \`${run}\` there by hand`);
   } finally {
     await release?.();
   }
@@ -143,16 +144,17 @@ export interface GraphScope {
 
 /**
  * The brain plus every declared, present repo, each carrying the grapher that
- * applies to it — the per-scope override first, the ecosystem's otherwise.
+ * applies to it — resolved by `adapterFor` for every root, the brain's own
+ * entry included, and undefined where the root resolves `none` (MV-122).
  * The same list `doctor` reports over, so the report and the runner cannot
  * disagree about which scopes exist.
  */
 export async function graphScopes(brain: string, cfg: Config): Promise<GraphScope[]> {
-  const scopes: GraphScope[] = [{ scope: 'brain', dir: brain, name: cfg.grapher }];
+  const scopes: GraphScope[] = [{ scope: 'brain', dir: brain, name: adapterFor(cfg, 'brain', 'grapher') }];
   for (const [key, e] of Object.entries(cfg.repos)) {
     if (e.isBrain) continue; // already the brain
     const dir = resolve(brain, e.path);
-    if (await pathExists(dir)) scopes.push({ scope: key, dir, name: e.grapher ?? cfg.grapher });
+    if (await pathExists(dir)) scopes.push({ scope: key, dir, name: adapterFor(cfg, key, 'grapher') });
   }
   return scopes;
 }
@@ -173,7 +175,7 @@ export async function graphScopes(brain: string, cfg: Config): Promise<GraphScop
  */
 export async function ensureGraphs(brain: string, cfg: Config): Promise<void> {
   for (const s of await graphScopes(brain, cfg)) {
-    if (!s.name) continue; // no grapher declared for this scope: silence
+    if (!s.name) continue; // no grapher resolves for this scope: silence
     const spec = grapherSpec(s.name, cfg.graphers);
     // Unverified: `doctor` prints the fields to declare, and nothing is run.
     // Building from a guessed command is the one thing worse than no graph.
@@ -228,8 +230,8 @@ export async function graphGate(
   slug: string,
   noGrapher: boolean,
 ): Promise<GateResult> {
-  if (cfg.grapher === undefined && Object.values(cfg.repos).every((e) => e.grapher === undefined)) {
-    return { ok: true, lines: [] }; // nothing declared anywhere: silence
+  if (adaptersByRoot(cfg, 'grapher').size === 0) {
+    return { ok: true, lines: [] }; // no declared root resolves a grapher: silence
   }
   if (noGrapher || !cfg.grapherAuto) {
     // Silence about a skipped check is the failure this gate exists to end.
@@ -248,13 +250,15 @@ export async function graphGate(
   const lines: string[] = [];
   for (const s of await graphScopes(brain, cfg)) {
     let verdict: Verdict = 'out-of-scope';
+    let bins: string[] = [];
     const spec = s.name === undefined ? null : grapherSpec(s.name, cfg.graphers);
     // Unverified is out of scope, not a gap: demanding an artifact whose path
     // would have to be guessed is Principle V's invented integration wearing a
     // gate's clothes. `doctor` already prints the fields to declare.
     if (s.name !== undefined && spec !== null) {
+      bins = await missingRequired(spec, s.dir);
       if (await artifactPresent(spec, s.dir)) verdict = 'satisfied';
-      else if (!(await binaryPresent(spec))) verdict = 'unevaluable';
+      else if (bins.length > 0) verdict = 'unevaluable';
       else verdict = 'missing';
     }
     if (verdict === 'missing') {
@@ -262,9 +266,9 @@ export async function graphGate(
         `  ${s.scope}: no ${spec?.artifacts[0]} — \`${spec?.create ?? spec?.refresh}\` there`,
       );
     }
-    if (verdict === 'unevaluable') {
+    if (verdict === 'unevaluable' && spec !== null && s.name !== undefined) {
       unevaluable.push(
-        `  ${s.scope}: \`${spec?.binaries[0]}\` is not on PATH — ${spec?.installHint}, then \`${spec?.create ?? spec?.refresh}\` there`,
+        `  ${s.scope}: ${binaryMissing(s.name, spec, bins, s.scope)}, then \`${spec.create ?? spec.refresh}\` there`,
       );
     }
   }

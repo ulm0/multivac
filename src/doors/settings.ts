@@ -74,10 +74,16 @@ type Json = Record<string, unknown>;
  * - the refresh runs in a background subshell with stdio detached, so the
  *   harness gets its exit the moment the hook is fired.
  * - the hook always exits 0: a foreign tool's failure is not the agent's.
+ * - PATH gains `$PWD/node_modules/.bin` after the harness's own (MV-123):
+ *   `doors` wires this hook when the one lookup finds the grapher, and that
+ *   lookup also reads the root's node_modules/.bin, so a hook searching PATH
+ *   alone would be wired for a binary it cannot reach. `$PWD` is the directory
+ *   the relative lock above is taken in, so it carries that lock's ceiling.
+ *   After `REFRESH_HEAD`, which stays the head `ownsRefresh` matches.
  */
 export function refreshHookCmd(refresh: string): string {
   return (
-    `${REFRESH_HEAD} find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ` +
+    `${REFRESH_HEAD} PATH="$PATH:$PWD/node_modules/.bin"; find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ` +
     `mkdir -p ${CACHE} && mkdir "$L" 2>/dev/null || exit 0; ` +
     `{ ${refresh}; rmdir "$L"; } >/dev/null 2>&1 </dev/null & exit 0`
   );

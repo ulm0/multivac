@@ -139,7 +139,8 @@ The file also carries per-repo status
 **The graph gate (MV-90).** A declared grapher must have left a graph in every
 declared, present root, or close refuses and names every root that has none.
 The build-where-missing pass runs inside the gate, so a fresh ecosystem builds
-rather than refuses; a root whose binary is not on PATH refuses too, because a
+rather than refuses; a root whose binary is found on neither PATH nor its
+`node_modules/.bin` (MV-123) refuses too, naming the install line and the vendor, because a
 gate that cannot be evaluated must not pass. It asks EXISTENCE, never
 freshness — a stale graph passes on purpose. `--no-grapher` skips it for one
 run and `grapher_auto: false` turns it off for good; do not reach for either to
@@ -177,7 +178,8 @@ state.
 
 ## The graph — it follows YOUR edits, not the commit
 
-When a `grapher:` is declared and its binary is installed, `doors` wires the
+When a `grapher:` is declared and its binary is found — on PATH or in that
+repo's `node_modules/.bin` (MV-123) — `doors` wires the
 refresh into your harness's **post-edit hook**, so the map is current for the
 next question you ask it. It is backgrounded and silent: it never delays an
 edit, never fails one, and skips when a refresh is already running. `change

@@ -1,30 +1,12 @@
-// Probe a repo/brain for adapter artifacts and PATH binaries. Pure checks,
-// no subprocess: a hand-rolled `which` over PATH plus fs existence.
+// Probe a repo/brain for adapter artifacts and binaries. Pure checks, no
+// subprocess: fs existence, and one binary lookup over PATH and the root's
+// node_modules/.bin (MV-123).
 
-import { access, readdir } from 'node:fs/promises';
+import { access, readdir, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import { doorTargets, type AdapterSpec } from './registry.js';
 import type { Config, RepoEntry } from '../types.js';
-
-export interface AdapterStatus {
-  name: string;
-  kind: 'sdd' | 'grapher';
-  declared: boolean;
-  /** Read capability: something the tool left on disk. */
-  artifact: boolean;
-  /** Run capability: the executable is on PATH. */
-  binary: boolean;
-}
-
-/** declared+anything-present = active; declared+nothing = notice, feature off,
- *  exit 0; not declared (null) = silence. */
-export type Policy = 'active' | 'notice' | 'silent';
-
-export function policy(s: AdapterStatus | null): Policy {
-  if (!s || !s.declared) return 'silent';
-  return s.artifact || s.binary ? 'active' : 'notice';
-}
 
 export async function pathExists(p: string): Promise<boolean> {
   return access(p).then(
@@ -50,27 +32,64 @@ export interface SddRoot {
   scope: string;
   dir: string;
   /**
-   * The adapter that applies HERE (MV-87): this repo's own `sdd:` when it
-   * declares one, the ecosystem's otherwise, and `undefined` when the repo
-   * opted out. Undefined is out of scope, never deficient — no scaffold, no
-   * gate, no notice.
+   * The adapter that applies HERE (MV-87), as `adapterFor` resolves it
+   * (MV-122), and `undefined` when the root resolves none. Undefined is out of
+   * scope, never deficient — no scaffold, no gate, no notice.
    */
   sdd?: string;
 }
 
 /**
- * The opt-out token for `repos.<key>.sdd`. A value rather than a parse case,
- * so `repoEntry` keeps the one validator every repo key goes through; it
- * cannot collide, since the registry's names are `opsx` and `speckit` and an
- * unknown name is already reported with the known list.
+ * The opt-out token, for `sdd:` and `grapher:` alike, at repo or top level
+ * (MV-122). A value rather than a parse case, so `repoEntry` keeps the one
+ * validator every repo key goes through. It cannot collide with a tool: the
+ * registry names none this way, and `graphers.none` is refused at load.
  */
-export const NO_SDD = 'none';
+export const NO_ADAPTER = 'none';
 
-/** Which SDD applies in one declared repo: its own, the ecosystem's, or none. */
-export const sddFor = (entry: RepoEntry | undefined, cfg: Config): string | undefined => {
-  const declared = entry?.sdd ?? cfg.sdd;
-  return declared === NO_SDD ? undefined : declared;
-};
+/** What resolving needs of a config, and nothing more — `ritualSeed` passes init's flags. */
+export interface AdapterDecls {
+  sdd?: string;
+  grapher?: string;
+  repos?: Record<string, Partial<RepoEntry>>;
+}
+
+/**
+ * MV-122. The one answer to "which adapter of this kind applies to this root":
+ * the root's own entry first, the ecosystem's value otherwise, and `none` at
+ * either level is no adapter at all. The brain root reads the declared entry
+ * whose path is the brain (brain==code), so its override counts like any
+ * repo's. Twelve functions used to answer this themselves, and they disagreed;
+ * every surface asks here now, and nothing else reads the two keys to decide.
+ */
+export function adapterFor(
+  cfg: AdapterDecls,
+  root: string,
+  kind: 'sdd' | 'grapher',
+): string | undefined {
+  const repos = cfg.repos ?? {};
+  const own = root === 'brain' ? Object.values(repos).find((r) => r.isBrain) : repos[root];
+  const name = own?.[kind] ?? cfg[kind];
+  // An empty value names nothing, which every reader already treated as unset.
+  return name && name !== NO_ADAPTER ? name : undefined;
+}
+
+/**
+ * Every DECLARED root grouped by the adapter it resolves, in order of first
+ * appearance: the brain first, then declared repos in config order, absent
+ * ones included — renderers work from declarations (MV-93), runs from roots on
+ * disk. A root resolving no adapter is in no group, so an empty map means no
+ * root resolves one.
+ */
+export function adaptersByRoot(cfg: AdapterDecls, kind: 'sdd' | 'grapher'): Map<string, string[]> {
+  const keys = Object.entries(cfg.repos ?? {}).filter(([, r]) => !r.isBrain).map(([k]) => k);
+  const groups = new Map<string, string[]>();
+  for (const root of ['brain', ...keys]) {
+    const name = adapterFor(cfg, root, kind);
+    if (name !== undefined) groups.set(name, [...(groups.get(name) ?? []), root]);
+  }
+  return groups;
+}
 
 /**
  * Every directory an SDD tool's files may live in: the brain plus each
@@ -79,20 +98,15 @@ export const sddFor = (entry: RepoEntry | undefined, cfg: Config): string | unde
  * searched them all silently would refuse without saying where it looked, so
  * each root carries the name the config gave it.
  *
- * Each root also carries the adapter that applies to it. Callers used to ask
- * `cfg.sdd` once and treat the answer as the ecosystem's; that is the read
- * MV-87 replaces, and resolving it here is what keeps every caller from
- * re-deriving it differently.
+ * Each root also carries the adapter that applies to it, from `adapterFor`
+ * (MV-122), so no caller re-derives it differently.
  */
 export async function sddRoots(brain: string, cfg: Config): Promise<SddRoot[]> {
-  // The brain's own entry when it declared one (brain==code), so a brain that
-  // opted out is treated the same as any other root that did.
-  const brainEntry = Object.values(cfg.repos).find((e) => e.isBrain);
-  const roots: SddRoot[] = [{ scope: 'brain', dir: brain, sdd: sddFor(brainEntry, cfg) }];
+  const roots: SddRoot[] = [{ scope: 'brain', dir: brain, sdd: adapterFor(cfg, 'brain', 'sdd') }];
   for (const [key, e] of Object.entries(cfg.repos)) {
     if (e.isBrain) continue; // already the brain
     const d = resolve(brain, e.path);
-    if (await pathExists(d)) roots.push({ scope: key, dir: d, sdd: sddFor(e, cfg) });
+    if (await pathExists(d)) roots.push({ scope: key, dir: d, sdd: adapterFor(cfg, key, 'sdd') });
   }
   return roots;
 }
@@ -132,7 +146,12 @@ export async function artifactHit(root: string, rel: string): Promise<string[]> 
   return hits;
 }
 
-/** True when `bin` is executable on PATH — the hook shim's `command -v`, in Node. */
+/**
+ * True when `bin` is executable on PATH — the hook shim's `command -v`, in Node.
+ * For multivac's own runner ladder (MV-92), the pre-commit framework and the
+ * tracker CLIs, none of which is an adapter binary. An adapter's binary is
+ * `findBinary`'s to find.
+ */
 export async function onPath(bin: string): Promise<boolean> {
   for (const dir of (process.env.PATH ?? '').split(delimiter)) {
     if (!dir) continue;
@@ -145,12 +164,57 @@ export async function onPath(bin: string): Promise<boolean> {
   return false;
 }
 
-/** True when any of the spec's binary names is executable on PATH. */
-export async function binaryPresent(spec: AdapterSpec): Promise<boolean> {
-  for (const bin of spec.binaries) {
-    if (await onPath(bin)) return true;
+/** What the lookup reads of the environment. Explicit, so win32 is testable anywhere. */
+export interface BinEnv {
+  platform: string;
+  PATH?: string;
+  PATHEXT?: string;
+}
+
+/** A root's project-local install directory: where `npm i -D` puts a tool. */
+export const localBin = (root: string): string => join(root, 'node_modules', '.bin');
+
+/**
+ * MV-123. The one lookup for an SDD or grapher binary: the absolute path of
+ * the first executable regular file among PATH's non-empty entries in order,
+ * then `root`'s own node_modules/.bin, or null. Two rules used to answer this
+ * and disagreed: the validator looked in node_modules/.bin, and `doctor`,
+ * `doors`, the refresh and the graph gate never did.
+ *
+ * On win32 each name is tried with PATHEXT's extensions, in its order, as
+ * spelled and then lower-cased; node reads X_OK as F_OK there, so `specify.exe`
+ * never matched `specify`. Elsewhere PATHEXT is ignored. Ceiling: never run on
+ * win32, and node spawns a `.cmd` found this way only through a shell.
+ */
+export async function findBinary(
+  bin: string,
+  root: string,
+  env: BinEnv = { platform: process.platform, PATH: process.env.PATH, PATHEXT: process.env.PATHEXT },
+): Promise<string | null> {
+  const win = env.platform === 'win32';
+  // A relative PATH entry is taken from `root`, where the command runs, as a
+  // shell there would take it; so the path returned is the file executed.
+  const base = resolve(root);
+  const dirs = [...(env.PATH ?? '').split(win ? ';' : ':').filter(Boolean), localBin(base)];
+  const exts = win ? (env.PATHEXT ?? '').split(';').filter(Boolean) : [];
+  const names = exts.length === 0 ? [bin] : [...new Set(exts.flatMap((e) => [bin + e, bin + e.toLowerCase()]))];
+  for (const dir of dirs) {
+    for (const name of names) {
+      const p = resolve(base, dir, name);
+      const file = await stat(p).then((s) => s.isFile(), () => false);
+      if (file && (await access(p, constants.X_OK).then(() => true, () => false))) return p;
+    }
   }
-  return false;
+  return null;
+}
+
+/** The spec's `required` binaries this root cannot find, in declared order. Empty = runnable. */
+export async function missingRequired(spec: Pick<AdapterSpec, 'required'>, root: string) {
+  const missing: string[] = [];
+  for (const bin of spec.required) {
+    if ((await findBinary(bin, root)) === null) missing.push(bin);
+  }
+  return missing;
 }
 
 export interface Detected {
@@ -177,19 +241,4 @@ export async function detectAdapters(dir: string): Promise<Detected> {
     if (t.detect && (await has(t.detect))) d.doors.push(name);
   }
   return d;
-}
-
-/** Full probe of one declared adapter against one directory. */
-export async function detect(
-  name: string,
-  spec: AdapterSpec,
-  dir: string,
-): Promise<AdapterStatus> {
-  return {
-    name,
-    kind: spec.kind,
-    declared: true,
-    artifact: await artifactPresent(spec, dir),
-    binary: await binaryPresent(spec),
-  };
 }

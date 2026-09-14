@@ -237,9 +237,18 @@ export interface AdapterSpec {
   kind: 'sdd' | 'grapher';
   /** Repo-relative paths; any present => artifact (read capability) present. */
   artifacts: string[];
-  /** Binary names probed on PATH; any present => run capability present. */
+  /**
+   * The names the tool's binary goes by; any one of them names this tool.
+   * No command reads it (MV-123): whether a root can run the tool is `required`.
+   */
   binaries: string[];
-  /** Exact hint printed when the binary is missing. */
+  /**
+   * MV-123. Every binary this adapter's commands run, ALL of which must be
+   * found (`findBinary`) before a root can run them. The first word of each
+   * command the entry declares is in it, and a test holds that.
+   */
+  required: string[];
+  /** Exact hint printed when a required binary is missing. */
   installHint: string;
   /** Command that refreshes the artifact. */
   refresh: string;
@@ -273,9 +282,9 @@ export interface AdapterSpec {
   projectSteps?: SddProjectStep[];
   /**
    * SDD only: the tool's own init, run by the LIFECYCLE when its artifact is
-   * missing — never by `verify`, `doctor` or `doors`, which MV-01 keeps
-   * offline. Optional because an init nobody verified by running it is a gap
-   * this registry states rather than fills.
+   * missing — never by `verify`, `doctor` or `doors` (MV-75): the init writes
+   * the vendor's files into the tree. Optional because an init nobody verified
+   * by running it is a gap this registry states rather than fills.
    */
   scaffold?: SddScaffold;
   /**
@@ -376,10 +385,11 @@ const sdd: Record<string, AdapterSpec> = {
     kind: 'sdd',
     artifacts: ['openspec/specs', 'openspec/changes'],
     binaries: ['openspec'],
+    required: ['openspec'],
     installHint: 'npm i -g @fission-ai/openspec',
     refresh: 'openspec update',
     automation: 'sdd_auto',
-    // NO `scaffold`. `openspec init` is in the CLI list the note below records,
+    // NO `scaffold`. `openspec init` is one of the tool's terminal commands,
     // but what it writes — and which flags a non-interactive run needs — was
     // never verified by running it, and MV-59 forbids a contract nobody read
     // from a primary source. A declared-but-absent opsx therefore gets the
@@ -430,26 +440,34 @@ const sdd: Record<string, AdapterSpec> = {
         },
       },
     ],
-    note: 'The terminal CLI is init/update/list/show/validate; propose, apply and archive are the /opsx: commands your agent runs in chat. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool\'s own escape hatches — multivac gates on what landed on disk, not on how it got there.',
+    note: 'Propose, apply and archive are the /opsx: commands your agent runs in chat; the one terminal command multivac runs is `openspec validate`, and the vendor\'s own terminal CLI is larger than any list worth copying here. Network, read from openspec 1.13.0\'s source: every command, the `openspec validate` the gates run included, sends anonymous PostHog telemetry to edge.openspec.dev by default, and `openspec update` also checks registry.npmjs.org for a newer version. The vendor\'s opt-outs are OPENSPEC_TELEMETRY=0 or DO_NOT_TRACK=1 in the environment; this entry discloses them and nothing here sets either. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool\'s own escape hatches — multivac gates on what landed on disk, not on how it got there.',
     source: 'https://github.com/Fission-AI/OpenSpec',
   },
   speckit: {
     kind: 'sdd',
     artifacts: ['.specify'],
     binaries: ['specify'],
+    required: ['specify'],
     installHint: 'uv tool install specify-cli',
     refresh: 'specify check',
     automation: 'sdd_auto',
     scaffold: {
       artifact: '.specify',
-      run: 'specify init --here --integration claude --force',
+      run: 'specify init --here --integration claude --force --ignore-agent-tools',
       // Verified by running it in a scratch repo, not read off a README: it
       // writes `.specify/**` — scripts, templates, and memory/constitution.md
-      // as the UNFILLED template — plus ten .claude/skills/speckit-*/SKILL.md,
-      // and it leaves .claude/settings.json alone. `--here` initializes the
-      // current directory instead of creating a new one, and `--force` lets it
-      // write into a directory that already has files (every real repo).
-      note: 'The selecting flag is `--integration`, not `--ai`; the integration name is what installs the harness\'s copy of the steps, and on Claude they land as hyphenated skills (/speckit-specify). It downloads its templates, so only the change lifecycle runs it. It writes the constitution as the unfilled template and nothing else claims to author it: the scaffold makes the steps runnable, the agent writes the document.',
+      // as the UNFILLED template — plus ten .claude/skills/speckit-*/SKILL.md.
+      // It also rewrites .claude/settings.json (measured on 1.0.6): it drops
+      // empty hook entries and re-serializes the rest with indent 2 and
+      // non-ASCII escaped. A file multivac wrote stays byte-identical, one
+      // formatted another way is rewritten, and one holding only
+      // `{"hooks": {}}` is deleted.
+      // `--here` initializes the current directory instead of creating a new
+      // one, and `--force` lets it write into a directory that already has
+      // files (every real repo). `--ignore-agent-tools` (MV-123): measured on
+      // 1.0.6, without it and without `claude` on PATH the init exits 1 and
+      // writes nothing, its cause boxed on stdout; with it the init exits 0.
+      note: 'The selecting flag is `--integration`, not `--ai`; the integration name is what installs the harness\'s copy of the steps, and on Claude they land as hyphenated skills (/speckit-specify). Its templates ship inside the package (1.0.6 exits 0 with the network denied), but it writes them into the tree and on 1.0.6 a re-run reverts edited ones, so only the change lifecycle runs it. `--ignore-agent-tools` skips its check for the integration\'s own CLI: on 1.0.6, without the flag and without `claude` installed, the init exits 1 and writes nothing, so the flag is what lets a machine without that CLI scaffold at all. It writes the constitution as the unfilled template and nothing else claims to author it: the scaffold makes the steps runnable, the agent writes the document.',
     },
     projectSteps: [
       {
@@ -574,6 +592,7 @@ const knownGraphers: Record<string, GrapherEntry> = {
   graphify: {
     artifacts: ['graphify-out/graph.json'],
     binaries: ['graphify'],
+    required: ['graphify'],
     // NOT `npm i -g graphify`: the shipped binary is a Python console script
     // (`~/.local/bin/graphify` shebangs into the `graphifyy` uv tool). The
     // derived npm line pointed at an unrelated registry entirely.
@@ -581,11 +600,9 @@ const knownGraphers: Record<string, GrapherEntry> = {
     refresh: 'graphify update .',
     // No separate create: `graphify extract` is the full AST+LLM build, which
     // a close hook must not run. `update .` builds and refreshes, AST-only.
-    // `query` is REAL and absent from `graphify --help`, which lists only
-    // install/uninstall/path/explain/diagnose/clone/merge-driver. It was run
-    // against the shipped 0.9.29 binary and returns a BFS subgraph; taking the
-    // help output as the whole surface would have dropped the one verb that
-    // matters most.
+    // `query` is REAL: it was run against the shipped 0.9.29 binary and returns
+    // a BFS subgraph. 0.9.29's help lists it too, but a verb enters this table
+    // because it was run, never because a help screen names it (MV-61).
     queries: [
       {
         run: 'graphify query "<question>"',
@@ -601,12 +618,13 @@ const knownGraphers: Record<string, GrapherEntry> = {
         answers: 'the shortest path between two nodes — how A actually reaches B',
       },
     ],
-    note: 'Python tool, published as `graphifyy`. Writes graphify-out/graph.json; `graphify update .` is AST-only (no model, no network), which is what makes it safe in a close hook — `graphify extract` is the LLM path and is deliberately not wired here. Its query surface is question-shaped, and `query` is undocumented in the tool\'s own --help.',
+    note: 'Python tool, published as `graphifyy`. Writes graphify-out/graph.json; `graphify update .` is AST-only (no model, no network), which is what makes it safe in a close hook — `graphify extract` is the LLM path and is deliberately not wired here. Its query surface is question-shaped: `query` takes a question in words.',
     source: 'https://github.com/Graphify-Labs/graphify',
   },
   codegraph: {
     artifacts: ['.codegraph'],
     binaries: ['codegraph'],
+    required: ['codegraph'],
     installHint: 'npm i -g @colbymchenry/codegraph',
     // `sync` is incremental (changes since the last index); `index` is the full
     // rebuild. The hook wants the cheap one — it fires on every edit.
@@ -622,7 +640,7 @@ const knownGraphers: Record<string, GrapherEntry> = {
           'symbol search by name — `--kind function|class` narrows it, `--limit N` bounds it, `--json` makes it machine-readable',
       },
     ],
-    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — anonymous usage stats (commands run, languages, file counts, platform), and the vendor documents that source code, file paths, repository URLs and symbol names are never collected. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or DO_NOT_TRACK=1, which it honors) is what makes the contract above literally true. It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP.',
+    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — 1.6.0\'s README says it collects which tools and commands get used and which languages get indexed, and never any code, paths, file or symbol names, queries, or IP addresses. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or CODEGRAPH_TELEMETRY=0, or DO_NOT_TRACK=1) is half of what makes the contract above literally true. The other half is the npm shim: when the platform bundle its optional dependency should carry is missing, it falls back to downloading that bundle from GitHub Releases, and CODEGRAPH_NO_DOWNLOAD=1 turns the fallback off. This entry discloses the opt-outs; nothing here sets any. It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP. That server, which multivac never starts, checks GitHub releases for a newer version in the background on 1.6.0, and CODEGRAPH_NO_UPDATE_CHECK or DO_NOT_TRACK turns the check off.',
     source: 'https://github.com/colbymchenry/codegraph',
   },
 };
@@ -653,6 +671,8 @@ export function grapherSpec(
   const base: GrapherEntry = known ?? {
     artifacts: [decl!.artifact],
     binaries: [decl!.binary ?? decl!.refresh.split(' ')[0]],
+    // The first word is MV-115's ceiling: `env X=1 tool` needs `binary:`.
+    required: [decl!.binary ?? decl!.refresh.split(' ')[0]],
     installHint:
       decl!.install ??
       `UNVERIFIED — no install line declared; add graphers.${name}.install to .multivac/config.yml`,
@@ -661,6 +681,22 @@ export function grapherSpec(
     note: `declared in .multivac/config.yml (graphers.${name}) — multivac did not verify this contract, the operator stated it`,
   };
   return { kind: 'grapher', automation: 'grapher-refresh', ...base };
+}
+
+/**
+ * MV-123. The one line for a required binary that is not found: the binary,
+ * the adapter, the install line, and whose tool it is — the entry's `source`,
+ * or the config declaration a declared grapher came from. `graphifyy` on PyPI
+ * and `graphify` on npm are different things, and the install line alone
+ * cannot say which is meant. Both places looked are named, because the lookup
+ * is not PATH alone. Each call site keeps its own outcome around it.
+ */
+export function binaryMissing(name: string, spec: AdapterSpec, bins: string[], scope: string): string {
+  const whose = spec.source ?? `declared in .multivac/config.yml (graphers.${name}), no vendor repository on record`;
+  return (
+    `${bins.map((b) => `\`${b}\``).join(', ')} found on neither PATH nor ${scope}'s node_modules/.bin — ` +
+    `install ${name}: ${spec.installHint} (${whose})`
+  );
 }
 
 /**
@@ -677,7 +713,7 @@ export function unverifiedGrapher(name: string): string {
     `      artifact: <repo-relative file or directory the tool writes>\n` +
     `      refresh: <the one command safe to re-run>\n` +
     `      create: <build command, if it differs from refresh>   # optional\n` +
-    `      binary: <binary on PATH, if not the first word of refresh>   # optional\n` +
+    `      binary: <the binary refresh runs, if not its first word>   # optional\n` +
     `      install: <install line to print when the binary is missing>   # optional\n` +
     `  — or open an MR adding it to knownGraphers in src/adapters/registry.ts`
   );

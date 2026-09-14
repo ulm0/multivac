@@ -20,6 +20,7 @@ import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { sddSpec } from '../../src/adapters/registry.js';
+import { SPECKIT_106_NO_CLAUDE } from '../helpers/recorded.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -82,24 +83,43 @@ const CONSTITUTION_TEMPLATE =
 
 /**
  * A stub `specify` at the same front of PATH, for the same reason and one
- * more: the lifecycle now RUNS this one. `specify init` downloads templates,
- * so a suite that let the real binary through would reach the network from a
- * unit test and write a different tree on every machine.
+ * more: the lifecycle now RUNS this one. A suite that let the real binary
+ * through would depend on whatever the host has installed (Principle IV) and
+ * write a different tree on every machine.
  *
  * `writes` is the whole point of the stub: a tool that exits 0 and creates
  * nothing is a real outcome the lifecycle has to refuse to call success.
+ *
+ * It behaves as spec-kit 1.0.6 does where that decides an outcome (MV-123):
+ * without `--ignore-agent-tools` and with no `claude` on its PATH it prints
+ * 1.0.6's recorded output, writes nothing and exits 1, and any other argv than
+ * the scaffold's, pinned below, fails the run with 97. `failIn` confines the failure
+ * (`exit`, `stderr`) to the root whose path ends so, and every other root is
+ * scaffolded; `says` is stdout printed before the failure.
  */
 const runLog = join(tmp, 'specify-runs');
-const stubSpecify = (exit: number, writes = true, stderr = ''): void => {
+// Pinned, not read off the registry: a stub that compares the registry with
+// itself would pass an argv that dropped `--here` (C57).
+const SCAFFOLD_ARGV = 'init --here --integration claude --force --ignore-agent-tools';
+const stubSpecify = (
+  exit: number,
+  writes = true,
+  stderr = '',
+  { failIn, says }: { failIn?: string; says?: string } = {},
+): void => {
   const p = join(bin, 'specify');
+  const fail =
+    (says ? `cat <<'EOF'\n${says}EOF\n` : '') + (stderr ? `echo '${stderr}' >&2\n` : '') + `exit ${exit}\n`;
+  const write = writes
+    ? `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\n`
+    : '';
   writeFileSync(
     p,
     `#!/bin/sh\necho "$@" >> '${runLog}'\n` +
-      (writes
-        ? `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\n`
-        : '') +
-      (stderr ? `echo '${stderr}' >&2\n` : '') +
-      `exit ${exit}\n`,
+      `case "$*" in *--ignore-agent-tools*) ;; *) command -v claude >/dev/null 2>&1 || { cat <<'EOF'\n` +
+      `${SPECKIT_106_NO_CLAUDE.stdout}EOF\nexit 1; } ;; esac\n` +
+      `[ "$*" = '${SCAFFOLD_ARGV}' ] || { echo "specify stub: not the scaffold argv: $*" >&2; exit 97; }\n` +
+      (failIn ? `case "$PWD" in *${failIn})\n${fail};;\nesac\n${write}exit 0\n` : `${write}${fail}`),
   );
   chmodSync(p, 0o755);
 };
@@ -111,7 +131,8 @@ const forgetSpecifyRuns = (): void => rmSync(runLog, { force: true });
 /** Put the brain back in the state of a repo where spec-kit has never run. */
 const unscaffold = (): void => rmSync(join(brain, '.specify'), { recursive: true, force: true });
 
-process.env.PATH = `${bin}${delimiter}${process.env.PATH ?? ''}`;
+// Built, never the host's: `git` from /usr/bin, and no `claude` anywhere on it.
+process.env.PATH = [bin, '/usr/bin', '/bin'].join(delimiter);
 
 const config = (lines: string[]): void =>
   writeFileSync(join(brain, '.multivac/config.yml'), lines.join('\n') + '\n');
@@ -428,8 +449,8 @@ test('a validator that is not installed REFUSES, naming the binary and the insta
   try {
     const c = await capture(() => change.run(['apply', 'gate-bin'], ctx));
     assert.equal(c.code, 1);
-    assert.match(c.out, /`openspec` is not on PATH/);
-    assert.match(c.out, /install it: npm i -g @fission-ai\/openspec/);
+    assert.match(c.out, /`openspec` found on neither PATH nor brain's node_modules\/\.bin/);
+    assert.match(c.out, /install opsx: npm i -g @fission-ai\/openspec \(https:\/\/github\.com\/Fission-AI\/OpenSpec\)/);
     // NOT "drop `sdd:`": that key also renders the SDD flow into the brain
     // door, so removing it would delete the agent's instructions with the gate.
     assert.match(c.out, /--no-sdd/);
@@ -455,7 +476,7 @@ test('a locally-installed validator is found in node_modules/.bin, not refused',
   try {
     const c = await capture(() => change.run(['apply', 'gate-localbin'], ctx));
     assert.equal(c.code, 0);
-    assert.doesNotMatch(c.out, /is not on PATH/);
+    assert.doesNotMatch(c.out, /found on neither PATH nor/);
   } finally {
     process.env.PATH = savedPath;
     rmSync(join(brain, 'node_modules'), { recursive: true, force: true });
@@ -676,7 +697,7 @@ test('a declared SDD that is not installed scaffolds itself', async () => {
   // The command is the vendor's, verbatim, and it is printed before it runs.
   assert.match(
     c.out,
-    /running the tool's own init there: `specify init --here --integration claude --force`/,
+    /running the tool's own init there: `specify init --here --integration claude --force --ignore-agent-tools`/,
   );
   // The root it is missing FROM, named: presence is a per-root fact (MV-87),
   // so the line says which checkout is being scaffolded, not which list was
@@ -690,8 +711,9 @@ test('a declared SDD that is not installed scaffolds itself', async () => {
 });
 
 test('a scaffolded repo is left alone — the init runs once, not on every command', async () => {
-  // `specify init` downloads templates and can overwrite them; a lifecycle that
-  // re-ran it on every command would be worse than the hole it fills.
+  // `specify init` writes the vendor's files into the tree and, on 1.0.6, a
+  // re-run reverts edited ones; a lifecycle that re-ran it on every command
+  // would be worse than the hole it fills.
   //
   // BOTH halves, in one test and in this order: "it did not run" only means
   // something next to a run that did happen, on the same command, under the
@@ -714,11 +736,11 @@ test('a scaffolded repo is left alone — the init runs once, not on every comma
 test('a scaffold that fails says what the tool said, and the gate stays closed', async () => {
   unscaffold();
   forgetSpecifyRuns();
-  stubSpecify(2, false, 'error: failed to download template from GitHub');
+  stubSpecify(2, false, 'error: permission denied');
   const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
   assert.equal(specifyRuns().length, 1);
   // The TOOL'S words, not node's `Command failed: …`.
-  assert.match(c.out, /it said: error: failed to download template from GitHub/);
+  assert.match(c.out, /it said: error: permission denied/);
   assert.match(c.out, /left no \.specify in brain/);
   // Handed back so it can be run by hand.
   assert.match(c.out, /run it in brain by hand/);
@@ -748,12 +770,44 @@ test('a scaffold whose binary is missing prints the install line and runs nothin
   process.env.PATH = '/usr/bin:/bin'; // git stays reachable; specify does not
   try {
     const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
-    assert.match(c.out, /`specify` is not on PATH/);
-    assert.match(c.out, /install it: uv tool install specify-cli/);
+    assert.match(c.out, /`specify` found on neither PATH nor brain's node_modules\/\.bin/);
+    assert.match(c.out, /install speckit: uv tool install specify-cli \(https:\/\/github\.com\/github\/spec-kit\)/);
     assert.equal(specifyRuns().length, 0);
     assert.equal(c.code, 1);
   } finally {
     process.env.PATH = savedPath;
+  }
+});
+
+test('the scaffold runs where `claude` is not installed, because it passes --ignore-agent-tools', async () => {
+  // spec-kit 1.0.6 checks for the integration's agent CLI before writing a
+  // byte, and the stub above reproduces that check. This suite's PATH is built,
+  // so `claude` is on it nowhere — stated rather than assumed.
+  assert.equal(execFileSync('sh', ['-c', 'command -v claude || echo none'], { encoding: 'utf8' }).trim(), 'none');
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0);
+  const c = await capture(() => change.run(['new', 'no-claude', 'No claude'], ctx));
+  assert.equal(c.code, 0);
+  assert.ok(existsSync(join(brain, '.specify')), 'the init wrote .specify with no claude to find');
+  assert.match(c.out, /scaffolded — brain:\.specify is there now/);
+  assert.equal(specifyRuns().length, 1);
+  assert.match(specifyRuns()[0], /--ignore-agent-tools/);
+});
+
+test("a scaffold that fails as spec-kit 1.0.6 does is quoted by its cause, not its banner", async () => {
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(1, false, '', { says: SPECKIT_106_NO_CLAUDE.stdout });
+  try {
+    const c = await capture(() => change.run(['plan', 'no-claude'], ctx));
+    assert.equal(specifyRuns().length, 1);
+    const said = c.out.split('\n').find((l) => l.includes('left no .specify in brain')) ?? '';
+    assert.match(said, /it said: Agent Detection Error; claude not found — run it in brain by hand/);
+    assert.doesNotMatch(said, /[\u2500-\u259F]/);
+  } finally {
+    stubSpecify(0);
   }
 });
 
@@ -862,9 +916,9 @@ test('the scaffold reaches every root that lacks the artifact, not the first one
 });
 
 test('a second run over an equipped ecosystem scaffolds nothing and says nothing', async () => {
-  // Silence is a contract: `specify init` downloads templates and can overwrite
-  // them, so a lifecycle that re-ran it every command would be worse than the
-  // hole it fills.
+  // Silence is a contract: `specify init` writes the vendor's files into the
+  // tree and, on 1.0.6, a re-run reverts edited ones, so a lifecycle that re-ran
+  // it every command would be worse than the hole it fills.
   forgetSpecifyRuns();
   const c = await capture(() => change.run(['new', 'cascade-b', 'Cascade b'], ctx));
   assert.equal(c.code, 0);
@@ -882,19 +936,13 @@ test('a root whose init fails does not decide the fate of the roots after it', a
   rmSync(join(api, '.specify'), { recursive: true, force: true });
   forgetSpecifyRuns();
   // Fails in api alone; the brain is scaffolded before it and must still land.
-  writeFileSync(
-    join(bin, 'specify'),
-    `#!/bin/sh\necho "$@" >> '${runLog}'\n` +
-      "case \"$PWD\" in *acme-api) echo 'error: failed to download template' >&2; exit 2;; esac\n" +
-      `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\nexit 0\n`,
-  );
-  chmodSync(join(bin, 'specify'), 0o755);
+  stubSpecify(2, true, 'error: permission denied', { failIn: 'acme-api' });
   try {
     const c = await capture(() => change.run(['new', 'cascade-c', 'Cascade c'], ctx));
     assert.equal(c.code, 0, 'a foreign tool failing is never the lifecycle failing');
     assert.equal(specifyRuns().length, 2, 'both roots were attempted');
     assert.match(c.out, /left no \.specify in api/);
-    assert.match(c.out, /it said: error: failed to download template/);
+    assert.match(c.out, /it said: error: permission denied/);
     assert.match(c.out, /run it in api by hand/);
     // ...and the root before it still got its artifact.
     assert.match(c.out, /scaffolded — brain:\.specify is there now/);
@@ -966,13 +1014,7 @@ test('the project-document gate asks every installed root and names each that fa
   // web's init fails, so the cascade leaves it uninstalled — the state that
   // must NOT be asked for a constitution. landing opted out of the SDD
   // entirely. Both are roots; neither owns this document.
-  writeFileSync(
-    join(bin, 'specify'),
-    `#!/bin/sh\necho "$@" >> '${runLog}'\n` +
-      "case \"$PWD\" in *acme-web) echo 'error: no network' >&2; exit 2;; esac\n" +
-      `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\nexit 0\n`,
-  );
-  chmodSync(join(bin, 'specify'), 0o755);
+  stubSpecify(2, true, 'error: permission denied', { failIn: 'acme-web' });
 
   await capture(() => change.run(['new', 'doc-per-root', 'Doc per root'], ctx));
   assert.ok(existsSync(join(brain, '.specify')), 'the cascade installed the brain');

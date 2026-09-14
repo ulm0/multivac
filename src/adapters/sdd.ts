@@ -13,13 +13,13 @@
 // A step is never faked by shelling out something that looks like it.
 
 import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { Config } from '../types.js';
 import { CONFIG_PATH } from '../lib/config.js';
 import {
+  binaryMissing,
   sddNames,
   sddSpec,
   type AdapterSpec,
@@ -28,14 +28,16 @@ import {
   type SddStep,
 } from './registry.js';
 import {
+  adaptersByRoot,
   artifactHit,
   artifactPresent,
-  onPath,
+  findBinary,
+  missingRequired,
   pathExists,
   sddRoots,
   type SddRoot,
 } from './detect.js';
-import { say, warn } from '../lib/out.js';
+import { quoteFailure, say, warn } from '../lib/out.js';
 
 const execFileP = promisify(execFile);
 
@@ -130,8 +132,8 @@ export interface GateResult {
 type Verdict =
   /** The tool ran and was satisfied. */
   | { kind: 'ok' }
-  /** The tool is not installed here, so the gate has nothing to ask. */
-  | { kind: 'missing'; bin: string }
+  /** A required binary is not found for this root, so the gate has nothing to ask. */
+  | { kind: 'missing'; bins: string[] }
   /** The tool ran and objected, in its own words. */
   | { kind: 'failed'; message: string };
 
@@ -145,18 +147,19 @@ type Verdict =
  * tool could lie: the strongest half of the check silently absent, the same
  * command green on a machine that cannot run it. A gate that cannot be
  * evaluated says so and refuses.
+ *
+ * MV-123: the binary is found by the one lookup, in the root the command runs
+ * in — PATH, then that root's node_modules/.bin, where `npm i -D` puts a
+ * project's own tooling — and what runs is the path it found, so the copy on
+ * PATH wins where both exist. Every `required` binary must be found, and so
+ * must the command's own first word.
  */
-async function toolVerdict(cmd: string, cwd: string): Promise<Verdict> {
+async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise<Verdict> {
   const [bin, ...args] = cmd.split(' ');
-  // `npm i -D @fission-ai/openspec` is an ordinary way to install a project's
-  // own tooling, and it never touches $PATH — the binary lands in the repo's
-  // node_modules/.bin. Refusing that install shape would push the operator
-  // toward a global install or toward turning the gate off, for a validator
-  // that is right there. $PATH first, then the local bin dir beside the
-  // artifact; anything else is genuinely absent.
-  const local = join(cwd, 'node_modules', '.bin', bin);
-  const exe = (await onPath(bin)) ? bin : existsSync(local) ? local : null;
-  if (exe === null) return { kind: 'missing', bin };
+  const bins = await missingRequired(spec, cwd);
+  const exe = await findBinary(bin, cwd);
+  if (exe === null && !bins.includes(bin)) bins.push(bin);
+  if (exe === null || bins.length > 0) return { kind: 'missing', bins };
   try {
     await execFileP(exe, args, { cwd });
     return { kind: 'ok' };
@@ -175,11 +178,9 @@ async function toolVerdict(cmd: string, cwd: string): Promise<Verdict> {
         .filter(Boolean);
       if (issues.length > 0) return { kind: 'failed', message: issues.join('; ') };
     } catch {
-      /* not JSON — fall through to the raw text */
+      /* not JSON — fall through to the quote */
     }
-    const message =
-      raw.split('\n').filter(Boolean).slice(0, 3).join(' ') || err.message.split('\n')[0];
-    return { kind: 'failed', message };
+    return { kind: 'failed', message: quoteFailure(err) };
   }
 }
 
@@ -205,7 +206,7 @@ async function toolVerdict(cmd: string, cwd: string): Promise<Verdict> {
  * Five outcomes, all of them said out loud, and all of them PER ROOT (MV-87):
  *   - artifact present in THIS root -> silent, nothing runs here;
  *   - no scaffold declared          -> the gap, stated: no init is guessed;
- *   - binary absent                 -> the install hint, nothing runs;
+ *   - binary absent                 -> the missing-binary line, nothing runs;
  *   - ran and the artifact is there -> scaffolded;
  *   - ran and it is not             -> the tool's own words, command handed
  *                                      back, and the gate that follows still
@@ -221,18 +222,15 @@ async function toolVerdict(cmd: string, cwd: string): Promise<Verdict> {
  *
  * Never throws: a foreign tool's failure is never the lifecycle's failure, and
  * one root's broken checkout never decides the fate of the rest — the loop
- * continues. It reaches the network, so only the change lifecycle calls it —
- * `verify`, `doctor` and `doors` are bound offline by MV-01.
+ * continues. It writes the vendor's files into the tree, and a re-run of
+ * specify 1.0.6 reverts edited ones, so only the change lifecycle calls it —
+ * `verify`, `doctor` and `doors` never do (MV-75).
  */
 export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): Promise<void> {
   if (!cfg.sddAuto || noSdd) return;
   const roots = await sddRoots(brain, cfg);
-  // One line per binary, not one per root: which tools are installed on this
-  // machine is a fact about the machine. A later root may still carry a local
-  // install in its own node_modules/.bin, so the loop goes on either way.
-  const saidMissing = new Set<string>();
   for (const root of roots) {
-    // Out of scope, not deficient: `sdd: none`, or no sdd declared anywhere.
+    // Out of scope, not deficient: `sdd: none`, or no sdd resolves for this root.
     if (!root.sdd) continue;
     const spec = sddSpec(root.sdd);
     // An unknown adapter already gets the known-names line from the gate and
@@ -253,20 +251,16 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
       );
       continue;
     }
-    // Printed BEFORE it runs: it downloads templates and writes into the tree.
+    // Printed BEFORE it runs: it writes the vendor's files into the tree.
     say(
       `sdd ${root.sdd}: ${sc.artifact} is missing in ${root.scope} — running the tool's own init ` +
         `there: \`${sc.run}\``,
     );
-    const verdict = await toolVerdict(sc.run, root.dir);
+    const verdict = await toolVerdict(spec, sc.run, root.dir);
     if (verdict.kind === 'missing') {
-      if (!saidMissing.has(verdict.bin)) {
-        saidMissing.add(verdict.bin);
-        warn(
-          `sdd ${root.sdd}: \`${verdict.bin}\` is not on PATH, so \`${sc.run}\` cannot be run — ` +
-            `install it: ${spec.installHint}`,
-        );
-      }
+      // One line per root: the lookup reads each root's own node_modules/.bin
+      // (MV-123), so found or not is a fact about the root, not the machine.
+      warn(`sdd ${root.sdd}: \`${sc.run}\` cannot be run — ${binaryMissing(root.sdd, spec, verdict.bins, root.scope)}`);
       continue;
     }
     // The artifact decides, not the exit code. A tool that returns 0 without
@@ -291,8 +285,14 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
 /**
  * Refuse `multivac change <gate> <slug>` while the artifacts that prove the
  * earlier steps ran are missing. Every refusal names the exact agent command
- * and the path it looked for. Off entirely when no sdd is declared, when
+ * and the path it looked for. Off entirely when no root resolves an sdd, when
  * `sdd_auto: false`, or when `--no-sdd` was passed — that is exploration mode.
+ *
+ * MV-122: once PER ADAPTER, over the present roots that resolve to it. This
+ * read the ecosystem's `sdd:` alone, so a repo declaring its own was gated by
+ * another tool's artifacts, or by nothing when the ecosystem declared none,
+ * and a root that opted out still proved a step. A point passes only when
+ * every adapter passes; with one adapter this is the single pass it always was.
  */
 export async function sddGate(
   brain: string,
@@ -301,13 +301,41 @@ export async function sddGate(
   slug: string,
   noSdd: boolean,
 ): Promise<GateResult> {
-  if (!cfg.sdd || !cfg.sddAuto || noSdd) return { ok: true, lines: [] };
-  const spec = sddSpec(cfg.sdd);
+  if (!cfg.sddAuto || noSdd) return { ok: true, lines: [] };
+  // Grouped over DECLARED roots, the groups flow.md and the printed steps
+  // render, then searched only where on disk. A root resolving `none` is in no
+  // group, so no loop below ever searches it.
+  const present = await sddRoots(brain, cfg);
+  const lines: string[] = [];
+  let ok = true;
+  for (const [name, declared] of adaptersByRoot(cfg, 'sdd')) {
+    const roots = present.filter((r) => declared.includes(r.scope));
+    const one = await judgeSdd(name, roots, declared, gate, slug);
+    ok = ok && one.ok;
+    lines.push(...one.lines);
+  }
+  if (!ok) {
+    lines.push(
+      `  (\`--no-sdd\` skips the SDD gates for one run; \`sdd_auto: false\` in ${CONFIG_PATH} turns them off)`,
+    );
+  }
+  return { ok, lines };
+}
+
+/** One adapter's verdict at `gate`, judged only in the roots that resolve to it. */
+async function judgeSdd(
+  name: string,
+  roots: SddRoot[],
+  declared: string[],
+  gate: GatePoint,
+  slug: string,
+): Promise<GateResult> {
+  const spec = sddSpec(name);
   if (!spec) {
     return {
       ok: true,
       lines: [
-        `sdd ${cfg.sdd}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`,
+        `sdd ${name}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`,
       ],
     };
   }
@@ -323,11 +351,22 @@ export async function sddGate(
     return {
       ok: true,
       lines: [
-        `sdd ${cfg.sdd}: \`change ${gate}\` is not gated — this tool declares no step whose artifact could prove it`,
+        `sdd ${name}: \`change ${gate}\` is not gated — this tool declares no step whose artifact could prove it`,
       ],
     };
   }
-  const roots = await sddRoots(brain, cfg);
+  // Every root that resolves this adapter is declared and not cloned: nothing
+  // can be searched, and a gate that cannot be evaluated refuses rather than
+  // passes (MV-90) — never the silent pass under a door that says it refuses.
+  if (roots.length === 0) {
+    return {
+      ok: false,
+      lines: [
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — no root that resolves ${name} is on disk: ${declared.join(', ')}`,
+        `  multivac repos sync, then re-run: multivac change ${gate} ${slug}`,
+      ],
+    };
+  }
   const lines: string[] = [];
   let ok = true;
   // Which repos were searched is half the refusal: in an ecosystem of six,
@@ -358,7 +397,7 @@ export async function sddGate(
     if (clash) {
       ok = false;
       lines.push(
-        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${want} matches more than one place in ${clash.root.scope}: ${clash.rels.join(', ')} — one feature directory per slug; remove or renumber the strays`,
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${want} matches more than one place in ${clash.root.scope}: ${clash.rels.join(', ')} — one feature directory per slug; remove or renumber the strays`,
       );
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
@@ -366,7 +405,7 @@ export async function sddGate(
     if (!found) {
       ok = false;
       lines.push(
-        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${want} is missing — looked in ${where}`,
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${want} is missing — looked in ${where}`,
       );
       lines.push(`  ${withSlug(step.run, slug)}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
@@ -383,7 +422,7 @@ export async function sddGate(
     if (body !== null && body.trim() === '') {
       ok = false;
       lines.push(
-        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${found.root.scope}:${found.rel} is empty`,
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${found.root.scope}:${found.rel} is empty`,
       );
       lines.push(`  ${withSlug(step.run, slug)}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
@@ -395,24 +434,24 @@ export async function sddGate(
     if (from !== null) {
       ok = false;
       lines.push(
-        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${found.root.scope}:${found.rel} is byte-identical to ${from}: the scaffolding wrote it, nobody has`,
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${found.root.scope}:${found.rel} is byte-identical to ${from}: the scaffolding wrote it, nobody has`,
       );
       lines.push(`  ${withSlug(step.run, slug)}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
     }
-    lines.push(`sdd ${cfg.sdd}: ${found.root.scope}: ${found.rel} ok`);
+    lines.push(`sdd ${name}: ${found.root.scope}: ${found.rel} ok`);
     if (!step.validate) continue;
-    const verdict = await toolVerdict(withSlug(step.validate, slug), found.root.dir);
+    const verdict = await toolVerdict(spec, withSlug(step.validate, slug), found.root.dir);
     if (verdict.kind === 'missing') {
       // Not a pass. The artifact is on disk and the tool that judges it is
       // not here, so the strongest half of this gate cannot run — say which
-      // binary, and how to get it, instead of going green without it.
+      // binary, how to get it and whose it is, instead of going green without it.
       ok = false;
       lines.push(
-        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — \`${verdict.bin}\` is not on PATH, so \`${withSlug(step.validate, slug)}\` cannot be run`,
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — \`${withSlug(step.validate, slug)}\` cannot be run — ` +
+          binaryMissing(name, spec, verdict.bins, found.root.scope),
       );
-      lines.push(`  install it: ${spec.installHint}`);
       // NOT "drop `sdd:`": that key also renders the whole SDD flow into the
       // brain door, so removing it deletes the agent's instructions along with
       // the gate. Only the two switches actually scoped to gating.
@@ -422,7 +461,7 @@ export async function sddGate(
     } else if (verdict.kind === 'failed') {
       ok = false;
       lines.push(
-        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — \`${withSlug(step.validate, slug)}\` says: ${verdict.message}`,
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — \`${withSlug(step.validate, slug)}\` says: ${verdict.message}`,
       );
       lines.push(`  fix it in the tool, then re-run: multivac change ${gate} ${slug}`);
     }
@@ -454,7 +493,7 @@ export async function sddGate(
     if (clash) {
       ok = false;
       lines.push(
-        `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${want} matches more than one place in ${clash.root.scope}: ${clash.rels.join(', ')} — one feature directory per slug; remove or renumber the strays`,
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${want} matches more than one place in ${clash.root.scope}: ${clash.rels.join(', ')} — one feature directory per slug; remove or renumber the strays`,
       );
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
@@ -465,12 +504,12 @@ export async function sddGate(
     if (!hit) continue;
     const open = await openItems(join(hit.root.dir, hit.rel), led.pattern);
     if (open.length === 0) {
-      lines.push(`sdd ${cfg.sdd}: ${hit.root.scope}: ${hit.rel} — nothing left open`);
+      lines.push(`sdd ${name}: ${hit.root.scope}: ${hit.rel} — nothing left open`);
       continue;
     }
     ok = false;
     lines.push(
-      `sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${hit.root.scope}:${hit.rel} has ${open.length} open item(s) — ${led.why}`,
+      `sdd ${name}: \`change ${gate} ${slug}\` refused — ${hit.root.scope}:${hit.rel} has ${open.length} open item(s) — ${led.why}`,
     );
     for (const l of open.slice(0, 3)) lines.push(`    ${l.trim()}`);
     if (open.length > 3) lines.push(`    …and ${open.length - 3} more`);
@@ -502,13 +541,12 @@ export async function sddGate(
   // a repo they deliberately excluded.
   const owning: SddRoot[] = [];
   for (const root of roots) {
-    if (root.sdd !== cfg.sdd) continue;
     if (await artifactPresent(spec, root.dir)) owning.push(root);
   }
   for (const doc of projectDocs) {
     const refuse = (why: string): void => {
       ok = false;
-      lines.push(`sdd ${cfg.sdd}: \`change ${gate} ${slug}\` refused — ${why}`);
+      lines.push(`sdd ${name}: \`change ${gate} ${slug}\` refused — ${why}`);
       lines.push(`  ${doc.run}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
     };
@@ -545,13 +583,8 @@ export async function sddGate(
       // Age is deliberately not read here. `doctor` reports STALE; the law
       // moving is not proof the principles must, and a gate on it would refuse
       // honest work on every unrelated row.
-      lines.push(`sdd ${cfg.sdd}: ${root.scope}: ${doc.artifact} ok`);
+      lines.push(`sdd ${name}: ${root.scope}: ${doc.artifact} ok`);
     }
-  }
-  if (!ok) {
-    lines.push(
-      `  (\`--no-sdd\` skips the SDD gates for one run; \`sdd_auto: false\` in ${CONFIG_PATH} turns them off)`,
-    );
   }
   return { ok, lines };
 }
@@ -567,16 +600,26 @@ export function sddInstructions(
   slug: string,
   noSdd: boolean,
 ): string[] {
-  if (!cfg.sdd || !cfg.sddAuto || noSdd) return [];
-  const spec = sddSpec(cfg.sdd);
+  if (!cfg.sddAuto || noSdd) return [];
+  // MV-122: every adapter a DECLARED root resolves, not the ecosystem's alone.
+  // With more than one, each line names the roots it is for, doctor's `@` form.
+  const groups = adaptersByRoot(cfg, 'sdd');
+  return [...groups].flatMap(([name, roots]) =>
+    stepLines(groups.size > 1 ? `sdd ${name} @ ${roots.join(', ')}` : `sdd ${name}`, name, at, slug),
+  );
+}
+
+/** One adapter's lines for this lifecycle point, each under `tag`. */
+function stepLines(tag: string, name: string, at: LifecyclePoint, slug: string): string[] {
+  const spec = sddSpec(name);
   if (!spec) {
     return [
-      `sdd ${cfg.sdd}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`,
+      `${tag}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`,
     ];
   }
   const steps = stepsAt(spec, at);
   if (steps.length === 0) {
-    return [`sdd ${cfg.sdd}: ${at} — this tool has no agent-run ${at} step; nothing to run`];
+    return [`${tag}: ${at} — this tool has no agent-run ${at} step; nothing to run`];
   }
   // MV-95: the chain runs unattended. The lifecycle already REFUSES to advance
   // without each step's artifact, so the sequence was never a choice — asking
@@ -588,8 +631,8 @@ export function sddInstructions(
   // cannot tell them apart will either never stop or always stop, so the line
   // names the distinction rather than leaving it to be inferred.
   return steps.flatMap((s) => [
-    `sdd ${cfg.sdd}: ${withSlug(s.run, slug)} [${proofOf(s, slug)}]`,
-    `sdd ${cfg.sdd}:   run the chain through without asking to continue — stop only for a ` +
+    `${tag}: ${withSlug(s.run, slug)} [${proofOf(s, slug)}]`,
+    `${tag}:   run the chain through without asking to continue — stop only for a ` +
       `question the tool itself raises (\`--no-sdd\` for one run, \`sdd_auto: false\` to stop printing these)`,
   ]);
 }

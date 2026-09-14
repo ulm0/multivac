@@ -4,6 +4,7 @@ import type { Config } from '../types.js';
 import { grapherSpec, sddSpec } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
 import { parseClaimRows } from '../anchor/parse.js';
+import { adapterFor } from '../adapters/detect.js';
 
 /**
  * Count non-retired data rows in the law table.
@@ -57,12 +58,11 @@ export function projectLawLines(sdd: string): string[] {
  * A tool with no query surface gets a line saying exactly that. Silence there
  * would read as "no graph"; an invented verb would be worse.
  */
-export function grapherLines(config: Config, grapher?: string): string[] {
+export function grapherLines(config: Config, name: string | undefined): string[] {
   // MV-90: the same rendering serves the brain's door and every consumer's, so
-  // the two cannot drift. The caller passes the grapher that applies THERE —
-  // a repo's own override first, the ecosystem's otherwise — and the brain
-  // passes nothing, which means the ecosystem's.
-  const name = grapher ?? config.grapher;
+  // the two cannot drift. Every caller passes what `adapterFor` resolved for
+  // THAT root (MV-122), the brain included; undefined, `none` too, renders
+  // nothing.
   if (name === undefined) return [];
   // Unverified: `doors` already prints the full declare-it-yourself notice —
   // repeating a guess in the door is the one thing MV-59 forbids.
@@ -96,12 +96,11 @@ export function grapherLines(config: Config, grapher?: string): string[] {
  * renderings of one block is how the two come to disagree, and a door is the
  * surface where disagreement is least visible: nobody diffs two AGENTS.md.
  *
- * The caller passes the tool that applies THERE — a repo's own override first,
- * the ecosystem's otherwise — and the brain passes nothing, meaning the
- * ecosystem's.
+ * Every caller passes what `adapterFor` resolved for THAT root (MV-122), so a
+ * root that resolves `none` gets no block rather than one about a tool of
+ * that name.
  */
-export function sddLines(config: Config, sdd?: string): string[] {
-  const name = sdd ?? config.sdd;
+export function sddLines(config: Config, name: string | undefined): string[] {
   if (!name) return [];
   const spec = sddSpec(name);
   const lines = [
@@ -121,8 +120,9 @@ export function sddLines(config: Config, sdd?: string): string[] {
   }
   // MV-93, and stated exactly this weakly on purpose. The scaffold runs from
   // FOUR lifecycle points, not one, and on three paths it reports instead of
-  // scaffolding: no scaffold declared for the adapter, the binary absent from
-  // PATH, and the init exiting without writing the artifact. A door that says
+  // scaffolding: no scaffold declared for the adapter, a required binary that
+  // MV-123's lookup does not find (PATH, then that root's node_modules/.bin),
+  // and the init exiting without writing the artifact. A door that says
   // "`change plan` scaffolds it" is Principle II broken in the file an agent
   // reads first.
   lines.push(
@@ -150,9 +150,9 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     '- Every ecosystem decision enters as a change: see `.multivac/changes/` and run `multivac change`.',
     '- The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.',
     '- Check the law against the code before acting: `multivac verify`.',
-    ...grapherLines(config),
+    ...grapherLines(config, adapterFor(config, 'brain', 'grapher')),
   ];
-  lines.push(...sddLines(config));
+  lines.push(...sddLines(config, adapterFor(config, 'brain', 'sdd')));
   if (activeInvariants === 0) {
     lines.push('', 'brain empty — load the multivac skill to fill it.');
   }

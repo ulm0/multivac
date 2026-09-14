@@ -32,7 +32,7 @@ export interface GrapherDecl {
   refresh: string;
   /** Build command, when it differs from the refresh. */
   create?: string;
-  /** Binary on PATH, when it is not the first word of `refresh`. */
+  /** The binary `refresh` runs, when it is not its first word — the name MV-123's lookup is asked for. */
   binary?: string;
   /** Install line printed when the binary is missing. */
   install?: string;
@@ -44,12 +44,12 @@ export interface RepoEntry {
   url?: string;
   grapher?: string;
   /**
-   * This repo's SDD adapter, overriding the ecosystem's `sdd:` — the same
-   * shape and the same fallback `grapher` above already has. The literal
-   * `none` means this repo has no SDD flow: it is never scaffolded, never
-   * gated, and never reported as lacking anything (MV-87). Not every repo in
-   * an ecosystem wants a spec-driven flow, and scaffolding one that does not
-   * is writing into somebody's checkout for no reason.
+   * This repo's SDD adapter, in the same shape as `grapher` above; `adapterFor`
+   * is the one reader of both (MV-122). The literal `none` means this repo has
+   * no SDD flow: it is never scaffolded, never gated, and never reported as
+   * lacking anything (MV-87). Not every repo in an ecosystem wants a
+   * spec-driven flow, and scaffolding one that does not is writing into
+   * somebody's checkout for no reason.
    */
   sdd?: string;
   channel?: string;

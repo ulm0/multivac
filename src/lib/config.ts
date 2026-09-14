@@ -4,6 +4,7 @@ import { access, lstat, readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
+import { NO_ADAPTER } from '../adapters/detect.js';
 import type { Config, GrapherDecl, Mode, RepoEntry } from '../types.js';
 
 export class ConfigError extends Error {}
@@ -239,7 +240,8 @@ function repoEntry(key: string, v: unknown): RepoEntry {
     url: optString(o.url, `repos.${key}.url`),
     grapher: optString(o.grapher, `repos.${key}.grapher`),
     // Same validator as `grapher`, on purpose: one shape for both overrides.
-    // `none` is a value, not a parse case — `sddFor` resolves it (MV-87).
+    // `none` is a value, not a parse case — `adapterFor` resolves it, for
+    // both keys (MV-122).
     sdd: optString(o.sdd, `repos.${key}.sdd`),
     channel: optString(o.channel, `repos.${key}.channel`),
     // MV-93: the list is a list, so a role written across several lines is
@@ -287,6 +289,16 @@ function grapherDecl(name: string, v: unknown): GrapherDecl {
 export async function loadConfig(brainDir: string): Promise<Config> {
   const stale = await layoutError(brainDir);
   if (stale) throw new ConfigError(stale);
+  return readConfig(brainDir);
+}
+
+/**
+ * Parse and validate the config, WITHOUT the layout check `loadConfig` adds.
+ * `init` reads the grapher vocabulary here before it migrates anything
+ * (MV-122): through `loadConfig` a legacy brain would read as unreadable, and
+ * a typo would pass because the check ran before the move.
+ */
+export async function readConfig(brainDir: string): Promise<Config> {
   const file = join(brainDir, CONFIG_PATH);
   let raw: string;
   try {
@@ -363,6 +375,11 @@ export async function loadConfig(brainDir: string): Promise<Config> {
   }
   const graphers: Record<string, GrapherDecl> = {};
   for (const [k, v] of Object.entries(graphersRaw as Record<string, unknown>)) {
+    // MV-122: `none` means no grapher wherever `grapher:` is read, so a tool
+    // declared under that name could never be selected — refused, not shadowed.
+    if (k === NO_ADAPTER) {
+      fail(`graphers.${k} cannot be declared — "${NO_ADAPTER}" means no grapher; name the tool something else`);
+    }
     graphers[k] = grapherDecl(k, v);
   }
 

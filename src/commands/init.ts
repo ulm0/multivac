@@ -19,6 +19,7 @@ import {
   layoutError,
   legacyLayout,
   loadConfig,
+  readConfig,
   CONFIG_PATH,
 } from '../lib/config.js';
 import { ritualSeed } from '../lib/ritual.js';
@@ -90,8 +91,9 @@ function parseFlags(argv: string[]): Flags {
   // on` over zero steps — a gate claimed that can never fire (measured, exit
   // 0). `sdd` has no declared form, so the registry is the whole vocabulary
   // and the check belongs here, before anything is written. `grapher` does
-  // have one — `graphers:` in the config extends it — so it is checked after
-  // the config is read, where that vocabulary is known.
+  // have one — `graphers:` in the config extends it — so `runInit` checks it
+  // before `mkdir`, against the verified graphers plus the `graphers:` of a
+  // readable config already at the target (MV-122).
   const sdd = value('sdd');
   if (sdd !== undefined && !sddNames.includes(sdd)) {
     throw new UsageError(`init: unknown --sdd ${sdd} — known: ${sddNames.join(', ')}`);
@@ -277,6 +279,33 @@ async function ensureVisibleToGit(dir: string, report: Report): Promise<void> {
 /** A refusal about the command line itself: exit 2, never 1 (MV-85). */
 class UsageError extends Error {}
 
+/**
+ * MV-122. The refusal for a `--grapher` name nothing can honour, or null.
+ *
+ * `init --grapher graphfy` exited 0, wrote the typo and projected a door with
+ * no graph block, while MV-114's ceiling said the flag was checked. It is
+ * checked here, BEFORE anything is created: the verified names need nothing
+ * on disk, and a config already at the target needs only a read. `readConfig`
+ * and not `loadConfig`, because a legacy brain fails the layout check that
+ * `init` is about to fix — and a vocabulary read as absent would let the typo
+ * through. `none` is in neither list: leaving the flag out declares no grapher.
+ * A config that does not read judges no name; MV-114's refusal of it follows.
+ */
+async function grapherRefusal(dir: string, name: string): Promise<string | null> {
+  let declared: string[] = [];
+  if (await exists(join(dir, CONFIG_PATH))) {
+    try {
+      declared = Object.keys((await readConfig(dir)).graphers);
+    } catch (e) {
+      if (e instanceof ConfigError) return null;
+      throw e;
+    }
+  }
+  // A declaration may override a verified name, so a name can be in both lists.
+  const known = [...new Set([...grapherNames, ...declared])];
+  return known.includes(name) ? null : `init: unknown --grapher ${name} — known: ${known.join(', ')}`;
+}
+
 async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   let f: Flags;
   try {
@@ -299,6 +328,11 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   const emit: Report = f.quiet ? () => {} : say;
   const report: Report = (l) => emit(l === '' ? l : dim(l));
   const dir = resolve(ctx.cwd, f.dir ?? '.');
+  const badGrapher = f.grapher === undefined ? null : await grapherRefusal(dir, f.grapher);
+  if (badGrapher !== null) {
+    warn(badGrapher);
+    return 2;
+  }
   await mkdir(dir, { recursive: true });
 
   // The mark, once, where a human is watching: `init` is the only command that

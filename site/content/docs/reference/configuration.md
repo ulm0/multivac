@@ -107,18 +107,20 @@ doors      nope: unknown target — known: agents, claude, cursor, opencode, cod
 
 | | |
 | --- | --- |
-| type | string — one of `opsx`, `speckit` |
+| type | string — one of `opsx`, `speckit`, or `none` |
 | default | unset |
 | example | `sdd: opsx` |
 
 Selects the spec-driven-development adapter whose `propose` / `apply` /
 `archive` steps run inside the change lifecycle. See
-[Graphers and SDD](../graphers-and-sdd).
+[Graphers and SDD](../graphers-and-sdd). It applies to every root that does
+not declare its own: a repo's `sdd:` wins in that repo, and the brain's own
+entry in the brain (MV-122). `none` declares no SDD.
 
-**Without it:** silence. No SDD step runs, `doctor` prints no `sdd` line at
-all. Not declaring is different from declaring something absent — the first
-is "we do not use one", the second is "we use one, it is not on this
-machine".
+**Without it, and with no repo declaring one:** silence. No SDD step runs,
+`doctor` prints no `sdd` line at all. Not declaring is different from
+declaring something absent — the first is "we do not use one", the second is
+"we use one, it is not on this machine".
 
 ### `sdd_auto`
 
@@ -146,12 +148,14 @@ editing the config.
 
 | | |
 | --- | --- |
-| type | string — any tool name |
+| type | string — a verified grapher, a name under `graphers`, or `none` |
 | default | unset |
 | example | `grapher: graphify` |
 
-The code-graph tool for the brain, and the fallback for every repo that does
-not override it. The name must be one multivac **speaks** — `graphify` or
+The code-graph tool for every root that does not declare its own: a repo's
+`grapher:` wins in that repo, and the brain's own entry in the brain (MV-122).
+`none` declares no grapher, here or on a repo, and is never read as a tool's
+name. The name must be one multivac **speaks** — `graphify` or
 `codegraph` — or one you declare yourself under [`graphers`](#graphers).
 multivac never derives an artifact path or a refresh command from a name,
 because inventing either is inventing a fact.
@@ -162,9 +166,10 @@ tool at a time, not scaled by adding rows. Any other tool still works through
 [`graphers`](#graphers) with no merge request against multivac — it simply
 gets no query lines in the door, because multivac does not know its verbs.
 
-**Without it:** no `grapher` lines in `doctor`, no refresh hint at the end of
-`change close`. A newborn brain is two content files; graphing that is noise,
-which is why `init` declares no grapher unless it detects one.
+**Without it, and with no repo declaring one:** no `grapher` lines in
+`doctor`, no refresh hint at the end of `change close`. A newborn brain is two
+content files; graphing that is noise, which is why `init` declares no grapher
+unless it detects one.
 
 ### `tracker`
 
@@ -226,7 +231,9 @@ graphers:
 ```
 
 `artifact` and `refresh` are required. A declaration also overrides a shipped
-registry entry — you know your own install better than the table does.
+registry entry — you know your own install better than the table does. The one
+name you cannot declare is `none`: it means no grapher, so `graphers.none` is
+refused at load (MV-122).
 
 **Without it:** a `grapher:` naming an unverified tool is reported as
 unverified, with these exact fields to fill in, and nothing is run.
@@ -437,7 +444,7 @@ repos:
   payments:
     url: git@example.com:acme/payments.git
     path: ../payments                  # optional; defaults to ../<key>
-    grapher: codegraph                 # overrides the global grapher
+    grapher: codegraph                 # overrides the global grapher; `none` = no graph here
     sdd: opsx                          # overrides the global sdd; `none` = no SDD here
     channel: origin/release            # overrides the global channel
 ```
@@ -456,11 +463,25 @@ repos:
 
 `none` is out of scope, not a gap: that repo is never scaffolded, never gated
 on the SDD's project-level document, and never reported as lacking anything.
-An absent `sdd:` inherits the ecosystem's — it does not mean none.
+An absent `sdd:` inherits the ecosystem's — it does not mean none. `grapher:`
+works the same way, `grapher: none` included.
+
+**The brain's own entry.** In a brain that is its own code repo, the `brain`
+entry decides the brain's adapters exactly as any repo's entry decides its own,
+and a top-level `none` never overrides a repo's own adapter (MV-122):
+
+```yaml
+grapher: graphify
+repos:
+  brain:
+    path: .
+    grapher: codegraph                 # the brain is graphed with codegraph
+  api: ../acme-api                     # api with graphify
+```
 
 ```txt
 sdd        speckit @ brain: artifact ok · binary ok · sdd_auto on
-sdd        speckit @ api: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init …`, doctor never does (it reaches the network)
+sdd        speckit @ api: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init …`, doctor never does (it writes the vendor's files into the tree)
 sdd        none @ landing: no sdd declared for this repo — out of scope, not a gap
 ```
 
