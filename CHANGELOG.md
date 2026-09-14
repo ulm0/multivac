@@ -12,13 +12,218 @@ keeping a second one (MV-78).
 
 ## 0.10.0 — 2026-08-24
 
+**Changed**
+
+- **A red `verify` now reaches the agent in Claude Code, and after an edit the
+  agent has to read it.** Claude Code feeds the model only exit-0 stdout at
+  `SessionStart` and only exit-2 stderr at `PostToolUse`. Both projected
+  entries ran bare `mvac verify`, which prints its findings to stdout and exits
+  1 when it gates — so on the one occasion the gate had something to say, the
+  model received none of it. `doors` now writes one command per event:
+  `mvac verify 2>&1 || true` at session start, where the findings are the
+  payload and nothing may block, and `mvac verify >&2 || exit 2` after an
+  edit, where a red law, a config the edit broke and a missing binary all come
+  back as the exit the harness hands to the model. The edit is already on
+  disk, so this is a forced read in the same turn, not a revert. Re-running
+  `doors` rewrites an existing bare entry in place instead of adding a second
+  one beside it, and a `mvac verify --strict` you wrote stays yours. Only the
+  `claude` target carries a hook config, and a brain that never re-runs
+  `doors` keeps the old, mute command. (MV-112)
+- **A commit that deletes the law is refused, the way a commit that enacts it
+  is gated.** `git rm .multivac/invariants.md && git commit` printed
+  `0 claims · 0 anchored` and exited 0, and deleting the one row whose
+  tombstone was in the way passed just as quietly. A row that is `active` at
+  HEAD and absent from the index is now refused with exit 1, naming the ids,
+  and so is an index that removes the law file. Retiring a row stays allowed —
+  it is how a rule stops applying in the open — and a `proposed` row may still
+  disappear, because that is a reservation being given back. Where the
+  question cannot be answered — no HEAD, an unreadable index, a consumer
+  checkout, which carries no law — the check says so and does not gate.
+  (MV-107) **Retired rows are covered too**: they are the record of what a
+  rule used to be, so deleting one is refused exactly like deleting an active
+  row. (MV-117)
+- **An unknown config key or `--sdd` name is refused by name instead of read
+  as declared.** `strict_prepush: true` loaded clean, armed nothing, and
+  `doctor` still called the gate armed. A key multivac does not know is now
+  refused at the top level, under `repos.<key>` and under `graphers.<name>`,
+  naming the key it is near when only case or separators differ and listing
+  the known keys otherwise. `init --sdd speckti` wrote the typo into the
+  config and projected a door announcing a gate with zero steps; the name is
+  now checked against the registry, and `--sdd=` exits 2 like any refused
+  argument instead of 1. **If you run more than one version**: from this
+  release on, a key a newer multivac knows is refused by an older one. And
+  `init --grapher` is still not checked: an unknown name is written to the
+  config, and `doors` and `doctor` report it as not verified. (MV-114)
+- **Exit codes keep the documented contract in four more commands.** A config
+  that will not load is an environment error, so every command that reads one
+  exits 2 — but `seed`, `repos`, `repos sync` and `roadmap sync` exited 1, and
+  a script could not tell a broken environment from a gate that refused. They
+  exit 2 now. `doors` and `doctor` remain the documented exceptions; `init`,
+  which now refuses a broken config instead of reading it as absent, exits 1
+  too, though the reference does not list it; and bare `roadmap` still exits 0
+  on a broken config because it never reads one. **Bare `doctor` now
+  exits 1 when an anchor in the law does not parse**, as its own `--help` and
+  the reference already said: it read the law's anchors and discarded the
+  parse diagnostics on the same line, so a broken law reported clean. It
+  prints a `law` line naming them. (MV-118, amending MV-85)
+
 **Fixed**
 
-- **Clarified graphify-out tracking in generated door.** The brain door said
-  "never staged or committed by multivac", which was confusing for projects
-  where graphify-out/ IS tracked. Changed to: "refreshed after your edits;
-  multivac never stages it, but you can track and commit it." Clearer about
-  separation: tool doesn't commit, project can. (MV-50)
+- **`--flag=value` is accepted again.** 0.9.0 refused `init --provider=claude`,
+  a line 0.8.0 accepted, because the refusal compared whole tokens while the
+  parser behind it splits on `=`. A long flag written with `=` is matched by
+  its name now. A declared valued flag whose value is missing, or is itself a
+  flag, is refused naming the flag — `verify --repo --strict` used to read
+  `--strict` as the repo's name, so the strict assertion never ran. And
+  `change` and `count` read the same refusal as every other command, so
+  `change land <slug> api` and `change land <slug> -landed api` no longer
+  exit 0 having recorded nothing, and surplus arguments are counted per
+  subcommand. (MV-105)
+- **The commit gates read the commit being made, `git commit -a` included.**
+  Git composes `git commit -a` in `.git/index.lock` and a pathspec commit in
+  `.git/next-index-NNN.lock`, while the gates read the index on disk. Under
+  `-a` they saw fewer paths than the commit contained, which walked the
+  enactment and config checks straight past the most common way to commit;
+  under a pathspec commit they saw more, which could refuse a commit over a
+  path that was not in it. The index git hands the hook is honoured now, for
+  the repository the hook runs in and no other — sibling repos are still read
+  through their own. (MV-106)
+- **multivac no longer takes "it is there" to mean "it is ours".** `doors`
+  wrote a stub door such as `.github/copilot-instructions.md` whole, so every
+  run destroyed whatever you had put in it; it writes only its managed block
+  there now, and frontmatter only when it creates the file. The commit hook's
+  first choice of runner — the repository's own build, first since 0.8.0
+  (MV-92) — now requires the repository's `package.json` to name multivac,
+  because `dist/cli.js` beside `node_modules` describes most Node CLI
+  repositories, and one that builds its own CLI had that binary executed on
+  every commit with `verify` as its argument. A hook that mentions multivac
+  only on a comment line no longer reads as wired, so `doctor --strict` stops
+  calling a gate armed that does not exist; a mention inside a quoted string
+  on a real line still reads as wired, by design. multivac's own shim beside
+  husky is recognised and rewritten, so `strict_pre_push` arms there and later
+  shim fixes reach it. And `init .` — the line `doctor` prints — no longer
+  downgrades a strict pre-push shim to a plain one, and no longer rewrites
+  `.multivac/projected.yml` when it exists, which silenced the version-skew
+  notice. A hand-edit to a hook multivac wrote is still lost when the hook is
+  regenerated, and its header says so. (MV-108)
+- **Hooks and projections survive the environments they land in.** In a
+  linked worktree the shim looked for the repository's own hooks under
+  `git rev-parse --git-dir`, which there names `.git/worktrees/<id>` and holds
+  no `hooks/`, so the repository's own lefthook or hand-written gate never
+  ran; it looks under `--git-common-dir` now, and `doctor` asks the same way.
+  A declared grapher refresh ran through a shell after an edit but was split
+  on spaces at `change close`, so quotes, redirects and `&&` worked in one
+  place and broke in the other; both run it through a shell. One mangled
+  managed file no longer ends a multi-repo run: that file gets a notice naming
+  it and the repos after it still get their doors and hooks, and a file with
+  two marker pairs is refused rather than half updated. `doctor` reads a shim
+  instead of checking that it exists, so one edited down to `exit 0` reports
+  that it does not run multivac rather than installed and armed. (MV-115)
+- **A broken config no longer disarms a strict gate through `init`, and a
+  commented `requires:` floor is read.** With `strict_pre_push: true` and a
+  config that would not load, `init .` read the config as absent, re-rendered
+  every projection from nothing and left no `verify --strict` in the pre-push
+  shim, exit 0, while `doors` in the same state exited 1 and kept the gate.
+  `init` now refuses a config it cannot load, with exit 1 as `doors` does,
+  though it may already have run `git init` in a directory that was not a
+  repository. And `requires: ">=0.4.0" # floor for CI` — ordinary YAML on the
+  line the tool tells you to write — was ignored; a trailing comment no longer
+  hides the floor, so a binary below it gets its notice, and a malformed floor
+  with a comment is named in its own notice instead of vanishing. Neither
+  notice changes an exit code. (MV-114)
+- **The anchor engine reads one way.** A bare `[:digit:]` outside a bracket
+  expression was translated anyway, so `PIN[:digit:]` compiled to `PIN0-9`
+  and matched only that literal text — an `absent` leg written that way was
+  green forever. It is refused now, in GNU grep's own wording; nested forms
+  such as `[[:alpha:][:digit:]]` still compile, and an escaped `PIN\[:digit:]`,
+  which 0.9.0 also rewrote into a pattern that matches nothing, is now the
+  literal it means. The dialect gate also refuses `(?…)`, lazy quantifiers,
+  backreferences, `\0` and alphabetic escapes with no ERE meaning, each by name:
+  git grep already read those differently from multivac, so a leg using one had
+  two answers. A line in a CRLF file is a line — a `$`-anchored or exact-line
+  leg never matched there, so a `present` leg read broken and an `absent` leg
+  read green; line numbers do not move, and a lone `\r` is still text. `count`
+  reads the bytes `verify` reads — each sibling repo at its channel, not its
+  working tree — and says what it read, so a `count=N` pinned from it agrees
+  with the gate. (MV-109)
+- **Self-heal stays inside the file kind a leg names, and a symlink is not
+  file text.** A `present` leg whose pattern moved is healed by rewriting its
+  glob, and the only fence was `.multivac/` — so a `.ts` glob could be
+  rewritten onto a documentation page that happened to quote the pattern,
+  pointing law at prose. A candidate must now share the include's trailing
+  extension, and when that fence refuses every candidate the report now names
+  the files it refused. An include with no trailing extension, or ending in a
+  brace group, keeps only the `.multivac/` fence. Tracked symlinks and
+  gitlinks are listed by neither reader: a working-tree read followed the link
+  while a ref read saw the link text, so one leg got two verdicts — including
+  over the `CLAUDE.md` link to `AGENTS.md` that multivac installs. A leg whose
+  glob names only a symlink now matches no tracked file; point it at the
+  link's target. (MV-116)
+- **An SDD proof names exactly one feature.** The spec-kit proof was
+  `specs/*<slug>*/spec.md`, so any other feature directory whose name merely
+  contained the slug — `001-gate-b-login` for `gate-b`, `030-points-expire`
+  for `expire` — satisfied `change plan`, `apply` and `close`. The artifact
+  language has no wildcard now: `<n>` is one run of digits, so the proof is
+  `specs/<n>-<slug>/spec.md` and an openspec archive is `<n>-<n>-<n>-<slug>`.
+  When more than one directory proves one step, the gate refuses and names
+  them instead of taking the first in sort order. A directory of the right
+  shape written by hand still proves the step, and `<n>` accepts any digits,
+  not only calendar dates. (MV-113)
+- **The lifecycle commits what it wrote and reports what actually happened.**
+  `change land --landed` wrote its status bump and committed nothing; it
+  commits it now. The commit `change close` prints includes the law file its
+  archive step edits, so the next `change new` is not refused over it.
+  `--abandon` names repos that already landed instead of printing *nothing
+  landed*, and prints the commit it needs. `change new` refuses a slug whose
+  archive already exists, which the eventual close would have overwritten.
+  `roadmap sync` passed `--label` to `gh issue edit`, which has no such flag,
+  so every GitHub update failed and was reported as *not found in the
+  tracker*, and a failed close was printed as *closed*; it passes
+  `--add-label` now. A failed update or close is printed as *NOT updated* or
+  *NOT closed*, followed by the command that failed rather than the tracker's
+  own error, and a failed update still prints the *not found in the tracker*
+  line after it. A GitHub issue still accumulates status labels, because
+  adding one removes none, and `close`'s spec-kit ledger still passes when the
+  artifact never existed. (MV-110)
+- **`change close` loses nothing on the way to the archive.** It verified a
+  change's claims against every anchor it could see, including anchors
+  written inside the change file, then archived that file — which the parser
+  never reads — so a claim could be green at close and unanchored from then
+  on. It refuses now, naming the claim, so the anchor moves beside the code it
+  pins. Two branches closing the same slug could overwrite an archived
+  record; the archive write itself refuses now. And a frontmatter key the
+  lifecycle does not know, which its next rewrite of the file drops, is named
+  whenever a command reads the change file — `verify` and `roadmap` included
+  — as a notice rather than a refusal. `--abandon` still reports rather than
+  refuses over landed repos, on purpose. (MV-117)
+- **A law row whose statement contains a pipe is read correctly.** Every
+  reader of the law table counted cells from the front, so a statement
+  quoting shell — `2>&1 ||` — moved the columns after it and the state was
+  read out of the prose. Such a row could reach `active` without the
+  enactment check naming it, gate as enacted while still `proposed`, and slip
+  past `change plan`'s id-collision refusal, which printed the mangled prose
+  as the state and exited 0; the brain door counted rows the same wrong way.
+  The trailing columns are read from the end of the row now, by one parser,
+  and a row missing them claims nothing rather than borrowing a neighbour's
+  cell. (MV-119)
+- **`init` tells you to commit what it wrote, and the skill stops teaching
+  what the tool does not do.** A fresh brain's first `change new` is refused
+  until the scaffold is committed, and `init` never said so; its closing
+  steps now start with that commit, and the refusal says the paths are
+  *untracked or modified* rather than calling a never-edited file
+  *uncommitted edits*. The shipped skill taught an arrow-edge `landing_order`
+  the parser refuses — it takes stages, a list of lists — told the interview
+  to write the loop and the boundary list into the brain door's managed
+  block, which `doors` regenerates whole on every run, and said `change apply`
+  re-projects doors, which it does not. All three are corrected. (MV-111)
+  The site's session-zero guide gave the same managed-block advice and is
+  corrected too. (MV-118)
+- **The brain door no longer implies the graph stays uncommitted.** Its line
+  for a declared grapher said the artifact was "never staged or committed by
+  multivac", which was confusing where the graph is tracked — and since 0.8.0
+  `change close` refuses a declared graph that is not (MV-103). It now reads
+  "refreshed after your edits; multivac never stages it, but you can track and
+  commit it": the refresh touches no git, and the commit is yours. (MV-50)
 
 ## 0.9.0 — 2026-08-18
 
@@ -497,6 +702,10 @@ section before upgrading.
   site mounts it rather than keeping a second one. (MV-78)
 - The version the site advertises is pinned to the version the package declares.
   (MV-77)
+- In multivac's own repository, the committed copy of the skill its harness
+  reads, `.claude/skills/multivac/`, is held to the `skills/multivac/` the
+  package ships by a test — same files, same bytes — because no anchor can
+  compare two trees. (MV-72)
 - `doctor` now states, in its own report, that who enacts a law row cannot be
   checked by this tool — identity is not a fact on disk — and names where it is
   enforced instead. Declared ungateable with its reason rather than left absent

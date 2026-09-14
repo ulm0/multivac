@@ -1,5 +1,24 @@
 <!--
 Sync Impact Report
+Version change: 2.0.1 → 2.0.2 (PATCH — a statement of fact corrected; no
+principle added, removed or redefined)
+Modified principles: none
+Modified sections:
+  - Governance footer: it still read 2.0.0, last amended 2026-08-18, while
+    the report below records 2.0.0 → 2.0.1 — the report moved and the
+    version it records did not, so one document answered "which version is
+    this?" two ways, the failure MV-111 names. 2.0.1 never reached the
+    footer, and its own wording became true only on 2026-08-19, in a
+    Principle IV correction that carried no report. The footer now states
+    the version the newest report records, and MV-120 forbids the stale
+    values coming back: a pin on this file's own number, never on whether a
+    principle still fits.
+Templates requiring update: none
+Follow-up TODOs: none
+-->
+
+<!--
+Sync Impact Report
 Version change: 2.0.0 → 2.0.1 (PATCH — a statement of fact corrected; no
 principle added, removed or redefined)
 Modified principles: none in force. Principle IV's TEXT still said "the runtime
@@ -186,4 +205,4 @@ unreadable, empty, or still carrying the fill-in tokens spec-kit's template
 ships. Its freshness stays a report, per MV-57: a version that never moves
 while the law does is a signal to revisit rather than a failing grade.
 
-**Version**: 2.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-08-18
+**Version**: 2.0.2 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-13
