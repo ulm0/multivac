@@ -38,3 +38,15 @@ test('a stray under a repo entry and under a grapher is refused too — MV-114',
   const cfg = await loadConfig(dir);
   assert.equal(cfg.strictPrePush, true);
 });
+
+test('a grapher declared under the name `none` is refused by name — MV-122', async () => {
+  // `none` means no grapher at every level; a tool of that name would make the
+  // token mean two things, so the declaration is what gives way.
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-none-decl-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  writeFileSync(
+    join(dir, '.multivac/config.yml'),
+    'doors: [agents]\ngrapher: none\ngraphers:\n  none:\n    artifact: out/graph.json\n    refresh: "true"\n',
+  );
+  await assert.rejects(() => loadConfig(dir), /graphers\.none/);
+});

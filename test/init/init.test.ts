@@ -449,3 +449,72 @@ test('an unknown adapter name is refused before anything is written — MV-114',
   assert.equal((await capture(() => init.run(['--sdd=', '--quiet', dir], { cwd: dir }))).code, 2);
   assert.equal((await capture(() => init.run(['--grapher', '', '--quiet', dir], { cwd: dir }))).code, 2);
 });
+
+// --- MV-122: `--grapher` is judged before anything is created ---
+
+/** Stdout and stderr: a refusal is a warning, and the name it gives is the point. */
+const captureAll = async (fn: () => Promise<number>): Promise<{ code: number; out: string }> => {
+  const lines: string[] = [];
+  const origLog = console.log;
+  const origErr = console.error;
+  console.log = (l: string) => lines.push(String(l));
+  console.error = (l: string) => lines.push(String(l));
+  try {
+    return { code: await fn(), out: lines.join('\n') };
+  } finally {
+    console.log = origLog;
+    console.error = origErr;
+  }
+};
+
+const MYTOOL = 'graphers:\n  mytool:\n    artifact: mytool-out/graph.json\n    refresh: mytool build\n';
+
+test('an unknown --grapher is refused before the directory exists — MV-122', async () => {
+  // Measured: `init --grapher graphfy` exited 0, wrote `grapher: graphfy` and
+  // projected a door with no graph block, while MV-114 said the flag was checked.
+  const dir = join(tmp(), 'not-yet');
+  const c = await captureAll(() => init.run(['--grapher', 'graphfy', '--quiet', dir], { cwd: tmp() }));
+  assert.equal(c.code, 2);
+  assert.match(c.out, /init: unknown --grapher graphfy — known: graphify, codegraph/);
+  assert.throws(() => statSync(dir), 'init created the directory before refusing');
+});
+
+test('a grapher declared under graphers: in the config already there is a known name — MV-122', async () => {
+  const dir = tmp();
+  assert.equal((await captureAll(() => init.run(['--quiet', dir], { cwd: dir }))).code, 0);
+  const cfg = join(dir, '.multivac/config.yml');
+  writeFileSync(cfg, `${readFileSync(cfg, 'utf8')}${MYTOOL}`);
+  assert.equal((await captureAll(() => init.run(['--grapher', 'mytool', '--quiet', dir], { cwd: dir }))).code, 0);
+
+  // A name neither verified nor declared: refused, naming both vocabularies,
+  // and nothing in the tree moves.
+  const before = snapshot(dir);
+  const c = await captureAll(() => init.run(['--grapher', 'graphfy', '--quiet', dir], { cwd: dir }));
+  assert.equal(c.code, 2);
+  assert.match(c.out, /init: unknown --grapher graphfy — known: graphify, codegraph, mytool/);
+  assert.deepEqual(snapshot(dir), before);
+});
+
+test('`none` is not a name either flag can take — MV-122', async () => {
+  // Leaving the flag out is how init declares no adapter.
+  for (const flag of ['--grapher', '--sdd']) {
+    const dir = join(tmp(), 'fresh');
+    const c = await captureAll(() => init.run([flag, 'none', '--quiet', dir], { cwd: tmp() }));
+    assert.equal(c.code, 2, `${flag} none`);
+    assert.throws(() => statSync(dir));
+  }
+});
+
+test('a legacy brain is judged by its own graphers: before anything moves — MV-122', async () => {
+  const ok = legacyBrain();
+  writeFileSync(join(ok, '.multivac/config.yml'), `doors: [agents]\n${MYTOOL}`);
+  assert.equal((await captureAll(() => init.run(['--grapher', 'mytool', '--quiet'], { cwd: ok }))).code, 0);
+
+  const typo = legacyBrain();
+  writeFileSync(join(typo, '.multivac/config.yml'), `doors: [agents]\n${MYTOOL}`);
+  const c = await captureAll(() => init.run(['--grapher', 'graphfy', '--quiet'], { cwd: typo }));
+  assert.equal(c.code, 2);
+  assert.match(c.out, /known: graphify, codegraph, mytool/);
+  assert.match(readFileSync(join(typo, 'invariants.md'), 'utf8'), /old law/, 'nothing was moved');
+  assert.throws(() => statSync(join(typo, '.multivac/invariants.md')));
+});

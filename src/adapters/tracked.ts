@@ -15,7 +15,7 @@
 import { join } from 'node:path';
 import type { Config } from '../types.js';
 import { grapherSpec } from './registry.js';
-import { artifactPresent, pathExists } from './detect.js';
+import { adaptersByRoot, artifactPresent, pathExists } from './detect.js';
 import { graphScopes, type GateResult } from './refresh.js';
 import { ignoredPaths, isTracked } from '../lib/git.js';
 import { CONFIG_PATH } from '../lib/config.js';
@@ -51,9 +51,7 @@ export async function graphTrackedGate(
   slug: string,
   noGrapher: boolean,
 ): Promise<GateResult> {
-  if (cfg.grapher === undefined && Object.values(cfg.repos).every((e) => e.grapher === undefined)) {
-    return { ok: true, lines: [] };
-  }
+  if (adaptersByRoot(cfg, 'grapher').size === 0) return { ok: true, lines: [] };
   // The skip switches are the graph gate's, and they cover this half too: one
   // gate's escape hatch that left the other armed would be a switch nobody
   // could reason about. The graph gate prints the skip notice for both.

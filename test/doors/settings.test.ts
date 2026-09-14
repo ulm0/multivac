@@ -257,3 +257,28 @@ test('the projected commands map the harness channels — MV-112', async () => {
   assert.equal(c.status, 2, 'a missing binary passed silently');
   assert.notEqual(c.stderr, '', 'and said nothing about it');
 });
+
+test('the post-edit refresh reaches the tool in node_modules/.bin — MV-123', async () => {
+  // `doors` wires the hook when the lookup finds the grapher, and the lookup
+  // looks in the root's node_modules/.bin. A hook that searched PATH alone would
+  // be wired for a binary it can never reach. Run, not read, on a built PATH.
+  const { mkdtempSync, mkdirSync, writeFileSync, chmodSync, existsSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { spawnSync } = await import('node:child_process');
+
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-hook-local-'));
+  mkdirSync(join(dir, 'node_modules', '.bin'), { recursive: true });
+  const stub = join(dir, 'node_modules', '.bin', 'localgraph');
+  writeFileSync(stub, '#!/bin/sh\necho ran > local-ran\n');
+  chmodSync(stub, 0o755);
+  const refresh = JSON.parse(merged(null, { refresh: 'localgraph update .' }))
+    .hooks.PostToolUse.map((e: { hooks: { command: string }[] }) => e.hooks[0].command)
+    .find((c: string) => c.includes('localgraph')) as string;
+
+  const r = spawnSync('sh', ['-c', refresh], { cwd: dir, env: { PATH: '/usr/bin:/bin' }, encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  const deadline = Date.now() + 2000;
+  while (!existsSync(join(dir, 'local-ran')) && Date.now() < deadline) await new Promise((res) => setTimeout(res, 25));
+  assert.ok(existsSync(join(dir, 'local-ran')), 'the backgrounded refresh never reached node_modules/.bin');
+});

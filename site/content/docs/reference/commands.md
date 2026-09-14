@@ -85,7 +85,7 @@ the law has to come out of a human. Both protocols live in the skill —
 | --- | --- | --- |
 | `--provider a,b` | comma-separated registry names | appended to `doors:` in the config (`agents` is always included) |
 | `--sdd name` | `opsx` \| `speckit` | written as `sdd:` in the config |
-| `--grapher name` | any tool name | written as `grapher:` in the config |
+| `--grapher name` | `graphify` \| `codegraph`, or a name under `graphers:` in the config already there | written as `grapher:` in the config; any other name is refused before anything is created (MV-122) |
 | `--quiet` | — | no report, no banner; refusals still go to stderr |
 
 The banner is the mark: lit lamps are verified claims, unlit ones unanchored,
@@ -101,6 +101,15 @@ Both `--flag value` and `--flag=value` work, and parse to the same value
 
 ```txt
 init: unknown flag --providers — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet
+```
+
+An adapter name nothing can honour is refused too, exit 2, before anything is
+created: `--sdd` against the registry, `--grapher` against the verified
+graphers plus the `graphers:` of a config already at the target (MV-122).
+`none` is neither — leaving the flag out declares no adapter:
+
+```txt
+init: unknown --grapher graphfy — known: graphify, codegraph
 ```
 
 A valued flag whose value is missing — or whose value is itself a flag — is
@@ -688,8 +697,8 @@ untracked  nothing build-critical untracked
 | line | reports |
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
-| `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): artifact, binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no `sdd` is declared anywhere** |
-| `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh |
+| `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): artifact, binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no root resolves an `sdd`** (MV-122) |
+| `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** (MV-122) |
 | `repos` | how many are present, and the clone command for each that is not |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is |
@@ -1234,8 +1243,10 @@ Every offending root is named in one message: you never close repeatedly to
 discover the rest of the list. The gate runs the build-where-missing pass
 first, so the first close in a fresh ecosystem builds rather than refuses.
 
-A root whose grapher binary is not on PATH also refuses, naming the binary and
-the install hint — a gate that cannot be evaluated refuses rather than passes.
+A root whose required grapher binary is found on neither PATH nor that root's
+`node_modules/.bin` also refuses, naming the binary, the install line and the
+vendor's repository (MV-123) — a gate that cannot be evaluated refuses rather
+than passes.
 A root with `grapher: none`, an ecosystem with no grapher, and an UNVERIFIED
 adapter are all out of scope: nothing is required of a tool whose artifact path
 would have to be guessed.

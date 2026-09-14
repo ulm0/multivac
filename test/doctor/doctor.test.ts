@@ -104,7 +104,7 @@ repos:
     // No init was verified for this tool, so none is named: the clause below
     // belongs to the adapter that declares a scaffold, not to every absence.
     assert.doesNotMatch(sdd, /declared but never run here/);
-    assert.match(sdd, /binary missing → npm i -g @fission-ai\/openspec/);
+    assert.match(sdd, /binary missing → `openspec` found on neither PATH nor brain's node_modules\/\.bin — install opsx: npm i -g @fission-ai\/openspec \(https:\/\/github\.com\/Fission-AI\/OpenSpec\)/);
     assert.match(sdd, /sdd_auto on — the lifecycle prints this tool's own steps and refuses/);
     // The flow lines name every step and what proves it.
     const all = lines.filter((l) => l.startsWith('sdd')).join('\n');
@@ -123,9 +123,10 @@ repos:
 
 /**
  * Declared but never run here: doctor NAMES the tool's own init and says who
- * runs it, because naming is all it may do — that command downloads templates
- * and MV-01 keeps this report offline. Gone the moment the artifact is there:
- * the clause reports a state, it is not decoration on every absence.
+ * runs it, because naming is all it may do — that command writes the vendor's
+ * files into the tree, and a report writes nothing. Gone the moment the
+ * artifact is there: the clause reports a state, it is not decoration on every
+ * absence.
  */
 test('doctor: a declared-but-unscaffolded sdd names the init, and says it never runs it', async () => {
   const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-scaffold-')));
@@ -139,7 +140,7 @@ test('doctor: a declared-but-unscaffolded sdd names the init, and says it never 
   assert.match(never, /artifact missing \(looked for \.specify\)/);
   assert.match(
     never,
-    /declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force`, doctor never does \(it reaches the network\)/,
+    /declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force --ignore-agent-tools`, doctor never does \(it writes the vendor's files into the tree\)/,
   );
 
   // Once it has run here there is no such state to report, and no command to
@@ -281,7 +282,7 @@ repos: {}
 `,
   );
   symlinkSync('AGENTS.md', join(eco.brain, 'CLAUDE.md'));
-  // fake grapher binary on PATH
+  // fake grapher binary, found through PATH
   const binDir = join(eco.brain, '..', 'fakebin');
   mkdirSync(binDir, { recursive: true });
   writeFileSync(join(binDir, 'acmegraph'), '#!/bin/sh\nexit 0\n');
@@ -293,7 +294,7 @@ repos: {}
   utimesSync(graph, new Date(1000), new Date(1000));
 
   const old = process.env.PATH;
-  process.env.PATH = [binDir, old].join(delimiter);
+  process.env.PATH = [binDir, '/usr/bin', '/bin'].join(delimiter);
   try {
     let { lines, exit } = await doctorReport(eco.brain);
     assert.equal(exit, 0);

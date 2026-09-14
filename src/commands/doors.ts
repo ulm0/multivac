@@ -30,7 +30,7 @@ import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings } from '../doors/settings.js';
 import { installHooks } from '../hooks/install.js';
-import { binaryPresent } from '../adapters/detect.js';
+import { adapterFor, missingRequired } from '../adapters/detect.js';
 import {
   type DoorTarget,
   doorTargets,
@@ -185,12 +185,14 @@ async function projectInto(
 ): Promise<string[]> {
   const notices: string[] = [];
   // Declared AND installed, or no refresh entry at all — an absent binary
-  // would only wire a hook that cannot run; doctor already says why. An
-  // unverified grapher wires nothing either: a hook running a command
-  // multivac guessed is worse than no hook at all.
+  // would only wire a hook that cannot run; doctor already says why. Installed
+  // means found by the one lookup for THIS root (MV-123), the lookup whose
+  // node_modules/.bin half the hook reaches too. An unverified grapher wires
+  // nothing either: a hook running a command multivac guessed is worse than no
+  // hook at all.
   const spec = grapher === undefined ? null : grapherSpec(grapher, config.graphers);
   if (grapher !== undefined && spec === null) notices.push(unverifiedGrapher(grapher));
-  const refresh = spec !== null && (await binaryPresent(spec)) ? spec.refresh : null;
+  const refresh = spec !== null && (await missingRequired(spec, dir)).length === 0 ? spec.refresh : null;
   const doorFile = join(dir, 'AGENTS.md');
   // MV-115: a broken managed file is THAT file's notice, and the run goes on.
   // One mangled door used to abort the whole multi-repo pass, so every repo
@@ -290,7 +292,12 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
 
   report(
     'brain',
-    await projectInto(brainDir, renderBrainDoor(config, active), config, config.grapher),
+    await projectInto(
+      brainDir,
+      renderBrainDoor(config, active),
+      config,
+      adapterFor(config, 'brain', 'grapher'),
+    ),
   );
 
   // MV-96: the derived page. Rewritten whole every projection — the ritual is
@@ -321,9 +328,9 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
       );
       continue;
     }
-    // Per-scope grapher, falling back to the global one — same rule as
-    // doctor and `change close`.
-    report(key, await projectInto(dir, consumerBody, config, entry.grapher ?? config.grapher));
+    // The grapher `adapterFor` resolves for this repo (MV-122) — the answer
+    // doctor and `change close` get, so a `none` repo wires no refresh.
+    report(key, await projectInto(dir, consumerBody, config, adapterFor(config, key, 'grapher')));
   }
   // MV-86. Bare `doors` re-projects and leaves the record alone, ON PURPOSE:
   // people run it after editing doors: or grapher:, and if that restamped, the

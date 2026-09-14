@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -236,14 +237,24 @@ test('brain door carries the SDD flow when one is declared', () => {
 });
 
 // The graph refresh follows the AGENT: it rides the harness's post-edit hook,
-// never the git shim. `node` stands in for a grapher here — it is the one
-// binary certainly on PATH, so `grapher: node` is "declared and present".
+// never the git shim. A stub stands in for the grapher, on a PATH this test
+// builds, so "declared and present" never depends on what the host installed.
 test('grapher declared + present: harness post-edit entry, git shim untouched', async () => {
   writeFileSync(
     join(eco.brain, '.multivac/config.yml'),
-    'doors: [agents, claude]\ngrapher: node\ngraphers:\n  node:\n    artifact: node-out/graph.json\n    refresh: node --version\nrepos:\n  api: ../acme-api\n',
+    'doors: [agents, claude]\ngrapher: stubgraph\ngraphers:\n  stubgraph:\n    artifact: stubgraph-out/graph.json\n    refresh: stubgraph update .\nrepos:\n  api: ../acme-api\n',
   );
-  const { code } = await runDoors();
+  const bin = mkdtempSync(join(tmpdir(), 'mvac-doors-bin-'));
+  writeFileSync(join(bin, 'stubgraph'), '#!/bin/sh\nexit 0\n');
+  chmodSync(join(bin, 'stubgraph'), 0o755);
+  const savedPath = process.env.PATH;
+  process.env.PATH = [bin, '/usr/bin', '/bin'].join(':');
+  let code: number;
+  try {
+    ({ code } = await runDoors());
+  } finally {
+    process.env.PATH = savedPath;
+  }
   assert.equal(code, 0);
 
   for (const dir of [eco.brain, eco.repos.api]) {
@@ -252,19 +263,19 @@ test('grapher declared + present: harness post-edit entry, git shim untouched', 
       { matcher?: string; hooks: { command: string }[] }[]
     >;
     const refresh = hooks.PostToolUse.map((e) => e.hooks[0].command).find((c) =>
-      c.includes('node --version'),
+      c.includes('stubgraph update .'),
     );
     assert.ok(refresh, 'post-edit refresh entry written');
     assert.match(refresh!, /graph-refresh\.lock/); // coalesced
     assert.match(refresh!, /& exit 0$/); // backgrounded, never a failure
     assert.equal(
-      hooks.PostToolUse.find((e) => e.hooks[0].command.includes('node --version'))!.matcher,
+      hooks.PostToolUse.find((e) => e.hooks[0].command.includes('stubgraph update .'))!.matcher,
       'Edit|Write|MultiEdit',
     );
     // the git shims stay verify-only — no grapher ever runs on the commit path
     for (const hook of ['pre-commit', 'pre-push']) {
       const shim = read(dir, `.multivac/hooks/${hook}`);
-      assert.doesNotMatch(shim, /node --version|graph/);
+      assert.doesNotMatch(shim, /stubgraph|graph/);
       assert.match(shim, /mvac verify/);
     }
   }

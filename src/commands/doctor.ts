@@ -19,6 +19,7 @@ import * as git from '../lib/git.js';
 import { heldArtifact } from '../adapters/tracked.js';
 import { say, warn } from '../lib/out.js';
 import {
+  binaryMissing,
   doorTargets,
   grapherSpec,
   unverifiedGrapher,
@@ -29,7 +30,7 @@ import {
 import {
   type SddRoot,
   artifactPresent,
-  binaryPresent,
+  missingRequired,
   pathExists,
   sddRoots,
 } from '../adapters/detect.js';
@@ -54,6 +55,14 @@ import { ENACTMENT_UNGATEABLE } from './verify.js';
 
 const BEGIN = '<!-- multivac:begin -->';
 const label = (s: string): string => s.padEnd(11);
+
+/**
+ * A root no adapter of this kind resolves for, while another root does. An
+ * exclusion is an ordinary configuration, so it reads as a fact about scope and
+ * never as a deficiency — for `sdd:` and `grapher:` alike (MV-87, MV-122).
+ */
+const outOfScope = (kind: 'sdd' | 'grapher', scope: string): string =>
+  label(kind) + `none @ ${scope}: no ${kind} declared for this repo — out of scope, not a gap`;
 
 function fmtAge(ms: number): string {
   const m = Math.round(ms / 60_000);
@@ -185,20 +194,15 @@ async function projectDocLines(
  */
 async function sddLines(brain: string, cfg: Config): Promise<string[]> {
   const roots = await sddRoots(brain, cfg);
-  // Not declared anywhere — not by the ecosystem, not by any repo: silence.
+  // No present root resolves an sdd: silence.
   if (!roots.some((r) => r.sdd)) return [];
   const auto = !cfg.sddAuto
     ? 'sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself'
     : "sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts";
   const out: string[] = [];
-  const binCache = new Map<string, boolean>();
   for (const root of roots) {
     if (!root.sdd) {
-      // `sdd: none`. An exclusion is an ordinary configuration, so it reads as
-      // a fact about scope and never as a deficiency.
-      out.push(
-        label('sdd') + `none @ ${root.scope}: no sdd declared for this repo — out of scope, not a gap`,
-      );
+      out.push(outOfScope('sdd', root.scope));
       continue;
     }
     const spec = sddSpec(root.sdd);
@@ -209,22 +213,21 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
       );
       continue;
     }
-    let binary = binCache.get(root.sdd);
-    if (binary === undefined) {
-      binary = await binaryPresent(spec);
-      binCache.set(root.sdd, binary);
-    }
+    // Per root, never cached per tool: the lookup reads this root's own
+    // node_modules/.bin (MV-123), so two roots can answer differently.
+    const missing = await missingRequired(spec, root.dir);
     // A declared tool that has never run here is a state worth reporting, and
-    // reporting is all doctor may do: the init downloads templates and MV-01
-    // keeps this command offline. It names the command; the lifecycle runs it.
+    // reporting is all doctor may do: the init writes the vendor's files into
+    // the tree, and doctor is a report. It names the command; the lifecycle
+    // runs it.
     const sc = spec.scaffold;
     const art = (await artifactPresent(spec, root.dir))
       ? 'artifact ok'
       : `artifact missing (looked for ${spec.artifacts.join(', ')})` +
         (sc
-          ? ` — declared but never run here; \`change new\` runs the tool's own \`${sc.run}\`, doctor never does (it reaches the network)`
+          ? ` — declared but never run here; \`change new\` runs the tool's own \`${sc.run}\`, doctor never does (it writes the vendor's files into the tree)`
           : '');
-    const bin = binary ? 'binary ok' : `binary missing → ${spec.installHint}`;
+    const bin = missing.length === 0 ? 'binary ok' : `binary missing → ${binaryMissing(root.sdd, spec, missing, root.scope)}`;
     out.push(label('sdd') + `${root.sdd} @ ${root.scope}: ${art} · ${bin} · ${auto}`);
   }
   // Once per distinct tool, in the order the roots named them.
@@ -273,10 +276,16 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
   // and a runner that enumerate the scopes separately can disagree about which
   // scopes exist, and the report is the only one anybody reads.
   const scopes = await graphScopes(brain, cfg);
+  // No present root resolves a grapher: silence, as the SDD pass has it.
+  if (!scopes.some((s) => s.name)) return [];
   const out: string[] = [];
-  const binCache = new Map<string, boolean>();
   for (const s of scopes) {
-    if (!s.name) continue; // not declared for this scope: silence
+    if (!s.name) {
+      // `grapher: none`, or nothing resolving here: scope, never an unverified
+      // tool called `none` (MV-122).
+      out.push(outOfScope('grapher', s.scope));
+      continue;
+    }
     const spec = grapherSpec(s.name, cfg.graphers);
     if (spec === null) {
       // Unverified: doctor cannot probe an artifact nobody declared, and it
@@ -284,11 +293,8 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
       out.push(label('grapher') + `${s.name} @ ${s.scope}: ${unverifiedGrapher(s.name)}`);
       continue;
     }
-    let bin = binCache.get(s.name);
-    if (bin === undefined) {
-      bin = await binaryPresent(spec);
-      binCache.set(s.name, bin);
-    }
+    const missing = await missingRequired(spec, s.dir);
+    const bin = missing.length === 0;
     const art = await artifactPresent(spec, s.dir);
     let msg = `${s.name} @ ${s.scope}: `;
     if (!art) {
@@ -297,9 +303,9 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
       const create = spec.create ?? spec.refresh;
       msg += bin
         ? `artifact missing → run \`${create}\` there`
-        : `artifact missing · binary missing → ${spec.installHint}, then \`${create}\``;
+        : `artifact missing · binary missing → ${binaryMissing(s.name, spec, missing, s.scope)}, then \`${create}\``;
     } else if (!bin) {
-      msg += `artifact ok · binary missing → ${spec.installHint} (graph cannot refresh)`;
+      msg += `artifact ok · binary missing → ${binaryMissing(s.name, spec, missing, s.scope)} (graph cannot refresh)`;
     } else if (await graphStale(s.dir, spec)) {
       msg += `artifact ok · binary ok · graph STALE (older than last commit) → run \`${spec.refresh}\` there`;
     } else {

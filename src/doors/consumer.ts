@@ -12,6 +12,7 @@
 
 import type { Config } from '../types.js';
 import { grapherLines, sddLines } from './brain.js';
+import { adapterFor } from '../adapters/detect.js';
 
 /**
  * The ecosystem, as the doors name it.
@@ -48,11 +49,10 @@ export function renderConsumerDoor(config: Config, repoKey: string): string {
   const mount = config.mount;
   const gate =
     config.staleness === 'block' ? ' A pin behind its channel makes `verify` exit 1 here.' : '';
-  // The adapters that apply HERE: this repo's override first, the ecosystem's
-  // otherwise — the same resolution `graphScopes` and `sddFor` use.
-  const entry = config.repos[repoKey];
-  const graph = grapherLines(config, entry?.grapher ?? config.grapher);
-  const sdd = sddLines(config, entry?.sdd ?? config.sdd);
+  // The adapters that apply HERE, from the one resolver every surface asks
+  // (MV-122) — a repo that resolves `none` gets no block.
+  const graph = grapherLines(config, adapterFor(config, repoKey, 'grapher'));
+  const sdd = sddLines(config, adapterFor(config, repoKey, 'sdd'));
   return [
     '## multivac — consumer door',
     '',

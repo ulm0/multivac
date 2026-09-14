@@ -1,8 +1,8 @@
 // `change close` runs the declared grapher's refresh — for real. A fake
-// grapher binary on PATH touches the artifact; close reports the run and the
-// artifact changed and stays uncommitted (graph output lands only in
-// dedicated chore commits). An absent binary degrades to the install notice,
-// and a grapher that exits non-zero never fails the close.
+// grapher, found on a PATH this file builds, touches the artifact; close
+// reports the run and the artifact changed and stays uncommitted (graph output
+// lands only in dedicated chore commits). An absent binary degrades to the
+// install notice, and a grapher that exits non-zero never fails the close.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,6 +22,7 @@ import { initRepo } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { GRAPH_LOCK } from '../../src/doors/settings.js';
+import { GRAPHIFY_0929_READONLY } from '../helpers/recorded.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -94,10 +95,10 @@ async function landedChange(brain: string, slug: string): Promise<void> {
   assert.equal(await change.run(['land', slug, '--landed', 'brain'], ctx), 0);
 }
 
-/** Run `fn` with the fake grapher's bin dir prepended to PATH. */
+/** Run `fn` on a PATH this file builds — the fake grapher's bin dir, then git's — never the host's. */
 const withPath = async (dir: string, fn: () => Promise<void>): Promise<void> => {
   const orig = process.env.PATH ?? '';
-  process.env.PATH = `${dir}:${orig}`;
+  process.env.PATH = `${dir}:/usr/bin:/bin`;
   try {
     await fn();
   } finally {
@@ -130,10 +131,14 @@ test('absent grapher binary degrades to the install notice, close still 0', asyn
   const brain = makeBrain(tmp);
   await landedChange(brain, 'graph-absent');
   const before = readFileSync(join(brain, 'fakegraph-out/graph.json'), 'utf8');
-  // no bin dir on PATH: `fakegraph` is nowhere — declared, absent, degraded
-  const { code, out } = await capture(() => change.run(['close', 'graph-absent'], { cwd: brain }));
+  // an empty bin dir on PATH: `fakegraph` is nowhere — declared, absent, degraded
+  let code = -1;
+  let out = '';
+  await withPath(join(tmp, 'nobin'), async () => {
+    ({ code, out } = await capture(() => change.run(['close', 'graph-absent'], { cwd: brain })));
+  });
   assert.equal(code, 0);
-  assert.match(out, /graph fakegraph @ brain: binary not found — refresh skipped; npm i -g fakegraph/);
+  assert.match(out, /graph fakegraph @ brain: refresh skipped — `fakegraph` found on neither PATH nor brain's node_modules\/\.bin — install fakegraph: npm i -g fakegraph \(declared in \.multivac\/config\.yml/);
   assert.equal(readFileSync(join(brain, 'fakegraph-out/graph.json'), 'utf8'), before);
 });
 
@@ -212,6 +217,27 @@ test('a grapher that exits non-zero is a warning, never a failed close', async (
   );
 });
 
+test("a grapher that fails as graphify 0.9.29 does is quoted by its exception, not its traceback", async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-'));
+  const brain = makeBrain(tmp);
+  const r = GRAPHIFY_0929_READONLY;
+  const bin = makeGrapherBin(
+    tmp,
+    `#!/bin/sh\ncat <<'EOF'\n${r.stdout}EOF\ncat >&2 <<'EOF'\n${r.stderr}EOF\nexit 1\n`,
+  );
+  await landedChange(brain, 'graph-trace');
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() => change.run(['close', 'graph-trace'], { cwd: brain }));
+    assert.equal(code, 0, 'a failing refresh never fails the close');
+    const warned = out.split('\n').find((l) => l.includes('refresh failed')) ?? '';
+    assert.match(
+      warned,
+      /refresh failed \(PermissionError: \[Errno 13\] Permission denied: 'graphify-out\/\.rebuild\.lock'\) — run `fakegraph update \.` there by hand/,
+    );
+    assert.doesNotMatch(out, /Traceback|File "/);
+  });
+});
+
 // --- MV-87: the first build reaches every declared, present repo ---
 
 /** A grapher whose BUILD command differs from its refresh — the distinction
@@ -266,10 +292,14 @@ test('a missing binary on the build path is a notice, never a failed lifecycle',
     `doors: [agents]\ngrapher: fakegraph\n${DECL_CREATE}repos:\n  brain: .\n  api: ../acme-api\n`,
   );
   initRepo(join(tmp, 'acme-api'), { 'README.md': '# api\n' });
-  // No bin dir on PATH: declared, absent, degraded — and the command it names
-  // is the BUILD, because that is what this scope needs.
-  const { code, out } = await capture(() => change.run(['new', 'graph-nobin', 'Graph nobin'], { cwd: brain }));
+  // An empty bin dir on PATH: declared, absent, degraded — and the command it
+  // names is the BUILD, because that is what this scope needs.
+  let code = -1;
+  let out = '';
+  await withPath(join(tmp, 'nobin'), async () => {
+    ({ code, out } = await capture(() => change.run(['new', 'graph-nobin', 'Graph nobin'], { cwd: brain })));
+  });
   assert.equal(code, 0);
-  assert.match(out, /graph fakegraph @ api: binary not found — build skipped; npm i -g fakegraph, then `fakegraph build \.`/);
+  assert.match(out, /graph fakegraph @ api: build skipped — `fakegraph` found on neither PATH nor api's node_modules\/\.bin — install fakegraph: npm i -g fakegraph \(.*\), then `fakegraph build \.` there/);
   assert.ok(!existsSync(join(tmp, 'acme-api/fakegraph-out/graph.json')));
 });

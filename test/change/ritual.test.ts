@@ -131,3 +131,12 @@ test("this repo's own ritual keeps only what no check could decide", async () =>
     assert.equal(gone.test(live.join('\n')), false, `still posted: ${gone}`);
   }
 });
+
+test('the spec candidate follows the resolved sdd, not the ecosystem key alone — MV-122', async () => {
+  const { ritualSeed } = await import('../../src/lib/ritual.js');
+  const SPEC = 'The spec is still true of the code';
+  // `none` is no SDD, so there is no spec to keep true.
+  assert.equal(ritualSeed({ sdd: 'none' }).includes(SPEC), false);
+  // A repo's own sdd is an SDD, with nothing declared at the top.
+  assert.equal(ritualSeed({ repos: { web: { path: '../web', sdd: 'speckit' } } }).includes(SPEC), true);
+});

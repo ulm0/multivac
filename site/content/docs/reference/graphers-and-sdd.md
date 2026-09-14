@@ -9,7 +9,8 @@ well. An **SDD** tool (spec-driven development) runs its own propose / apply /
 archive workflow alongside multivac's change lifecycle.
 
 multivac never installs either one. It reads what they leave on disk and, when
-you ask, invokes what they put on `PATH`. Installing the tool stays yours;
+you ask, invokes the binaries it finds on `PATH` or in the repository's own
+`node_modules/.bin` (MV-123). Installing the tool stays yours;
 running the tool's own `init` **in this repository**, once, is the lifecycle's
 — see [the scaffold](#the-scaffold-declaring-a-tool-that-has-never-run-here).
 
@@ -29,7 +30,7 @@ capabilities, and only the missing half turns off:
 | capability | means | needs |
 | --- | --- | --- |
 | **read** | multivac can consume what the tool produced | the **artifact** on disk |
-| **run** | multivac can invoke the tool | the **binary** on `PATH` |
+| **run** | multivac can invoke the tool | every **required binary**, found on `PATH` or in that root's `node_modules/.bin` |
 
 | adapter | artifact | binary | refresh |
 | --- | --- | --- | --- |
@@ -38,6 +39,25 @@ capabilities, and only the missing half turns off:
 | `graphify` | `graphify-out/graph.json` | `graphify` | `graphify update .` |
 | `codegraph` | `.codegraph` | `codegraph` | `codegraph sync` (build: `codegraph init`) |
 | *any other grapher* | **unverified — you declare it** (see below) | | |
+
+**One lookup finds a binary (MV-123).** Every surface that runs an adapter's
+command, or says whether it can — the scaffold, the validator, the build and
+the refresh at close, the graph gate, `doors`' post-edit hook and `doctor` —
+asks the same question in the root the command runs in: each `PATH` directory
+in order (on Windows, with each extension `PATHEXT` lists), then that root's
+own `node_modules/.bin`, where a project-local `npm i -D` puts a tool. A match
+is an executable file, a copy on `PATH` wins, and what runs is what was found.
+The binary column above is each entry's `required` list: all of them must be
+found. A binary missing from a root is named with its adapter, the install
+line and the vendor's repository:
+
+```txt
+`graphify` found on neither PATH nor api's node_modules/.bin — install graphify: uv tool install graphifyy (https://github.com/Graphify-Labs/graphify)
+```
+
+A grapher you declare has no vendor on record, so its line says
+`declared in .multivac/config.yml (graphers.<name>)` instead. The Windows half
+is read from `PATHEXT`'s documented meaning and has never been run there.
 
 If you cloned a repo that already has the artifact committed, the read half
 works with the tool not installed at all. The binary is only needed to
@@ -87,8 +107,8 @@ grapher    graphify @ api: artifact missing → run `graphify update .` there
 Every degraded shape is a pointer with the exact command:
 
 ```txt
-grapher    codegraph @ brain: artifact missing · binary missing → npm i -g @colbymchenry/codegraph, then `codegraph init`
-grapher    codegraph @ brain: artifact ok · binary missing → npm i -g @colbymchenry/codegraph (graph cannot refresh)
+grapher    codegraph @ brain: artifact missing · binary missing → `codegraph` found on neither PATH nor brain's node_modules/.bin — install codegraph: npm i -g @colbymchenry/codegraph (https://github.com/colbymchenry/codegraph), then `codegraph init`
+grapher    codegraph @ brain: artifact ok · binary missing → `codegraph` found on neither PATH nor brain's node_modules/.bin — install codegraph: npm i -g @colbymchenry/codegraph (https://github.com/colbymchenry/codegraph) (graph cannot refresh)
 grapher    graphify @ brain: artifact ok · binary ok · graph STALE (older than last commit) → run `graphify update .` there
 ```
 
@@ -115,8 +135,8 @@ the graph" would be wrong for one of them, and an agent cannot tell which.
 
 This is what "multivac speaks a grapher" means, and why the table is short:
 the verbs have to be run before they can be written down. `graphify query` is
-in the table because it was run — it is **absent from `graphify --help`**, so
-reading the help output alone would have dropped the most useful verb it has.
+in the table because it was **run against the shipped binary**, not because a
+help screen lists it.
 
 A declared grapher gets no query lines. multivac does not know your tool's
 verbs and will not guess them; the refresh still runs, the door simply says
@@ -203,8 +223,11 @@ more entry in the same managed `.claude/settings.json` merge that carries
 ```json
 { "matcher": "Edit|Write|MultiEdit",
   "hooks": [{ "type": "command",
-              "command": "L=.multivac/cache/graph-refresh.lock; … mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0" }] }
+              "command": "L=.multivac/cache/graph-refresh.lock; PATH=\"$PATH:$PWD/node_modules/.bin\"; … mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0" }] }
 ```
+
+The hook appends the repository's `node_modules/.bin` to `PATH`, so it reaches
+the same binary the lookup found when `doors` decided to wire it (MV-123).
 
 Three properties, on purpose:
 
@@ -227,9 +250,10 @@ grapher    refresh path: claude post-edit hook (installed when the binary is pre
 ```
 
 **`change close`, the net.** A change can land edits made outside the harness,
-so close still **runs** the refresh — in the brain and in each declared+present
-repo the change touched, using that scope's grapher (`repos.<key>.grapher`,
-falling back to the global one) — and reports each scope's result:
+so close still **runs** the refresh — in the brain and in each declared,
+present repo (MV-90), using the grapher that root resolves (MV-122): its
+own `grapher:`, the brain's own entry included, else the ecosystem's, and
+none where that is `none` — and reports each scope's result:
 
 ```txt
 graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
@@ -241,14 +265,21 @@ path: an ergonomic convenience does not belong on a gate, and it would blow
 the hook's sub-second budget. Between refreshes, a stale graph next to a
 present binary is a `doctor` warning carrying the manual command.
 
-An absent binary degrades to a notice with the install hint; a refresh that
-exits non-zero is a warning that hands the command back — `close` never fails
-because a foreign tool did:
+A missing binary degrades to a notice naming it, the install line and the
+vendor; a refresh that exits non-zero is a warning that quotes the tool's cause
+and hands the command back — `close` never fails because a foreign tool did:
 
 ```txt
-graph graphify @ brain: binary not found — refresh skipped; uv tool install graphifyy, then `graphify update .` there
-graph graphify @ api: refresh failed (…) — run `graphify update .` there by hand
+graph graphify @ brain: refresh skipped — `graphify` found on neither PATH nor brain's node_modules/.bin — install graphify: uv tool install graphifyy (https://github.com/Graphify-Labs/graphify), then `graphify update .` there
+graph graphify @ api: refresh failed (PermissionError: [Errno 13] Permission denied: 'graphify-out/.rebuild.lock') — run `graphify update .` there by hand
 ```
+
+The cause is found the same way for every vendor command multivac runs — the
+scaffold, the validator, the build and the refresh (MV-123): lines drawn only
+in box or block characters are dropped, then a Python traceback is quoted by the
+exception that closes it, else the lines naming an error, a refusal, a denial or
+something not found, else the last lines — at most three. The cause words are
+English; a tool that says it otherwise is quoted by its last lines.
 
 multivac never stages or commits the refreshed artifact. Graph output is
 regenerated locally; commit it only in dedicated chore commits, if your
@@ -332,9 +363,9 @@ sdd        nope @ brain: unknown adapter — known: opsx, speckit; fix sdd: in .
 ```
 
 {{< callout >}}
-For OpenSpec, the terminal CLI is `init` / `update` / `list` / `show` /
-`validate`; `propose`, `apply` and `archive` are the `/opsx:` commands your
-agent runs in chat. That is why multivac never shells the steps out: it prints
+For OpenSpec, `propose`, `apply` and `archive` are the `/opsx:` commands your
+agent runs in chat; the one terminal command multivac runs is `openspec
+validate`. That is why multivac never shells the steps out: it prints
 the instruction, the agent runs it, and the gate checks what it left behind.
 {{< /callout >}}
 
@@ -354,7 +385,7 @@ So an adapter also declares its **scaffold**: the artifact whose absence means
 
 | key | scaffold artifact | the tool's own init |
 | --- | --- | --- |
-| `speckit` | `.specify` | `specify init --here --integration claude --force` |
+| `speckit` | `.specify` | `specify init --here --integration claude --force --ignore-agent-tools` |
 | `opsx` | — | **unverified — not recorded, and never guessed** |
 
 `change new`, `change plan`, `change apply` and `change close` run it in **every
@@ -362,23 +393,29 @@ declared, present repo** that lacks the artifact — the brain and the siblings
 alike — print it first, and skip a repo entirely when it is already there:
 
 ```txt
-sdd speckit: .specify is missing in brain — running the tool's own init there: `specify init --here --integration claude --force`
+sdd speckit: .specify is missing in brain — running the tool's own init there: `specify init --here --integration claude --force --ignore-agent-tools`
 sdd speckit: scaffolded — brain:.specify is there now; its steps are runnable
-sdd speckit: .specify is missing in api — running the tool's own init there: `specify init --here --integration claude --force`
+sdd speckit: .specify is missing in api — running the tool's own init there: `specify init --here --integration claude --force --ignore-agent-tools`
 sdd speckit: scaffolded — api:.specify is there now; its steps are runnable
 ```
+
+`--ignore-agent-tools` is there because spec-kit checks for the integration's
+own CLI before it writes anything: measured without the flag and without
+`claude` installed, the init exits 1 and writes nothing; with it, the init exits
+0. MV-123 names the version measured.
 
 Presence is a **per-root** question (MV-87). One repo somebody initialized by
 hand does not answer for the others, a repo whose init fails does not stop the
 repos after it, and a repo with `sdd: none` in its entry is never touched.
 
-`verify`, `doctor` and `doors` **never** run it: the init downloads templates,
-and those three make no network calls. `doctor` reports the state per repo and
-names the command instead:
+`verify`, `doctor` and `doors` **never** run it: the init writes the vendor's
+files into the tree, and running it again can revert skills and templates
+someone edited — not something a check, a report or a door may do. `doctor`
+reports the state per repo and names the command instead:
 
 ```txt
 sdd        speckit @ brain: artifact ok · binary ok · sdd_auto on …
-sdd        speckit @ api: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force`, doctor never does (it reaches the network) · binary ok · sdd_auto on …
+sdd        speckit @ api: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force --ignore-agent-tools`, doctor never does (it writes the vendor's files into the tree) · binary ok · sdd_auto on …
 sdd        none @ landing: no sdd declared for this repo — out of scope, not a gap
 ```
 
@@ -388,9 +425,9 @@ Five outcomes, all of them said out loud:
 | --- | --- |
 | artifact present **in this repo** | nothing runs there, nothing is printed |
 | no init recorded for that tool | the gap is stated per repo with the install line; **nothing is executed** |
-| binary not on `PATH` | the install hint, once — it is a fact about the machine |
+| a required binary not found | one line per repo naming the binary, the install line and the vendor — the lookup reads each repo's own `node_modules/.bin` (MV-123) |
 | ran, artifact now there | `scaffolded`, naming the repo |
-| ran, artifact still missing | the tool's own stderr, the command handed back, the next repo still attempted, and the gate that follows still refuses on its own terms |
+| ran, artifact still missing | the tool's cause, quoted, the command handed back, the next repo still attempted, and the gate that follows still refuses on its own terms |
 
 The last row is the honest one: an exit code is the tool's claim, the artifact
 is the fact, and the gates look for the artifact.
@@ -459,7 +496,12 @@ sdd opsx: `change plan add-user-auth` refused — openspec/changes/add-user-auth
 ```
 
 The gate searches the brain and every declared repo present on disk, because
-the specs of a change often live in the code repo rather than the brain. Both
+the specs of a change often live in the code repo rather than the brain. It
+judges each adapter only in the roots that resolve to it (MV-122): with
+`sdd: opsx` and `repos.web.sdd: speckit`, web is asked for the spec and the
+rest for the proposal, the point passes only when both do, and a root that
+resolves `none` is never searched. An adapter only uncloned repos resolve
+cannot be judged, so it refuses, naming them. Both
 halves of that search are said out loud: the refusal lists the repos it looked
 in, and the pass names the one it found the artifact in —
 
@@ -493,13 +535,13 @@ found, the gate does not quietly fall back to "the file is there, good enough" �
 that is the same command going green on a machine that can check nothing:
 
 ```txt
-sdd opsx: `change apply add-user-auth` refused — `openspec` is not on PATH, so `openspec validate add-user-auth --json --no-interactive` cannot be run
-  install it: npm i -g @fission-ai/openspec
+sdd opsx: `change apply add-user-auth` refused — `openspec validate add-user-auth --json --no-interactive` cannot be run — `openspec` found on neither PATH nor brain's node_modules/.bin — install opsx: npm i -g @fission-ai/openspec (https://github.com/Fission-AI/OpenSpec)
   or skip the gates without losing the door: `--no-sdd` for one run, `sdd_auto: false` in .multivac/config.yml for good
 ```
 
-It looks in `node_modules/.bin` beside the artifact as well as on `PATH`, so a
-project-local `npm i -D` is found. And it never tells you to remove `sdd:` —
+It asks the one lookup (MV-123) in the repo that holds the artifact — `PATH`,
+then that repo's `node_modules/.bin` — so a project-local `npm i -D` is found,
+exactly as `doctor` and every other surface find it. And it never tells you to remove `sdd:` —
 that key also renders the whole flow into the brain door, so dropping it would
 delete the agent's instructions along with the check.
 

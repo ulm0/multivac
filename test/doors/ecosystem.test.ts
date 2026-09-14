@@ -125,6 +125,8 @@ test('a repo that opts out of the SDD gets no block, and its siblings keep their
     '  web: ../acme-web',
   ]);
   assert.equal(renderConsumerDoor(cfg, 'api').includes('speckit'), false);
+  // No block at all, not a block about a tool called `none` (MV-122).
+  assert.equal(renderConsumerDoor(cfg, 'api').includes('Features gate'), false);
   assert.match(renderConsumerDoor(cfg, 'web'), /Features gate through the `speckit` SDD/);
 });
 

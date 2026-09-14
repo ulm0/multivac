@@ -1208,8 +1208,10 @@ root that lacks the artifact and stays silent in every root that has it;
 project-document gate asks each root where the tool is **installed**, naming
 each that fails; and the grapher's first build reaches every declared, present
 repo rather than only the repos a change happened to touch. A repo opts out
-with its own `sdd:` — the literal `none` — and a root that resolves to no SDD
-is out of scope, never deficient.
+with its own `sdd:` or `grapher:` — the literal `none`, which means no adapter
+of that kind at repo or top level — and the brain's own entry decides the
+brain's adapters. A root that resolves to no adapter is out of scope, never
+deficient, and one function resolves it for every surface (MV-122).
 
 Nothing here moves a subprocess out of the change lifecycle, and nothing
 derives a command from a tool's name: a tool that declares no init still gets
@@ -1238,9 +1240,9 @@ Three normative rules, applying to the brain and to every declared repo:
   `change plan` refuses without the propose-equivalent, `change apply` without
   the plan/tasks artifact, `change close` without the archive-equivalent, each
   refusal naming the exact agent command, the path it looked for and the repos
-  it looked in — the brain and every declared repo present on disk, since a
-  change's specs often live in the code repo — while a pass names the repo the
-  artifact was found in. Three
+  it looked in — the brain and every declared repo present on disk that
+  resolves to that tool (MV-122), since a change's specs often live in the code
+  repo — while a pass names the repo the artifact was found in. Three
   rules keep it honest: a step whose tool leaves nothing behind
   (`/speckit.analyze` writes zero bytes by design; a clean `/speckit.converge`
   is forbidden to touch `tasks.md`) is declared **ungateable** with its reason
@@ -1266,7 +1268,8 @@ Three normative rules, applying to the brain and to every declared repo:
 - **The graph refresh follows the agent, not the commit.** The grapher is a
   navigation aid, not enforcement: nothing lands wrong because the graph is
   stale, so the refresh belongs where the edits are. When a grapher is
-  declared and its binary present, `doors` installs it as the **harness's
+  declared and its binary found — on PATH or in that repo's
+  `node_modules/.bin`, the one lookup of MV-123 — `doors` installs it as the **harness's
   post-edit hook** — for a harness that has one — fire-and-forget, coalesced
   behind a lock, never failing an edit and never adding latency to it.
   `change close` runs the same refresh as the **safety net**, for edits made
@@ -1282,7 +1285,7 @@ do I fix it":
 $ multivac doctor
 doors      AGENTS.md (canonical) · CLAUDE.md (symlink) · .cursor/rules/multivac.mdc (stub)
 sdd        opsx        artifact ok (12 specs) · binary ok
-grapher    graphify    artifact ok · binary missing  → uv tool install graphifyy
+grapher    graphify    artifact ok · binary missing  → `graphify` found on neither PATH nor brain's node_modules/.bin — install graphify: uv tool install graphifyy (https://github.com/Graphify-Labs/graphify)
 repos      4/5 present · payments not cloned (22 anchors unevaluated)
 ```
 
