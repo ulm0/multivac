@@ -20,24 +20,26 @@ that already exist.
 ## Not competing is a rule here, not a posture
 
 Every place multivac touches another tool is a place it could have
-reimplemented that tool and deliberately did not. Those refusals are law, with
-IDs, checked on every commit — which is a stronger claim than a paragraph in a
+reimplemented that tool and deliberately did not. Those refusals are law,
+checked on every commit — which is a stronger claim than a paragraph in a
 README:
 
-- **MV-51** — an SDD's steps *instruct the agent*; multivac never shells out a
-  fake `<binary> <step>` to simulate them.
-- **MV-55** — an adapter carries **the tool's own flow**, an ordered list of its
+- **The agent runs the steps** — an SDD's steps *instruct the agent*; multivac
+  never shells out a fake `<binary> <step>` to simulate them.
+- **The tool's own flow** — an adapter carries an ordered list of the tool's
   real steps, not a fixed propose/apply/archive triple multivac invented.
-- **MV-56** — where a tool ships its own validator, **its verdict is reused**.
-  multivac does not re-litigate another tool's rules.
-- **MV-59** — the registry never invents a grapher's contract. A tool whose
-  artifact path and refresh command are not documented by its vendor is reported
-  UNVERIFIED, with the fields to declare, rather than guessed from its name.
-- **MV-61** — query verbs are printed **verbatim per tool**. `graphify query`
-  takes a question in words; `codegraph query` takes a symbol. A door that said
-  "query the graph" would be wrong for one of them with no way to tell which.
-- **MV-62** — an entry names any network its refresh performs, because that
-  refresh runs on someone else's machine on every edit.
+- **The tool's own verdict** — where a tool ships its own validator, its verdict
+  is reused. multivac does not re-litigate another tool's rules.
+- **No guessed contract** — the registry never invents a grapher's contract. A
+  tool whose artifact path and refresh command are not documented by its vendor
+  is reported UNVERIFIED, with the fields to declare, rather than guessed from
+  its name.
+- **Each tool's own verbs** — query verbs are printed verbatim per tool.
+  `graphify query` takes a question in words; `codegraph query` takes a symbol.
+  A door that said "query the graph" would be wrong for one of them with no way
+  to tell which.
+- **The network, named** — an entry names any network its refresh performs,
+  because that refresh runs on someone else's machine on every edit.
 
 What multivac adds is the part neither of the others does: it **gates** on them.
 Each SDD step declares the artifact that proves it ran, and the next lifecycle

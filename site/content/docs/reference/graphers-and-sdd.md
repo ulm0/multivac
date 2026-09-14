@@ -10,9 +10,9 @@ archive workflow alongside multivac's change lifecycle.
 
 multivac never installs either one. It reads what they leave on disk and, when
 you ask, invokes the binaries it finds on `PATH` or in the repository's own
-`node_modules/.bin` (MV-123). Installing the tool stays yours;
-running the tool's own `init` **in this repository**, once, is the lifecycle's
-— see [the scaffold](#the-scaffold-declaring-a-tool-that-has-never-run-here).
+`node_modules/.bin`. Installing the tool stays yours; running the tool's own
+`init` **in this repository**, once, is the lifecycle's — see
+[the scaffold](#the-scaffold-declaring-a-tool-that-has-never-run-here).
 
 ```yaml
 sdd:     opsx
@@ -29,7 +29,7 @@ capabilities, and only the missing half turns off:
 
 | capability | means | needs |
 | --- | --- | --- |
-| **read** | multivac can consume what the tool produced | the tool **installed** in that root: its own state file passes its check (MV-124) |
+| **read** | multivac can consume what the tool produced | the tool **installed** in that root: its own state file passes its check |
 | **run** | multivac can invoke the tool | every **required binary**, found on `PATH` or in that root's `node_modules/.bin` |
 
 | adapter | installed when | artifact | binary | refresh |
@@ -40,7 +40,7 @@ capabilities, and only the missing half turns off:
 | `codegraph` | `.codegraph/codegraph.db` is a file | `.codegraph/codegraph.db`, local | `codegraph` | `codegraph sync` (build: `codegraph init`) |
 | *any other grapher* | its declared artifact exists | **unverified — you declare it** (see below) | | |
 
-**Installed is what the vendor wrote, never a path being there (MV-124).** One
+**Installed is what the vendor wrote, never a path being there.** One
 probe answers for every surface — the scaffold, the first build, the choice
 between build and refresh, both graph gates, the project-document gate and
 `doctor` — from files alone, spawning nothing. It gives one of four states:
@@ -58,7 +58,7 @@ ceilings: a spec-kit install that never wrote `integration.json` reads partial; 
 database moved with `CODEGRAPH_DIR` reads partial; a JSON file that is not a
 graph passes.
 
-**One lookup finds a binary (MV-123).** Every surface that runs an adapter's
+**One lookup finds a binary.** Every surface that runs an adapter's
 command, or says whether it can — the scaffold, the validator, the build and
 the refresh at close, the graph gate, `doors`' post-edit hook and `doctor` —
 asks the same question in the root the command runs in: each `PATH` directory
@@ -224,9 +224,9 @@ not one of them:
 
 The **first build** is separate, because a repo cannot be refreshed before it
 has been built. `change new` and the gates build the graph in every declared
-repo on disk that is not read-only (MV-125) where the grapher is not installed
-— missing, or partial like a 0-byte `graph.json` — with the adapter's `create`
-where it declares one, its `refresh` otherwise, and skip every repo where it is
+repo on disk that is not read-only where the grapher is not installed — missing,
+or partial like a 0-byte `graph.json` — with the adapter's `create` where it
+declares one, its `refresh` otherwise, and skip every repo where it is
 installed. A graph is
 derived from the tree, so rebuilding a partial one loses nothing. A repo whose
 state file cannot be read gets neither command:
@@ -237,7 +237,7 @@ graph graphify @ api: built (`graphify update .`) — artifact left uncommitted
 
 Before this, the graph was only ever built for repos a change explicitly
 touched, so a repo had to be worked on before it could be navigated — backwards
-for an agent that reads the graph in order to do the work (MV-87).
+for an agent that reads the graph in order to do the work.
 
 **The harness post-edit hook.** `doors` writes it into the hook config of each
 declared target whose harness has such a hook — for Claude Code that is one
@@ -251,13 +251,12 @@ more entry in the same managed `.claude/settings.json` merge that carries
 ```
 
 The hook appends the repository's `node_modules/.bin` to `PATH`, so it reaches
-the same binary the lookup found when `doors` decided to wire it (MV-123).
-After that it exports the grapher entry's opt-outs, outside the declared
-command (MV-124) — for codegraph, `export DO_NOT_TRACK=1
-CODEGRAPH_TELEMETRY=0 CODEGRAPH_NO_DOWNLOAD=1; `. graphify declares none, so
-its hook is exactly as shown.
+the same binary the lookup found when `doors` decided to wire it. After that it
+exports the grapher entry's opt-outs, outside the declared command — for
+codegraph, `export DO_NOT_TRACK=1 CODEGRAPH_TELEMETRY=0 CODEGRAPH_NO_DOWNLOAD=1;
+`. graphify declares none, so its hook is exactly as shown.
 
-**The opt-outs are applied, not only named (MV-124).** Every vendor command
+**The opt-outs are applied, not only named.** Every vendor command
 multivac runs for an entry — the scaffold, the validator, the build and the
 refresh — runs with that entry's `env` over your environment: opsx sets
 `DO_NOT_TRACK=1` and `OPENSPEC_TELEMETRY=0`, codegraph `DO_NOT_TRACK=1`,
@@ -288,9 +287,9 @@ grapher    refresh path: claude post-edit hook (installed when the binary is pre
 
 **`change close`, the net.** A change can land edits made outside the harness,
 so close still **runs** the refresh — in the brain and in each declared repo
-on disk that is not read-only (MV-90, MV-125), using the grapher that root
-resolves (MV-122): its own `grapher:`, the brain's own entry included, else the ecosystem's, and
-none where that is `none` — and reports each scope's result:
+on disk that is not read-only, using the grapher that root resolves: its own
+`grapher:`, the brain's own entry included, else the ecosystem's, and none where
+that is `none` — and reports each scope's result:
 
 ```txt
 graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
@@ -312,11 +311,11 @@ graph graphify @ api: refresh failed (PermissionError: [Errno 13] Permission den
 ```
 
 The cause is found the same way for every vendor command multivac runs — the
-scaffold, the validator, the build and the refresh (MV-123): lines drawn only
-in box or block characters are dropped, then a Python traceback is quoted by the
-exception that closes it, else the lines naming an error, a refusal, a denial or
-something not found, else the last lines — at most three. The cause words are
-English; a tool that says it otherwise is quoted by its last lines.
+scaffold, the validator, the build and the refresh: lines drawn only in box or
+block characters are dropped, then a Python traceback is quoted by the exception
+that closes it, else the lines naming an error, a refusal, a denial or something
+not found, else the last lines — at most three. The cause words are English; a
+tool that says it otherwise is quoted by its last lines.
 
 multivac never stages or commits the refreshed artifact. Graph output is
 regenerated locally; commit it only in dedicated chore commits, if your
@@ -325,29 +324,28 @@ project commits it at all.
 No grapher is declared by default. A newborn brain is two content files, and a
 graph of that is noise.
 
-## A declared grapher obliges something (MV-90)
+## A declared grapher obliges something
 
 Declaring a grapher used to be closer to a wish than a decision: the tool
 ran where it could, every failure was a notice that kept going, and a change
 could close with four declared repos ungraphed without a word. The SDD adapter
-had been gated at both ends since MV-56; this one had no gate anywhere.
+had already been gated at both ends; this one had no gate anywhere.
 
 Now `change close` refuses while a declared root on disk that multivac may
-write in (MV-125) has no graph — see
-[the graph gate](commands#the-graph-gate-mv-90). The cost of the old behaviour
-was invisible by design, which is exactly why it needed a gate: the door tells
-every agent to ask the graph before reading the tree, so a missing graph never
-failed — it degraded into agents grepping, which looks like working.
+write in has no graph — see [the graph gate](../commands/#the-graph-gate). The
+cost of the old behaviour was invisible by design, which is exactly why it
+needed a gate: the door tells every agent to ask the graph before reading the
+tree, so a missing graph never failed — it degraded into agents grepping, which
+looks like working.
 
 Two things arrived with it. The refresh at close reaches every declared repo
-on disk rather than the ones a change happened to name — except, since MV-125,
-a read-only one. And the door
-projected into each declared repo now carries the same graph block the brain's
-door has always carried, resolved with the grapher that applies to that repo —
-requiring an artifact in a repo whose own door never mentioned it is the tool
-talking to itself.
+on disk rather than the ones a change happened to name — except a read-only one.
+And the door projected into each declared repo now carries the same graph block
+the brain's door has always carried, resolved with the grapher that applies to
+that repo — requiring an artifact in a repo whose own door never mentioned it is
+the tool talking to itself.
 
-## And it is part of the repository (MV-103)
+## And it is part of the repository
 
 Existence was half the question. A graph that lives only in the author's working
 tree passes the gate above and helps nobody who clones the repo — where the door
@@ -355,7 +353,7 @@ still tells every agent to ask it. So `change close` refuses while a declared,
 present root where the grapher is installed has not **committed** its shared
 artifact. It asks the committed `HEAD` (`git cat-file -e HEAD:./<artifact>`),
 never the index, because a clone gets `HEAD`: a graph staged and never
-committed is refused (MV-124).
+committed is refused.
 
 ```txt
 graph: `change close points-expire` refused — 2 roots keep their graph out of the repository
@@ -377,7 +375,7 @@ ignored path reports nothing most people read, and `-f` is the wrong advice when
 the rule is what is wrong.
 
 **multivac stages nothing.** The gate names the command; you run it. The refresh
-module is kept out of git entirely (MV-50) — a refresher that touches your index
+module is kept out of git entirely — a refresher that touches your index
 turns a background convenience into something that edits your commit — and this
 gate does not relax that. It lives in its own module for the same reason.
 
@@ -425,15 +423,14 @@ the instruction, the agent runs it, and the gate checks what it left behind.
 Declaring `sdd: speckit` in a repo where spec-kit has never run used to be a
 deadlock. `change plan` refuses without `specs/<n>-<slug>/spec.md` — a SUFFIX
 match, so another change's directory that merely contains the slug is not proof
-of this one's step (MV-110); that file
-comes from `/speckit.specify`; that chat command does not exist until
-`specify init` has run — and `specify init` was what the blocked change was
-going to do. The only exits were `--no-sdd` and `sdd_auto: false`, both of
-which turn the gate off to fix the reason it fired.
+of this one's step; that file comes from `/speckit.specify`; that chat command
+does not exist until `specify init` has run — and `specify init` was what the
+blocked change was going to do. The only exits were `--no-sdd` and
+`sdd_auto: false`, both of which turn the gate off to fix the reason it fired.
 
 So an adapter also declares its **scaffold**: the vendor's own init command,
 verbatim. Whether it has already run in a repo is the tool's own state file,
-read by the probe above (MV-124), never a directory being there.
+read by the probe above, never a directory being there.
 
 | key | installed when | the tool's own init |
 | --- | --- | --- |
@@ -444,7 +441,7 @@ read by the probe above (MV-124), never a directory being there.
 declared repo on disk** where the tool is missing — the brain and the siblings
 alike — print it first, and skip a repo entirely where it is installed. A
 read-only repo, declared `managed: false` or a shallow clone, is skipped in
-silence (MV-125):
+silence:
 
 ```txt
 sdd speckit: .specify is missing in brain — running the tool's own init there: `specify init --here --integration claude --force --ignore-agent-tools`
@@ -465,9 +462,9 @@ sdd speckit: web is partial — .specify is there and .specify/integration.json 
 `--ignore-agent-tools` is there because spec-kit checks for the integration's
 own CLI before it writes anything: measured without the flag and without
 `claude` installed, the init exits 1 and writes nothing; with it, the init exits
-0. MV-123 names the version measured.
+0.
 
-Installed is a **per-root** question (MV-87). One repo somebody initialized by
+Installed is a **per-root** question. One repo somebody initialized by
 hand does not answer for the others, a repo whose init fails does not stop the
 repos after it, and a repo with `sdd: none` in its entry is never touched.
 
@@ -490,7 +487,7 @@ Six outcomes, all of them said out loud:
 | installed **in this repo** | nothing runs there, nothing is printed |
 | partial or unevaluable | nothing runs; a warning names the repo, the reason and the init to run by hand |
 | missing, no init recorded for that tool | the gap is stated per repo with the install line; **nothing is executed** |
-| missing, a required binary not found | one line per repo naming the binary, the install line and the vendor — the lookup reads each repo's own `node_modules/.bin` (MV-123) |
+| missing, a required binary not found | one line per repo naming the binary, the install line and the vendor — the lookup reads each repo's own `node_modules/.bin` |
 | ran, now installed | `scaffolded`, naming the repo |
 | ran, still not installed | the tool's cause, quoted, the command handed back — `left .specify partial (<reason>)` when it wrote half — the next repo still attempted, and the gate that follows still refuses on its own terms |
 
@@ -499,8 +496,8 @@ file is the fact, and the probe reads the file.
 
 Every declared repo on disk is scaffolded, each judged on its own state file;
 a repo declared but not on disk is skipped, and one with `sdd: none` is out of
-scope, as is a read-only one (MV-125). `--no-sdd` and `sdd_auto: false` turn the scaffold off with everything
-else; there is no separate switch.
+scope, as is a read-only one. `--no-sdd` and `sdd_auto: false` turn the scaffold
+off with everything else; there is no separate switch.
 
 {{< callout >}}
 A scaffold is **not a step**. It is the tool's own terminal command, run once
@@ -561,16 +558,15 @@ sdd opsx: `change plan add-user-auth` refused — openspec/changes/add-user-auth
 ```
 
 The gate searches the brain and each declared repo on disk that is not
-read-only (MV-125), because the specs of a change often live in the code repo
+read-only, because the specs of a change often live in the code repo
 rather than the brain. It
-judges each adapter only in the roots that resolve to it (MV-122): with
-`sdd: opsx` and `repos.web.sdd: speckit`, web is asked for the spec and the
-rest for the proposal, the point passes only when both do, and a root that
-resolves `none` is never searched. An adapter only uncloned repos resolve
-cannot be judged, so it refuses, naming them; one only read-only repos resolve
-is not gated, and one line names them. Both
-halves of that search are said out loud: the refusal lists the repos it looked
-in, and the pass names the one it found the artifact in —
+judges each adapter only in the roots that resolve to it: with `sdd: opsx` and
+`repos.web.sdd: speckit`, web is asked for the spec and the rest for the
+proposal, the point passes only when both do, and a root that resolves `none` is
+never searched. An adapter only uncloned repos resolve cannot be judged, so it
+refuses, naming them; one only read-only repos resolve is not gated, and one
+line names them. Both halves of that search are said out loud: the refusal lists
+the repos it looked in, and the pass names the one it found the artifact in —
 
 ```txt
 sdd opsx: api: openspec/changes/add-user-auth/proposal.md ok
@@ -606,11 +602,11 @@ sdd opsx: `change apply add-user-auth` refused — `openspec validate add-user-a
   or skip the gates without losing the door: `--no-sdd` for one run, `sdd_auto: false` in .multivac/config.yml for good
 ```
 
-It asks the one lookup (MV-123) in the repo that holds the artifact — `PATH`,
-then that repo's `node_modules/.bin` — so a project-local `npm i -D` is found,
-exactly as `doctor` and every other surface find it. And it never tells you to remove `sdd:` —
-that key also renders the whole flow into the brain door, so dropping it would
-delete the agent's instructions along with the check.
+It asks the one lookup in the repo that holds the artifact — `PATH`, then that
+repo's `node_modules/.bin` — so a project-local `npm i -D` is found, exactly as
+`doctor` and every other surface find it. And it never tells you to remove
+`sdd:` — that key also renders the whole flow into the brain door, so dropping
+it would delete the agent's instructions along with the check.
 
 ### Existence is the weakest proof
 

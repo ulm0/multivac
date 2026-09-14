@@ -26,11 +26,11 @@ Validation of seeded output runs in batches ordered by blast radius:
 accept / correct / discard, with whatever stays unvalidated remaining marked
 `proposed`.
 
-### That rule is ungateable, and MV-81 says so
+### That rule is ungateable, and the law says so
 
-`verify` cannot check *who* enacted a row, and MV-81 declares it **ungateable
+`verify` cannot check *who* enacted a row, and the law declares it **ungateable
 with its reason** rather than pretending. Two reasons, both properties of the
-tool rather than gaps in it. multivac never fabricates git identity (MV-04): it
+tool rather than gaps in it. multivac never fabricates git identity: it
 runs as whoever runs it, so an agent working on your machine commits under your
 name and nothing in the repository tells the two apart. And a git hook executes
 with the caller's permissions, so any gate installed at pre-commit is a gate the
@@ -40,7 +40,7 @@ meant to stop.
 Where it *is* enforced is the forge: the merge button, held by an account the
 agent does not have. Nothing lands on `main` directly.
 
-The half MV-81 does check is not **who** but **when**. A row that reaches
+The half that *is* checked is not **who** but **when**. A row that reaches
 `active` in the same commit that writes the code it anchors is a rule nobody
 reviewed on its own — the claim and its evidence arrive together under one hand
 — so `verify` refuses that commit and names the files to unstage. It decides

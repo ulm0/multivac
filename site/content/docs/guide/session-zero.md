@@ -128,8 +128,8 @@ api: door + hooks updated
 Writes the brain door and each consumer repo's door (managed block only —
 hand-written content around it is untouched), and installs the git hooks in
 every declared repo on disk — except a read-only one, declared `managed: false`
-or a shallow clone, which gets nothing (MV-125). From here run `mvac verify`
-for the baseline; every next decision is a `mvac change new`.
+or a shallow clone, which gets nothing. From here run `mvac verify` for the
+baseline; every next decision is a `mvac change new`.
 
 ## From scratch: interview → first change
 

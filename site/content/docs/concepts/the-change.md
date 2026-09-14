@@ -105,7 +105,7 @@ It gets its own file rather than a section of the law because the law is
 parsed — `verify` reads its anchors, `plan` reads its state cells — and the
 ritual is prose the tool only ever prints.
 
-## Planned — a change that has not started (MV-89)
+## Planned — a change that has not started
 
 A roadmap is the list of things an ecosystem intends to do, and the brain
 already keeps that list. Every change file is born `open`, which means a branch
@@ -146,11 +146,11 @@ Three properties make the state safe to use rather than decorative:
 Every later step — `plan`, `apply`, `land`, `close` — refuses a change that has
 not started, and names `change new` as the step that comes first.
 
-See [`roadmap`](../reference/commands#roadmap-add-slug-title---horizon-nownextlater)
-for the command, and [Running changes](../guide/running-changes#roadmap--write-it-down-without-starting-it)
+See [`roadmap`](../../reference/commands/#roadmap-add-slug-title---horizon-nownextlater)
+for the command, and [Running changes](../../guide/running-changes/#roadmap--write-it-down-without-starting-it)
 for the flow.
 
-### The ritual arrives with candidates (MV-98)
+### The ritual arrives with candidates
 
 `init` used to write the ritual as a bare comment, and facing a blank page most
 people write nothing — so the closing step printed nothing forever. It now
@@ -166,8 +166,9 @@ none: its work is automatic and a gate already requires its artifact, so putting
 it in the ritual would move a checked thing onto a poster.
 
 The ritual is **authored** — written once by you, never overwritten by any
-command. That is the opposite of [`flow.md`](../reference/commands), which is
-derived and rewritten whole on every projection.
+command. That is the opposite of
+[`flow.md`](../../reference/commands/#multivacflowmd--what-your-declarations-oblige),
+which is derived and rewritten whole on every projection.
 
 ## The subcommands
 

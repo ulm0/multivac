@@ -8,11 +8,11 @@ person in front of it happens to use.
 
 The canonical door is **`AGENTS.md`** at the repo root — in the brain and in
 every declared repo multivac may write in (not `managed: false`, not a shallow
-clone, MV-125). Everything else on this page is a projection of that one
-file. Adding a harness is an entry in `src/adapters/registry.ts`, shipped
-inside the package: `doors` and `doctor` dispatch on the entry's `kind`,
-never on its name, so a new harness is data and nothing else. Every entry
-records the vendor doc it was verified against.
+clone). Everything else on this page is a projection of that one file. Adding a
+harness is an entry in `src/adapters/registry.ts`, shipped inside the package:
+`doors` and `doctor` dispatch on the entry's `kind`, never on its name, so a new
+harness is data and nothing else. Every entry records the vendor doc it was
+verified against.
 
 Select them in `.multivac/config.yml`:
 
@@ -43,9 +43,8 @@ Everything multivac writes into a file it does not fully own lands between
 `<!-- multivac:begin -->` and `<!-- multivac:end -->`. Content outside that
 block is yours and is never touched — including in a `stub` door, which reads
 the file before it writes it and adds its frontmatter only when creating the
-file (MV-108). Before MV-108 the stub kind wrote its file whole, and that
-sentence was false for `.github/copilot-instructions.md` and
-`.cursor/rules/multivac.mdc`.
+file. The stub kind used to write its file whole, which made that sentence false
+for `.github/copilot-instructions.md` and `.cursor/rules/multivac.mdc`.
 
 ## What one run looks like
 
@@ -85,7 +84,7 @@ where the brain is mounted, what binds, and that a change may cross repos.
 | file written | `CLAUDE.md` |
 | kind | `symlink` → `AGENTS.md` |
 | skill | `.claude/skills/multivac/` |
-| hook config | `.claude/settings.json` — `hooks.SessionStart` and `hooks.PostToolUse` → `mvac verify`, wrapped per event so a red run reaches the model (MV-112) |
+| hook config | `.claude/settings.json` — `hooks.SessionStart` and `hooks.PostToolUse` → `mvac verify`, wrapped per event so a red run reaches the model |
 | detected by | an existing `CLAUDE.md` |
 | source | <https://code.claude.com/docs/en/memory> |
 
@@ -121,15 +120,14 @@ policy, not `--strict`.
 The skill directory is a **mirror**, not an accretion: every run deletes
 anything under `.claude/skills/multivac/` that the package no longer ships —
 including a file you put there yourself, because nothing on disk says who
-wrote it (MV-73). Your own skills live beside it: `doors` never touches a
-sibling under `.claude/skills/`, only the one directory it writes.
-What multivac owns here is the individual command, matched exactly — never an
-entry that merely mentions it — and the set it owns is the three commands
-multivac has written, so a brain projected before MV-112 is upgraded in place
-rather than gaining a second gate beside the mute one. The wrapping differs per
-event because Claude Code reads each hook back on one channel only; the
-contract and its reasons are in
-[hooks](/docs/reference/hooks/#harness-hooks--the-early-ceiling).
+wrote it. Your own skills live beside it: `doors` never touches a sibling under
+`.claude/skills/`, only the one directory it writes. What multivac owns here is
+the individual command, matched exactly — never an entry that merely mentions it
+— and the set it owns is the three commands multivac has written, so a brain
+projected with the unwrapped command is upgraded in place rather than gaining a
+second gate beside the mute one. The wrapping differs per event because Claude
+Code reads each hook back on one channel only; the contract and its reasons are
+in [hooks](/docs/reference/hooks/#harness-hooks--the-early-ceiling).
 `mvac verify --strict` is your hook and stays
 untouched, commands you add beside multivac's stay in place, and the matcher on
 an entry is yours. The rule and the notice it prints are in

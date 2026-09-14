@@ -80,7 +80,7 @@ Translate:
 | `\b` | `(^|[^[:alnum:]_])` … `([^[:alnum:]_]|$)` |
 
 Four more constructs are refused for the same reason — they mean something in
-JavaScript and something else, or nothing, to `git grep` (MV-109):
+JavaScript and something else, or nothing, to `git grep`:
 
 | Written | Why it is refused |
 | --- | --- |

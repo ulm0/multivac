@@ -27,9 +27,9 @@ by multivac.** Each command declares what it takes once, as data; citty parses
 that declaration and the refusal below reads the same one, so adding a flag is
 one edit. The refusal is not delegated: measured, citty parses an undeclared
 flag into a key nobody declared and hands it over, which is precisely the
-silence MV-85 exists to end — so the check runs first, and the parser never
-sees an argument the command did not declare. `--help` stays this tool's own
-(MV-69); citty's generated usage is not used.
+silence the refusal exists to end — so the check runs first, and the parser
+never sees an argument the command did not declare. `--help` stays this tool's
+own; citty's generated usage is not used.
 
 Two global flags: `--help` / `-h` prints the block above and exits 0;
 `--version` / `-v` prints the version and exits 0. Running `mvac` with no
@@ -85,7 +85,7 @@ the law has to come out of a human. Both protocols live in the skill —
 | --- | --- | --- |
 | `--provider a,b` | comma-separated registry names | appended to `doors:` in the config (`agents` is always included) |
 | `--sdd name` | `opsx` \| `speckit` | written as `sdd:` in the config |
-| `--grapher name` | `graphify` \| `codegraph`, or a name under `graphers:` in the config already there | written as `grapher:` in the config; any other name is refused before anything is created (MV-122) |
+| `--grapher name` | `graphify` \| `codegraph`, or a name under `graphers:` in the config already there | written as `grapher:` in the config; any other name is refused before anything is created |
 | `--quiet` | — | no report, no banner; refusals still go to stderr |
 
 The banner is the mark: lit lamps are verified claims, unlit ones unanchored,
@@ -96,8 +96,8 @@ git and harness hooks, where it would be noise. It is skipped when stdout is
 not a terminal, and `NO_COLOR` keeps the drawing while dropping the colour
 (`#` lit, `.` unlit, `*` in flight).
 
-Both `--flag value` and `--flag=value` work, and parse to the same value
-(MV-105). A flag with no value, or an unknown flag, is refused:
+Both `--flag value` and `--flag=value` work, and parse to the same value.
+A flag with no value, or an unknown flag, is refused:
 
 ```txt
 init: unknown flag --providers — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet
@@ -105,8 +105,8 @@ init: unknown flag --providers — known: --provider <a,b>, --sdd <name>, --grap
 
 An adapter name nothing can honour is refused too, exit 2, before anything is
 created: `--sdd` against the registry, `--grapher` against the verified
-graphers plus the `graphers:` of a config already at the target (MV-122).
-`none` is neither — leaving the flag out declares no adapter:
+graphers plus the `graphers:` of a config already at the target. `none` is
+neither — leaving the flag out declares no adapter:
 
 ```txt
 init: unknown --grapher graphfy — known: graphify, codegraph
@@ -133,7 +133,7 @@ had not installed. `mvac doors` re-runs that projection after you edit
 open format every other door projects *from*, not a tool anyone could install,
 and `AGENTS.md` is written unconditionally.
 
-**The door `init` writes is the door `doors` writes** (MV-102) — one rendering,
+**The door `init` writes is the door `doors` writes** — one rendering,
 built from the config, so it already names the declared grapher and its query
 verbs, the declared SDD and its flow, and the repos in the ecosystem. Running
 `mvac doors` straight after `init` changes nothing. It used to rewrite the whole
@@ -199,7 +199,7 @@ rewritten.
 init: .multivac/config.yml kept — edit it directly, then `multivac doors`
 ```
 
-### Re-running it (MV-91)
+### Re-running it
 
 Safe, and narrow in what it will do. Nothing is appended twice and nothing is
 destroyed:
@@ -231,7 +231,7 @@ A flag that **agrees** is accepted and reported as redundant. A flag naming an
 adapter the config declares none of is reported with how to make it stick,
 never refused — nothing disagrees, and the config is only ever edited by hand.
 
-**The door names what the config declares, and nothing else** (MV-101). That
+**The door names what the config declares, and nothing else.** That
 includes the case just above: a flag the config does not answer is reported and
 does not reach the door, so `init` and `doors` never name different tools in the
 same repo. They used to — `init --sdd speckit` on a config declaring no `sdd:`
@@ -300,30 +300,31 @@ $ mvac verify
 
 Two of those lines are printed by **every** run, whatever the claims say. A
 `read` line per repo names the ref or branch and its sha, so what was read is
-never inferred. And one `enact` line answers MV-81's question about the commit
-being composed: a row reaching `active` beside the code it anchors is refused,
-a row enacted alone is named, and when nothing is staged the line says the
-question could not be asked rather than implying an answer.
+never inferred. And one `enact` line asks whether a row is enacted alone in the
+commit being composed: a row reaching `active` beside the code it anchors is
+refused, a row enacted alone is named, and when nothing is staged the line says
+the question could not be asked rather than implying an answer.
 
 ```txt
-  enact     MV-91 → active, alone in this commit — the row is reviewable on its own
-  enact     not answered — nothing staged, so no commit is being composed; MV-81's check reads the index against HEAD
+  enact     INV-07 → active, alone in this commit — the row is reviewable on its own
+  enact     not answered — nothing staged, so no commit is being composed; … reads the index against HEAD
 ```
 
-Beside it, and from the same read, a `law` line answers MV-107: the law's death
-is gated the way its birth is. A row that was `active` at HEAD and is gone from
-the index refuses the commit, and so does an index that removes the law file.
-Retiring a row is not death — it is the sanctioned way for a rule to stop
-applying — and a `proposed` row disappearing is a reservation being given back,
-which `change close --abandon` does by design. Neither is refused.
+Beside it, and from the same read, a `law` line asks the opposite question,
+whether the commit removes law, because the law's death is gated the way its
+birth is. A row that was `active` at HEAD and is gone from the index refuses the
+commit, and so does an index that removes the law file. Retiring a row is not
+death — it is the sanctioned way for a rule to stop applying — and a `proposed`
+row disappearing is a reservation being given back, which
+`change close --abandon` does by design. Neither is refused.
 
 ```txt
-  law       REFUSED MV-91 was active and is gone · blocking — a row stops applying by being RETIRED, in the open, not by being deleted: …
+  law       REFUSED INV-07 was active and is gone · blocking — a row stops applying by being RETIRED, in the open, not by being deleted: …
   law       REFUSED .multivac/invariants.md is removed by this commit · blocking — a brain with no law verifies nothing and says so in green. …
 ```
 
 All three index-reading lines — `enact`, `config` and `law` — read the index
-the commit is being composed in, not the one on disk (MV-106). They differ:
+the commit is being composed in, not the one on disk. They differ:
 measured on git 2.55, `git commit -a` composes in `.git/index.lock` and a
 pathspec commit in `.git/next-index-NNN.lock`, so a check reading `.git/index`
 answers about a commit nobody is making.
@@ -335,7 +336,7 @@ answers about a commit nobody is making.
 | `--worktree` | read every declared repo's **working tree** instead of its channel ref — local state across the whole ecosystem, on purpose. |
 | `--repo <key>` | scope to one declared repo. **Only meaningful from a consumer repo** — from a brain it is ignored with a warning. |
 
-### What each run reads (MV-53)
+### What each run reads
 
 **The brain verifies the ecosystem as published; a consumer verifies what it
 is about to commit.** Two contexts, two scopes:
@@ -357,11 +358,11 @@ ref or the branch and its short sha; a checkout parked off its channel is
 named as such, so an off-channel repo is legible rather than a silent premise
 behind a mysterious verdict.
 
-**A channel ref is a local snapshot, so its age is on the line** (MV-54).
-`verify` never touches the network: `origin/main` is whatever the last
-`mvac repos sync` fetched, and a fix merged upstream an hour ago is simply not
-there yet. Without the age, that reads as a red in the ecosystem instead of a
-stale ref on this machine.
+**A channel ref is a local snapshot, so its age is on the line.** `verify` never
+touches the network: `origin/main` is whatever the last `mvac repos sync`
+fetched, and a fix merged upstream an hour ago is simply not there yet. Without
+the age, that reads as a red in the ecosystem instead of a stale ref on this
+machine.
 
 The brain's own repo gets the mirror of the same honesty. It is read as a
 working tree on purpose — but a brain **behind** its own channel judges a
@@ -392,7 +393,7 @@ $ mvac verify --worktree
 ```
 
 Which branch each repo is parked on, and whether that is its channel, is also
-a `doctor` line — see [`doctor`](#doctor) below.
+a `doctor` line — see [`doctor`](#doctor---strict) below.
 
 Per-leg states:
 
@@ -592,8 +593,8 @@ $ mvac count 'api:db/migrations/*.sql /balance/'
 
 Same bytes, too, not only the same parser: `count` resolves the repos it reads
 through the function `verify` uses, so a sibling is read at its channel ref and
-the brain at its working tree (MV-53), and it prints the same `read` line per
-repo. Before MV-109 it built its own handles with no ref — so it read working
+the brain at its working tree, and it prints the same `read` line per
+repo. It used to build its own handles with no ref — so it read working
 trees while the gate read channels, and a number pinned from it could disagree
 with the number that gates, with nothing on screen to explain the gap.
 
@@ -626,12 +627,12 @@ There is no ratchet line: `each` has no count to pin.
 
 ## `doors`
 
-Takes one flag, `--adopt`, and REFUSES anything else with exit 2 (MV-85):
-nothing after `doors` is ignored.
+Takes one flag, `--adopt`, and REFUSES anything else with exit 2: nothing after
+`doors` is ignored.
 
 | flag | effect |
 | --- | --- |
-| `--adopt` | re-project **and** record the version that did it in `.multivac/projected.yml`, which is what clears MV-86's skew notice. Bare `doors` re-projects and leaves the record alone, on purpose: people run `doors` after editing `doors:` or `grapher:`, and restamping there would make the notice vanish for a reason unrelated to the upgrade. |
+| `--adopt` | re-project **and** record the version that did it in `.multivac/projected.yml`, which is what clears the notice that the binary and the projections have drifted. Bare `doors` re-projects and leaves the record alone, on purpose: people run `doors` after editing `doors:` or `grapher:`, and restamping there would make the notice vanish for a reason unrelated to the upgrade. |
 
 ```txt
 $ mvac doors
@@ -639,7 +640,7 @@ brain: door + hooks updated
 api: door + hooks updated
 api: notice: CLAUDE.md exists as a regular file — merge it into AGENTS.md and remove it to get the symlink
 payments: notice: not found at ../payments — run `multivac repos sync` to clone it
-ledger: not managed, read-only — nothing projected (MV-125)
+ledger: not managed, read-only — nothing projected …
 ```
 
 For the brain and each declared repo on disk: writes the managed block in
@@ -648,13 +649,13 @@ hook config where the target declares them, and writes the git hook shims plus
 `core.hooksPath`.
 
 A read-only repo — declared `managed: false`, or a shallow clone — gets none of
-it, and one line says so (MV-125). A door or hooks projected there before it
-became read-only are left in place. Repos not on disk are reported and skipped,
-exit 0. `doors` writes working
-trees — never commits, never clones. An invalid config exits **1** here (not
-2). Per-target detail: [Agent integrations](../integrations).
+it, and one line says so. A door or hooks projected there before it became
+read-only are left in place. Repos not on disk are reported and skipped, exit 0.
+`doors` writes working trees — never commits, never clones. An invalid config
+exits **1** here (not 2). Per-target detail:
+[Agent integrations](../integrations).
 
-### `.multivac/flow.md` — what your declarations oblige (MV-96)
+### `.multivac/flow.md` — what your declarations oblige
 
 `doors` writes a page sorting this ecosystem's obligations into three groups:
 
@@ -693,7 +694,7 @@ repos      1/2 present · payments missing → `multivac repos sync` (git clone 
 branches   brain: on main @ abc1234 — brain==code, verify reads this working tree; 2 behind its own channel origin/main @ def5678 → git -C . pull · api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
 pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain) · payments: not cloned
 hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac on PATH)
-enact      who enacts is not a fact on disk — multivac never fabricates git identity (MV-04), so an agent commits as the person … UNGATEABLE by design (MV-81), not an oversight; enforcement is the forge's merge button
+enact      who enacts is not a fact on disk — multivac never fabricates git identity …, so an agent commits as the person … UNGATEABLE by design …, not an oversight; enforcement is the forge's merge button
 law        118 anchors parse
 untracked  nothing build-critical untracked
 ```
@@ -701,13 +702,13 @@ untracked  nothing build-critical untracked
 | line | reports |
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
-| `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file (MV-124) — binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything, and so does a read-only one (MV-125): `@ <key>: not managed, read-only` or `shallow, read-only`, with no state and no command to run. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no root resolves an `sdd`** (MV-122) |
-| `grapher` | one line per scope (brain + each present repo): the grapher's state and whether its artifact is shared or local (MV-124), binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED` (MV-125). Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** (MV-122) |
-| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in (MV-125) — whose `sdd` and `grapher` lines say `out of scope, not a gap` in place of a state |
+| `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything, and so does a read-only one: `@ <key>: not managed, read-only` or `shallow, read-only`, with no state and no command to run. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no root resolves an `sdd`** |
+| `grapher` | one line per scope (brain + each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** |
+| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `sdd` and `grapher` lines say `out of scope, not a gap` in place of a state |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
-| `pins` | the brain mount in each consumer, and how far behind its channel it is — a read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write (MV-125) |
+| `pins` | the brain mount in each consumer, and how far behind its channel it is — a read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
-| `enact` | printed on every run, and it reports an **absence**: who enacts a row is not a fact on disk. multivac never fabricates a git identity (MV-04), and a hook runs with the caller's permissions, so a gate installed here is one the same process can skip. Ungateable by design (MV-81) rather than missing — the enforcement is the forge's merge button, held by an account the agent does not have. The half that IS checked — enactment landing in its own commit — is `verify`'s `enact` line, read from the index |
+| `enact` | printed on every run, and it reports an **absence**: who enacts a row is not a fact on disk. multivac never fabricates a git identity, and a hook runs with the caller's permissions, so a gate installed here is one the same process can skip. Ungateable by design rather than missing — the enforcement is the forge's merge button, held by an account the agent does not have. The half that IS checked — enactment landing in its own commit — is `verify`'s `enact` line, read from the index |
 | `untracked` | brain paths a `.gitignore` swallows (WARNING — the law cannot ship), then untracked, non-ignored files that look build-critical |
 
 **Installed is not enforcing.** The shims exit 0 when nothing on the machine
@@ -774,8 +775,7 @@ ledger       present  ../ledger — not managed, read-only
 ```
 
 A repo declared `managed: false`, or whose clone is shallow, is marked
-read-only: multivac reads, verifies and fetches it, and never writes there
-(MV-125).
+read-only: multivac reads, verifies and fetches it, and never writes there.
 
 `repos` and `repos list` are the same thing. `repos sync` clones every
 declared-but-missing repo that has a `url`, and fetches every repo already on
@@ -796,8 +796,7 @@ that reason.
 `--shallow` adds `--depth 1` — fine for verify-only machines, not enough for
 `change`, which needs to branch. A shallow clone is read-only until
 `git fetch --unshallow`: nothing is scaffolded, built or projected there, no
-gate judges it, and a change naming it is refused (MV-125). The clone line says
-so:
+gate judges it, and a change naming it is refused. The clone line says so:
 
 ```txt
 payments: cloned git@example.com:acme/payments.git -> ../payments (shallow) — read-only: multivac will not write there
@@ -882,7 +881,7 @@ mvac: <slug> is already archived at .multivac/changes/archive/<slug>.md — this
 mvac: unknown horizon "someday" — use now, next, later
 ```
 
-### `sync` (MV-99)
+### `sync`
 
 Projects the change files to the declared tracker. **One way, always**: the
 change files are the source, and nothing the tracker says ever reaches them.
@@ -916,8 +915,8 @@ yet — they need a second reader of the SDD tool's task list.
 No command refuses an operation because its subject was not recorded first.
 There is no flag to require it and no configuration key to turn it on:
 requiring a plan is unverifiable intent, the same category the ritual belongs
-to, and MV-89 carries an `absent` leg over `src/` so the refusal cannot be
-introduced without the law failing.
+to, and the law carries an `absent` leg over `src/`, so the refusal cannot be
+introduced without `verify` failing.
 
 Starting a planned change is [`change new`](#new), which promotes the file that
 is already there. Every later step refuses one that has not started:
@@ -943,8 +942,8 @@ flags: --no-sdd (skip the SDD steps AND their gates), --no-grapher (close only:
 ```
 
 Exactly four flags, all listed above. `change` reads the same shared refusal
-every other command reads (MV-105), so an unknown flag, a single-dash token and
-a surplus positional all exit 2:
+every other command reads, so an unknown flag, a single-dash token and a surplus
+positional all exit 2:
 
 ```txt
 change: unknown flag "--force" — change takes <sub> <slug> ["<title>"], --no-sdd, --no-grapher, --landed <repo>, --abandon
@@ -993,7 +992,7 @@ cannot open points-expire — bookkeeping paths are untracked or modified: .mult
   then re-run: multivac change new points-expire "points expire"
 ```
 
-#### A brain behind its channel (MV-94)
+#### A brain behind its channel
 
 `new` and `apply` report any declared repo whose pin is behind its channel,
 before anything else happens:
@@ -1102,7 +1101,7 @@ An existing branch is reused, not a failure:
 api: branch points-expire already exists — switched to it, reusing
 ```
 
-#### What can be worked at once (MV-95)
+#### What can be worked at once
 
 When the ready stage holds more than one repo, `apply` says so:
 
@@ -1171,8 +1170,8 @@ channel: every declared claim resolves at origin/main 330cc3b (last fetch 2h ago
 ```
 
 The read **offers** the conclusion; it never writes the record. A channel ref
-is only as true as the last fetch (MV-54), so the negative says both things it
-can mean, and published content proves publication rather than authorship:
+is only as true as the last fetch, so the negative says both things it can mean,
+and published content proves publication rather than authorship:
 
 ```txt
 channel: not every declared claim resolves at origin/main 330cc3b (never fetched here) — not landed, or not fetched: `multivac repos sync`, then re-read
@@ -1188,7 +1187,7 @@ Recording the last repo arms `verify --strict`, and `land` says so — CI runs
 that gate on the channel, so a change left open turns main red:
 
 ```txt
-every repo is now landed — once every declared claim resolves, `verify --strict` refuses points-expire as unclosed (MV-80), here and in CI, until: multivac change close points-expire
+every repo is now landed — once every declared claim resolves, `verify --strict` refuses points-expire as unclosed …, here and in CI, until: multivac change close points-expire
 ```
 
 A repo with no `origin` is told to land locally instead of to push:
@@ -1244,10 +1243,10 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] the public site ships before the backend
 ```
 
-#### The graph gate (MV-90)
+#### The graph gate
 
 A declared grapher must have left a graph in every declared root on disk that
-is not read-only (MV-125), or `close` refuses:
+is not read-only, or `close` refuses:
 
 ```txt
 graph: `change close points-expire` refused — 2 roots have no graph
@@ -1262,24 +1261,23 @@ first, so the first close in a fresh ecosystem builds rather than refuses.
 
 A root whose required grapher binary is found on neither PATH nor that root's
 `node_modules/.bin` also refuses, naming the binary, the install line and the
-vendor's repository (MV-123) — a gate that cannot be evaluated refuses rather
-than passes.
-A root with `grapher: none`, an ecosystem with no grapher, and an UNVERIFIED
-adapter are all out of scope: nothing is required of a tool whose artifact path
-would have to be guessed.
+vendor's repository — a gate that cannot be evaluated refuses rather than
+passes. A root with `grapher: none`, an ecosystem with no grapher, and an
+UNVERIFIED adapter are all out of scope: nothing is required of a tool whose
+artifact path would have to be guessed.
 
 **It asks existence, never freshness.** A stale graph passes, deliberately:
 currency would have to be defined, and every definition is wrong on a fresh
 clone where every file is newer than the artifact.
 
-**And the graph must be in the repository, not just on disk** (MV-103). A second
+**And the graph must be in the repository, not just on disk.** A second
 refusal follows the first: a root whose shared artifact is installed but not in
-its committed `HEAD` — staged counts for nothing, since a clone gets `HEAD`
-(MV-124) — or is matched by an ignore rule keeps its graph out of every clone,
-while the door there still points at one. The message names each root, the path
-and the commands; multivac never runs them, because the refresh module is kept
-out of git entirely (MV-50). A local artifact, codegraph's database, is never
-asked: it is built in each checkout.
+its committed `HEAD` — staged counts for nothing, since a clone gets `HEAD` —
+or is matched by an ignore rule keeps its graph out of every clone, while the
+door there still points at one. The message names each root, the path and the
+commands; multivac never runs them, because the refresh module is kept out of
+git entirely. A local artifact, codegraph's database, is never asked: it is
+built in each checkout.
 
 ```txt
 graph: `change close points-expire` refused — 2 roots keep their graph out of the repository
@@ -1356,13 +1354,13 @@ help <command>` prints that command's usage; bare `mvac help` lists topics.
 | --- | --- |
 | **0** | ok — including every degraded state: unevaluated repos, absent adapters, missing repos, unsupported door targets, non-blocking broken legs |
 | **1** | a check failed or a gate refused: blocking leg broken/vacuous, anchor parse error, stale pin under `staleness: block`, `close` before every repo landed, a claim not green, a clone that failed, invalid config **in `doors` and `doctor`**, a disarmed enforcement gate under **`doctor --strict`** |
-| **2** | usage or environment: no command, unknown command, **any argument a command does not declare** — a flag or a positional — unknown subcommand, missing or invalid `.multivac/config.yml`. The refusal names the argument and states what the command takes, and comes before the command does anything (MV-85). |
+| **2** | usage or environment: no command, unknown command, **any argument a command does not declare** — a flag or a positional — unknown subcommand, missing or invalid `.multivac/config.yml`. The refusal names the argument and states what the command takes, and comes before the command does anything. |
 
 A command takes what it declares and refuses the rest. `mvac doctor --sttrict`
 used to run the report without the assertion and exit 0; `mvac doctor /other/repo`
 used to report on the working directory, because `doctor` declares no directory
 and the argument was discarded. Both refuse now. What each command declares is
-its `--help` (MV-69), and that is the list the refusal is measured against.
+its `--help`, and that is the list the refusal is measured against.
 
 ```txt
 $ mvac doctor --sttrict
