@@ -42,7 +42,7 @@ repos:
     channel: origin/release
 ```
 
-## Changing it needs an open change (MV-97)
+## Changing it needs an open change
 
 This file decides which repos exist, which adapters bind and which gates run.
 Every one of those is as load-bearing as a law row, so a staged modification is
@@ -88,7 +88,7 @@ Naming this key `providers` would put a non-provider at the head of every
 list.
 
 **Without it:** `doors` still writes the canonical `AGENTS.md` into the brain
-and every repo on disk that is not read-only (MV-125), because that write is
+and every repo on disk that is not read-only, because that write is
 unconditional — but no symlink,
 no stub, no skill, no harness hook is installed for any vendor. `doctor` says
 so:
@@ -116,7 +116,7 @@ Selects the spec-driven-development adapter whose `propose` / `apply` /
 `archive` steps run inside the change lifecycle. See
 [Graphers and SDD](../graphers-and-sdd). It applies to every root that does
 not declare its own: a repo's `sdd:` wins in that repo, and the brain's own
-entry in the brain (MV-122). `none` declares no SDD.
+entry in the brain. `none` declares no SDD.
 
 **Without it, and with no repo declaring one:** silence. No SDD step runs,
 `doctor` prints no `sdd` line at all. Not declaring is different from
@@ -154,7 +154,7 @@ editing the config.
 | example | `grapher: graphify` |
 
 The code-graph tool for every root that does not declare its own: a repo's
-`grapher:` wins in that repo, and the brain's own entry in the brain (MV-122).
+`grapher:` wins in that repo, and the brain's own entry in the brain.
 `none` declares no grapher, here or on a repo, and is never read as a tool's
 name. The name must be one multivac **speaks** — `graphify` or
 `codegraph` — or one you declare yourself under [`graphers`](#graphers).
@@ -206,8 +206,8 @@ refuse my close over it*. Neither substitutes for the other, and an operator
 forced to un-declare their tool to get a change closed will un-declare it
 permanently.
 
-See [MV-90](#) and `--no-grapher` in [commands](commands#change-sub-slug-args)
-for the per-run form.
+See [the graph gate](../commands/#the-graph-gate) and `--no-grapher` in
+[commands](../commands/#change-sub-slug-args) for the per-run form.
 
 ### `graphers`
 
@@ -234,7 +234,7 @@ graphers:
 `artifact` and `refresh` are required. A declaration also overrides a shipped
 registry entry — you know your own install better than the table does. The one
 name you cannot declare is `none`: it means no grapher, so `graphers.none` is
-refused at load (MV-122).
+refused at load.
 
 **Without it:** a `grapher:` naming an unverified tool is reported as
 unverified, with these exact fields to fill in, and nothing is run.
@@ -267,9 +267,8 @@ list.
 | default | `true` |
 | example | `managed: false` |
 
-Whether multivac may write in this repo (MV-125). Declare a repo another team
-owns, with protected branches, so anchors can read it — and say it is not
-yours:
+Whether multivac may write in this repo. Declare a repo another team owns, with
+protected branches, so anchors can read it — and say it is not yours:
 
 ```yaml
 repos:
@@ -294,7 +293,7 @@ A change that names it is refused by `change plan` and `change apply` before
 anything is cloned, branched or bumped:
 
 ```txt
-payments: not managed, read-only — drop it from .multivac/changes/points-expire.md, or remove `managed: false` through a change (MV-97)
+payments: not managed, read-only — drop it from .multivac/changes/points-expire.md, or remove `managed: false` through a change …
 ```
 
 **The shallow twin.** A clone git reports shallow — `repos sync --shallow`
@@ -417,16 +416,16 @@ anyone can still amend. It only takes effect the next time `doors` (or
 **The ecosystem as published.** Per-repo `repos.<key>.channel` overrides it.
 The key answers two questions:
 
-1. **Which bytes a brain-scoped `verify` judges** (MV-53). Every declared
-   repo is read at its channel ref — resolved *in that repo* — not at its
-   working tree, so a sibling parked on a WIP branch never reddens the
-   brain's law. The brain's own repo is the exception: always its working
-   tree, because that is the commit the run gates. Undeclared, this defaults
-   to `origin/main`; a ref that does not resolve there falls back to the
-   working tree and says so on that repo's `read` line. `--worktree` forces
-   the working-tree read across the whole ecosystem. The ref is a **local**
-   remote-tracking snapshot — `verify` never fetches — so the `read` line also
-   names how old it is; `mvac repos sync` is what refreshes it.
+1. **Which bytes a brain-scoped `verify` judges**. Every declared repo is read
+   at its channel ref — resolved *in that repo* — not at its working tree, so a
+   sibling parked on a WIP branch never reddens the brain's law. The brain's own
+   repo is the exception: always its working tree, because that is the commit
+   the run gates. Undeclared, this defaults to `origin/main`; a ref that does
+   not resolve there falls back to the working tree and says so on that repo's
+   `read` line. `--worktree` forces the working-tree read across the whole
+   ecosystem. The ref is a **local** remote-tracking snapshot — `verify` never
+   fetches — so the `read` line also names how old it is; `mvac repos sync` is
+   what refreshes it.
 2. **What each consumer's brain-mount pin is compared against**, resolved
    **in the brain checkout**. This one has no default: undeclared, `verify`
    skips the staleness check for that repo entirely — there is nothing to
@@ -475,13 +474,13 @@ requires: ">=X.Y.Z"
 
 Grammar is `>=X.Y.Z` and nothing else. A floor gets a floor's grammar: `^0.3` or
 `>=0.3 <1` needs a semver range parser, which would be a third runtime
-dependency, and the law pins the count (MV-02). A malformed value is **refused by name**, not
-ignored — silently dropping it would leave you believing a gate is declared that
-is not.
+dependency, and the law pins the count. A malformed value is **refused by
+name**, not ignored — silently dropping it would leave you believing a gate is
+declared that is not.
 
 A binary below the floor gets the loudest notice on every run and is **not
 refused**. Nothing here changes an exit code: enforcement degrades, it never
-locks you out (MV-86).
+locks you out.
 
 ### `repos`
 
@@ -506,7 +505,7 @@ repos:
     channel: origin/release            # overrides the global channel
   ledger:
     path: ../ledger
-    managed: false                     # another team's: read and verified, never written (MV-125)
+    managed: false                     # another team's: read and verified, never written
 ```
 
 **`sdd:` per repo.** Declared adapters reach every declared repo on disk that
@@ -529,7 +528,7 @@ works the same way, `grapher: none` included.
 
 **The brain's own entry.** In a brain that is its own code repo, the `brain`
 entry decides the brain's adapters exactly as any repo's entry decides its own,
-and a top-level `none` never overrides a repo's own adapter (MV-122):
+and a top-level `none` never overrides a repo's own adapter:
 
 ```yaml
 grapher: graphify
@@ -622,7 +621,7 @@ Upgrading the binary does not upgrade a brain: `npm i -g multivac@latest`
 replaces the projector, not the projections it already wrote. The record is what
 lets every command tell you the two have drifted, and name the command that
 closes it. It is **provenance, not integrity** — it says which version wrote
-these files, never that they still are what was written (MV-86).
+these files, never that they still are what was written.
 
 ## Layout
 

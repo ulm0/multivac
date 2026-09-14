@@ -1,5 +1,23 @@
 <!--
 Sync Impact Report
+Version change: 2.0.2 → 3.0.0 (MAJOR — a principle is redefined: Principle
+I's citation duty stops at the pages under site/content/, which now name no
+law ID)
+Modified principles:
+  - I. A Claim Nobody Checks Decays: IDs are cited in the law table and in
+    every record the brain keeps outside the site's own pages. A new
+    paragraph says those pages, everything under site/content/, explain
+    behaviour in plain words, name no ID and bind nothing, and still move
+    with the rule they explain; the changelog the site mounts keeps its IDs.
+    The rationale gains why an ID is noise to the site's reader. MV-126
+    states the rule; MV-111 carries the amendment.
+Modified sections: Governance footer, now 3.0.0, last amended 2026-09-14.
+Templates requiring update: none — no template says where IDs are cited
+Follow-up TODOs: none
+-->
+
+<!--
+Sync Impact Report
 Version change: 2.0.1 → 2.0.2 (PATCH — a statement of fact corrected; no
 principle added, removed or redefined)
 Modified principles: none
@@ -84,13 +102,24 @@ Follow-up TODOs: none — no placeholder was deferred
 ### I. A Claim Nobody Checks Decays (NON-NEGOTIABLE)
 
 Every rule this project states MUST be anchored to the source that makes it
-true, and MUST be cited by its ID. A paraphrase ages silently; an ID can be
-verified. Prose that restates a rule without naming it does not bind, and an
-unanchored claim is named in `verify`'s output rather than counted as passing.
+true, and MUST be cited by its ID where rules are kept: the law table and every
+record the brain keeps outside the documentation site's own pages. A paraphrase
+ages silently; an ID can be verified. Prose that restates a rule without naming
+it does not bind, and an unanchored claim is named in `verify`'s output rather
+than counted as passing.
+
+The documentation site's own pages, everything under `site/content/`, are not
+one of those records; the changelog the site mounts from `CHANGELOG.md` is, and
+keeps its IDs. Those pages explain behaviour to the people who use multivac, in
+plain words: they name no law ID and bind nothing. A rule changes at its row,
+never on a page, and the change that moves a rule moves every page that
+explains it.
 
 Rationale: this repo is its own brain. A rule that lives only in someone's
 memory is indistinguishable from a rule that was deleted, and the whole tool
-exists because that difference matters.
+exists because that difference matters. An ID is worth its noise only to a
+reader who can open the row it names, and the site's reader is using the tool,
+not amending its law.
 
 ### II. The Tool Never Claims More Than It Checked (NON-NEGOTIABLE)
 
@@ -205,4 +234,4 @@ unreadable, empty, or still carrying the fill-in tokens spec-kit's template
 ships. Its freshness stays a report, per MV-57: a version that never moves
 while the law does is a signal to revisit rather than a failing grade.
 
-**Version**: 2.0.2 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-13
+**Version**: 3.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-14

@@ -20,7 +20,7 @@ description: >-
 </div>
 
 <!--
-  MV-83's machine voice, typed. The commands cycled here are the tool's own
+  The site's machine voice, typed. The commands cycled here are the tool's own
   top-level surface (src/commands/*.ts) plus the change lifecycle's verbs —
   nothing invented for the demo. Vanilla, inline, no dependency: the site
   that tells you it refuses the network in the commands that gate work does

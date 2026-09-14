@@ -10,6 +10,93 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## 0.11.0 — 2026-09-14
+
+**Changed**
+
+- **A repo you do not own is read, never written.** `repos.<key>.managed:
+  false` is a new key, and a clone git reports shallow is treated the same way:
+  multivac scaffolds, builds, refreshes and projects nothing there, and no gate
+  looks for a file there; `repos sync` still clones and fetches it. `doors`,
+  `doctor` and `repos` mark it read-only, and `repos sync --shallow` says so as
+  it clones. `change plan` and `change apply` refuse a change that names one,
+  with exit 1, before cloning, branching or bumping anything. `managed:` must be
+  a boolean, and the brain's own entry cannot say `false`. **If you upgrade**: a
+  shallow clone you already have is read-only now (`git fetch --unshallow`
+  makes it writable), a spec kept in one no longer proves a step, and a door or
+  hook projected there earlier stays. multivac 0.10.0 refuses a config that
+  uses the key, and 0.9.0 and older ignore it and write there. (MV-125)
+- **`sdd:` and `grapher:` resolve the same way everywhere, and `none` means
+  none for both.** A repo's own value wins, then the top-level one, and the
+  brain's own `repos:` entry counts, so a `grapher:` there is honoured. **If
+  you upgrade**: a repo's own `sdd:` now gates `change plan`, `apply` and
+  `close` with no top-level `sdd:`, where they passed silently. Each adapter is
+  judged in the repos that resolve to it and all must pass, including repos the
+  change does not name (`--no-sdd` skips one run); one whose repos are all
+  uncloned refuses until `repos sync`. A spec in an `sdd: none` repo no longer
+  proves a step, `grapher: none` is no longer reported as unverified, and
+  `graphers.none` is refused. (MV-122)
+- **A vendor counts as initialised only when its own state file says so.**
+  spec-kit needs `.specify/integration.json` with `integration_state_schema` 1
+  and a non-empty `installed_integrations`, OpenSpec `openspec/config.yaml` or
+  `.yml`, graphify a `graph.json` that parses as JSON, codegraph
+  `.codegraph/codegraph.db`. A hand-made `.specify` or a 0-byte graph no longer
+  counts. `doctor` reports `installed`, `missing`, `partial` or `unevaluable`,
+  with the reason, where it said `artifact ok`. A partial graph is rebuilt, and
+  `change close` refuses while it stays partial; the SDD init is never run over
+  a partial install, because a re-run can revert edited files. **If you
+  upgrade**: a `.specify` with no valid `integration.json` (spec-kit before
+  0.16.4 was never measured), or an `openspec/` with no config file, reads
+  partial and is warned about, not refused; commit before you run the vendor's
+  init there yourself. (MV-124)
+- **`change close` wants a shared graph committed, and never codegraph's.**
+  **If you upgrade**: a `graph.json` that is staged but not in HEAD no longer
+  passes; the refusal names the add and the commit, and `doctor` says `NOT
+  COMMITTED` where it said `UNTRACKED`. codegraph's database is local: built in
+  each checkout, never asked for in HEAD, and the door says not to commit it.
+  (MV-124)
+- **`init --grapher` is checked.** A name that is neither a verified grapher
+  nor declared under `graphers:` in a readable config already at the target
+  exits 2, listing the known names, before anything is created. `--grapher
+  none` is refused too: leave the flag out. (MV-122)
+- **Vendor opt-outs are set on every run multivac makes.** OpenSpec gets
+  `DO_NOT_TRACK=1 OPENSPEC_TELEMETRY=0` and codegraph `DO_NOT_TRACK=1
+  CODEGRAPH_TELEMETRY=0 CODEGRAPH_NO_DOWNLOAD=1`, in the scaffold, the
+  validator, the build, the refresh and the post-edit hook; OpenSpec 1.13.0
+  otherwise sends telemetry from every command, the gates' `openspec validate`
+  included. They override your shell, so a `DO_NOT_TRACK=0` you export does not
+  reach them, and a codegraph missing its platform bundle is told not to
+  download it; a run you type yourself is still yours. Re-run `doors` so Claude
+  Code's post-edit hook exports codegraph's and reaches `node_modules/.bin`,
+  and so the projected skill describes this release's gates. (MV-121, MV-123,
+  MV-124)
+
+**Fixed**
+
+- **An adapter's binary is found the same way everywhere.** `doctor`, `doors`
+  and `change close`'s graph checks looked on PATH alone, so a tool installed
+  with `npm i -D` read as missing. Every surface now looks on PATH, then in
+  that repo's `node_modules/.bin`, and the post-edit hook reaches it too. On
+  Windows it tries PATHEXT's extensions, untested there. A missing binary is
+  named per repo with its adapter, install line and vendor repository, where it
+  said `is not on PATH`. (MV-123)
+- **The spec-kit scaffold no longer needs the `claude` CLI.** It passes
+  `--ignore-agent-tools`; without it and without `claude`, spec-kit 1.0.6
+  exits 1 and writes nothing. (MV-123)
+- **A failed vendor command is quoted by its cause.** The scaffold, the
+  validator and the refresh quoted the first three lines, which were spec-kit's
+  logo or a Python traceback header. They drop banner lines now and quote a
+  traceback's closing exception, else the lines naming an error, a refusal, a
+  denial or something not found, else the last lines, at most three. (MV-123)
+- **`doctor` no longer says the SDD init reaches the network.** With the
+  network denied, spec-kit 1.0.6's and OpenSpec 1.13.0's inits exit 0. The init
+  stays out of `verify`, `doctor` and `doors` because it writes the vendor's
+  files into the tree. (MV-121)
+- **0.10.0's changelog entry and two site pages are corrected.** The entry now
+  names MV-105 to MV-119, the rows that release made law, and the install guide
+  and hooks reference give the runner order MV-92 set: this repository's own
+  build, then the multivac it declares, then `mvac` on PATH. (MV-120)
+
 ## 0.10.0 — 2026-08-24
 
 **Changed**

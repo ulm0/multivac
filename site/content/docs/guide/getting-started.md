@@ -115,7 +115,7 @@ $ mvac verify
 0 claims · 0 anchored
   read      brain: working tree on main — the brain's own repo, the commit this run gates
 
-  enact     not answered — nothing staged, so no commit is being composed; MV-81's check reads the index against HEAD
+  enact     not answered — nothing staged, so no commit is being composed; … reads the index against HEAD
 
 0 blocking broken · exit 0
 ```

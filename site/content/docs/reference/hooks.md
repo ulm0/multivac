@@ -23,12 +23,12 @@ window in which the answer still changes what gets written. There is no rung
 after that, deliberately: a check that runs once everyone has gone home
 reports the lie to its next reader, with the code already written on top.
 
-## Which multivac runs (MV-92)
+## Which multivac runs
 
 The shim tries three, most specific first, and the first one available wins:
 
 1. **`<repo>/dist/cli.js`** — the multivac built in this repository, and only
-   when that repository's `package.json` names multivac (MV-108)
+   when that repository's `package.json` names multivac
 2. **`<repo>/node_modules/multivac`** — the multivac this repository declares
 3. **`mvac` on PATH** — whatever the machine has
 
@@ -36,8 +36,8 @@ The name test on the first rung is not caution, it is identity: `dist/cli.js`
 plus `node_modules` describes an enormous share of Node CLI repositories, and
 without it a multivac hook executed **that project's** binary with `verify` as
 its argument. What this order chooses is WHICH multivac runs; it says nothing
-about whether that build is current, and MV-92 states that ceiling rather than
-implying it away.
+about whether that build is current, and that ceiling is stated rather than
+implied away.
 
 A repository that builds or declares a multivac has said which one governs it;
 what is installed globally is whatever that machine happens to have. The order
@@ -53,7 +53,7 @@ says plainly that nothing was verified and exits 0.
 `init` installs them in the brain. `doors` installs them in the brain **and
 in each declared repo on disk**, regardless of which harness targets you
 declared — except a read-only one, declared `managed: false` or a shallow
-clone, which gets nothing (MV-125):
+clone, which gets nothing:
 
 ```txt
 $ mvac doors
@@ -189,7 +189,7 @@ picks one of three strategies, and says which one it used:
 | `.git/hooks/<name>`, `.pre-commit-config.yaml`, `lefthook.yml` | **chained** | same shims; each runs the repo's own `.git/hooks` hook first, its exit code wins — and a `.pre-commit-config.yaml` with no hook installed runs via `pre-commit run` |
 | `core.hooksPath` set elsewhere, or `.husky/` | **alongside** | never repoint — the shim is written INTO that directory where the name is free |
 
-`core.hooksPath` is read **the way git reads it** (MV-79), with `git config
+`core.hooksPath` is read **the way git reads it**, with `git config
 --path`: a leading `~` or `~user` expands to the home directory first, and what
 that leaves names the directory outright if it is absolute, otherwise resolving
 against the root of the working tree, because that is where git stands when it
@@ -224,7 +224,7 @@ hooks      core.hooksPath is .githooks (this repo's own gate — multivac instal
 ### Installed is not enforcing
 
 The shim never blocks a commit for want of a runner. It tries the three runners
-under [Which multivac runs](#which-multivac-runs-mv-92), most specific first,
+under [Which multivac runs](#which-multivac-runs), most specific first,
 and with none of them it prints one warning to stderr and exits 0.
 
 That is deliberate and it is the difference between a guard people keep and a
@@ -270,11 +270,11 @@ brain, and this tells it whether the brain is currently true. `PostToolUse`
 re-checks after every write, so a change that breaks a claim surfaces in the
 same turn that made it, not three files later.
 
-**The wrappers are the delivery, not decoration** (MV-112). Claude Code feeds
-the model only exit-0 stdout at `SessionStart` and only exit-2 stderr at
-`PostToolUse`; every other exit shows stderr to you and gives the model
-nothing. A bare `mvac verify` writes its findings to stdout and exits 1 when it
-gates — so until MV-112 the gate delivered nothing on the one occasion it had
+**The wrappers are the delivery, not decoration.** Claude Code feeds the model
+only exit-0 stdout at `SessionStart` and only exit-2 stderr at `PostToolUse`;
+every other exit shows stderr to you and gives the model nothing. A bare
+`mvac verify` writes its findings to stdout and exits 1 when it gates — so
+before the wrappers the gate delivered nothing on the one occasion it had
 something to say. The session command therefore merges stderr into stdout and
 always exits 0, because findings are the payload there and the contract has no
 blocking at session start. The post-edit command sends everything to stderr and

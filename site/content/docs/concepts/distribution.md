@@ -7,7 +7,7 @@ The brain lists repos; repos point at the brain. One brain = one ecosystem.
 Distribution is the reverse direction of the registry: how the brain reaches
 every consumer repo, and how stale it is allowed to get.
 
-## What the consumer door carries (MV-93)
+## What the consumer door carries
 
 The door written into each declared repo used to be four bullets: the law, the
 mount refresh, "the change may cross repos", and "run verify". The brain's door

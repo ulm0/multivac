@@ -52,7 +52,7 @@ progress.
 
 Nothing on the roadmap reserves an id, opens a branch or delays a release, and
 nothing requires you to use it — `change new` on a slug nobody planned behaves
-exactly as it always has. See [Planned](../concepts/the-change#planned--a-change-that-has-not-started-mv-89)
+exactly as it always has. See [Planned](../../concepts/the-change/#planned--a-change-that-has-not-started)
 for why each of those is deliberate.
 
 When it becomes work, `change new` **promotes** the file rather than writing a

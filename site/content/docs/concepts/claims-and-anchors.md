@@ -43,7 +43,7 @@ rendered, greppable, no parallel file to drift. One leg per line:
   plus the brain itself. *Which bytes* of that repo a leg reads depends on
   who is asking: from the brain, the repo's channel ref — the ecosystem as
   published — and from a consumer repo, its own working tree. See
-  [verify](../../reference/commands/#what-each-run-reads-mv-53).
+  [verify](../../reference/commands/#what-each-run-reads).
 - **The glob dialect is picomatch** over repo-relative, `/`-separated paths
   (`git ls-files` output): `**` crosses directories, `{a,b}` alternates,
   dotfiles match. Not shell globbing, not a regex.

@@ -38,12 +38,12 @@ npm i -g multivac@latest
 ```
 
 **The hooks care which one you did.** The shims run the most specific multivac
-they find (MV-92): this repository's own build when the repository is
-multivac, then the multivac it declares (`npx --no-install multivac`), then
-`mvac` on `PATH`. `npx --no-install` resolves a package already present in the
-project, not one it has to fetch — so a global install, or multivac as a
-devDependency of the brain, both arm the floor. `npx multivac@latest` typed by
-hand does not, because nothing persists.
+they find: this repository's own build when the repository is multivac, then the
+multivac it declares (`npx --no-install multivac`), then `mvac` on `PATH`.
+`npx --no-install` resolves a package already present in the project, not one it
+has to fetch — so a global install, or multivac as a devDependency of the brain,
+both arm the floor. `npx multivac@latest` typed by hand does not, because
+nothing persists.
 
 Published on npm, MIT, and small enough to read: `npx multivac@latest` fetches
 the current release. The CLI surface below is what ships today, and the parts
@@ -100,10 +100,10 @@ $ mvac --version
 ```
 
 It prints the version in the package you installed. The site does not repeat
-that number anywhere — MV-84 keeps every version string off these pages, so
+that number anywhere — the law keeps every version string off these pages, so
 there is nothing here to fall out of step. What holds the published version
-honest is MV-68: a release cannot publish under a tag that disagrees with the
-manifest.
+honest is the release job: it refuses to publish under a tag that disagrees with
+the manifest.
 
 ```txt
 $ mvac --help
