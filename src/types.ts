@@ -65,6 +65,14 @@ export interface RepoEntry {
    * not in its path, and `api — api` is worse than silence.
    */
   role?: string;
+  /**
+   * MV-125. `false` says this repo is not multivac's to write: it is read,
+   * verified, cloned and fetched, and never scaffolded, built, refreshed,
+   * projected into or gated. Carried only when false; absent means true.
+   * `readOnly` in src/adapters/detect.ts is the one reader, and the brain
+   * cannot say it.
+   */
+  managed?: boolean;
 }
 
 /** Parsed .multivac/config.yml with defaults applied. */

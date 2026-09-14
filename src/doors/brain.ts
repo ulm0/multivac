@@ -70,10 +70,13 @@ export function grapherLines(config: Config, name: string | undefined): string[]
   if (!spec) return [];
   const lines = [
     `- A code graph is kept fresh for you by \`${name}\` at \`${spec.artifacts[0]}\` — ` +
-      // Not "never committed": whether the artifact is tracked is the
-      // project's call (MV-50 leaves it to dedicated chore commits). What is
-      // always true is that multivac's own refresh path touches no git.
-      'refreshed after your edits; multivac never stages it, but you can track and commit it.',
+      // A shared artifact: committing it is the project's call (MV-50 leaves
+      // it to dedicated chore commits), and multivac's own refresh path touches
+      // no git. A local one is built in each checkout and never committed
+      // (MV-124), so the door does not invite it.
+      (spec.artifactKind === 'local'
+        ? 'refreshed after your edits; it is built in each checkout, so never commit it.'
+        : 'refreshed after your edits; multivac never stages it, but you can track and commit it.'),
   ];
   if (spec.queries && spec.queries.length > 0) {
     lines.push(

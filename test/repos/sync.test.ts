@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gitInit } from '../helpers/fixture.js';
-import { reposList, reposSync } from '../../src/commands/repos.js';
+import { reposCommand, reposList, reposSync } from '../../src/commands/repos.js';
 
 const tmp = mkdtempSync(join(tmpdir(), 'mvac-repos-'));
 
@@ -101,4 +101,17 @@ test('sync --shallow clones with --depth 1', async () => {
     { encoding: 'utf8' },
   ).trim();
   assert.equal(shallow, 'true');
+});
+
+test('a shallow clone line says multivac will not write there, and a full one is unchanged — MV-125', async () => {
+  const ro = makeBrain('brain-ro', `repos:\n  lib:\n    path: ../acme-lib-ro\n    url: file://${remote}\n`);
+  const shallow = await reposSync(ro, true);
+  assert.equal(shallow.exit, 0);
+  assert.match(shallow.lines.join('\n'), /^lib: cloned .* \(shallow\) — read-only: multivac will not write there$/m);
+
+  const rw = makeBrain('brain-rw', `repos:\n  lib:\n    path: ../acme-lib-rw\n    url: file://${remote}\n`);
+  const full = await reposSync(rw, false);
+  assert.deepEqual(full.lines, [`lib: cloned file://${remote} -> ../acme-lib-rw`]);
+
+  assert.match((reposCommand.usage ?? []).join('\n'), /multivac will not write there/);
 });

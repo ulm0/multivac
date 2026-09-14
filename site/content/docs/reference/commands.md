@@ -639,14 +639,18 @@ brain: door + hooks updated
 api: door + hooks updated
 api: notice: CLAUDE.md exists as a regular file — merge it into AGENTS.md and remove it to get the symlink
 payments: notice: not found at ../payments — run `multivac repos sync` to clone it
+ledger: not managed, read-only — nothing projected (MV-125)
 ```
 
-For the brain and every declared repo present on disk: writes the managed
-block in `AGENTS.md`, projects each declared door target, installs the skill
-and harness hook config where the target declares them, and writes the git
-hook shims plus `core.hooksPath`.
+For the brain and each declared repo on disk: writes the managed block in
+`AGENTS.md`, projects each declared door target, installs the skill and harness
+hook config where the target declares them, and writes the git hook shims plus
+`core.hooksPath`.
 
-Repos not on disk are reported and skipped, exit 0. `doors` writes working
+A read-only repo — declared `managed: false`, or a shallow clone — gets none of
+it, and one line says so (MV-125). A door or hooks projected there before it
+became read-only are left in place. Repos not on disk are reported and skipped,
+exit 0. `doors` writes working
 trees — never commits, never clones. An invalid config exits **1** here (not
 2). Per-target detail: [Agent integrations](../integrations).
 
@@ -683,8 +687,8 @@ Read-only diagnosis. Never mutates, never clones.
 ```txt
 $ mvac doctor
 doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: .cursor/rules/multivac.mdc ok
-grapher    graphify @ brain: artifact missing → run `graphify update .` there
-grapher    graphify @ api: artifact missing → run `graphify update .` there
+grapher    graphify @ brain: missing (no graphify-out/graph.json) → run `graphify update .` there
+grapher    graphify @ api: missing (no graphify-out/graph.json) → run `graphify update .` there
 repos      1/2 present · payments missing → `multivac repos sync` (git clone git@example.com:acme/payments.git ../payments)
 branches   brain: on main @ abc1234 — brain==code, verify reads this working tree; 2 behind its own channel origin/main @ def5678 → git -C . pull · api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
 pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain) · payments: not cloned
@@ -697,11 +701,11 @@ untracked  nothing build-critical untracked
 | line | reports |
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
-| `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): artifact, binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no root resolves an `sdd`** (MV-122) |
-| `grapher` | one line per scope (brain + each present repo): artifact, binary, freshness — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** (MV-122) |
-| `repos` | how many are present, and the clone command for each that is not |
+| `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file (MV-124) — binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything, and so does a read-only one (MV-125): `@ <key>: not managed, read-only` or `shallow, read-only`, with no state and no command to run. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no root resolves an `sdd`** (MV-122) |
+| `grapher` | one line per scope (brain + each present repo): the grapher's state and whether its artifact is shared or local (MV-124), binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED` (MV-125). Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** (MV-122) |
+| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in (MV-125) — whose `sdd` and `grapher` lines say `out of scope, not a gap` in place of a state |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
-| `pins` | the brain mount in each consumer, and how far behind its channel it is |
+| `pins` | the brain mount in each consumer, and how far behind its channel it is — a read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write (MV-125) |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
 | `enact` | printed on every run, and it reports an **absence**: who enacts a row is not a fact on disk. multivac never fabricates a git identity (MV-04), and a hook runs with the caller's permissions, so a gate installed here is one the same process can skip. Ungateable by design (MV-81) rather than missing — the enforcement is the forge's merge button, held by an account the agent does not have. The half that IS checked — enactment landing in its own commit — is `verify`'s `enact` line, read from the index |
 | `untracked` | brain paths a `.gitignore` swallows (WARNING — the law cannot ship), then untracked, non-ignored files that look build-critical |
@@ -766,7 +770,12 @@ Bare `doctor` never gates on a disarmed gate — it only describes it.
 $ mvac repos
 api          present  ../api
 payments     missing  ../payments  (git@example.com:acme/payments.git)
+ledger       present  ../ledger — not managed, read-only
 ```
+
+A repo declared `managed: false`, or whose clone is shallow, is marked
+read-only: multivac reads, verifies and fetches it, and never writes there
+(MV-125).
 
 `repos` and `repos list` are the same thing. `repos sync` clones every
 declared-but-missing repo that has a `url`, and fetches every repo already on
@@ -785,8 +794,16 @@ at its channel ref, and that ref is a **local** remote-tracking snapshot —
 that reason.
 
 `--shallow` adds `--depth 1` — fine for verify-only machines, not enough for
-`change`, which needs to branch. A clone that fails is named, never retried
-silently, and exits 1:
+`change`, which needs to branch. A shallow clone is read-only until
+`git fetch --unshallow`: nothing is scaffolded, built or projected there, no
+gate judges it, and a change naming it is refused (MV-125). The clone line says
+so:
+
+```txt
+payments: cloned git@example.com:acme/payments.git -> ../payments (shallow) — read-only: multivac will not write there
+```
+
+A clone that fails is named, never retried silently, and exits 1:
 
 ```txt
 payments: auth failed cloning git@example.com:acme/payments.git — fix your ssh key/token for this host, then re-run `multivac repos sync` (no retry was attempted)
@@ -1229,8 +1246,8 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
 
 #### The graph gate (MV-90)
 
-A declared grapher must have left a graph in every declared, present root, or
-`close` refuses:
+A declared grapher must have left a graph in every declared root on disk that
+is not read-only (MV-125), or `close` refuses:
 
 ```txt
 graph: `change close points-expire` refused — 2 roots have no graph
@@ -1256,24 +1273,26 @@ currency would have to be defined, and every definition is wrong on a fresh
 clone where every file is newer than the artifact.
 
 **And the graph must be in the repository, not just on disk** (MV-103). A second
-refusal follows the first: a root whose artifact exists but is untracked — or is
-matched by an ignore rule — keeps its graph out of every clone, while the door
-there still points at one. The message names each root, the path and the command;
-multivac never runs it, because the refresh module is kept out of git entirely
-(MV-50).
+refusal follows the first: a root whose shared artifact is installed but not in
+its committed `HEAD` — staged counts for nothing, since a clone gets `HEAD`
+(MV-124) — or is matched by an ignore rule keeps its graph out of every clone,
+while the door there still points at one. The message names each root, the path
+and the commands; multivac never runs them, because the refresh module is kept
+out of git entirely (MV-50). A local artifact, codegraph's database, is never
+asked: it is built in each checkout.
 
 ```txt
 graph: `change close points-expire` refused — 2 roots keep their graph out of the repository
-  api: graphify-out/graph.json is untracked — `git -C ../api add graphify-out/graph.json`
-  web: graphify-out/graph.json is ignored by .gitignore — remove the rule, then `git -C ../web add graphify-out/graph.json`
+  api: graphify-out/graph.json is not committed — `git -C ../api add graphify-out/graph.json && git -C ../api commit -m "chore: commit the graph" -- graphify-out/graph.json`
+  web: graphify-out/graph.json is ignored by .gitignore — remove the rule, then `git -C ../web add graphify-out/graph.json && git -C ../web commit -m "chore: commit the graph" -- graphify-out/graph.json`
 ```
 
 `--no-grapher` skips it for one run and says so. `--abandon` is exempt — an
 abandoned change made no claims and landed nothing, so demanding an artifact
 from it would punish dropping work.
 
-The refresh that follows now covers **every declared, present repo**, not only
-the repos this change named. A repo moved by another change, a merge or a sync
+The refresh that follows now covers **every declared repo on disk that is not
+read-only**, not only the repos this change named. A repo moved by another change, a merge or a sync
 was previously left describing a tree that was gone.
 
 #### `--abandon`

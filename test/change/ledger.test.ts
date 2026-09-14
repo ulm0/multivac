@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
+import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { change } from '../../src/commands/change.js';
 import { trackerEntry, trackerNames } from '../../src/adapters/tracker.js';
 
@@ -68,6 +69,7 @@ test('the SDD proof names one feature: never a substring, never a tail', async (
   writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nrepos:\n  brain: .\n');
   mkdirSync(join(b, '.specify/memory'), { recursive: true });
   writeFileSync(join(b, '.specify/memory/constitution.md'), '# Constitution\n\n## I. A principle\n\nReal text.\n');
+  writeFileSync(join(b, '.specify/integration.json'), SPECKIT_INTEGRATION_JSON);
   mkdirSync(join(b, 'specs/003-rapid-points-expire-rollout'), { recursive: true });
   writeFileSync(join(b, 'specs/003-rapid-points-expire-rollout/spec.md'), '# Someone else\n');
   git(b, 'add', '-A');
@@ -88,6 +90,7 @@ test('a tail is not a match, and a numbered directory still is — MV-113', asyn
   writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nrepos:\n  brain: .\n');
   mkdirSync(join(b, '.specify/memory'), { recursive: true });
   writeFileSync(join(b, '.specify/memory/constitution.md'), '# Constitution\n\n## I. A principle\n\nReal text.\n');
+  writeFileSync(join(b, '.specify/integration.json'), SPECKIT_INTEGRATION_JSON);
   mkdirSync(join(b, 'specs/030-points-expire'), { recursive: true });
   writeFileSync(join(b, 'specs/030-points-expire/spec.md'), '# Another feature\n');
   git(b, 'add', '-A');

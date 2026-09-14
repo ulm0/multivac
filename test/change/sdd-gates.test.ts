@@ -20,7 +20,7 @@ import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { sddSpec } from '../../src/adapters/registry.js';
-import { SPECKIT_106_NO_CLAUDE } from '../helpers/recorded.js';
+import { SPECKIT_106_NO_CLAUDE, SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -88,7 +88,11 @@ const CONSTITUTION_TEMPLATE =
  * write a different tree on every machine.
  *
  * `writes` is the whole point of the stub: a tool that exits 0 and creates
- * nothing is a real outcome the lifecycle has to refuse to call success.
+ * nothing is a real outcome the lifecycle has to refuse to call success. What
+ * it writes is what the real init writes, `.specify/integration.json` included
+ * (MV-124): the probe reads that file, and a stub that left a bare directory
+ * would be scaffolding a tool that does not exist. `'memory-only'` writes the
+ * constitution and no integration file, an init that stopped half way.
  *
  * It behaves as spec-kit 1.0.6 does where that decides an outcome (MV-123):
  * without `--ignore-agent-tools` and with no `claude` on its PATH it prints
@@ -103,16 +107,20 @@ const runLog = join(tmp, 'specify-runs');
 const SCAFFOLD_ARGV = 'init --here --integration claude --force --ignore-agent-tools';
 const stubSpecify = (
   exit: number,
-  writes = true,
+  writes: boolean | 'memory-only' = true,
   stderr = '',
   { failIn, says }: { failIn?: string; says?: string } = {},
 ): void => {
   const p = join(bin, 'specify');
   const fail =
     (says ? `cat <<'EOF'\n${says}EOF\n` : '') + (stderr ? `echo '${stderr}' >&2\n` : '') + `exit ${exit}\n`;
-  const write = writes
-    ? `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\n`
-    : '';
+  const memory = `mkdir -p .specify/memory\ncat > .specify/memory/constitution.md <<'EOF'\n${CONSTITUTION_TEMPLATE}EOF\n`;
+  const write =
+    writes === 'memory-only'
+      ? memory
+      : writes
+        ? `${memory}cat > .specify/integration.json <<'EOF'\n${SPECKIT_INTEGRATION_JSON}EOF\n`
+        : '';
   writeFileSync(
     p,
     `#!/bin/sh\necho "$@" >> '${runLog}'\n` +
@@ -762,6 +770,22 @@ test('a scaffold that exits 0 and writes nothing is a failure, not a success', a
   assert.doesNotMatch(c.out, /scaffolded —/);
 });
 
+test('an init that leaves .specify without its integration file is partial, not scaffolded', async () => {
+  // MV-124: `scaffolded` is the probe's word after the run, not the directory's.
+  unscaffold();
+  forgetSpecifyRuns();
+  stubSpecify(0, 'memory-only');
+  try {
+    const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
+    assert.equal(specifyRuns().length, 1);
+    assert.match(c.out, /left \.specify partial \(\.specify is there and \.specify\/integration\.json is not\) in brain — it exited 0 — run it in brain by hand/);
+    assert.doesNotMatch(c.out, /partial[^\n]*wrote nothing/);
+    assert.doesNotMatch(c.out, /scaffolded/);
+  } finally {
+    stubSpecify(0);
+  }
+});
+
 test('a scaffold whose binary is missing prints the install line and runs nothing', async () => {
   unscaffold();
   forgetSpecifyRuns();
@@ -854,7 +878,7 @@ test('--no-sdd and sdd_auto: false turn the scaffold off with everything else', 
   commitAll();
 });
 
-// --- the cascade: every declared, present root, not the first one that answers ---
+// --- the cascade: each declared root on disk, not the first one that answers ---
 
 /** A sibling code repo beside the brain, the way a real ecosystem has them. */
 const sibling = (name: string): string => {
@@ -882,7 +906,7 @@ const cascadeConfig = (sdd = 'speckit'): void =>
     '    path: ../acme-gone',
   ]);
 
-test('the scaffold reaches every root that lacks the artifact, not the first one that has it', async () => {
+test('the scaffold reaches every root where the tool is missing, not the first one that has it', async () => {
   // The measured defect, at the size it was measured: one sibling repo somebody
   // ran `specify init` in by hand suppressed the scaffold in every other root,
   // the brain included, because presence was asked of the whole list and
@@ -899,10 +923,17 @@ test('the scaffold reaches every root that lacks the artifact, not the first one
 
   const c = await capture(() => change.run(['new', 'cascade-a', 'Cascade a'], ctx));
   assert.equal(c.code, 0);
-  // Every root that needed it, named — and the one that did not, silent.
+  // Every root that needed it, named.
   assert.match(c.out, /\.specify is missing in brain/);
   assert.match(c.out, /\.specify is missing in api/);
   assert.doesNotMatch(c.out, /missing in web/);
+  // The directory done by hand is not an install (MV-124): web is warned, with
+  // the file the probe looked for and the init to run there, and never re-run,
+  // since a re-run reverts edited files.
+  assert.match(
+    c.out,
+    /sdd speckit: web is partial — \.specify is there and \.specify\/integration\.json is not — the init is not run over it.*run `specify init --here --integration claude --force --ignore-agent-tools` in web yourself/,
+  );
   // Out of scope, not deficient: `sdd: none`, and a repo that is not on disk.
   assert.doesNotMatch(c.out, /missing in landing/);
   assert.doesNotMatch(c.out, /missing in gone/);
@@ -915,16 +946,19 @@ test('the scaffold reaches every root that lacks the artifact, not the first one
   commitAll();
 });
 
-test('a second run over an equipped ecosystem scaffolds nothing and says nothing', async () => {
+test('a second run over an equipped ecosystem scaffolds nothing, and warns only where it is partial', async () => {
   // Silence is a contract: `specify init` writes the vendor's files into the
   // tree and, on 1.0.6, a re-run reverts edited ones, so a lifecycle that re-ran
-  // it every command would be worse than the hole it fills.
+  // it every command would be worse than the hole it fills. web's hand-made
+  // directory is still partial, so its warning repeats, and still nothing runs.
   forgetSpecifyRuns();
   const c = await capture(() => change.run(['new', 'cascade-b', 'Cascade b'], ctx));
   assert.equal(c.code, 0);
   assert.equal(specifyRuns().length, 0);
   assert.doesNotMatch(c.out, /running the tool's own init/);
   assert.doesNotMatch(c.out, /scaffolded/);
+  assert.match(c.out, /sdd speckit: web is partial — /);
+  assert.doesNotMatch(c.out, /sdd speckit: (brain|api) is partial/);
   // No commitAll: `change new` commits its own bookkeeping and this test
   // deliberately leaves nothing else behind — that is the whole assertion.
 });

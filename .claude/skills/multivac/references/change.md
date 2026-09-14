@@ -136,8 +136,9 @@ The file also carries per-repo status
 
 ## close — the gate
 
-**The graph gate (MV-90).** A declared grapher must have left a graph in every
-declared, present root, or close refuses and names every root that has none.
+**The graph gate (MV-90).** A declared grapher must be installed in every
+declared root on disk that is not read-only (MV-125) — its own state file, a `graph.json` that parses, not a
+path being there (MV-124) — or close refuses and names every root that is not.
 The build-where-missing pass runs inside the gate, so a fresh ecosystem builds
 rather than refuses; a root whose binary is found on neither PATH nor its
 `node_modules/.bin` (MV-123) refuses too, naming the install line and the vendor, because a
@@ -146,8 +147,15 @@ freshness — a stale graph passes on purpose. `--no-grapher` skips it for one
 run and `grapher_auto: false` turns it off for good; do not reach for either to
 get past a root you could simply graph. `--abandon` is exempt.
 
-The refresh that follows covers every declared, present repo, not only the ones
-this change named.
+A shared graph must also be in each root's committed HEAD, not only staged
+(MV-103): close names the add and the commit, and runs neither. codegraph's
+database is local, built in each checkout and never committed.
+
+The refresh that follows covers each declared repo on disk that is not
+read-only, not only the ones this change named. A read-only repo — declared
+`managed: false`, or a shallow clone — is never scaffolded, built, refreshed,
+projected into or gated, and `plan` and `apply` refuse a change that names one
+(MV-125).
 
 `close` re-runs verify **scoped to the declared claims** and refuses to
 archive until they hold:

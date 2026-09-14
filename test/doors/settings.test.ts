@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeClaudeSettings } from '../../src/doors/settings.js';
+import { mergeClaudeSettings, refreshHookCmd } from '../../src/doors/settings.js';
 
 /** The merged text, for the tests that only care about the document. */
-const merged = (raw: string | null, opts?: { refresh?: string | null; matcher?: string }) =>
+const merged = (raw: string | null, opts?: { refresh?: string | null; matcher?: string; env?: Record<string, string> }) =>
   mergeClaudeSettings(raw, opts).text;
 
 test('absent settings file becomes hooks-only JSON', () => {
@@ -281,4 +281,48 @@ test('the post-edit refresh reaches the tool in node_modules/.bin — MV-123', a
   const deadline = Date.now() + 2000;
   while (!existsSync(join(dir, 'local-ran')) && Date.now() < deadline) await new Promise((res) => setTimeout(res, 25));
   assert.ok(existsSync(join(dir, 'local-ran')), 'the backgrounded refresh never reached node_modules/.bin');
+});
+
+test('the post-edit refresh exports the entry opt-outs, outside the declared command — MV-124', async () => {
+  const { mkdtempSync, mkdirSync, writeFileSync, chmodSync, existsSync, readFileSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { spawnSync } = await import('node:child_process');
+
+  // No env, no change: this brain's own hook keeps its bytes.
+  const today =
+    'L=.multivac/cache/graph-refresh.lock; PATH="$PATH:$PWD/node_modules/.bin"; ' +
+    'find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ' +
+    'mkdir -p .multivac/cache && mkdir "$L" 2>/dev/null || exit 0; ' +
+    '{ x update .; rmdir "$L"; } >/dev/null 2>&1 </dev/null & exit 0';
+  assert.equal(refreshHookCmd('x update .'), today);
+  assert.equal(refreshHookCmd('x update .', {}), today);
+
+  const env = { DO_NOT_TRACK: '1', CODEGRAPH_TELEMETRY: '0' };
+  const cmd = refreshHookCmd('x update .', env);
+  assert.ok(cmd.startsWith('L=.multivac/cache/graph-refresh.lock;'), 'the head that identifies our hook moved');
+  const exported = cmd.indexOf('export DO_NOT_TRACK=1 CODEGRAPH_TELEMETRY=0; ');
+  assert.ok(exported > 0 && exported < cmd.indexOf('find '), cmd);
+  assert.match(cmd, /\{ x update \.; rmdir "\$L"; \}/, 'the declared refresh is unchanged');
+
+  // Recognised as ours on the next merge: rewritten in place, never doubled.
+  const once = merged(null, { refresh: 'x update .', env });
+  const twice = merged(once, { refresh: 'x update .', env });
+  assert.equal(twice, once);
+  const refreshes = (JSON.parse(twice).hooks.PostToolUse as { hooks: { command: string }[] }[]).flatMap((e) =>
+    e.hooks.filter((h) => h.command.includes('graph-refresh.lock')),
+  );
+  assert.deepEqual(refreshes.map((h) => h.command), [cmd]);
+
+  // Run, not read: the refresh sees the variables with nothing set in its parent.
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-hook-env-'));
+  mkdirSync(join(dir, 'node_modules', '.bin'), { recursive: true });
+  writeFileSync(join(dir, 'node_modules', '.bin', 'x'), '#!/bin/sh\necho "$DO_NOT_TRACK $CODEGRAPH_TELEMETRY" > env-seen\n');
+  chmodSync(join(dir, 'node_modules', '.bin', 'x'), 0o755);
+  const r = spawnSync('sh', ['-c', cmd], { cwd: dir, env: { PATH: '/usr/bin:/bin' }, encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  const seen = join(dir, 'env-seen');
+  const deadline = Date.now() + 2000;
+  while (!existsSync(seen) && Date.now() < deadline) await new Promise((res) => setTimeout(res, 25));
+  assert.equal(readFileSync(seen, 'utf8'), '1 0\n');
 });

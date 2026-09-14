@@ -873,8 +873,8 @@ The line is implicit vs explicit:
 | context | clones? | why |
 | --- | --- | --- |
 | `verify` / hooks | **never** | sub-second budget, may be offline; a hook that hits the network gets uninstalled. Degrades: unevaluated, not red |
-| `change plan/apply` on a declared, absent repo | **yes, automatic** | the user explicitly asked for an operation that needs the repo — same contract as `git submodule update` |
-| `repos sync` | all missing — **and fetches every present one** | the explicit machine-setup command (`--shallow` for verify-only machines; `change` needs full clones to branch). Since MV-53 the brain judges each sibling at a *local* remote-tracking ref, so this is the one command that makes "as published" true; a clone that fails gates, a fetch that fails only reports |
+| `change plan/apply` on a declared, absent repo | **yes, automatic** — unless it is declared `managed: false`: plan and apply then refuse the change before anything moves, as they do for a present shallow clone (MV-125) | the user explicitly asked for an operation that needs the repo — same contract as `git submodule update` |
+| `repos sync` | all missing — **and fetches every present one** | the explicit machine-setup command (`--shallow` for verify-only machines, and a shallow clone is read-only: multivac writes nothing there; `change` needs full clones to branch). Since MV-53 the brain judges each sibling at a *local* remote-tracking ref, so this is the one command that makes "as published" true; a clone that fails gates, a fetch that fails only reports |
 | `doctor` | no — reports and points at `repos sync` | diagnosis doesn't mutate |
 | `doors` | no — absent repos skipped, reported | writes the **working trees** of declared repos, never commits on its own |
 
@@ -1040,7 +1040,7 @@ multivac help     # help anchor — the grammar on one screen; help <command> �
 multivac seed     # reads boundaries, proposes law rows + map stubs (LLM-optional)
 multivac doors    # projects AGENTS.md to the declared targets
 multivac doctor   # what is declared, what was found, what is degraded, how to fix it
-multivac repos    # sync — clone declared-but-missing repos (--shallow for verify-only machines)
+multivac repos    # sync — clone declared-but-missing repos (--shallow for verify-only machines, read-only)
 multivac change   # new / plan / apply / land / close — the ecosystem change
 ```
 
@@ -1168,6 +1168,18 @@ disk.
 | graphify | `graphify-out/graph.json` | no |
 | codegraph | its on-disk index | no |
 
+**Installed is the vendor's own state file (2026-09-14, MV-124).** A path being
+there answered "is this tool initialised" until a `mkdir .specify`, a 0-byte
+`graph.json` and a codegraph clone with no database all read as installed. One
+offline probe now reads each entry's state file — spec-kit's
+`integration.json`, OpenSpec's config, a graph that parses, codegraph's
+database — and answers installed, missing, partial or unevaluable. The scaffold
+runs only where missing, a partial root is warned rather than re-initialised,
+and a graph is rebuilt wherever it is not installed. Each entry also declares
+its shared and local paths and its opt-out environment, which every vendor run
+carries; codegraph's database is local, so the tracked gate, which reads HEAD,
+never asks for it.
+
 If you cloned the repo, the adapter works even with the tool not installed.
 The binary is only needed to **invoke** (`graphify update`, `openspec
 archive`). Each adapter declares two separate capabilities, `read` and `run`,
@@ -1193,8 +1205,8 @@ name (`doors: [agents, claude]`, `sdd: opsx`, `grapher: graphify`).
 
 ### Every adapter question is asked per root (2026-08-17)
 
-**A root is the brain plus every declared repo present on disk, and one root's
-artifact never answers for another's.** Measured in an ecosystem of six: a
+**A root is the brain plus each declared repo on disk, and one root's artifact
+never answers for another's.** Measured in an ecosystem of six: a
 single sibling repo somebody had run `specify init` in by hand made the
 scaffold return before it touched anything — the brain included — because
 presence was asked of the whole list and answered by the first hit; `doctor`
@@ -1203,23 +1215,28 @@ project-document gate accepted that one repo's constitution as the
 ecosystem's.
 
 The rule lands in four places: the scaffold runs the tool's own init in every
-root that lacks the artifact and stays silent in every root that has it;
+root where the tool is missing and stays silent in every root where it is
+installed — its own state file, since MV-124, with a partial root warned;
 `doctor` prints one line per root, the shape its grapher pass always had; the
 project-document gate asks each root where the tool is **installed**, naming
-each that fails; and the grapher's first build reaches every declared, present
-repo rather than only the repos a change happened to touch. A repo opts out
+each that fails; and the grapher's first build reaches each declared repo on
+disk rather than only the repos a change happened to touch. A repo opts out
 with its own `sdd:` or `grapher:` — the literal `none`, which means no adapter
 of that kind at repo or top level — and the brain's own entry decides the
 brain's adapters. A root that resolves to no adapter is out of scope, never
-deficient, and one function resolves it for every surface (MV-122).
+deficient, and one function resolves it for every surface (MV-122). So is a
+read-only root — declared `managed: false`, or a shallow clone: no scaffold, no
+build, no refresh, no door and no gate reaches it, `doctor` reports it, and one
+function answers for every surface (MV-125).
 
 Nothing here moves a subprocess out of the change lifecycle, and nothing
 derives a command from a tool's name: a tool that declares no init still gets
-none, stated once per root that lacks the artifact.
+none, stated once per root where the tool is missing.
 
 ### Automation by default (owner decision, 2026-08-13)
 
-Three normative rules, applying to the brain and to every declared repo:
+Three normative rules, applying to the brain and to every declared repo
+multivac may write in (not `managed: false`, not a shallow clone, MV-125):
 
 - **SDD runs inside the change lifecycle, in the SDD's own shape.** When an
   adapter is declared, the lifecycle drives **that tool's flow** — not a fixed
@@ -1240,8 +1257,8 @@ Three normative rules, applying to the brain and to every declared repo:
   `change plan` refuses without the propose-equivalent, `change apply` without
   the plan/tasks artifact, `change close` without the archive-equivalent, each
   refusal naming the exact agent command, the path it looked for and the repos
-  it looked in — the brain and every declared repo present on disk that
-  resolves to that tool (MV-122), since a change's specs often live in the code
+  it looked in — the brain and each declared repo on disk that resolves to
+  that tool (MV-122) and is not read-only (MV-125), since a change's specs often live in the code
   repo — while a pass names the repo the artifact was found in. Three
   rules keep it honest: a step whose tool leaves nothing behind
   (`/speckit.analyze` writes zero bytes by design; a clean `/speckit.converge`
@@ -1284,8 +1301,8 @@ do I fix it":
 ```
 $ multivac doctor
 doors      AGENTS.md (canonical) · CLAUDE.md (symlink) · .cursor/rules/multivac.mdc (stub)
-sdd        opsx        artifact ok (12 specs) · binary ok
-grapher    graphify    artifact ok · binary missing  → `graphify` found on neither PATH nor brain's node_modules/.bin — install graphify: uv tool install graphifyy (https://github.com/Graphify-Labs/graphify)
+sdd        opsx        installed · binary ok
+grapher    graphify    installed (shared) · binary missing  → `graphify` found on neither PATH nor brain's node_modules/.bin — install graphify: uv tool install graphifyy (https://github.com/Graphify-Labs/graphify)
 repos      4/5 present · payments not cloned (22 anchors unevaluated)
 ```
 

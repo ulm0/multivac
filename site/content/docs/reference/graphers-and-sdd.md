@@ -29,16 +29,34 @@ capabilities, and only the missing half turns off:
 
 | capability | means | needs |
 | --- | --- | --- |
-| **read** | multivac can consume what the tool produced | the **artifact** on disk |
+| **read** | multivac can consume what the tool produced | the tool **installed** in that root: its own state file passes its check (MV-124) |
 | **run** | multivac can invoke the tool | every **required binary**, found on `PATH` or in that root's `node_modules/.bin` |
 
-| adapter | artifact | binary | refresh |
-| --- | --- | --- | --- |
-| `opsx` | `openspec/specs`, `openspec/changes` | `openspec` | `openspec update` |
-| `speckit` | `.specify` | `specify` | `specify check` |
-| `graphify` | `graphify-out/graph.json` | `graphify` | `graphify update .` |
-| `codegraph` | `.codegraph` | `codegraph` | `codegraph sync` (build: `codegraph init`) |
-| *any other grapher* | **unverified — you declare it** (see below) | | |
+| adapter | installed when | artifact | binary | refresh |
+| --- | --- | --- | --- | --- |
+| `opsx` | `openspec/config.yaml` or `openspec/config.yml` is a file | `openspec/specs`, `openspec/changes` | `openspec` | `openspec update` |
+| `speckit` | `.specify/integration.json` parses, with `integration_state_schema` 1 and a non-empty `installed_integrations` | `.specify` | `specify` | `specify check` |
+| `graphify` | `graphify-out/graph.json` parses as JSON | `graphify-out/graph.json`, shared | `graphify` | `graphify update .` |
+| `codegraph` | `.codegraph/codegraph.db` is a file | `.codegraph/codegraph.db`, local | `codegraph` | `codegraph sync` (build: `codegraph init`) |
+| *any other grapher* | its declared artifact exists | **unverified — you declare it** (see below) | | |
+
+**Installed is what the vendor wrote, never a path being there (MV-124).** One
+probe answers for every surface — the scaffold, the first build, the choice
+between build and refresh, both graph gates, the project-document gate and
+`doctor` — from files alone, spawning nothing. It gives one of four states:
+
+| state | means |
+| --- | --- |
+| **installed** | a state file passes its check |
+| **missing** | nothing of the tool is in that root |
+| **partial** | the tool's directory, or a state file, is there and fails — the reason names the path and the check |
+| **unevaluable** | a state file is there and cannot be read — the reason names the path and the error |
+
+A `.specify/` made with `mkdir`, a 0-byte or truncated `graph.json`, and a
+`.codegraph/` holding only codegraph's own `.gitignore` are all partial. The
+ceilings: a spec-kit install that never wrote `integration.json` reads partial; a
+database moved with `CODEGRAPH_DIR` reads partial; a JSON file that is not a
+graph passes.
 
 **One lookup finds a binary (MV-123).** Every surface that runs an adapter's
 command, or says whether it can — the scaffold, the validator, the build and
@@ -59,8 +77,9 @@ A grapher you declare has no vendor on record, so its line says
 `declared in .multivac/config.yml (graphers.<name>)` instead. The Windows half
 is read from `PATHEXT`'s documented meaning and has never been run there.
 
-If you cloned a repo that already has the artifact committed, the read half
-works with the tool not installed at all. The binary is only needed to
+If you cloned a repo that already has a shared artifact committed, the read
+half works with the tool not installed at all. A local one, codegraph's
+database, is built in each checkout. The binary is only needed to
 *invoke* — and that is the line multivac never crosses: it reads foreign
 artifacts and invokes declared binaries, but it never installs foreign
 software.
@@ -100,16 +119,17 @@ repos:
 `doctor` reports one line per scope — the brain, plus every present repo:
 
 ```txt
-grapher    graphify @ brain: artifact ok · binary ok · fresh
-grapher    graphify @ api: artifact missing → run `graphify update .` there
+grapher    graphify @ brain: installed (shared) · binary ok · fresh
+grapher    graphify @ api: missing (no graphify-out/graph.json) → run `graphify update .` there
 ```
 
 Every degraded shape is a pointer with the exact command:
 
 ```txt
-grapher    codegraph @ brain: artifact missing · binary missing → `codegraph` found on neither PATH nor brain's node_modules/.bin — install codegraph: npm i -g @colbymchenry/codegraph (https://github.com/colbymchenry/codegraph), then `codegraph init`
-grapher    codegraph @ brain: artifact ok · binary missing → `codegraph` found on neither PATH nor brain's node_modules/.bin — install codegraph: npm i -g @colbymchenry/codegraph (https://github.com/colbymchenry/codegraph) (graph cannot refresh)
-grapher    graphify @ brain: artifact ok · binary ok · graph STALE (older than last commit) → run `graphify update .` there
+grapher    codegraph @ brain: missing (no .codegraph/codegraph.db) · binary missing → `codegraph` found on neither PATH nor brain's node_modules/.bin — install codegraph: npm i -g @colbymchenry/codegraph (https://github.com/colbymchenry/codegraph), then `codegraph init`
+grapher    codegraph @ brain: installed (local) · binary missing → `codegraph` found on neither PATH nor brain's node_modules/.bin — install codegraph: npm i -g @colbymchenry/codegraph (https://github.com/colbymchenry/codegraph) (graph cannot refresh)
+grapher    graphify @ brain: installed (shared) · binary ok · graph STALE (older than last commit) → run `graphify update .` there
+grapher    graphify @ api: partial (graphify-out/graph.json does not parse as JSON) → run `graphify update .` there
 ```
 
 Stale means the artifact's mtime is older than the repo's last commit — the
@@ -182,10 +202,11 @@ creates no directories, so a nested path fails with `ENOENT` in any repo that
 never made it by hand. A chosen path the command cannot write is the invented
 path again, one layer down.
 
-Where build and refresh differ, `doctor` names the right one for the situation:
+Where build and refresh differ, `doctor` names the right one for the situation
+— here a fresh clone, whose `.codegraph/` holds no database:
 
 ```txt
-grapher    codegraph @ brain: artifact missing → run `codegraph init` there
+grapher    codegraph @ brain: partial (.codegraph is there and .codegraph/codegraph.db is not) → run `codegraph init` there
 ```
 
 ### Automatic refresh
@@ -202,10 +223,13 @@ not one of them:
 | ~~git hooks~~ | never | the shims run `verify` only |
 
 The **first build** is separate, because a repo cannot be refreshed before it
-has been built. `change new` and the gates build the graph once in every
-declared, present repo that has none — with the adapter's `create` where it
-declares one, its `refresh` otherwise — and skip every repo that already has
-an artifact:
+has been built. `change new` and the gates build the graph in every declared
+repo on disk that is not read-only (MV-125) where the grapher is not installed
+— missing, or partial like a 0-byte `graph.json` — with the adapter's `create`
+where it declares one, its `refresh` otherwise, and skip every repo where it is
+installed. A graph is
+derived from the tree, so rebuilding a partial one loses nothing. A repo whose
+state file cannot be read gets neither command:
 
 ```txt
 graph graphify @ api: built (`graphify update .`) — artifact left uncommitted
@@ -228,6 +252,19 @@ more entry in the same managed `.claude/settings.json` merge that carries
 
 The hook appends the repository's `node_modules/.bin` to `PATH`, so it reaches
 the same binary the lookup found when `doors` decided to wire it (MV-123).
+After that it exports the grapher entry's opt-outs, outside the declared
+command (MV-124) — for codegraph, `export DO_NOT_TRACK=1
+CODEGRAPH_TELEMETRY=0 CODEGRAPH_NO_DOWNLOAD=1; `. graphify declares none, so
+its hook is exactly as shown.
+
+**The opt-outs are applied, not only named (MV-124).** Every vendor command
+multivac runs for an entry — the scaffold, the validator, the build and the
+refresh — runs with that entry's `env` over your environment: opsx sets
+`DO_NOT_TRACK=1` and `OPENSPEC_TELEMETRY=0`, codegraph `DO_NOT_TRACK=1`,
+`CODEGRAPH_TELEMETRY=0` and `CODEGRAPH_NO_DOWNLOAD=1`, and spec-kit and
+graphify set nothing. A `DO_NOT_TRACK=0` in your shell does not reach those
+runs; run the tool by hand to opt in. Whether each vendor honours its variables
+was read from its source and docs, not measured on the network.
 
 Three properties, on purpose:
 
@@ -250,9 +287,9 @@ grapher    refresh path: claude post-edit hook (installed when the binary is pre
 ```
 
 **`change close`, the net.** A change can land edits made outside the harness,
-so close still **runs** the refresh — in the brain and in each declared,
-present repo (MV-90), using the grapher that root resolves (MV-122): its
-own `grapher:`, the brain's own entry included, else the ecosystem's, and
+so close still **runs** the refresh — in the brain and in each declared repo
+on disk that is not read-only (MV-90, MV-125), using the grapher that root
+resolves (MV-122): its own `grapher:`, the brain's own entry included, else the ecosystem's, and
 none where that is `none` — and reports each scope's result:
 
 ```txt
@@ -295,14 +332,16 @@ ran where it could, every failure was a notice that kept going, and a change
 could close with four declared repos ungraphed without a word. The SDD adapter
 had been gated at both ends since MV-56; this one had no gate anywhere.
 
-Now `change close` refuses while a declared, present root has no graph — see
+Now `change close` refuses while a declared root on disk that multivac may
+write in (MV-125) has no graph — see
 [the graph gate](commands#the-graph-gate-mv-90). The cost of the old behaviour
 was invisible by design, which is exactly why it needed a gate: the door tells
 every agent to ask the graph before reading the tree, so a missing graph never
 failed — it degraded into agents grepping, which looks like working.
 
-Two things arrived with it. The refresh at close reaches every declared,
-present repo rather than the ones a change happened to name. And the door
+Two things arrived with it. The refresh at close reaches every declared repo
+on disk rather than the ones a change happened to name — except, since MV-125,
+a read-only one. And the door
 projected into each declared repo now carries the same graph block the brain's
 door has always carried, resolved with the grapher that applies to that repo —
 requiring an artifact in a repo whose own door never mentioned it is the tool
@@ -313,13 +352,25 @@ talking to itself.
 Existence was half the question. A graph that lives only in the author's working
 tree passes the gate above and helps nobody who clones the repo — where the door
 still tells every agent to ask it. So `change close` refuses while a declared,
-present root keeps its artifact untracked:
+present root where the grapher is installed has not **committed** its shared
+artifact. It asks the committed `HEAD` (`git cat-file -e HEAD:./<artifact>`),
+never the index, because a clone gets `HEAD`: a graph staged and never
+committed is refused (MV-124).
 
 ```txt
 graph: `change close points-expire` refused — 2 roots keep their graph out of the repository
-  api: graphify-out/graph.json is untracked — `git -C ../api add graphify-out/graph.json`
-  web: graphify-out/graph.json is ignored by .gitignore — remove the rule, then `git -C ../web add graphify-out/graph.json`
+  api: graphify-out/graph.json is not committed — `git -C ../api add graphify-out/graph.json && git -C ../api commit -m "chore: commit the graph" -- graphify-out/graph.json`
+  web: graphify-out/graph.json is ignored by .gitignore — remove the rule, then `git -C ../web add graphify-out/graph.json && git -C ../web commit -m "chore: commit the graph" -- graphify-out/graph.json`
 ```
+
+**A local artifact is never asked.** codegraph's `.codegraph/codegraph.db` is a
+SQLite database its own `.gitignore` keeps out of git, so the entry declares it
+local: this gate skips it, the graph gate still refuses a checkout that has
+not built it, and the door tells agents never to commit it. graphify's graph,
+and any grapher you declare, is shared. The refusal's commit names the graph as
+its pathspec, so work already staged in that repo stays out of it. A
+committed graph changed in the working tree passes, since freshness is not this
+gate's question; and `HEAD` is not the ref a landing branch integrates.
 
 **Ignored gets its own message** because the fix is different: `git add` on an
 ignored path reports nothing most people read, and `-f` is the wrong advice when
@@ -336,7 +387,7 @@ ignore rules exclude; demanding the whole directory would be a rule its author
 already breaks. `doctor` reports the same state per root and gates on nothing:
 
 ```txt
-grapher    graphify @ api: artifact ok · binary ok · fresh · UNTRACKED → `git -C ../api add graphify-out/graph.json`
+grapher    graphify @ api: installed (shared) · binary ok · fresh · NOT COMMITTED → `git -C ../api add graphify-out/graph.json`, then commit it
 ```
 
 ## SDD adapters
@@ -351,8 +402,8 @@ adapter, not necessarily the tool's own binary name:
 
 ```txt
 $ mvac doctor
-sdd        opsx @ brain: artifact ok · binary ok · sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts
-sdd        opsx @ api: artifact ok · binary ok · sdd_auto on — …
+sdd        opsx @ brain: installed · binary ok · sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts
+sdd        opsx @ api: installed · binary ok · sdd_auto on — …
 sdd        opsx flow — new: run /opsx:propose <slug> in your agent … [proof: openspec/changes/<slug>/proposal.md — `change plan` refuses without it]
 sdd        opsx gates — change plan: refuses without openspec/changes/<slug>/proposal.md · change apply: refuses without openspec/changes/<slug>/tasks.md · change close: refuses without openspec/changes/archive/<n>-<n>-<n>-<slug>
 sdd        opsx project law — this tool has no project-level document; nothing to create, nothing to keep fresh
@@ -380,17 +431,20 @@ comes from `/speckit.specify`; that chat command does not exist until
 going to do. The only exits were `--no-sdd` and `sdd_auto: false`, both of
 which turn the gate off to fix the reason it fired.
 
-So an adapter also declares its **scaffold**: the artifact whose absence means
-"this tool has never run here", and the vendor's own init command, verbatim.
+So an adapter also declares its **scaffold**: the vendor's own init command,
+verbatim. Whether it has already run in a repo is the tool's own state file,
+read by the probe above (MV-124), never a directory being there.
 
-| key | scaffold artifact | the tool's own init |
+| key | installed when | the tool's own init |
 | --- | --- | --- |
-| `speckit` | `.specify` | `specify init --here --integration claude --force --ignore-agent-tools` |
-| `opsx` | — | **unverified — not recorded, and never guessed** |
+| `speckit` | `.specify/integration.json` passes its check | `specify init --here --integration claude --force --ignore-agent-tools` |
+| `opsx` | `openspec/config.yaml` or `openspec/config.yml` | **unverified — not recorded, and never guessed** |
 
 `change new`, `change plan`, `change apply` and `change close` run it in **every
-declared, present repo** that lacks the artifact — the brain and the siblings
-alike — print it first, and skip a repo entirely when it is already there:
+declared repo on disk** where the tool is missing — the brain and the siblings
+alike — print it first, and skip a repo entirely where it is installed. A
+read-only repo, declared `managed: false` or a shallow clone, is skipped in
+silence (MV-125):
 
 ```txt
 sdd speckit: .specify is missing in brain — running the tool's own init there: `specify init --here --integration claude --force --ignore-agent-tools`
@@ -399,12 +453,21 @@ sdd speckit: .specify is missing in api — running the tool's own init there: `
 sdd speckit: scaffolded — api:.specify is there now; its steps are runnable
 ```
 
+A repo where the tool is **partial** or **unevaluable** — a `.specify/` made by
+hand, an init that stopped half way, a state file that cannot be read — is
+warned and never re-initialised, because a re-run can revert files someone
+edited:
+
+```txt
+sdd speckit: web is partial — .specify is there and .specify/integration.json is not — the init is not run over it, since a re-run can revert edited files; run `specify init --here --integration claude --force --ignore-agent-tools` in web yourself
+```
+
 `--ignore-agent-tools` is there because spec-kit checks for the integration's
 own CLI before it writes anything: measured without the flag and without
 `claude` installed, the init exits 1 and writes nothing; with it, the init exits
 0. MV-123 names the version measured.
 
-Presence is a **per-root** question (MV-87). One repo somebody initialized by
+Installed is a **per-root** question (MV-87). One repo somebody initialized by
 hand does not answer for the others, a repo whose init fails does not stop the
 repos after it, and a repo with `sdd: none` in its entry is never touched.
 
@@ -414,27 +477,29 @@ someone edited — not something a check, a report or a door may do. `doctor`
 reports the state per repo and names the command instead:
 
 ```txt
-sdd        speckit @ brain: artifact ok · binary ok · sdd_auto on …
-sdd        speckit @ api: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force --ignore-agent-tools`, doctor never does (it writes the vendor's files into the tree) · binary ok · sdd_auto on …
+sdd        speckit @ brain: installed · binary ok · sdd_auto on …
+sdd        speckit @ api: missing (no .specify) — declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force --ignore-agent-tools`, doctor never does (it writes the vendor's files into the tree) · binary ok · sdd_auto on …
+sdd        speckit @ web: partial (.specify is there and .specify/integration.json is not) — the lifecycle will not run the init over it, since a re-run can revert edited files; run `specify init --here --integration claude --force --ignore-agent-tools` there yourself · binary ok · sdd_auto on …
 sdd        none @ landing: no sdd declared for this repo — out of scope, not a gap
 ```
 
-Five outcomes, all of them said out loud:
+Six outcomes, all of them said out loud:
 
 | state | what happens |
 | --- | --- |
-| artifact present **in this repo** | nothing runs there, nothing is printed |
-| no init recorded for that tool | the gap is stated per repo with the install line; **nothing is executed** |
-| a required binary not found | one line per repo naming the binary, the install line and the vendor — the lookup reads each repo's own `node_modules/.bin` (MV-123) |
-| ran, artifact now there | `scaffolded`, naming the repo |
-| ran, artifact still missing | the tool's cause, quoted, the command handed back, the next repo still attempted, and the gate that follows still refuses on its own terms |
+| installed **in this repo** | nothing runs there, nothing is printed |
+| partial or unevaluable | nothing runs; a warning names the repo, the reason and the init to run by hand |
+| missing, no init recorded for that tool | the gap is stated per repo with the install line; **nothing is executed** |
+| missing, a required binary not found | one line per repo naming the binary, the install line and the vendor — the lookup reads each repo's own `node_modules/.bin` (MV-123) |
+| ran, now installed | `scaffolded`, naming the repo |
+| ran, still not installed | the tool's cause, quoted, the command handed back — `left .specify partial (<reason>)` when it wrote half — the next repo still attempted, and the gate that follows still refuses on its own terms |
 
-The last row is the honest one: an exit code is the tool's claim, the artifact
-is the fact, and the gates look for the artifact.
+The last row is the honest one: an exit code is the tool's claim, its state
+file is the fact, and the probe reads the file.
 
-Every declared, present repo is scaffolded, each judged on its own artifact;
+Every declared repo on disk is scaffolded, each judged on its own state file;
 a repo declared but not on disk is skipped, and one with `sdd: none` is out of
-scope. `--no-sdd` and `sdd_auto: false` turn the scaffold off with everything
+scope, as is a read-only one (MV-125). `--no-sdd` and `sdd_auto: false` turn the scaffold off with everything
 else; there is no separate switch.
 
 {{< callout >}}
@@ -495,13 +560,15 @@ sdd opsx: `change plan add-user-auth` refused — openspec/changes/add-user-auth
   (`--no-sdd` skips the SDD gates for one run; `sdd_auto: false` in .multivac/config.yml turns them off)
 ```
 
-The gate searches the brain and every declared repo present on disk, because
-the specs of a change often live in the code repo rather than the brain. It
+The gate searches the brain and each declared repo on disk that is not
+read-only (MV-125), because the specs of a change often live in the code repo
+rather than the brain. It
 judges each adapter only in the roots that resolve to it (MV-122): with
 `sdd: opsx` and `repos.web.sdd: speckit`, web is asked for the spec and the
 rest for the proposal, the point passes only when both do, and a root that
 resolves `none` is never searched. An adapter only uncloned repos resolve
-cannot be judged, so it refuses, naming them. Both
+cannot be judged, so it refuses, naming them; one only read-only repos resolve
+is not gated, and one line names them. Both
 halves of that search are said out loud: the refusal lists the repos it looked
 in, and the pass names the one it found the artifact in —
 
@@ -684,12 +751,12 @@ Two ways to opt out, at two scopes. Both turn off the **steps and the gates**:
 | `--no-sdd` on a `change` invocation | this run | skips the printout and the refusal once |
 
 ```txt
-sdd        opsx: artifact missing (looked for openspec/specs, openspec/changes) · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
+sdd        opsx @ brain: missing (no openspec) · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
 ```
 
 That is exploration mode. `doctor` keeps reporting the adapter either way —
 turning automation off is not the same as undeclaring it; you still want to
-know the artifact is there and the binary is current.
+know the tool is installed and the binary is current.
 
 ## Detection at init
 

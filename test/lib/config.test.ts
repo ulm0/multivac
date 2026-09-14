@@ -50,3 +50,34 @@ test('a grapher declared under the name `none` is refused by name — MV-122', a
   );
   await assert.rejects(() => loadConfig(dir), /graphers\.none/);
 });
+
+test('managed is a boolean on a repo entry, and only false is carried — MV-125', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-managed-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  const write = (body: string) => writeFileSync(join(dir, '.multivac/config.yml'), body);
+
+  write('doors: [agents]\nrepos:\n  brain: .\n  api:\n    path: ../api\n    managed: false\n');
+  assert.equal((await loadConfig(dir)).repos.api.managed, false);
+
+  // The default is true, and an entry that says so keeps the shape it had.
+  for (const line of ['    managed: true\n', '']) {
+    write(`doors: [agents]\nrepos:\n  api:\n    path: ../api\n${line}`);
+    assert.equal('managed' in (await loadConfig(dir)).repos.api, false);
+  }
+
+  for (const bad of ['"false"', '0', 'null']) {
+    write(`doors: [agents]\nrepos:\n  api:\n    path: ../api\n    managed: ${bad}\n`);
+    await assert.rejects(() => loadConfig(dir), /"repos\.api\.managed" must be true or false/, bad);
+  }
+});
+
+test('the brain cannot be declared unmanaged, under any key — MV-125', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-managed-brain-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  const write = (body: string) => writeFileSync(join(dir, '.multivac/config.yml'), body);
+
+  for (const key of ['brain', 'self']) {
+    write(`doors: [agents]\nrepos:\n  ${key}:\n    path: .\n    managed: false\n`);
+    await assert.rejects(() => loadConfig(dir), /the brain is always managed/, key);
+  }
+});

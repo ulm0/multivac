@@ -1,11 +1,15 @@
-// Probe a repo/brain for adapter artifacts and binaries. Pure checks, no
-// subprocess: fs existence, and one binary lookup over PATH and the root's
-// node_modules/.bin (MV-123).
+// Probe a repo/brain for adapter binaries and step artifacts. Checks, no
+// subprocess of their own: fs existence, one binary lookup over PATH and the
+// root's node_modules/.bin (MV-123), and one read-only git question asked
+// through src/lib/git.ts — is this sibling's clone shallow (MV-125). Whether a
+// vendor is initialised is not asked here: `initState` in
+// src/lib/init-state.ts reads its state files (MV-124).
 
 import { access, readdir, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import { doorTargets, type AdapterSpec } from './registry.js';
+import { isShallow } from '../lib/git.js';
 import type { Config, RepoEntry } from '../types.js';
 
 export async function pathExists(p: string): Promise<boolean> {
@@ -13,17 +17,6 @@ export async function pathExists(p: string): Promise<boolean> {
     () => true,
     () => false,
   );
-}
-
-/** True when any of the spec's artifact paths exists under `dir`. */
-export async function artifactPresent(
-  spec: AdapterSpec,
-  dir: string,
-): Promise<boolean> {
-  for (const a of spec.artifacts) {
-    if (await pathExists(join(dir, a))) return true;
-  }
-  return false;
 }
 
 /** One place an SDD artifact may live, named the way the operator names it. */
@@ -37,6 +30,8 @@ export interface SddRoot {
    * scope, never deficient — no scaffold, no gate, no notice.
    */
   sdd?: string;
+  /** Why multivac may not write here, from `readOnly` (MV-125); absent when it may. */
+  readOnly?: ReadOnly;
 }
 
 /**
@@ -74,6 +69,28 @@ export function adapterFor(
   return name && name !== NO_ADAPTER ? name : undefined;
 }
 
+/** Why a declared repo is read-only (MV-125). */
+export type ReadOnly = 'not managed' | 'shallow';
+
+/**
+ * MV-125. The one answer to "may multivac write in this root": `not managed`
+ * when its entry says `managed: false`, `shallow` when `dir` is on disk and
+ * git reports its clone shallow, and null otherwise. The brain root and the
+ * entry that is the brain are never read-only, and are answered without a
+ * spawn, as is a declaration. Asked fresh every time: a clone unshallowed
+ * mid-process is in scope on the next question.
+ *
+ * Every surface that writes into a root, or gates on a file there, asks here
+ * or reads the field `sddRoots` and `graphScopes` set from it; nothing else
+ * reads the key or asks git the question.
+ */
+export async function readOnly(cfg: AdapterDecls, root: string, dir: string): Promise<ReadOnly | null> {
+  const own = root === 'brain' ? undefined : cfg.repos?.[root];
+  if (!own || own.isBrain) return null;
+  if (own.managed === false) return 'not managed';
+  return (await pathExists(dir)) && (await isShallow(dir)) ? 'shallow' : null;
+}
+
 /**
  * Every DECLARED root grouped by the adapter it resolves, in order of first
  * appearance: the brain first, then declared repos in config order, absent
@@ -93,20 +110,24 @@ export function adaptersByRoot(cfg: AdapterDecls, kind: 'sdd' | 'grapher'): Map<
 
 /**
  * Every directory an SDD tool's files may live in: the brain plus each
- * declared, present, non-brain repo. A gate that only looked in the brain
+ * declared, non-brain repo on disk. A gate that only looked in the brain
  * would refuse a change whose specs live in the code repo — and one that
  * searched them all silently would refuse without saying where it looked, so
  * each root carries the name the config gave it.
  *
  * Each root also carries the adapter that applies to it, from `adapterFor`
- * (MV-122), so no caller re-derives it differently.
+ * (MV-122), and whether it is read-only, from `readOnly` (MV-125), so no
+ * caller re-derives either differently. A read-only root stays in the list,
+ * because `doctor` reports from it; every writer and gate skips it.
  */
 export async function sddRoots(brain: string, cfg: Config): Promise<SddRoot[]> {
   const roots: SddRoot[] = [{ scope: 'brain', dir: brain, sdd: adapterFor(cfg, 'brain', 'sdd') }];
   for (const [key, e] of Object.entries(cfg.repos)) {
     if (e.isBrain) continue; // already the brain
     const d = resolve(brain, e.path);
-    if (await pathExists(d)) roots.push({ scope: key, dir: d, sdd: adapterFor(cfg, key, 'sdd') });
+    if (!(await pathExists(d))) continue;
+    const why = await readOnly(cfg, key, d);
+    roots.push({ scope: key, dir: d, sdd: adapterFor(cfg, key, 'sdd'), ...(why ? { readOnly: why } : {}) });
   }
   return roots;
 }

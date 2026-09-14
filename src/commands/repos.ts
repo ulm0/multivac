@@ -14,7 +14,7 @@ import { promisify } from 'node:util';
 import { resolve } from 'node:path';
 import type { Command } from '../types.js';
 import { CONFIG_PATH, loadConfig } from '../lib/config.js';
-import { pathExists } from '../adapters/detect.js';
+import { pathExists, readOnly } from '../adapters/detect.js';
 import { gitFailure } from '../lib/git.js';
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
@@ -35,7 +35,9 @@ export async function reposList(brainDir: string): Promise<string[]> {
   for (const [key, e] of entries) {
     const there = await pathExists(resolve(brainDir, e.path));
     const url = e.url ? `  (${e.url})` : there ? '' : '  — no url, cannot sync';
-    lines.push(`${key.padEnd(12)} ${there ? 'present' : 'missing'}  ${e.path}${url}`);
+    // MV-125: read, fetched and verified, never written.
+    const why = await readOnly(cfg, key, resolve(brainDir, e.path));
+    lines.push(`${key.padEnd(12)} ${there ? 'present' : 'missing'}  ${e.path}${url}${why ? ` — ${why}, read-only` : ''}`);
   }
   return lines;
 }
@@ -81,7 +83,10 @@ export async function reposSync(
     const args = ['clone', ...(shallow ? ['--depth', '1'] : []), e.url, dest];
     try {
       await execFileP('git', args, { maxBuffer: 16 * 1024 * 1024 });
-      lines.push(`${key}: cloned ${e.url} -> ${e.path}${shallow ? ' (shallow)' : ''}`);
+      // Asked of the clone, not the flag: git ignores `--depth` for a local
+      // path, and a full clone is one multivac writes in (MV-125).
+      const ro = (await readOnly(cfg, key, dest)) ? ' — read-only: multivac will not write there' : '';
+      lines.push(`${key}: cloned ${e.url} -> ${e.path}${shallow ? ' (shallow)' : ''}${ro}`);
     } catch (err) {
       exit = 1;
       const stderr = ((err as { stderr?: string }).stderr ?? String(err)).trim();
@@ -109,7 +114,7 @@ export const reposCommand: Command = {
     'usage: multivac repos [sync] [--shallow]',
     '  (no sub)    list every declared repo: present or missing, and its path',
     '  sync        clone the missing ones, fetch the rest so the channel ref is current',
-    '  --shallow   sync only: --depth 1, for a repo you will read but never land in',
+    '  --shallow   sync only: --depth 1 — a shallow clone is read-only: multivac will not write there',
     'verify never fetches, so a channel ref is only as current as the last sync.',
   ],
   async run(argv, ctx) {

@@ -179,7 +179,7 @@ const MK_GRAPHER = [
   '    refresh: "mkdir -p g && touch g/graph.json"',
 ];
 
-/** Written and tracked, so the graph gates pass and close reaches its refresh. */
+/** Written and committed, so the graph gates pass and close reaches its refresh. */
 const trackGraph = (dir: string, rel: string): void => {
   write(dir, rel, '{}\n');
   execFileSync('git', ['-C', dir, 'add', rel]);
@@ -314,11 +314,11 @@ test("the brain's own grapher wins over the ecosystem's everywhere the brain is 
   const cfg = await loadConfig(brain);
   const { renderBrainDoor } = await import('../../src/doors/brain.js');
   const door = renderBrainDoor(cfg, 1);
-  assert.match(door, /kept fresh for you by `codegraph` at `\.codegraph`/);
+  assert.match(door, /kept fresh for you by `codegraph` at `\.codegraph\/codegraph\.db` — refreshed after your edits; it is built in each checkout, so never commit it\./);
   assert.equal(door.includes('graphify'), false);
 
   const page = renderFlow(cfg);
-  assert.match(page, /has no `\.codegraph`, and refreshed at `change close`, in brain$/m);
+  assert.match(page, /has no `\.codegraph\/codegraph\.db`, and refreshed at `change close`, in brain$/m);
   assert.match(page, /has no `graphify-out\/graph\.json`, and refreshed at `change close`, in api$/m);
 
   const { doctorReport } = await import('../../src/commands/doctor.js');
@@ -329,7 +329,7 @@ test("the brain's own grapher wins over the ecosystem's everywhere the brain is 
 
   await capture(() => change.run(['new', 'own-graph', 'Own graph'], ctx));
   const c = await capture(() => change.run(['close', 'own-graph'], ctx));
-  assert.ok(existsSync(join(brain, '.codegraph')), 'the brain was built with its own grapher');
+  assert.ok(existsSync(join(brain, '.codegraph/codegraph.db')), 'the brain was built with its own grapher');
   assert.equal(existsSync(join(brain, 'graphify-out')), false, 'and not with the ecosystem one');
   assert.ok(existsSync(join(api, 'graphify-out/graph.json')));
   // Tracking policy is not asked here: only that nothing judged the brain by graphify's artifact.
@@ -351,7 +351,7 @@ test('a brain entry grapher with no ecosystem grapher still builds and gates the
   assert.ok(existsSync(join(brain, 'graphify-out/graph.json')), 'built where the brain declared it');
   assert.equal(existsSync(join(api, 'graphify-out')), false);
   assert.equal(c.code, 1);
-  assert.match(c.out, /brain: graphify-out\/graph\.json is untracked/);
+  assert.match(c.out, /brain: graphify-out\/graph\.json is not committed/);
 });
 
 test('a brain that opts out of the sdd has no block, while its sibling keeps the steps', async () => {

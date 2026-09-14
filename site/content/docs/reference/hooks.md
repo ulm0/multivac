@@ -51,8 +51,9 @@ says plainly that nothing was verified and exits 0.
 ## Git hooks — the universal floor
 
 `init` installs them in the brain. `doors` installs them in the brain **and
-in every declared repo that is present on disk**, regardless of which harness
-targets you declared:
+in each declared repo on disk**, regardless of which harness targets you
+declared — except a read-only one, declared `managed: false` or a shallow
+clone, which gets nothing (MV-125):
 
 ```txt
 $ mvac doors

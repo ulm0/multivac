@@ -7,7 +7,8 @@ You write the door once. multivac projects it into whatever harness the
 person in front of it happens to use.
 
 The canonical door is **`AGENTS.md`** at the repo root — in the brain and in
-every declared repo. Everything else on this page is a projection of that one
+every declared repo multivac may write in (not `managed: false`, not a shallow
+clone, MV-125). Everything else on this page is a projection of that one
 file. Adding a harness is an entry in `src/adapters/registry.ts`, shipped
 inside the package: `doors` and `doctor` dispatch on the entry's `kind`,
 never on its name, so a new harness is data and nothing else. Every entry

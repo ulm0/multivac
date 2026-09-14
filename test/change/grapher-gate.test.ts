@@ -1,4 +1,5 @@
-// MV-90: a declared grapher leaves a graph in every declared, present root, or
+// MV-90: a declared grapher leaves a graph in every declared root on disk that
+// is not read-only (MV-125), or
 // `change close` refuses. The graphers here are DECLARED (graphers: in the
 // config), never a tool that has to be installed on the host: `true` is the
 // refresh that succeeds and writes nothing, so a root stays ungraphed with the
@@ -74,7 +75,7 @@ async function readyToClose(brain: string, ctx: { cwd: string }, slug: string): 
   );
 }
 
-// Written AND tracked: MV-103 makes an untracked graph its own refusal, so a
+// Written AND committed: MV-103 makes an uncommitted graph its own refusal, so a
 // fixture that only writes the file would be testing this gate through the
 // next one.
 const graph = (dir: string): void => {
