@@ -182,7 +182,7 @@ export interface SddProjectStep {
 }
 
 /**
- * The tool's OWN init, and the artifact that says it has already run here.
+ * The tool's OWN init.
  *
  * The one command in this file multivac runs ITSELF. Every `SddStep` is a chat
  * command an agent runs and the lifecycle only prints (MV-51); a scaffold is a
@@ -194,17 +194,14 @@ export interface SddProjectStep {
  * command, and the chat command does not exist until the tool's own init has
  * run — the change that would install it being the change its own gate refused.
  *
- * Both fields are STATED, never derived: not from the adapter's name, and not
- * from `artifacts[0]` even where the two coincide, because a default is how one
- * tool's layout silently becomes the answer for a tool whose init writes
- * somewhere else. An init nobody has run gets no entry at all (MV-59's rule),
- * and the lifecycle says so instead of guessing a command to run on someone
- * else's machine.
+ * The command is STATED, never derived from the adapter's name. Whether it has
+ * already run here is not this field's to say: the entry's `state` answers
+ * that, through `initState` (MV-124), so a hand-made directory is not an install.
+ * An init nobody has run gets no entry at all (MV-59's rule), and the lifecycle
+ * says so instead of guessing a command to run on someone else's machine.
  */
 export interface SddScaffold {
-  /** Repo-relative path whose absence means "this tool has never run here". */
-  artifact: string;
-  /** The vendor's own init command, verbatim. Runs in the brain, not per-slug. */
+  /** The vendor's own init command, verbatim. Runs in each root that is missing it. */
   run: string;
   /** What running it actually wrote, and how that was established. */
   note: string;
@@ -232,11 +229,53 @@ export interface GrapherQuery {
   answers: string;
 }
 
+/**
+ * MV-124. The files a vendor's own init writes, and the check that proves it
+ * finished. `initState` reads them and nothing else.
+ */
+export interface StateProbe {
+  /** The vendor's own directory: there without a passing file is partial. */
+  dir?: string;
+  /** Repo-relative state files; any one passing `check` is installed. */
+  files: string[];
+  /** exists: any path. file: a regular file. json: a regular file that parses. */
+  check: 'exists' | 'file' | 'json';
+  /** json only: a key equal to a number, or holding a non-empty list. */
+  expect?: Record<string, number | 'non-empty'>;
+}
+
 /** One sdd/grapher adapter: what to detect and what automation it carries. */
 export interface AdapterSpec {
   kind: 'sdd' | 'grapher';
-  /** Repo-relative paths; any present => artifact (read capability) present. */
+  /**
+   * Repo-relative paths the tool writes. A grapher's first one is the artifact
+   * the doors, the gates and `doctor` name; an SDD entry's are a record for the
+   * reader, and no command reads them. Whether the tool is initialised is
+   * `state`'s answer, never these paths being there.
+   */
   artifacts: string[];
+  /** MV-124: the state files that say the vendor is initialised in a root. */
+  state: StateProbe;
+  /**
+   * MV-124: which of the vendor's paths are versioned (`shared`) and which
+   * belong to one checkout (`local`), plus the ignore lines that say so. A
+   * literal path beats a glob, and between two globs `local` wins, so
+   * `.specify/feature.json` is local under `.specify/**`. Declared, and not yet
+   * read by any command: the change that equips a root reads them.
+   */
+  shared: string[];
+  local: string[];
+  ignore: string[];
+  /** Grapher only: default lines keeping the graph off multivac's and the SDD's own files. */
+  graphignore?: string[];
+  /** Grapher only: a shared artifact is committed; a local one is built in each checkout (MV-124). */
+  artifactKind?: 'shared' | 'local';
+  /**
+   * MV-124: the vendor's opt-out variables, set over the inherited environment
+   * on every command multivac runs for this entry and exported by the post-edit
+   * hook. Bare words only, so the hook never quotes one.
+   */
+  env: Record<string, string>;
   /**
    * The names the tool's binary goes by; any one of them names this tool.
    * No command reads it (MV-123): whether a root can run the tool is `required`.
@@ -281,7 +320,7 @@ export interface AdapterSpec {
    */
   projectSteps?: SddProjectStep[];
   /**
-   * SDD only: the tool's own init, run by the LIFECYCLE when its artifact is
+   * SDD only: the tool's own init, run by the LIFECYCLE where `initState` says
    * missing — never by `verify`, `doctor` or `doors` (MV-75): the init writes
    * the vendor's files into the tree. Optional because an init nobody verified
    * by running it is a gap this registry states rather than fills.
@@ -384,6 +423,12 @@ const sdd: Record<string, AdapterSpec> = {
   opsx: {
     kind: 'sdd',
     artifacts: ['openspec/specs', 'openspec/changes'],
+    // What `openspec init` 1.13.0 writes (requirements study), reproduced by stubs.
+    state: { dir: 'openspec', files: ['openspec/config.yaml', 'openspec/config.yml'], check: 'file' },
+    shared: ['openspec/config.yaml', 'openspec/config.yml', 'openspec/specs/**'],
+    local: [],
+    ignore: [],
+    env: { DO_NOT_TRACK: '1', OPENSPEC_TELEMETRY: '0' },
     binaries: ['openspec'],
     required: ['openspec'],
     installHint: 'npm i -g @fission-ai/openspec',
@@ -440,19 +485,31 @@ const sdd: Record<string, AdapterSpec> = {
         },
       },
     ],
-    note: 'Propose, apply and archive are the /opsx: commands your agent runs in chat; the one terminal command multivac runs is `openspec validate`, and the vendor\'s own terminal CLI is larger than any list worth copying here. Network, read from openspec 1.13.0\'s source: every command, the `openspec validate` the gates run included, sends anonymous PostHog telemetry to edge.openspec.dev by default, and `openspec update` also checks registry.npmjs.org for a newer version. The vendor\'s opt-outs are OPENSPEC_TELEMETRY=0 or DO_NOT_TRACK=1 in the environment; this entry discloses them and nothing here sets either. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool\'s own escape hatches — multivac gates on what landed on disk, not on how it got there.',
+    note: 'Propose, apply and archive are the /opsx: commands your agent runs in chat; the one terminal command multivac runs is `openspec validate`, and the vendor\'s own terminal CLI is larger than any list worth copying here. Network, read from openspec 1.13.0\'s source: every command, the `openspec validate` the gates run included, sends anonymous PostHog telemetry to edge.openspec.dev by default, and `openspec update` also checks registry.npmjs.org for a newer version. The vendor\'s opt-outs are OPENSPEC_TELEMETRY=0 or DO_NOT_TRACK=1 in the environment; this entry\'s `env` sets both on every run multivac makes (MV-124), and a run by hand is yours. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool\'s own escape hatches — multivac gates on what landed on disk, not on how it got there.',
     source: 'https://github.com/Fission-AI/OpenSpec',
   },
   speckit: {
     kind: 'sdd',
     artifacts: ['.specify'],
+    // Written by the init: 0.16.4's copy in this brain and 1.0.6's carry both
+    // keys, and 1.0.6's `specify integration status` refuses without the file.
+    state: {
+      dir: '.specify',
+      files: ['.specify/integration.json'],
+      check: 'json',
+      expect: { integration_state_schema: 1, installed_integrations: 'non-empty' },
+    },
+    shared: ['.specify/**'],
+    // What spec-kit's own `.specify/.gitignore` already ignores.
+    local: ['.specify/feature.json', '.specify/extensions/*/local-config.yml'],
+    ignore: [],
+    env: {},
     binaries: ['specify'],
     required: ['specify'],
     installHint: 'uv tool install specify-cli',
     refresh: 'specify check',
     automation: 'sdd_auto',
     scaffold: {
-      artifact: '.specify',
       run: 'specify init --here --integration claude --force --ignore-agent-tools',
       // Verified by running it in a scratch repo, not read off a README: it
       // writes `.specify/**` — scripts, templates, and memory/constitution.md
@@ -591,6 +648,13 @@ type GrapherEntry = Omit<AdapterSpec, 'kind' | 'automation' | 'steps' | 'project
 const knownGraphers: Record<string, GrapherEntry> = {
   graphify: {
     artifacts: ['graphify-out/graph.json'],
+    state: { dir: 'graphify-out', files: ['graphify-out/graph.json'], check: 'json' },
+    artifactKind: 'shared',
+    shared: ['graphify-out/graph.json'],
+    local: ['graphify-out/**'],
+    ignore: ['graphify-out/*', '!graphify-out/graph.json'],
+    graphignore: ['.claude/', '.multivac/', '.specify/', 'specs/', 'openspec/'],
+    env: {},
     binaries: ['graphify'],
     required: ['graphify'],
     // NOT `npm i -g graphify`: the shipped binary is a Python console script
@@ -622,7 +686,16 @@ const knownGraphers: Record<string, GrapherEntry> = {
     source: 'https://github.com/Graphify-Labs/graphify',
   },
   codegraph: {
-    artifacts: ['.codegraph'],
+    // The SQLite database, not the directory: 1.6.0 writes `.codegraph/` with
+    // its own `.gitignore`, so a clone holds the directory and no graph.
+    artifacts: ['.codegraph/codegraph.db'],
+    state: { dir: '.codegraph', files: ['.codegraph/codegraph.db'], check: 'file' },
+    artifactKind: 'local',
+    shared: [],
+    local: ['.codegraph/**'],
+    ignore: ['.codegraph/'],
+    // No graphignore: no ignore file of codegraph's was verified.
+    env: { DO_NOT_TRACK: '1', CODEGRAPH_TELEMETRY: '0', CODEGRAPH_NO_DOWNLOAD: '1' },
     binaries: ['codegraph'],
     required: ['codegraph'],
     installHint: 'npm i -g @colbymchenry/codegraph',
@@ -640,7 +713,7 @@ const knownGraphers: Record<string, GrapherEntry> = {
           'symbol search by name — `--kind function|class` narrows it, `--limit N` bounds it, `--json` makes it machine-readable',
       },
     ],
-    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — 1.6.0\'s README says it collects which tools and commands get used and which languages get indexed, and never any code, paths, file or symbol names, queries, or IP addresses. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or CODEGRAPH_TELEMETRY=0, or DO_NOT_TRACK=1) is half of what makes the contract above literally true. The other half is the npm shim: when the platform bundle its optional dependency should carry is missing, it falls back to downloading that bundle from GitHub Releases, and CODEGRAPH_NO_DOWNLOAD=1 turns the fallback off. This entry discloses the opt-outs; nothing here sets any. It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP. That server, which multivac never starts, checks GitHub releases for a newer version in the background on 1.6.0, and CODEGRAPH_NO_UPDATE_CHECK or DO_NOT_TRACK turns the check off.',
+    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — 1.6.0\'s README says it collects which tools and commands get used and which languages get indexed, and never any code, paths, file or symbol names, queries, or IP addresses. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or CODEGRAPH_TELEMETRY=0, or DO_NOT_TRACK=1) is half of what makes the contract above literally true. The other half is the npm shim: when the platform bundle its optional dependency should carry is missing, it falls back to downloading that bundle from GitHub Releases, and CODEGRAPH_NO_DOWNLOAD=1 turns the fallback off. This entry\'s `env` sets all three on every run multivac makes and in the post-edit hook (MV-124). It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP. That server, which multivac never starts, checks GitHub releases for a newer version in the background on 1.6.0, and CODEGRAPH_NO_UPDATE_CHECK or DO_NOT_TRACK turns the check off.',
     source: 'https://github.com/colbymchenry/codegraph',
   },
 };
@@ -670,6 +743,13 @@ export function grapherSpec(
   if (!known && !decl) return null;
   const base: GrapherEntry = known ?? {
     artifacts: [decl!.artifact],
+    // A declaration names a path, not a vendor directory: there or missing.
+    state: { files: [decl!.artifact], check: 'exists' },
+    artifactKind: 'shared',
+    shared: [decl!.artifact],
+    local: [],
+    ignore: [],
+    env: {},
     binaries: [decl!.binary ?? decl!.refresh.split(' ')[0]],
     // The first word is MV-115's ceiling: `env X=1 tool` needs `binary:`.
     required: [decl!.binary ?? decl!.refresh.split(' ')[0]],

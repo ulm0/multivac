@@ -14,7 +14,7 @@
 
 import { execFile } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import type { Config } from '../types.js';
 import { CONFIG_PATH } from '../lib/config.js';
@@ -30,13 +30,13 @@ import {
 import {
   adaptersByRoot,
   artifactHit,
-  artifactPresent,
   findBinary,
   missingRequired,
-  pathExists,
+  readOnly,
   sddRoots,
   type SddRoot,
 } from './detect.js';
+import { initState, stateLabel } from '../lib/init-state.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
 
 const execFileP = promisify(execFile);
@@ -161,7 +161,8 @@ async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise
   if (exe === null && !bins.includes(bin)) bins.push(bin);
   if (exe === null || bins.length > 0) return { kind: 'missing', bins };
   try {
-    await execFileP(exe, args, { cwd });
+    // MV-124: the entry's opt-outs over whatever the parent had, the command untouched.
+    await execFileP(exe, args, { cwd, env: { ...process.env, ...spec.env } });
     return { kind: 'ok' };
   } catch (e) {
     const err = e as { stdout?: string; stderr?: string; message: string };
@@ -203,22 +204,28 @@ async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise
  * the registry and quoted verbatim. It never satisfies a step and is never
  * printed as one.
  *
- * Five outcomes, all of them said out loud, and all of them PER ROOT (MV-87):
- *   - artifact present in THIS root -> silent, nothing runs here;
- *   - no scaffold declared          -> the gap, stated: no init is guessed;
- *   - binary absent                 -> the missing-binary line, nothing runs;
- *   - ran and the artifact is there -> scaffolded;
- *   - ran and it is not             -> the tool's own words, command handed
- *                                      back, and the gate that follows still
- *                                      refuses on its own terms.
+ * Every outcome said out loud, and all of them PER ROOT (MV-87), on the state
+ * `initState` reads from the vendor's own files (MV-124):
+ *   - installed in THIS root          -> silent, nothing runs here;
+ *   - partial or unevaluable          -> warned with the reason and the init
+ *                                        to run by hand, nothing runs: a re-run
+ *                                        reverts edited files;
+ *   - missing, no scaffold declared   -> the gap, stated: no init is guessed;
+ *   - missing, binary absent          -> the missing-binary line, nothing runs;
+ *   - ran and the probe says installed -> scaffolded;
+ *   - ran and it does not             -> the tool's own words, command handed
+ *                                        back, and the gate that follows still
+ *                                        refuses on its own terms.
  *
  * It used to ask presence of the whole list and stop at the first hit, then act
  * on `roots[0]` alone. Measured in an ecosystem of six: one sibling repo
  * somebody had run the init in by hand suppressed the scaffold everywhere, the
  * brain included, so declaring an SDD did nothing at all and the report said
- * `artifact ok`. A root that opted out (`sdd: none`) is skipped as out of
- * scope, never as deficient, and each root is asked about the adapter that
- * applies THERE — `sddRoots` resolves that per root.
+ * `artifact ok`. A directory made by hand silenced it too, until the question
+ * became the vendor's own state file (MV-124). A root that opted out
+ * (`sdd: none`) is skipped as out of scope, never as deficient, and each root
+ * is asked about the adapter that applies THERE — `sddRoots` resolves that per
+ * root.
  *
  * Never throws: a foreign tool's failure is never the lifecycle's failure, and
  * one root's broken checkout never decides the fate of the rest — the loop
@@ -232,17 +239,28 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
   for (const root of roots) {
     // Out of scope, not deficient: `sdd: none`, or no sdd resolves for this root.
     if (!root.sdd) continue;
+    // Not multivac's to write (MV-125): the init writes the vendor's files, so
+    // nothing runs and nothing is said. `doctor` reports why.
+    if (root.readOnly) continue;
     const spec = sddSpec(root.sdd);
     // An unknown adapter already gets the known-names line from the gate and
     // the instructions; a second copy here would only repeat it.
     if (!spec) continue;
     const sc = spec.scaffold;
-    // Presence is asked the same way the gates ask it. With no scaffold
-    // declared there is no artifact to name, so "has this tool left anything
-    // here" is the registry's own read-capability probe.
-    const present = (): Promise<boolean> =>
-      sc ? pathExists(join(root.dir, sc.artifact)) : artifactPresent(spec, root.dir);
-    if (await present()) continue; // installed here: silence, not a line
+    const dir = stateLabel(spec);
+    const before = await initState(spec, root.dir);
+    if (before.state === 'installed') continue; // installed here: silence, not a line
+    if (before.state !== 'missing') {
+      // Something of the tool is here and it is not an install. Never run the
+      // init over it: on spec-kit 1.0.6 a re-run reverts edited files.
+      warn(
+        `sdd ${root.sdd}: ${root.scope} is ${before.state} — ${before.reason} — ` +
+          (sc
+            ? `the init is not run over it, since a re-run can revert edited files; run \`${sc.run}\` in ${root.scope} yourself`
+            : `multivac does not know this tool's init command and will not guess one. Install it (${spec.installHint}) and finish its own init there yourself`),
+      );
+      continue;
+    }
     if (!sc) {
       warn(
         `sdd ${root.sdd}: declared, and nothing of it is in ${root.scope} — multivac does not know this tool's ` +
@@ -253,7 +271,7 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
     }
     // Printed BEFORE it runs: it writes the vendor's files into the tree.
     say(
-      `sdd ${root.sdd}: ${sc.artifact} is missing in ${root.scope} — running the tool's own init ` +
+      `sdd ${root.sdd}: ${dir} is missing in ${root.scope} — running the tool's own init ` +
         `there: \`${sc.run}\``,
     );
     const verdict = await toolVerdict(spec, sc.run, root.dir);
@@ -263,20 +281,23 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
       warn(`sdd ${root.sdd}: \`${sc.run}\` cannot be run — ${binaryMissing(root.sdd, spec, verdict.bins, root.scope)}`);
       continue;
     }
-    // The artifact decides, not the exit code. A tool that returns 0 without
-    // writing what the gates look for has not scaffolded anything, and saying
-    // it did is the quiet lie this whole module is built to avoid.
-    if (await present()) {
-      say(
-        `sdd ${root.sdd}: scaffolded — ${root.scope}:${sc.artifact} is there now; its steps are runnable`,
-      );
+    // The probe decides, not the exit code. A tool that returns 0 without
+    // writing its state file has not scaffolded anything, and saying it did is
+    // the quiet lie this whole module is built to avoid.
+    const after = await initState(spec, root.dir);
+    if (after.state === 'installed') {
+      say(`sdd ${root.sdd}: scaffolded — ${root.scope}:${dir} is there now; its steps are runnable`);
       continue;
     }
     warn(
-      `sdd ${root.sdd}: \`${sc.run}\` left no ${sc.artifact} in ${root.scope}` +
+      `sdd ${root.sdd}: \`${sc.run}\` ` +
+        (after.state === 'missing' ? `left no ${dir}` : `left ${dir} ${after.state} (${after.reason})`) +
+        ` in ${root.scope}` +
         (verdict.kind === 'failed'
           ? ` — it said: ${verdict.message}`
-          : ' — it exited 0 and wrote nothing there') +
+          : after.state === 'missing'
+            ? ' — it exited 0 and wrote nothing there'
+            : ' — it exited 0') +
         ` — run it in ${root.scope} by hand; until then the gates refuse on their own terms`,
     );
   }
@@ -308,7 +329,23 @@ export async function sddGate(
   const present = await sddRoots(brain, cfg);
   const lines: string[] = [];
   let ok = true;
-  for (const [name, declared] of adaptersByRoot(cfg, 'sdd')) {
+  for (const [name, all] of adaptersByRoot(cfg, 'sdd')) {
+    // MV-125: a read-only root is neither searched nor named, on disk or not —
+    // every fix a refusal there could print is a write multivac may not make.
+    const ro: string[] = [];
+    const declared: string[] = [];
+    for (const key of all) {
+      const on = present.find((r) => r.scope === key);
+      const why = on ? on.readOnly : await readOnly(cfg, key, resolve(brain, cfg.repos[key].path));
+      if (why) ro.push(`${key} (${why})`);
+      else declared.push(key);
+    }
+    if (declared.length === 0) {
+      lines.push(
+        `sdd ${name}: \`change ${gate} ${slug}\` is not gated — every root that resolves ${name} is read-only: ${ro.join(', ')}`,
+      );
+      continue;
+    }
     const roots = present.filter((r) => declared.includes(r.scope));
     const one = await judgeSdd(name, roots, declared, gate, slug);
     ok = ok && one.ok;
@@ -531,17 +568,18 @@ async function judgeSdd(
   // Separate loop, like the ledger pass above: this document is per-project,
   // not per-change, so it takes no slug and has its own notion of untouched.
   //
-  // PER ROOT (MV-87), and only of roots where this tool is INSTALLED. It used
-  // to take the first root that could answer, so one repo's constitution
-  // satisfied the gate for an ecosystem of six and five repos planned against
-  // a document they had never seen. "Installed" is the scope that keeps the
+  // PER ROOT (MV-87), and only of roots where this tool is INSTALLED — every
+  // root whose state is not missing (MV-124), so a half-finished install still
+  // owes its document. It used to take the first root that could answer, so
+  // one repo's constitution satisfied the gate for an ecosystem of six and
+  // five repos planned against a document they had never seen. "Installed" is the scope that keeps the
   // stricter question answerable: a repo that opted out, or that the tool has
   // never been scaffolded into, has no reason to own this document, and
   // refusing over it would be a gate nobody could satisfy without scaffolding
   // a repo they deliberately excluded.
   const owning: SddRoot[] = [];
   for (const root of roots) {
-    if (await artifactPresent(spec, root.dir)) owning.push(root);
+    if ((await initState(spec, root.dir)).state !== 'missing') owning.push(root);
   }
   for (const doc of projectDocs) {
     const refuse = (why: string): void => {

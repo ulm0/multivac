@@ -57,6 +57,18 @@ export function initRepo(dir: string, files: Record<string, string>): void {
   git(dir, 'commit', '-q', '-m', 'init');
 }
 
+/**
+ * A `--depth 1` clone at `dest` of a two-commit repo made at `<dest>-src`,
+ * whose first commit holds `files`. Through `file://`, because a clone from a
+ * local path ignores `--depth`.
+ */
+export function shallowClone(dest: string, files: Record<string, string> = { 'README.md': '# one\n' }): void {
+  const src = `${dest}-src`;
+  initRepo(src, files);
+  git(src, 'commit', '-q', '--allow-empty', '-m', 'two');
+  execFileSync('git', ['clone', '-q', '--depth', '1', `file://${src}`, dest], { stdio: 'ignore' });
+}
+
 const CONFIG_YML = `doors: [agents]
 repos:
   api: ../acme-api

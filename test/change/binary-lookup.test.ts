@@ -55,7 +55,7 @@ function stubs(dir: string, label: string, marker: string): void {
   write(join(dir, 'openspec'), `#!/bin/sh\necho openspec-${label} >> '${marker}'\nexit 0\n`, 0o755);
   write(
     join(dir, 'graphify'),
-    `#!/bin/sh\necho graphify-${label} >> '${marker}'\nmkdir -p graphify-out\necho '{}' >> graphify-out/graph.json\n`,
+    `#!/bin/sh\necho graphify-${label} >> '${marker}'\nmkdir -p graphify-out\necho '{}' > graphify-out/graph.json\n`,
     0o755,
   );
 }
@@ -115,7 +115,7 @@ async function walk(where: Placement) {
   return onPath(pathBin, async () => {
     const created = await capture(() => change.run(['new', slug, `Lookup ${where}`], ctx));
     await declareBrain(brain, slug);
-    // The graph MV-103 wants tracked, where the build could run.
+    // The graph MV-103 wants committed, where the build could run.
     if (existsSync(join(brain, 'graphify-out/graph.json'))) {
       git(brain, 'add', '--', 'graphify-out');
       git(brain, 'commit', '-q', '-m', 'graph');

@@ -80,10 +80,19 @@ type Json = Record<string, unknown>;
  *   alone would be wired for a binary it cannot reach. `$PWD` is the directory
  *   the relative lock above is taken in, so it carries that lock's ceiling.
  *   After `REFRESH_HEAD`, which stays the head `ownsRefresh` matches.
+ * - `env`, the grapher entry's opt-outs (MV-124), is exported after PATH and
+ *   before the refresh: a refresh that runs on every edit is the one place an
+ *   opt-out named and never set costs the most (MV-62). Exported here rather
+ *   than prefixed to the declared command, which stays the vendor's string and
+ *   the first word MV-115's lookup reads. Empty exports nothing, so a hook for
+ *   an entry declaring none keeps its bytes. The values are bare words (a test
+ *   holds that), so nothing is quoted.
  */
-export function refreshHookCmd(refresh: string): string {
+export function refreshHookCmd(refresh: string, env: Record<string, string> = {}): string {
+  const exported = Object.entries(env).map(([k, v]) => `${k}=${v}`).join(' ');
   return (
-    `${REFRESH_HEAD} PATH="$PATH:$PWD/node_modules/.bin"; find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ` +
+    `${REFRESH_HEAD} PATH="$PATH:$PWD/node_modules/.bin"; ${exported ? `export ${exported}; ` : ''}` +
+    `find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ` +
     `mkdir -p ${CACHE} && mkdir "$L" 2>/dev/null || exit 0; ` +
     `{ ${refresh}; rmdir "$L"; } >/dev/null 2>&1 </dev/null & exit 0`
   );
@@ -232,11 +241,12 @@ function duplicateNotice(hooks: Json, event: string): string | null {
  * JSON throws — the caller notices and skips rather than clobbering a user file.
  *
  * `refresh` is the declared grapher's refresh command, and only when its
- * binary is present; null/undefined writes no refresh entry at all.
+ * binary is present; null/undefined writes no refresh entry at all. `env` is
+ * that grapher's opt-out environment, which the hook exports (MV-124).
  */
 export function mergeClaudeSettings(
   raw: string | null,
-  opts: { refresh?: string | null; matcher?: string } = {},
+  opts: { refresh?: string | null; matcher?: string; env?: Record<string, string> } = {},
 ): { text: string; notices: string[] } {
   let obj: unknown = {};
   if (raw !== null && raw.trim() !== '') {
@@ -273,7 +283,7 @@ export function mergeClaudeSettings(
     if (added) notices.push(added);
   }
   if (opts.refresh) {
-    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh), { matcher });
+    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh, opts.env), { matcher });
   } else {
     // No grapher declared, or its binary is gone: our hook goes with it —
     // a hook pointing at a missing tool is worse than no hook. Every match is

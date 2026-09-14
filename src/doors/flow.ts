@@ -26,6 +26,7 @@ import type { Config } from '../types.js';
 import { grapherSpec, sddSpec, unverifiedGrapher } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
 import { adaptersByRoot } from '../adapters/detect.js';
+import { stateLabel } from '../lib/init-state.js';
 import { LAW_PATH, RITUAL_PATH } from '../lib/config.js';
 
 const HEADER = [
@@ -70,7 +71,7 @@ export function renderFlow(config: Config): string {
     }
     if (spec.scaffold) {
       auto.push(
-        `- the \`${name}\` init is run in a declared repo whose \`${spec.scaffold.artifact}\` is missing, or the lifecycle says why it could not${inRoots(roots)}`,
+        `- the \`${name}\` init is run in a declared repo whose \`${stateLabel(spec)}\` is missing, or the lifecycle says why it could not${inRoots(roots)}`,
       );
     }
     for (const s of spec.steps ?? []) {

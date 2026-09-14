@@ -1,6 +1,7 @@
-// `multivac doors` — project the door into the brain and each declared,
-// present repo; install the git-hook shims. Writes working trees only, never
-// commits, never clones. Missing repo -> notice, exit 0.
+// `multivac doors` — project the door into the brain and each declared repo
+// on disk that is not read-only (MV-125); install the git-hook shims. Writes
+// working trees only, never commits, never clones. Missing repo -> notice,
+// read-only repo -> one line and nothing written, exit 0.
 
 import {
   cpSync,
@@ -30,7 +31,7 @@ import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings } from '../doors/settings.js';
 import { installHooks } from '../hooks/install.js';
-import { adapterFor, missingRequired } from '../adapters/detect.js';
+import { adapterFor, missingRequired, readOnly } from '../adapters/detect.js';
 import {
   type DoorTarget,
   doorTargets,
@@ -150,12 +151,13 @@ export function installSkill(
   mirror(src, join(dir, dirname(skill)));
 }
 
-/** Merge multivac's harness entries — verify, and the graph refresh — into
- *  the harness hook config. */
+/** Merge multivac's harness entries — verify, and the graph refresh with its
+ *  grapher's opt-out environment (MV-124) — into the harness hook config. */
 async function installHookConfig(
   dir: string,
   hookConfig: NonNullable<DoorTarget['hookConfig']>,
   refresh: string | null,
+  env: Record<string, string>,
   notices: string[],
 ): Promise<void> {
   const settingsFile = join(dir, hookConfig.path);
@@ -165,6 +167,7 @@ async function installHookConfig(
       // post-edit hook — only where the registry says the harness has one.
       refresh: hookConfig.postEdit ? refresh : null,
       matcher: hookConfig.postEdit,
+      env,
     });
     await mkdir(dirname(settingsFile), { recursive: true });
     await writeFile(settingsFile, merged.text);
@@ -241,7 +244,7 @@ async function projectInto(
       }
     }
     if (t.skill) installSkill(dir, t.skill, notices);
-    if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, notices);
+    if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, spec?.env ?? {}, notices);
   }
   const hooks = await installHooks(dir, { strictPrePush: config.strictPrePush });
   if (hooks.strategy === 'chained') {
@@ -322,6 +325,14 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
       continue;
     }
     const dir = resolve(brainDir, entry.path);
+    // MV-125: a repo multivac does not own gets no door, skill, hook config,
+    // shim or core.hooksPath. One projected before it became read-only is left
+    // in place, since removing it is a write too.
+    const why = await readOnly(config, key, dir);
+    if (why) {
+      say(`${key}: ${why}, read-only — nothing projected (MV-125)`);
+      continue;
+    }
     if (!existsSync(join(dir, '.git'))) {
       say(
         `${key}: notice: not found at ${entry.path} — run \`multivac repos sync\` to clone it`,
@@ -354,10 +365,11 @@ export const doorsCommand: Command = {
     '           in .multivac/projected.yml — the stale-version notice stops.',
     '           Bare `doors` re-projects and leaves the record alone, so the',
     '           notice survives a run made for an unrelated reason.',
-    'Runs in the brain and acts on it plus every declared repo',
-    'present on disk: writes AGENTS.md, projects it per declared door, installs',
-    'the git hooks, and wires the grapher refresh into every harness that has a',
-    'post-edit hook. Re-run it after editing doors: or grapher: in config.yml.',
+    'Runs in the brain and acts on it plus each declared repo on disk:',
+    'writes AGENTS.md, projects it per declared door, installs the git hooks,',
+    'and wires the grapher refresh into every harness that has a post-edit hook.',
+    'A repo declared `managed: false`, or a shallow clone, is read-only: nothing',
+    'is projected there (MV-125). Re-run it after editing doors: or grapher:.',
   ],
   run,
 };

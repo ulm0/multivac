@@ -1,4 +1,4 @@
-// Artifact/binary probing, the registry's contracts, and the one resolver.
+// State and binary probing, the registry's contracts, and the one resolver.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -19,13 +19,13 @@ import {
   NO_ADAPTER,
   adapterFor,
   adaptersByRoot,
-  artifactPresent,
   findBinary,
   localBin,
   missingRequired,
   sddRoots,
 } from '../../src/adapters/detect.js';
 import { loadConfig } from '../../src/lib/config.js';
+import { initState } from '../../src/lib/init-state.js';
 
 const tmp = mkdtempSync(join(tmpdir(), 'mvac-adapters-'));
 const emptyDir = join(tmp, 'empty');
@@ -196,8 +196,12 @@ test('a config-declared grapher is usable without a registry MR', async () => {
   const proj = join(tmp, 'graphed');
   mkdirSync(join(proj, 'acmegraph-out'), { recursive: true });
   writeFileSync(join(proj, 'acmegraph-out', 'graph.json'), '{}');
-  assert.equal(await artifactPresent(spec, proj), true);
-  assert.equal(await artifactPresent(spec, emptyDir), false);
+  assert.equal((await initState(spec, proj)).state, 'installed');
+  assert.equal((await initState(spec, emptyDir)).state, 'missing');
+  // Its artifact is shared, as it always was, and it declares no opt-outs.
+  assert.equal(spec.artifactKind, 'shared');
+  assert.deepEqual(spec.shared, ['acmegraph-out/graph.json']);
+  assert.deepEqual(spec.env, {});
 });
 
 test('a declaration states the binary when it is not the first word', () => {
@@ -273,8 +277,8 @@ test('opsx names its telemetry, because the gates run openspec validate', () => 
   assert.match(note, /registry\.npmjs\.org/);
   assert.match(note, /OPENSPEC_TELEMETRY=0/);
   assert.match(note, /DO_NOT_TRACK=1/);
-  // Disclosed, never applied: nothing in multivac sets these today.
-  assert.doesNotMatch(note, /multivac (sets|applies|exports)/);
+  // Applied, not only disclosed (MV-124): the note says the entry's `env` sets them.
+  assert.match(note, /`env` sets/);
 });
 
 test('graphify itself is stated, not derived — the npm line was wrong', () => {
@@ -414,4 +418,95 @@ test('adapters by root: the brain first, absent repos included, `none` in no gro
   );
   assert.equal(adaptersByRoot(cfg, 'grapher').size, 0, 'nothing resolves a grapher');
   assert.equal(adaptersByRoot({ grapher: NO_ADAPTER, repos: {} }, 'grapher').size, 0);
+});
+
+// --- MV-124: what each entry declares about its own files and its runs ---
+
+test('each shipped entry declares its state files, its shared and local paths, and its opt-outs', () => {
+  const declared = (s: AdapterSpec) => ({
+    state: s.state,
+    shared: s.shared,
+    local: s.local,
+    ignore: s.ignore,
+    graphignore: s.graphignore,
+    artifactKind: s.artifactKind,
+    env: s.env,
+  });
+  assert.deepEqual(declared(sddSpec('speckit')!), {
+    state: {
+      dir: '.specify',
+      files: ['.specify/integration.json'],
+      check: 'json',
+      expect: { integration_state_schema: 1, installed_integrations: 'non-empty' },
+    },
+    shared: ['.specify/**'],
+    local: ['.specify/feature.json', '.specify/extensions/*/local-config.yml'],
+    ignore: [],
+    graphignore: undefined,
+    artifactKind: undefined,
+    env: {},
+  });
+  assert.deepEqual(declared(sddSpec('opsx')!), {
+    state: { dir: 'openspec', files: ['openspec/config.yaml', 'openspec/config.yml'], check: 'file' },
+    shared: ['openspec/config.yaml', 'openspec/config.yml', 'openspec/specs/**'],
+    local: [],
+    ignore: [],
+    graphignore: undefined,
+    artifactKind: undefined,
+    env: { DO_NOT_TRACK: '1', OPENSPEC_TELEMETRY: '0' },
+  });
+  assert.deepEqual(declared(grapherSpec('graphify')!), {
+    state: { dir: 'graphify-out', files: ['graphify-out/graph.json'], check: 'json' },
+    shared: ['graphify-out/graph.json'],
+    local: ['graphify-out/**'],
+    ignore: ['graphify-out/*', '!graphify-out/graph.json'],
+    graphignore: ['.claude/', '.multivac/', '.specify/', 'specs/', 'openspec/'],
+    artifactKind: 'shared',
+    env: {},
+  });
+  assert.deepEqual(declared(grapherSpec('codegraph')!), {
+    state: { dir: '.codegraph', files: ['.codegraph/codegraph.db'], check: 'file' },
+    shared: [],
+    local: ['.codegraph/**'],
+    ignore: ['.codegraph/'],
+    graphignore: undefined,
+    artifactKind: 'local',
+    env: { DO_NOT_TRACK: '1', CODEGRAPH_TELEMETRY: '0', CODEGRAPH_NO_DOWNLOAD: '1' },
+  });
+  // The database is the artifact, not the directory around its own .gitignore.
+  assert.deepEqual(grapherSpec('codegraph')!.artifacts, ['.codegraph/codegraph.db']);
+  const declaredGrapher = grapherSpec('acmegraph', acme)!;
+  assert.deepEqual(declared(declaredGrapher), {
+    state: { files: ['acmegraph-out/graph.json'], check: 'exists' },
+    shared: ['acmegraph-out/graph.json'],
+    local: [],
+    ignore: [],
+    graphignore: undefined,
+    artifactKind: 'shared',
+    env: {},
+  });
+});
+
+test('every declared opt-out is a bare word, so the hook never has to quote one', () => {
+  for (const s of [...sddNames.map((n) => sddSpec(n)!), ...grapherNames.map((n) => grapherSpec(n)!)]) {
+    for (const [k, v] of Object.entries(s.env)) {
+      assert.match(k, /^[A-Za-z0-9_]+$/);
+      assert.match(v, /^[A-Za-z0-9_]+$/);
+    }
+  }
+});
+
+test('a scaffold names its init, never an artifact of its own — the probe decides', () => {
+  for (const n of sddNames) {
+    const sc = sddSpec(n)!.scaffold;
+    if (sc) assert.equal('artifact' in sc, false, `${n}'s scaffold still carries an artifact`);
+  }
+});
+
+test('the telemetry notes say the entry applies the opt-outs, and still name each one', () => {
+  const opsxNote = sddSpec('opsx')!.note ?? '';
+  const cgNote = grapherSpec('codegraph')!.note ?? '';
+  for (const note of [opsxNote, cgNote]) assert.doesNotMatch(note, /nothing here sets/);
+  for (const v of ['OPENSPEC_TELEMETRY=0', 'DO_NOT_TRACK=1']) assert.ok(opsxNote.includes(v), v);
+  for (const v of ['CODEGRAPH_TELEMETRY=0', 'DO_NOT_TRACK=1', 'CODEGRAPH_NO_DOWNLOAD=1']) assert.ok(cgNote.includes(v), v);
 });

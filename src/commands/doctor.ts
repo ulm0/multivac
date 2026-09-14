@@ -16,7 +16,7 @@ import {
   loadConfig,
 } from '../lib/config.js';
 import * as git from '../lib/git.js';
-import { heldArtifact } from '../adapters/tracked.js';
+import { initState, stateLabel } from '../lib/init-state.js';
 import { say, warn } from '../lib/out.js';
 import {
   binaryMissing,
@@ -28,10 +28,11 @@ import {
   type AdapterSpec,
 } from '../adapters/registry.js';
 import {
+  type ReadOnly,
   type SddRoot,
-  artifactPresent,
   missingRequired,
   pathExists,
+  readOnly,
   sddRoots,
 } from '../adapters/detect.js';
 import { flowLines, stepsGating } from '../adapters/sdd.js';
@@ -57,12 +58,16 @@ const BEGIN = '<!-- multivac:begin -->';
 const label = (s: string): string => s.padEnd(11);
 
 /**
- * A root no adapter of this kind resolves for, while another root does. An
+ * A root no adapter of this kind resolves for, while another root does — or a
+ * read-only root, where `why` says why multivac may not write (MV-125). An
  * exclusion is an ordinary configuration, so it reads as a fact about scope and
- * never as a deficiency — for `sdd:` and `grapher:` alike (MV-87, MV-122).
+ * never as a deficiency — for `sdd:` and `grapher:` alike (MV-87, MV-122). No
+ * install state, no command to run: either would read as a gap to fix by
+ * writing where nothing may be written.
  */
-const outOfScope = (kind: 'sdd' | 'grapher', scope: string): string =>
-  label(kind) + `none @ ${scope}: no ${kind} declared for this repo — out of scope, not a gap`;
+const outOfScope = (kind: 'sdd' | 'grapher', scope: string, name?: string, why?: ReadOnly): string =>
+  label(kind) +
+  `${name ?? 'none'} @ ${scope}: ${why ? `${why}, read-only` : `no ${kind} declared for this repo`} — out of scope, not a gap`;
 
 function fmtAge(ms: number): string {
   const m = Math.round(ms / 60_000);
@@ -186,7 +191,9 @@ async function projectDocLines(
  *
  * It used to collapse every root into one boolean and stop at the first hit,
  * so a single sibling repo somebody had scaffolded by hand made the whole
- * ecosystem read `artifact ok` while the brain and four repos had nothing.
+ * ecosystem read `artifact ok` while the brain and four repos had nothing. The
+ * state is the vendor's own files' now (MV-124), so a directory made by hand
+ * reads partial rather than installed.
  * What is per ROOT (is it installed here, is the project document here) is
  * reported per root; what is per TOOL (its flow, which lifecycle commands
  * gate, whether the automation is on) is said once, because repeating it six
@@ -201,8 +208,8 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
     : "sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts";
   const out: string[] = [];
   for (const root of roots) {
-    if (!root.sdd) {
-      out.push(outOfScope('sdd', root.scope));
+    if (!root.sdd || root.readOnly) {
+      out.push(outOfScope('sdd', root.scope, root.sdd, root.readOnly));
       continue;
     }
     const spec = sddSpec(root.sdd);
@@ -221,17 +228,25 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
     // the tree, and doctor is a report. It names the command; the lifecycle
     // runs it.
     const sc = spec.scaffold;
-    const art = (await artifactPresent(spec, root.dir))
-      ? 'artifact ok'
-      : `artifact missing (looked for ${spec.artifacts.join(', ')})` +
-        (sc
-          ? ` — declared but never run here; \`change new\` runs the tool's own \`${sc.run}\`, doctor never does (it writes the vendor's files into the tree)`
-          : '');
+    const st = await initState(spec, root.dir);
+    let state: string = st.state;
+    if (st.state === 'missing') {
+      state = `missing (no ${stateLabel(spec)})`;
+      if (sc) state += ` — declared but never run here; \`change new\` runs the tool's own \`${sc.run}\`, doctor never does (it writes the vendor's files into the tree)`;
+    } else if (st.state === 'unevaluable') {
+      // Unreadable is not uninstalled: the fix is the file's permissions, never an init.
+      state = `unevaluable (${st.reason}) — make it readable; no init is run over it`;
+    } else if (st.state === 'partial') {
+      state = `partial (${st.reason})`;
+      if (sc) state += ` — the lifecycle will not run the init over it, since a re-run can revert edited files; run \`${sc.run}\` there yourself`;
+    }
     const bin = missing.length === 0 ? 'binary ok' : `binary missing → ${binaryMissing(root.sdd, spec, missing, root.scope)}`;
-    out.push(label('sdd') + `${root.sdd} @ ${root.scope}: ${art} · ${bin} · ${auto}`);
+    out.push(label('sdd') + `${root.sdd} @ ${root.scope}: ${state} · ${bin} · ${auto}`);
   }
-  // Once per distinct tool, in the order the roots named them.
-  const tools = [...new Set(roots.map((r) => r.sdd).filter((n): n is string => Boolean(n)))];
+  // Once per distinct tool, in the order the roots multivac may write in named
+  // them: a read-only root owes no project document (MV-125).
+  const owned = roots.filter((r) => !r.readOnly);
+  const tools = [...new Set(owned.map((r) => r.sdd).filter((n): n is string => Boolean(n)))];
   for (const name of tools) {
     const spec = sddSpec(name);
     if (!spec) continue;
@@ -251,7 +266,7 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
         brain,
         name,
         spec,
-        roots.filter((r) => r.sdd === name),
+        owned.filter((r) => r.sdd === name),
       )),
     );
   }
@@ -280,10 +295,11 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
   if (!scopes.some((s) => s.name)) return [];
   const out: string[] = [];
   for (const s of scopes) {
-    if (!s.name) {
+    if (!s.name || s.readOnly) {
       // `grapher: none`, or nothing resolving here: scope, never an unverified
-      // tool called `none` (MV-122).
-      out.push(outOfScope('grapher', s.scope));
+      // tool called `none` (MV-122). A read-only root is scope too, with no
+      // NOT COMMITTED or IGNORED line: nothing may commit there (MV-125).
+      out.push(outOfScope('grapher', s.scope, s.name, s.readOnly));
       continue;
     }
     const spec = grapherSpec(s.name, cfg.graphers);
@@ -295,32 +311,32 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
     }
     const missing = await missingRequired(spec, s.dir);
     const bin = missing.length === 0;
-    const art = await artifactPresent(spec, s.dir);
+    const st = await initState(spec, s.dir);
+    const kind = spec.artifactKind ?? 'shared';
+    const art = spec.artifacts[0];
     let msg = `${s.name} @ ${s.scope}: `;
-    if (!art) {
-      // Nothing on disk yet: the command that BUILDS the graph, which is not
-      // always the one that refreshes it.
+    if (st.state !== 'installed') {
+      // Not built here (MV-124): the command that BUILDS the graph, which is
+      // not always the one that refreshes it. An unevaluable root gets neither.
       const create = spec.create ?? spec.refresh;
-      msg += bin
-        ? `artifact missing → run \`${create}\` there`
-        : `artifact missing · binary missing → ${binaryMissing(s.name, spec, missing, s.scope)}, then \`${create}\``;
+      msg += st.state === 'missing' ? `missing (no ${art})` : `${st.state} (${st.reason})`;
+      if (st.state === 'unevaluable') msg += bin ? '' : ` · binary missing → ${binaryMissing(s.name, spec, missing, s.scope)}`;
+      else msg += bin ? ` → run \`${create}\` there` : ` · binary missing → ${binaryMissing(s.name, spec, missing, s.scope)}, then \`${create}\``;
     } else if (!bin) {
-      msg += `artifact ok · binary missing → ${binaryMissing(s.name, spec, missing, s.scope)} (graph cannot refresh)`;
+      msg += `installed (${kind}) · binary missing → ${binaryMissing(s.name, spec, missing, s.scope)} (graph cannot refresh)`;
     } else if (await graphStale(s.dir, spec)) {
-      msg += `artifact ok · binary ok · graph STALE (older than last commit) → run \`${spec.refresh}\` there`;
+      msg += `installed (${kind}) · binary ok · graph STALE (older than last commit) → run \`${spec.refresh}\` there`;
     } else {
-      msg += 'artifact ok · binary ok · fresh';
+      msg += `installed (${kind}) · binary ok · fresh`;
     }
-    // MV-103, reported here and gated at close: a graph only this checkout has
-    // is one the next clone does not. `doctor` never gates, so it says it.
-    if (art) {
-      const held = await heldArtifact(spec.artifacts, s.dir);
-      if (held !== null && !(await git.isTracked(s.dir, held))) {
-        msg +=
-          (await git.ignoredPaths(s.dir, [held])).length > 0
-            ? ` · IGNORED by .gitignore → remove the rule, then \`git -C ${s.dir} add ${held}\``
-            : ` · UNTRACKED → \`git -C ${s.dir} add ${held}\``;
-      }
+    // MV-103, reported here and gated at close: a shared graph HEAD does not
+    // hold is one the next clone does not. A local one is never asked (MV-124).
+    // `doctor` never gates, so it says it.
+    if (st.state === 'installed' && kind === 'shared' && !(await git.inHead(s.dir, art))) {
+      msg +=
+        (await git.ignoredPaths(s.dir, [art])).length > 0
+          ? ` · IGNORED by .gitignore → remove the rule, then \`git -C ${s.dir} add ${art}\`, then commit it`
+          : ` · NOT COMMITTED → \`git -C ${s.dir} add ${art}\`, then commit it`;
     }
     out.push(label('grapher') + msg);
   }
@@ -346,10 +362,14 @@ async function reposLine(brain: string, cfg: Config): Promise<string> {
   const notes: string[] = [];
   let present = 0;
   for (const [key, e] of entries) {
+    const dir = resolve(brain, e.path);
+    // MV-125: a fact about scope, noted whether or not the repo is on disk.
+    const why = e.isBrain ? null : await readOnly(cfg, key, dir);
+    if (why) notes.push(`${key}: ${why}, read-only`);
     if (e.isBrain) {
       present++;
       notes.push(`${key}: brain==code (this repo)`);
-    } else if (await pathExists(resolve(brain, e.path))) {
+    } else if (await pathExists(dir)) {
       present++;
     } else {
       missing.push(
@@ -427,6 +447,13 @@ async function pinsLine(brain: string, cfg: Config): Promise<string> {
   const parts: string[] = [];
   for (const [key, e] of entries) {
     const dir = resolve(brain, e.path);
+    // MV-125: a repo multivac does not own mounts nothing for it, and every fix
+    // below — a submodule add or update — is a write there.
+    const why = await readOnly(cfg, key, dir);
+    if (why) {
+      parts.push(`${key}: ${why}, read-only — no mount expected`);
+      continue;
+    }
     if (!(await pathExists(dir))) {
       parts.push(`${key}: not cloned`);
       continue;

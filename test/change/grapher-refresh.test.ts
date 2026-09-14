@@ -238,7 +238,7 @@ test("a grapher that fails as graphify 0.9.29 does is quoted by its exception, n
   });
 });
 
-// --- MV-87: the first build reaches every declared, present repo ---
+// --- MV-87: the first build reaches each declared repo on disk ---
 
 /** A grapher whose BUILD command differs from its refresh — the distinction
  *  `doctor` has always printed and the runner never asked. */

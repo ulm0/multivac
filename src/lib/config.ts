@@ -219,12 +219,16 @@ function optString(v: unknown, key: string): string | undefined {
 function repoEntry(key: string, v: unknown): RepoEntry {
   if (typeof v === 'string') return { path: v };
   if (v === null || typeof v !== 'object' || Array.isArray(v)) {
-    fail(`repos.${key} must be a path string or { path, url?, role?, grapher?, sdd?, channel? }`);
+    fail(`repos.${key} must be a path string or { path, url?, role?, grapher?, sdd?, channel?, managed? }`);
   }
   const o = v as Record<string, unknown>;
   // `isBrain` is deliberately absent: the loader derives it, and a hand-written
   // one would be a lie this code overwrites.
-  refuseUnknown(o, ['channel', 'grapher', 'path', 'role', 'sdd', 'url'], `repos.${key}.`);
+  refuseUnknown(o, ['channel', 'grapher', 'managed', 'path', 'role', 'sdd', 'url'], `repos.${key}.`);
+  // MV-125, parsed the way sdd_auto is, except that an empty value is not
+  // absent: `managed:` with nothing after it is refused, never read as true.
+  const managed = o.managed === undefined ? true : o.managed;
+  if (typeof managed !== 'boolean') fail(`"repos.${key}.managed" must be true or false`);
   let path: string;
   if (typeof o.path === 'string' && o.path !== '') {
     path = o.path;
@@ -247,6 +251,9 @@ function repoEntry(key: string, v: unknown): RepoEntry {
     // MV-93: the list is a list, so a role written across several lines is
     // reduced to one rather than breaking the shape of every entry after it.
     role: oneLine(optString(o.role, `repos.${key}.role`)),
+    // Carried only when false, so an entry that does not say it keeps the
+    // shape it always had.
+    ...(managed ? {} : { managed: false }),
   };
 }
 
@@ -398,6 +405,11 @@ export async function readConfig(brainDir: string): Promise<Config> {
     // gets a consumer door, a mount nag, and a second scan of its own files.
     const isBrain = samePath(resolve(brainDir, entry.path), brainDir);
     if (isBrain) entry.isBrain = true;
+    if (isBrain && entry.managed === false) {
+      // MV-125: the brain is where multivac writes its law, so it cannot be
+      // declared out of scope — under whatever key names it.
+      fail(`repos.${k}.managed: false — ${k} is the brain, and the brain is always managed; remove the key`);
+    }
     if (k === 'brain' && !isBrain) {
       // A "brain" key pointing elsewhere collides with the implicit brain
       // handle: consumer-scoped verify would evaluate the brain's own

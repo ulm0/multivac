@@ -88,7 +88,8 @@ Naming this key `providers` would put a non-provider at the head of every
 list.
 
 **Without it:** `doors` still writes the canonical `AGENTS.md` into the brain
-and every present repo, because that write is unconditional — but no symlink,
+and every repo on disk that is not read-only (MV-125), because that write is
+unconditional — but no symlink,
 no stub, no skill, no harness hook is installed for any vendor. `doctor` says
 so:
 
@@ -138,7 +139,7 @@ adapter declared — `doctor` still reports it — while running its steps by
 hand:
 
 ```txt
-sdd        opsx: artifact ok · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
+sdd        opsx @ brain: installed · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
 ```
 
 `--no-sdd` on a single `change` invocation does the same thing once, without
@@ -257,6 +258,62 @@ the path.
 
 A role written across several lines is reduced to one, because the list is a
 list.
+
+### `repos.<key>.managed`
+
+| | |
+| --- | --- |
+| type | boolean |
+| default | `true` |
+| example | `managed: false` |
+
+Whether multivac may write in this repo (MV-125). Declare a repo another team
+owns, with protected branches, so anchors can read it — and say it is not
+yours:
+
+```yaml
+repos:
+  payments:
+    path: ../payments
+    managed: false
+```
+
+A read-only repo is read, verified, cloned and fetched, and never written: no
+SDD init, no graph build or refresh, and `doors` projects no door, skill,
+harness hook config, git hook shim or `core.hooksPath` there. No gate demands a
+file there — the SDD gates never search it or name it among the repos they
+looked in, and the graph and tracked gates never judge it. `doctor` and `repos`
+report it, `doctor`'s pins line expects no mount there, and `doctor`'s exit
+code does not change:
+
+```txt
+sdd        speckit @ payments: not managed, read-only — out of scope, not a gap
+```
+
+A change that names it is refused by `change plan` and `change apply` before
+anything is cloned, branched or bumped:
+
+```txt
+payments: not managed, read-only — drop it from .multivac/changes/points-expire.md, or remove `managed: false` through a change (MV-97)
+```
+
+**The shallow twin.** A clone git reports shallow — `repos sync --shallow`
+makes one — is read-only the same way, with no key to write. The clone itself
+is asked (`git rev-parse --is-shallow-repository`, offline) on every run, so
+`git -C ../payments fetch --unshallow` brings it back into scope with nothing
+edited, and `doctor` says `shallow, read-only`. A full clone of somebody else's
+repo cannot be told from one of yours: that is what the key is for.
+
+**The brain is always managed**, shallow or not, and its entry cannot say
+otherwise under any key:
+
+```txt
+.multivac/config.yml: repos.brain.managed: false — brain is the brain, and the brain is always managed; remove the key
+```
+
+Any value other than `true` or `false` is refused by name. A door or hooks
+projected before a repo became read-only are left in place — removing them is a
+write too.
 
 ### `authorities`
 
@@ -430,7 +487,7 @@ locks you out (MV-86).
 
 | | |
 | --- | --- |
-| type | mapping of key → path string, or key → `{ path, url, grapher, channel }` |
+| type | mapping of key → path string, or key → `{ path, url, grapher, sdd, channel, role, managed }` |
 | default | `{}` |
 | example | see below |
 
@@ -447,9 +504,13 @@ repos:
     grapher: codegraph                 # overrides the global grapher; `none` = no graph here
     sdd: opsx                          # overrides the global sdd; `none` = no SDD here
     channel: origin/release            # overrides the global channel
+  ledger:
+    path: ../ledger
+    managed: false                     # another team's: read and verified, never written (MV-125)
 ```
 
-**`sdd:` per repo.** Declared adapters reach every declared, present repo:
+**`sdd:` per repo.** Declared adapters reach every declared repo on disk that
+multivac may write in — not one declared `managed: false`, nor a shallow clone:
 the change lifecycle runs the tool's own init in each one that lacks it, and
 `doctor` reports each one by name. A repo that should have no spec-driven flow
 says so in its own entry:
@@ -480,8 +541,8 @@ repos:
 ```
 
 ```txt
-sdd        speckit @ brain: artifact ok · binary ok · sdd_auto on
-sdd        speckit @ api: artifact missing (looked for .specify) — declared but never run here; `change new` runs the tool's own `specify init …`, doctor never does (it writes the vendor's files into the tree)
+sdd        speckit @ brain: installed · binary ok · sdd_auto on
+sdd        speckit @ api: missing (no .specify) — declared but never run here; `change new` runs the tool's own `specify init …`, doctor never does (it writes the vendor's files into the tree)
 sdd        none @ landing: no sdd declared for this repo — out of scope, not a gap
 ```
 

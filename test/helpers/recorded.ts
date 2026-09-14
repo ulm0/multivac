@@ -73,3 +73,27 @@ export const GRAPHIFY_0929_READONLY = {
     "PermissionError: [Errno 13] Permission denied: 'graphify-out/.rebuild.lock'",
   ].join('\n') + '\n',
 };
+
+/**
+ * `.specify/integration.json` as spec-kit 0.16.4 wrote it into this brain,
+ * verbatim (MV-124). spec-kit 1.0.6's init writes the same two keys the probe
+ * checks. A stub standing for an installed speckit writes THIS, never a bare
+ * `.specify/`: the directory alone is what `mkdir` leaves, not an install.
+ */
+export const SPECKIT_INTEGRATION_JSON = [
+  '{',
+  '  "version": "0.16.4",',
+  '  "integration_state_schema": 1,',
+  '  "installed_integrations": [',
+  '    "claude"',
+  '  ],',
+  '  "integration_settings": {',
+  '    "claude": {',
+  '      "script": "sh",',
+  '      "invoke_separator": "-"',
+  '    }',
+  '  },',
+  '  "integration": "claude",',
+  '  "default_integration": "claude"',
+  '}',
+].join('\n') + '\n';

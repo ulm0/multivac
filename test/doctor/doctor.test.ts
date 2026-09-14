@@ -16,6 +16,7 @@ import {
 import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
+import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { installHooks } from '../../src/hooks/install.js';
 
@@ -100,7 +101,7 @@ repos:
     assert.equal(exit, 0);
     const sdd = line(lines, 'sdd');
     // The scope is part of the verdict now (MV-87): a root, not an ecosystem.
-    assert.match(sdd, /opsx @ brain: artifact missing/);
+    assert.match(sdd, /opsx @ brain: missing \(no openspec\)/);
     // No init was verified for this tool, so none is named: the clause below
     // belongs to the adapter that declares a scaffold, not to every absence.
     assert.doesNotMatch(sdd, /declared but never run here/);
@@ -125,8 +126,8 @@ repos:
  * Declared but never run here: doctor NAMES the tool's own init and says who
  * runs it, because naming is all it may do — that command writes the vendor's
  * files into the tree, and a report writes nothing. Gone the moment the
- * artifact is there: the clause reports a state, it is not decoration on every
- * absence.
+ * vendor's state file is there: the clause reports a state, it is not
+ * decoration on every absence. A hand-made directory is not that file (MV-124).
  */
 test('doctor: a declared-but-unscaffolded sdd names the init, and says it never runs it', async () => {
   const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-scaffold-')));
@@ -137,18 +138,26 @@ test('doctor: a declared-but-unscaffolded sdd names the init, and says it never 
   const sddLine = async (): Promise<string> => line((await doctorReport(eco.brain)).lines, 'sdd');
 
   const never = await sddLine();
-  assert.match(never, /artifact missing \(looked for \.specify\)/);
+  assert.match(never, /speckit @ brain: missing \(no \.specify\)/);
   assert.match(
     never,
     /declared but never run here; `change new` runs the tool's own `specify init --here --integration claude --force --ignore-agent-tools`, doctor never does \(it writes the vendor's files into the tree\)/,
   );
 
+  // A directory made by hand is partial: the reason, and the init to run by
+  // hand, since the lifecycle will not run it over what is there.
+  mkdirSync(join(eco.brain, '.specify'), { recursive: true });
+  const partial = await sddLine();
+  assert.match(partial, /speckit @ brain: partial \(\.specify is there and \.specify\/integration\.json is not\)/);
+  assert.match(partial, /run `specify init --here --integration claude --force --ignore-agent-tools` there yourself/);
+  assert.doesNotMatch(partial, /declared but never run here/);
+
   // Once it has run here there is no such state to report, and no command to
   // name: doctor drops the clause instead of nagging about a done thing.
-  mkdirSync(join(eco.brain, '.specify'), { recursive: true });
+  writeFileSync(join(eco.brain, '.specify/integration.json'), SPECKIT_INTEGRATION_JSON);
   const after = await sddLine();
-  assert.match(after, /artifact ok/);
-  assert.doesNotMatch(after, /declared but never run here/);
+  assert.match(after, /speckit @ brain: installed · binary/);
+  assert.doesNotMatch(after, /declared but never run here|yourself/);
 });
 
 /**
@@ -236,21 +245,21 @@ test('doctor: the sdd is reported per root, and an opted-out repo is scope, not 
       '',
     ].join('\n'),
   );
-  // Only api has ever been scaffolded — the repo somebody did by hand.
+  // Only api has a .specify — the directory somebody made by hand.
   mkdirSync(join(eco.repos.api, '.specify'), { recursive: true });
 
   const lines = (await doctorReport(eco.brain)).lines.filter((l) => l.startsWith('sdd'));
   const joined = lines.join('\n');
 
   // One line per declared, present root, each with its OWN verdict.
-  assert.match(joined, /speckit @ brain: artifact missing \(looked for \.specify\)/);
-  assert.match(joined, /speckit @ api: artifact ok/);
+  assert.match(joined, /speckit @ brain: missing \(no \.specify\)/);
+  assert.match(joined, /speckit @ api: partial \(/);
   // The opted-out repo is named as out of scope, never as a deficiency.
   assert.match(joined, /none @ web: no sdd declared for this repo — out of scope, not a gap/);
   assert.doesNotMatch(joined, /speckit @ web/);
 
-  // api's artifact must not answer for the brain: that is the whole defect.
-  assert.doesNotMatch(joined, /speckit @ brain: artifact ok/);
+  // api's directory must not answer for the brain: that is the whole defect.
+  assert.doesNotMatch(joined, /speckit @ brain: installed/);
 
   // The tool's own facts stay said ONCE — repeating a nine-line flow per root
   // would bury the lines that differ.
@@ -300,14 +309,14 @@ repos: {}
     assert.equal(exit, 0);
     assert.match(line(lines, 'doors'), /claude: CLAUDE\.md ok \(symlink\)/);
     let grapher = line(lines, 'grapher');
-    assert.match(grapher, /acmegraph @ brain: artifact ok · binary ok · graph STALE/);
+    assert.match(grapher, /acmegraph @ brain: installed \(shared\) · binary ok · graph STALE/);
     assert.match(grapher, /→ run `acmegraph update \.` there/);
 
     // touch the artifact past the commit -> fresh
     const now = new Date();
     utimesSync(graph, now, now);
     ({ lines, exit } = await doctorReport(eco.brain));
-    assert.match(line(lines, 'grapher'), /artifact ok · binary ok · fresh/);
+    assert.match(line(lines, 'grapher'), /installed \(shared\) · binary ok · fresh/);
   } finally {
     process.env.PATH = old;
   }

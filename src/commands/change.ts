@@ -27,6 +27,7 @@ import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
 import { runScaffold, sddGate, sddInstructions } from '../adapters/sdd.js';
 import { ensureGraphs, graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
 import { graphTrackedGate } from '../adapters/tracked.js';
+import { readOnly } from '../adapters/detect.js';
 import { evaluate, fmtAge, stalenessLines } from './verify.js';
 import {
   ChangeError,
@@ -116,12 +117,38 @@ async function gateSdd(
   await runScaffold(brain, cfg, noSdd);
   // The other half of the same idea (MV-87): a declared repo with no graph is
   // one the agent cannot navigate, and the graph is what it reads in order to
-  // do the work. Skipped the moment an artifact exists, so this is one `stat`
-  // per scope on every run after the first.
+  // do the work. Skipped where the probe finds the grapher installed (MV-124),
+  // so this is one probe per scope on every run after the first.
   await ensureGraphs(brain, cfg);
   const { ok, lines } = await sddGate(brain, cfg, gate, slug, noSdd);
   for (const l of lines) (ok ? say : warn)(l);
   return ok;
+}
+
+/**
+ * MV-125. A change file naming a repo is the operator saying multivac will
+ * work there — a branch, a worktree, a clone or a greenfield repo, a merge at
+ * land — and a read-only declaration says it will not. The two contradict, so
+ * plan and apply refuse before anything moves, naming each such repo and both
+ * ways out. Returns true when no named repo is read-only.
+ */
+async function refuseReadOnly(brain: string, cfg: Config, slug: string, keys: string[]): Promise<boolean> {
+  const refused: string[] = [];
+  for (const key of keys) {
+    const abs = repoAbs(brain, cfg, key);
+    const why = abs === null ? null : await readOnly(cfg, key, abs);
+    if (why === null) continue;
+    refused.push(
+      `${key}: ${why}, read-only — drop it from ${changeRel(slug)}, or ` +
+        (why === 'shallow'
+          ? `\`git -C ${abs} fetch --unshallow\``
+          : 'remove `managed: false` through a change (MV-97)'),
+    );
+  }
+  if (refused.length === 0) return true;
+  warn(`${slug} names ${refused.length === 1 ? 'a repo' : 'repos'} multivac may not write in (MV-125) — nothing was cloned, branched or bumped:`);
+  for (const l of refused) warn(l);
+  return false;
 }
 
 function repoEntryOf(cfg: Config, key: string): Config['repos'][string] {
@@ -655,6 +682,8 @@ async function cmdPlan(
     warn(`${changeRel(slug)} declares no repos — add repos: { <key>: { status: planned } }`);
     return 1;
   }
+  // Before the clone loop: a read-only repo is never cloned on a change's behalf.
+  if (!(await refuseReadOnly(brain, cfg, slug, keys))) return 1;
   let rc = 0;
   for (const key of keys) {
     let entry: Config['repos'][string];
@@ -734,6 +763,8 @@ async function cmdApply(
   // fails the whole apply, not the middle of it.
   const entries = new Map<string, Config['repos'][string]>();
   for (const key of keys) entries.set(key, repoEntryOf(cfg, key));
+  // Before the status bump, so a refused apply leaves the change where it was.
+  if (!(await refuseReadOnly(brain, cfg, slug, keys))) return 1;
   // The status bump is committed BEFORE any branch is made, so the branch
   // base — the tip of the current branch — already carries the declaration,
   // the reserved row and the post-bump status: every worktree inherits the
@@ -987,9 +1018,9 @@ async function cmdClose(
   if (!graph.ok) return 1;
   // MV-103: existence was half the question. A graph that lives in one working
   // tree passes the gate above and helps nobody who clones the repository —
-  // where the door still tells every agent to ask it. Second, because a root
-  // with no artifact at all is the refusal above and should not be reported
-  // twice.
+  // where the door still tells every agent to ask it, so a shared one must be
+  // in HEAD (MV-124). Second, because a root whose grapher is not installed is
+  // the refusal above and should not be reported twice.
   const tracked = await graphTrackedGate(brain, cfg, slug, noGrapher);
   for (const l of tracked.lines) (tracked.ok ? say : warn)(l);
   if (!tracked.ok) return 1;
@@ -1092,8 +1123,9 @@ async function cmdClose(
     say(`archived — commit this: ${commit} (no origin remote — the direct commit is the landing)`);
   }
   await removeWorktrees(brain, cfg, Object.keys(parsed.change.repos), slug);
-  // The graph refreshes itself in EVERY declared, present root — not only the
-  // repos this change happened to name (MV-90 amending MV-87). This list used
+  // The graph refreshes itself in every declared root on disk that multivac
+  // may write in (MV-125) — not only the repos this change happened to name
+  // (MV-90 amending MV-87). This list used
   // to be built here by hand from `parsed.change.repos`, a second enumeration
   // of what `graphScopes` already returns, and the two disagreed by design: a
   // repo moved by another change, a merge or a sync was left describing a tree
@@ -1101,7 +1133,7 @@ async function cmdClose(
   // instead of reading the tree. Never staged, never committed; graph output
   // lands only in dedicated chore commits.
   for (const s of await graphScopes(brain, cfg)) {
-    if (s.name) await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
+    if (s.name && !s.readOnly) await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
   }
   // The rest of the ceremony is the team's: printed at the moment it matters,
   // never verified, never gating. Nothing written = nothing printed.

@@ -315,14 +315,32 @@ export async function lsTreeGitlink(
  * (not a repo) both come back as "nothing ignored".
  */
 /**
- * Is `path` in `repo`'s index — tracked, whatever its working-tree state.
+ * Is `path` in `repo`'s committed HEAD, whatever the index and the working
+ * tree say (MV-124)? A clone gets HEAD, never somebody's index, so a path only
+ * staged is not committed, and a repo with no commit has committed nothing.
  *
- * `ls-files --error-unmatch` is the question asked as a question: it exits
- * non-zero for a path git does not track, which is the answer, not a failure.
+ * `cat-file -e` is the question asked as a question: it exits non-zero for a
+ * path HEAD does not hold, which is the answer, not a failure. `./` reads the
+ * path from `repo` itself, so a root nested inside a larger repo is asked
+ * about its own file.
  */
-export async function isTracked(repo: string, path: string): Promise<boolean> {
-  return run(repo, ['ls-files', '--error-unmatch', '--', path]).then(
+export async function inHead(repo: string, path: string): Promise<boolean> {
+  return run(repo, ['cat-file', '-e', `HEAD:./${path}`]).then(
     () => true,
+    () => false,
+  );
+}
+
+/**
+ * MV-125. Does git report `repo`'s own clone shallow? Only the answer `true`
+ * says so: an error, a git too old to know the option, or a directory that is
+ * not a repository all read as not shallow. `run` drops the ambient git
+ * environment, so a hook's GIT_DIR cannot answer for another clone. Ceiling: a
+ * directory nested in a repository gets that repository's answer.
+ */
+export async function isShallow(repo: string): Promise<boolean> {
+  return run(repo, ['rev-parse', '--is-shallow-repository']).then(
+    (out) => out.trim() === 'true',
     () => false,
   );
 }

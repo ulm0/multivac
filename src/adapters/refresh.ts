@@ -1,6 +1,8 @@
 // Run a grapher's refresh in one directory. Execution only: this module
 // never spawns git, so the refreshed artifact cannot be staged — graph
 // output is regenerated locally and lands only in dedicated chore commits.
+// Which roots are read-only is asked of `readOnly` (MV-125), whose one git
+// read lives in src/lib/git.ts and asks, never stages.
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -8,7 +10,8 @@ import { mkdir, rmdir } from 'node:fs/promises';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import type { Config, GrapherDecl } from '../types.js';
 import { binaryMissing, grapherSpec, unverifiedGrapher } from './registry.js';
-import { adapterFor, adaptersByRoot, artifactPresent, localBin, missingRequired, pathExists } from './detect.js';
+import { adapterFor, adaptersByRoot, localBin, missingRequired, pathExists, readOnly, type ReadOnly } from './detect.js';
+import { initState } from '../lib/init-state.js';
 import { GRAPH_LOCK } from '../doors/settings.js';
 import { CONFIG_PATH } from '../lib/config.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
@@ -62,7 +65,10 @@ async function takeLock(dir: string, label: string): Promise<(() => Promise<void
 
 /**
  * Refresh the graph for one scope (the brain, or one declared repo) — or BUILD
- * it, where the scope has no artifact yet.
+ * it, where the vendor is not installed there yet (MV-124): missing, or a
+ * partial graph such as a 0-byte `graph.json` or a codegraph clone whose
+ * `.codegraph/` holds no database. A graph is derived from the tree, so
+ * rebuilding a partial one loses nothing. An unevaluable root gets neither.
  *
  * The two are not the same command for every tool: an adapter may declare a
  * `create` that differs from its `refresh`, and `doctor` has always printed
@@ -88,8 +94,13 @@ export async function refreshGraph(
     return;
   }
   // Per scope, like everything else about an adapter (MV-87): a graph is
-  // missing HERE or it is not, and the answer decides which command runs.
-  const first = !(await artifactPresent(spec, dir));
+  // installed HERE or it is not, and the answer decides which command runs.
+  const st = await initState(spec, dir);
+  if (st.state === 'unevaluable') {
+    warn(`graph ${name} @ ${scope}: build and refresh skipped — ${st.reason}`);
+    return;
+  }
+  const first = st.state !== 'installed';
   const run = first ? (spec.create ?? spec.refresh) : spec.refresh;
   // MV-123: the one lookup, in this scope's own checkout.
   const missing = await missingRequired(spec, dir);
@@ -116,12 +127,13 @@ export async function refreshGraph(
     //
     // MV-123: the shell reaches this scope's node_modules/.bin after PATH, the
     // second place the lookup above found the binary in — so what runs is what
-    // was found, and a copy on PATH still wins.
+    // was found, and a copy on PATH still wins. MV-124: the entry's opt-outs
+    // over the inherited environment, outside the declared command.
     await execFileP('sh', ['-c', run], {
       cwd: dir,
-      env: { ...process.env, PATH: [process.env.PATH, localBin(dir)].filter(Boolean).join(delimiter) },
+      env: { ...process.env, ...spec.env, PATH: [process.env.PATH, localBin(dir)].filter(Boolean).join(delimiter) },
     });
-    say(`${label}: ${first ? 'built' : 'refreshed'} (\`${run}\`) — artifact left uncommitted`);
+    say(`${label}: ${first ? 'built' : 'refreshed'} (\`${run}\`) — ${spec.artifactKind === 'local' ? 'local artifact, never committed' : 'artifact left uncommitted'}`);
   } catch (e) {
     // The tool's cause, not node's `Command failed: <cmd>`, which only repeats
     // the command this line prints again, and not the tool's first lines, which
@@ -140,27 +152,33 @@ export interface GraphScope {
   scope: string;
   dir: string;
   name?: string;
+  /** Why multivac may not write here, from `readOnly` (MV-125); absent when it may. */
+  readOnly?: ReadOnly;
 }
 
 /**
- * The brain plus every declared, present repo, each carrying the grapher that
+ * The brain plus every declared repo on disk, each carrying the grapher that
  * applies to it — resolved by `adapterFor` for every root, the brain's own
- * entry included, and undefined where the root resolves `none` (MV-122).
- * The same list `doctor` reports over, so the report and the runner cannot
- * disagree about which scopes exist.
+ * entry included, and undefined where the root resolves `none` (MV-122) —
+ * and whether it is read-only (MV-125). The same list `doctor` reports over,
+ * so the report and the runner cannot disagree about which scopes exist; the
+ * build, the refresh and both gates skip a read-only one.
  */
 export async function graphScopes(brain: string, cfg: Config): Promise<GraphScope[]> {
   const scopes: GraphScope[] = [{ scope: 'brain', dir: brain, name: adapterFor(cfg, 'brain', 'grapher') }];
   for (const [key, e] of Object.entries(cfg.repos)) {
     if (e.isBrain) continue; // already the brain
     const dir = resolve(brain, e.path);
-    if (await pathExists(dir)) scopes.push({ scope: key, dir, name: adapterFor(cfg, key, 'grapher') });
+    if (!(await pathExists(dir))) continue;
+    const why = await readOnly(cfg, key, dir);
+    scopes.push({ scope: key, dir, name: adapterFor(cfg, key, 'grapher'), ...(why ? { readOnly: why } : {}) });
   }
   return scopes;
 }
 
 /**
- * Build the graph once in every declared, present scope that has none (MV-87).
+ * Build the graph once in every scope on disk that has none and that
+ * multivac may write in (MV-87, MV-125).
  *
  * The graph was only ever built for repos a change happened to touch, so a
  * repo had to be worked on before it could be navigated — backwards for an
@@ -168,25 +186,24 @@ export async function graphScopes(brain: string, cfg: Config): Promise<GraphScop
  * command per repo and nothing ever ran it.
  *
  * Self-limiting, which is why the lifecycle can call it at more than one
- * point: a scope with an artifact is skipped, so this costs one `stat` per
- * scope on every run after the first, and a repo is built exactly once ever.
+ * point: a scope the probe finds installed is skipped (MV-124), so this costs
+ * one probe per scope on every run after the first, and a repo is built once
+ * unless its graph is lost or left partial.
  * Refreshing an existing graph stays where it was — `change close`, over the
  * repos that change touched.
  */
 export async function ensureGraphs(brain: string, cfg: Config): Promise<void> {
   for (const s of await graphScopes(brain, cfg)) {
     if (!s.name) continue; // no grapher resolves for this scope: silence
+    if (s.readOnly) continue; // not multivac's to write (MV-125): silence
     const spec = grapherSpec(s.name, cfg.graphers);
     // Unverified: `doctor` prints the fields to declare, and nothing is run.
     // Building from a guessed command is the one thing worse than no graph.
     if (spec === null) continue;
-    if (await artifactPresent(spec, s.dir)) continue; // already built here
+    if ((await initState(spec, s.dir)).state === 'installed') continue; // already built here
     await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
   }
 }
-
-/** One root's answer to "is there a graph here". Only two of the four refuse. */
-type Verdict = 'satisfied' | 'missing' | 'unevaluable' | 'out-of-scope';
 
 export interface GateResult {
   ok: boolean;
@@ -194,8 +211,8 @@ export interface GateResult {
 }
 
 /**
- * MV-90. A declared grapher leaves a graph in every declared, present root, or
- * `change close` refuses.
+ * MV-90. A declared grapher leaves a graph in every declared root on disk that
+ * is not read-only (MV-125), or `change close` refuses.
  *
  * Declaring `grapher: graphify` used to oblige nothing. The SDD adapter has
  * been gated at both ends since MV-56 — `plan` refuses without the spec,
@@ -215,8 +232,10 @@ export interface GateResult {
  * in a fresh ecosystem builds rather than refuses. A gate that refuses what it
  * could have fixed teaches people to route around it.
  *
- * Existence, never freshness. Currency would have to be defined — mtime?
- * content hash? tracked files newer than the artifact? — and every definition
+ * Existence, never freshness — and existence is the probe's installed
+ * (MV-124), so a 0-byte or truncated graph is not one. Currency would have to
+ * be defined — mtime? content hash? tracked files newer than the artifact? —
+ * and every definition
  * is wrong for some adapter and wrong on a fresh clone, where everything is
  * newer than everything. Claiming existence and checking existence is
  * Principle II satisfied.
@@ -241,35 +260,37 @@ export async function graphGate(
       lines: [`graph: gate ${noGrapher ? 'skipped' : 'off'} (${why}) — a root without a graph will not be reported`],
     };
   }
-  // Build where missing before judging. Idempotent and self-limiting: a root
-  // holding an artifact costs one stat.
+  // Build where not installed before judging. Idempotent and self-limiting: an
+  // installed root costs one probe.
   await ensureGraphs(brain, cfg);
 
   const missing: string[] = [];
   const unevaluable: string[] = [];
   const lines: string[] = [];
   for (const s of await graphScopes(brain, cfg)) {
-    let verdict: Verdict = 'out-of-scope';
-    let bins: string[] = [];
     const spec = s.name === undefined ? null : grapherSpec(s.name, cfg.graphers);
     // Unverified is out of scope, not a gap: demanding an artifact whose path
     // would have to be guessed is Principle V's invented integration wearing a
     // gate's clothes. `doctor` already prints the fields to declare.
-    if (s.name !== undefined && spec !== null) {
-      bins = await missingRequired(spec, s.dir);
-      if (await artifactPresent(spec, s.dir)) verdict = 'satisfied';
-      else if (bins.length > 0) verdict = 'unevaluable';
-      else verdict = 'missing';
-    }
-    if (verdict === 'missing') {
-      missing.push(
-        `  ${s.scope}: no ${spec?.artifacts[0]} — \`${spec?.create ?? spec?.refresh}\` there`,
-      );
-    }
-    if (verdict === 'unevaluable' && spec !== null && s.name !== undefined) {
-      unevaluable.push(
-        `  ${s.scope}: ${binaryMissing(s.name, spec, bins, s.scope)}, then \`${spec.create ?? spec.refresh}\` there`,
-      );
+    if (s.name === undefined || spec === null) continue;
+    // Read-only is out of scope too (MV-125): the only fix would be a build
+    // where multivac may not write, so the root is not judged and not named.
+    if (s.readOnly) continue;
+    // Installed passes. Missing or partial refuses as no graph; a state file
+    // that cannot be read, or a binary not found, refuses as unable to be checked.
+    const st = await initState(spec, s.dir);
+    if (st.state === 'installed') continue;
+    const bins = await missingRequired(spec, s.dir);
+    const create = spec.create ?? spec.refresh;
+    if (st.state === 'unevaluable') {
+      unevaluable.push(`  ${s.scope}: cannot be checked — ${st.reason}`);
+    } else if (bins.length > 0) {
+      unevaluable.push(`  ${s.scope}: ${binaryMissing(s.name, spec, bins, s.scope)}, then \`${create}\` there`);
+    } else {
+      // A local artifact is never committed (MV-103, as amended), so the only
+      // place it can come from is a build in the checkout that closes.
+      const local = spec.artifactKind === 'local' ? ' — a local artifact is built in each checkout' : '';
+      missing.push(`  ${s.scope}: ${st.state === 'partial' ? st.reason : `no ${spec.artifacts[0]}`} — \`${create}\` there${local}`);
     }
   }
   if (missing.length === 0 && unevaluable.length === 0) return { ok: true, lines };
