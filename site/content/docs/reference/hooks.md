@@ -222,10 +222,9 @@ hooks      core.hooksPath is .githooks (this repo's own gate — multivac instal
 
 ### Installed is not enforcing
 
-The shim never blocks a commit for want of a runner. It tries three, in
-order — `mvac` on `PATH`, `npx --no-install multivac` when the package is in
-`node_modules`, and a repo-local `dist/cli.js` that has `node_modules` beside
-it — and with none of them it prints one warning to stderr and exits 0.
+The shim never blocks a commit for want of a runner. It tries the three runners
+under [Which multivac runs](#which-multivac-runs-mv-92), most specific first,
+and with none of them it prints one warning to stderr and exits 0.
 
 That is deliberate and it is the difference between a guard people keep and a
 guard people delete. Enforcement **degrades**; it does not lock out. The cost

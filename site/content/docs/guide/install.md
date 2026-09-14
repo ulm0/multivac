@@ -37,11 +37,13 @@ npm i -g multivac@latest
 # or: pnpm add -g multivac@latest
 ```
 
-**The hooks care which one you did.** The shims try `mvac` on `PATH` first,
-then `npx --no-install multivac`, then a repo-local build. `npx --no-install`
-resolves a package already present in the project, not one it has to fetch —
-so a global install, or multivac as a devDependency of the brain, both arm the
-floor. `npx multivac@latest` typed by hand does not, because nothing persists.
+**The hooks care which one you did.** The shims run the most specific multivac
+they find (MV-92): this repository's own build when the repository is
+multivac, then the multivac it declares (`npx --no-install multivac`), then
+`mvac` on `PATH`. `npx --no-install` resolves a package already present in the
+project, not one it has to fetch — so a global install, or multivac as a
+devDependency of the brain, both arm the floor. `npx multivac@latest` typed by
+hand does not, because nothing persists.
 
 Published on npm, MIT, and small enough to read: `npx multivac@latest` fetches
 the current release. The CLI surface below is what ships today, and the parts
@@ -83,10 +85,12 @@ would be a tool nobody installs.
 
 `multivac` and `mvac` are the same file. The docs use them interchangeably:
 `multivac` in prose where it reads better, `mvac` in shell blocks where it is
-shorter. **The hooks look for `mvac` first** — the shims try `mvac` on
-`PATH`, then `npx --no-install multivac`, then a repo-local `dist/cli.js`
-with its `node_modules` beside it. Expose `mvac` and the first rung hits; with
-none of the three the shim warns on stderr and exits 0, verifying nothing.
+shorter. **The hooks look for `mvac` last** — the shims try this repository's
+own `dist/cli.js` (with its `node_modules` beside it, and only when the
+repository is multivac), then `npx --no-install multivac`, then `mvac` on
+`PATH`. Inside the clone the build hits; in a repository that neither is nor
+declares multivac, the linked `mvac` does. With none of the three the shim
+warns on stderr and exits 0, verifying nothing.
 See [Hooks](../../reference/hooks).
 
 ## Check it

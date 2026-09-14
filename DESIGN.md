@@ -380,9 +380,10 @@ path as the place they went and `doctor` called them missing from the directory
 they were sitting in.
 
 A versioned hook still needs something to run. The shim resolves a runnable
-multivac in a fixed order — `mvac` on PATH, then `npx --no-install multivac`
-when the package sits in the repo's `node_modules`, then the repo-local build
-`node <repo>/dist/cli.js` located from the hook's own path — so a
+multivac most specific first (MV-92) — the repo-local build
+`node <repo>/dist/cli.js` located from the hook's own path, used only when the
+repo is multivac (MV-108), then `npx --no-install multivac` when the package
+sits in the repo's `node_modules`, then `mvac` on PATH — so a
 build-from-source clone enforces itself with no global install. When none of
 the three exists the shim warns loudly on stderr and exits 0: a broken
 install degrades enforcement, it never wedges a commit. Because "installed"
