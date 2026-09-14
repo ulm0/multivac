@@ -112,6 +112,7 @@ params:
 
   page:
     width: normal
+    displayPagination: true
 
   footer:
     enable: true
@@ -126,3 +127,8 @@ params:
     type: flexsearch
     flexsearch:
       index: content
+
+  highlight:
+    copy:
+      enable: true
+      display: hover
