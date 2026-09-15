@@ -54,11 +54,11 @@ menu:
     - name: Docs
       pageRef: /docs
       weight: 1
-    - name: GitHub
-      url: https://github.com/ulm0/multivac
-      weight: 2
     - name: Changelog
       pageRef: /docs/changelog
+      weight: 2
+    - name: GitHub
+      url: https://github.com/ulm0/multivac
       weight: 3
     - name: Search
       weight: 4
