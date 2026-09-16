@@ -8,8 +8,12 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { initRepo } from '../helpers/fixture.js';
+import { initRepo, vendorPath } from '../helpers/fixture.js';
 import { init } from '../../src/commands/init.js';
+
+// MV-128: init runs the declared tools, so a host with spec-kit or graphify
+// installed would run the real ones here. Stubs, on a PATH built for it.
+process.env.PATH = vendorPath().path;
 import { doorsCommand } from '../../src/commands/doors.js';
 
 for (const [k, v] of Object.entries({

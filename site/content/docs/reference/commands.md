@@ -63,8 +63,11 @@ init: wrote .multivac/invariants.md — the law table, zero rows
 init: wrote .multivac/ritual.md — empty; what you write there, `change close` prints
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
 brain: door + hooks updated
+graph graphify @ brain: wrote .graphifyignore (+5) and .gitignore (+2) before the first build
+graph graphify @ brain: built (`graphify update .`) — artifact left uncommitted
 
 init: done — the brain is scaffolded and empty. Session zero fills it:
+init:   0. commit what was just written: git add -- .claude .cursor .gitignore .graphifyignore .multivac AGENTS.md CLAUDE.md graphify-out/graph.json && git commit -m "multivac init"
 init:   1. load the multivac skill in your agent — it carries both protocols
 init:   2. interview — no code here yet, so the law comes from a human, claim by claim
 init:   3. a human enacts each row in .multivac/invariants.md, then `multivac verify`
@@ -84,9 +87,29 @@ the law has to come out of a human. Both protocols live in the skill —
 | flag | takes | effect |
 | --- | --- | --- |
 | `--provider a,b` | comma-separated registry names | appended to `doors:` in the config (`agents` is always included) |
-| `--sdd name` | `opsx` \| `speckit` | written as `sdd:` in the config |
-| `--grapher name` | `graphify` \| `codegraph`, or a name under `graphers:` in the config already there | written as `grapher:` in the config; any other name is refused before anything is created |
+| `--sdd name` | `opsx` \| `speckit` | written as `sdd:` in the config, and the tool's own init runs in the brain |
+| `--grapher name` | `graphify` \| `codegraph`, or a name under `graphers:` in the config already there | written as `grapher:` in the config, and the first graph is built in the brain; any other name is refused before anything is created |
 | `--quiet` | — | no report, no banner; refusals still go to stderr |
+
+**Declared at init, installed at init.** With `--sdd` or `--grapher`, or with a
+config that already declares them, `init` finishes by running the tool's own
+init and the graph's first build in the brain, the same way `change` does.
+A tool that is already installed there is not run again.
+
+A tool `init` is about to run and cannot find is refused **before anything is
+written**, `git init` included, with exit 1 and where to get it:
+
+```txt
+init refused — speckit: `specify` found on neither PATH nor brain's node_modules/.bin — install speckit: uv tool install specify-cli (https://github.com/github/spec-kit)
+  init runs the declared tools' own init in the brain, and nothing was written: install them and re-run, or leave the flag off and declare the tool later
+```
+
+Nothing is required for a tool `init` would not run: one already installed,
+one with no init on record (`opsx`), or an SDD under `sdd_auto: false`.
+
+**Step 0 commits what `init` wrote, and only that.** It lists the paths `init`
+created or changed, leaving out the tools' per-checkout outputs, so uncommitted
+work of your own is never part of the "multivac init" commit.
 
 The banner is the mark: lit lamps are verified claims, unlit ones unanchored,
 the acid one the claim in flight. The pattern is a fixed drawing, never a

@@ -223,7 +223,7 @@ not one of them:
 | ~~git hooks~~ | never | the shims run `verify` only |
 
 The **first build** is separate, because a repo cannot be refreshed before it
-has been built. `change new` and the gates build the graph in every declared
+has been built. `init`, `change new` and the gates build the graph in every declared
 repo on disk that is not read-only where the grapher is not installed — missing,
 or partial like a 0-byte `graph.json` — with the adapter's `create` where it
 declares one, its `refresh` otherwise, and skip every repo where it is
@@ -233,6 +233,19 @@ state file cannot be read gets neither command:
 
 ```txt
 graph graphify @ api: built (`graphify update .`) — artifact left uncommitted
+```
+
+Before a first build, the grapher's ignore lines are added where they are
+missing. For graphify that is `.graphifyignore`, which keeps `.claude/`,
+`.multivac/`, `.specify/`, `specs/` and `openspec/` out of the graph, and two
+`.gitignore` lines, `graphify-out/*` and `!graphify-out/graph.json`, which leave
+the graph the only output git reports. Without them a fresh brain's first
+graph was mostly the SDD's own skills and templates. Lines already there are
+left alone, and if one of your rules still ignores `graph.json` the build says
+which command names it rather than editing your rule.
+
+```txt
+graph graphify @ brain: wrote .graphifyignore (+5) and .gitignore (+2) before the first build
 ```
 
 Before this, the graph was only ever built for repos a change explicitly
@@ -437,7 +450,7 @@ read by the probe above, never a directory being there.
 | `speckit` | `.specify/integration.json` passes its check | `specify init --here --integration claude --force --ignore-agent-tools` |
 | `opsx` | `openspec/config.yaml` or `openspec/config.yml` | **unverified — not recorded, and never guessed** |
 
-`change new`, `change plan`, `change apply` and `change close` run it in **every
+`init`, `change new`, `change plan`, `change apply` and `change close` run it in **every
 declared repo on disk** where the tool is missing — the brain and the siblings
 alike — print it first, and skip a repo entirely where it is installed. A
 read-only repo, declared `managed: false` or a shallow clone, is skipped in

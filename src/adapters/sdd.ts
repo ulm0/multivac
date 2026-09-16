@@ -230,8 +230,9 @@ async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise
  * Never throws: a foreign tool's failure is never the lifecycle's failure, and
  * one root's broken checkout never decides the fate of the rest — the loop
  * continues. It writes the vendor's files into the tree, and a re-run of
- * specify 1.0.6 reverts edited ones, so only the change lifecycle calls it —
- * `verify`, `doctor` and `doors` never do (MV-75).
+ * specify 1.0.6 reverts edited ones, so the commands that set a repo up call it
+ * — `init` for the brain (MV-128) and the change lifecycle — and `verify`,
+ * `doctor` and `doors` never do (MV-75).
  */
 export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): Promise<void> {
   if (!cfg.sddAuto || noSdd) return;
