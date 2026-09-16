@@ -268,6 +268,8 @@ export interface AdapterSpec {
   ignore: string[];
   /** Grapher only: default lines keeping the graph off multivac's and the SDD's own files. */
   graphignore?: string[];
+  /** Grapher only: the file the tool reads `graphignore` from, in the root. */
+  graphignoreFile?: string;
   /** Grapher only: a shared artifact is committed; a local one is built in each checkout (MV-124). */
   artifactKind?: 'shared' | 'local';
   /**
@@ -524,7 +526,7 @@ const sdd: Record<string, AdapterSpec> = {
       // files (every real repo). `--ignore-agent-tools` (MV-123): measured on
       // 1.0.6, without it and without `claude` on PATH the init exits 1 and
       // writes nothing, its cause boxed on stdout; with it the init exits 0.
-      note: 'The selecting flag is `--integration`, not `--ai`; the integration name is what installs the harness\'s copy of the steps, and on Claude they land as hyphenated skills (/speckit-specify). Its templates ship inside the package (1.0.6 exits 0 with the network denied), but it writes them into the tree and on 1.0.6 a re-run reverts edited ones, so only the change lifecycle runs it. `--ignore-agent-tools` skips its check for the integration\'s own CLI: on 1.0.6, without the flag and without `claude` installed, the init exits 1 and writes nothing, so the flag is what lets a machine without that CLI scaffold at all. It writes the constitution as the unfilled template and nothing else claims to author it: the scaffold makes the steps runnable, the agent writes the document.',
+      note: 'The selecting flag is `--integration`, not `--ai`; the integration name is what installs the harness\'s copy of the steps, and on Claude they land as hyphenated skills (/speckit-specify). Its templates ship inside the package (1.0.6 exits 0 with the network denied), but it writes them into the tree and on 1.0.6 a re-run reverts edited ones, so it runs from `init` and the change lifecycle, never from a report or a door. `--ignore-agent-tools` skips its check for the integration\'s own CLI: on 1.0.6, without the flag and without `claude` installed, the init exits 1 and writes nothing, so the flag is what lets a machine without that CLI scaffold at all. It writes the constitution as the unfilled template and nothing else claims to author it: the scaffold makes the steps runnable, the agent writes the document.',
     },
     projectSteps: [
       {
@@ -653,7 +655,13 @@ const knownGraphers: Record<string, GrapherEntry> = {
     shared: ['graphify-out/graph.json'],
     local: ['graphify-out/**'],
     ignore: ['graphify-out/*', '!graphify-out/graph.json'],
+    // Measured 2026-09-16 on graphify 0.9.29 (MV-128): with these lines in
+    // `.graphifyignore`, a fresh brain's first graph went from 223001 bytes,
+    // 530 of its nodes from `.claude` and `.specify`, to 2703 bytes holding
+    // only the repo's own files; `graphify-out/*` with `!graphify-out/graph.json`
+    // in `.gitignore` left `graph.json` the one output git reports.
     graphignore: ['.claude/', '.multivac/', '.specify/', 'specs/', 'openspec/'],
+    graphignoreFile: '.graphifyignore',
     env: {},
     binaries: ['graphify'],
     required: ['graphify'],

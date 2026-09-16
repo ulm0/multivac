@@ -6,10 +6,11 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, rmdir } from 'node:fs/promises';
+import { mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import type { Config, GrapherDecl } from '../types.js';
-import { binaryMissing, grapherSpec, unverifiedGrapher } from './registry.js';
+import { binaryMissing, grapherSpec, unverifiedGrapher, type AdapterSpec } from './registry.js';
+import { ignoredPaths } from '../lib/git.js';
 import { adapterFor, adaptersByRoot, localBin, missingRequired, pathExists, readOnly, type ReadOnly } from './detect.js';
 import { initState } from '../lib/init-state.js';
 import { GRAPH_LOCK } from '../doors/settings.js';
@@ -192,6 +193,47 @@ export async function graphScopes(brain: string, cfg: Config): Promise<GraphScop
  * Refreshing an existing graph stays where it was — `change close`, over the
  * repos that change touched.
  */
+
+/**
+ * MV-128. Before a graph's first build, the lines that keep it worth reading:
+ * the grapher's own ignore file keeps multivac's and the SDD's scaffolding out
+ * of the graph, and `.gitignore` keeps the per-checkout outputs out of git while
+ * the shared artifact stays in. Without them the first graph of a fresh brain
+ * was mostly vendor skills and templates (measured on graphify 0.9.29, see the
+ * registry entry), and seven outputs sat untracked beside the one to commit.
+ *
+ * Appended, never rewritten: a line already present is left, and every other
+ * line is the user's. An existing rule can still ignore the shared artifact —
+ * `graphify-out/` ignores the directory, and git cannot re-include a file under
+ * an excluded directory — so that is said, never fixed by editing their line.
+ */
+async function writeIgnores(name: string, spec: AdapterSpec, dir: string, scope: string): Promise<void> {
+  const wrote: string[] = [];
+  const targets: [string | undefined, string[]][] = [
+    [spec.graphignoreFile, spec.graphignore ?? []],
+    ['.gitignore', spec.ignore],
+  ];
+  for (const [file, lines] of targets) {
+    if (!file || lines.length === 0) continue;
+    const path = join(dir, file);
+    const text = await readFile(path, 'utf8').catch(() => '');
+    const have = new Set(text.split('\n').map((l) => l.trim()));
+    const add = lines.filter((l) => !have.has(l));
+    if (add.length === 0) continue;
+    const sep = text === '' || text.endsWith('\n') ? '' : '\n';
+    await writeFile(path, `${text}${sep}${add.join('\n')}\n`);
+    wrote.push(`${file} (+${add.length})`);
+  }
+  if (wrote.length > 0) say(`graph ${name} @ ${scope}: wrote ${wrote.join(' and ')} before the first build`);
+  if (spec.artifactKind !== 'shared') return;
+  for (const shared of await ignoredPaths(dir, spec.shared)) {
+    warn(
+      `graph ${name} @ ${scope}: ${shared} is ignored by a rule already in this repo, so it cannot be committed — ` +
+        `\`git check-ignore -v ${shared}\` names the rule`,
+    );
+  }
+}
+
 export async function ensureGraphs(brain: string, cfg: Config): Promise<void> {
   for (const s of await graphScopes(brain, cfg)) {
     if (!s.name) continue; // no grapher resolves for this scope: silence
@@ -201,6 +243,9 @@ export async function ensureGraphs(brain: string, cfg: Config): Promise<void> {
     // Building from a guessed command is the one thing worse than no graph.
     if (spec === null) continue;
     if ((await initState(spec, s.dir)).state === 'installed') continue; // already built here
+    // Only where the build will run: a missing binary writes nothing here and
+    // refreshGraph says why.
+    if ((await missingRequired(spec, s.dir)).length === 0) await writeIgnores(s.name, spec, s.dir, s.scope);
     await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
   }
 }

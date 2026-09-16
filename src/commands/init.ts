@@ -5,10 +5,23 @@
 
 import { parseArgs, type ArgsDef } from 'citty';
 import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import picomatch from 'picomatch';
 import { join, resolve } from 'node:path';
 import type { Command, CommandContext, Config } from '../types.js';
 import { PROJECTED_PATH, recordBody, selfVersion } from '../lib/version.js';
-import { doorTargets, grapherNames, sddNames } from '../adapters/registry.js';
+import {
+  binaryMissing,
+  doorTargets,
+  grapherNames,
+  grapherSpec,
+  sddNames,
+  sddSpec,
+  type AdapterSpec,
+} from '../adapters/registry.js';
+import { runScaffold } from '../adapters/sdd.js';
+import { ensureGraphs } from '../adapters/refresh.js';
+import { initState } from '../lib/init-state.js';
 import { doorsCommand } from './doors.js';
 import {
   BRAIN_PATHS,
@@ -30,7 +43,7 @@ import { banner } from '../lib/banner.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { PRECOMMIT_MISSING_FIX, installHooks } from '../hooks/install.js';
-import { detectAdapters, type Detected } from '../adapters/detect.js';
+import { adapterFor, detectAdapters, missingRequired, type Detected } from '../adapters/detect.js';
 
 export type { Detected };
 
@@ -316,6 +329,92 @@ async function grapherRefusal(dir: string, name: string): Promise<string | null>
   return known.includes(name) ? null : `init: unknown --grapher ${name} — known: ${known.join(', ')}`;
 }
 
+
+/**
+ * MV-128. The tools init would run in the brain, and only those: the same
+ * conditions `runScaffold` and `ensureGraphs` apply, asked before anything is
+ * written. A kept config decides (MV-91); on a first run the flags are what the
+ * config is about to say. An installed tool, one with no recorded init, and an
+ * SDD under `sdd_auto: false` run nothing, so a missing binary there is no
+ * reason to refuse.
+ */
+async function toolsInitWouldRun(
+  dir: string,
+  declared: Config | null,
+  f: Flags,
+): Promise<{ name: string; spec: AdapterSpec }[]> {
+  const out: { name: string; spec: AdapterSpec }[] = [];
+  const sdd = declared ? adapterFor(declared, 'brain', 'sdd') : f.sdd;
+  const sddS = sdd && (declared?.sddAuto ?? true) ? sddSpec(sdd) : null;
+  if (sdd && sddS?.scaffold && (await initState(sddS, dir)).state === 'missing') {
+    out.push({ name: sdd, spec: sddS });
+  }
+  const grapher = declared ? adapterFor(declared, 'brain', 'grapher') : f.grapher;
+  const grapherS = grapher ? grapherSpec(grapher, declared?.graphers ?? {}) : null;
+  if (grapher && grapherS && (await initState(grapherS, dir)).state !== 'installed') {
+    out.push({ name: grapher, spec: grapherS });
+  }
+  return out;
+}
+
+/**
+ * MV-128. Every path git reports as changed or untracked, with a hash of what
+ * is in the working tree. Two snapshots, one before init writes and one after,
+ * are what step zero is made of: a path is init's when it is new, or when its
+ * content moved while init ran. A path dirty before and untouched is the
+ * user's, and `git add -A` used to commit it as "multivac init".
+ */
+async function dirtySnapshot(dir: string): Promise<Map<string, string>> {
+  const raw = await git(dir, ['status', '--porcelain=v1', '-z', '--untracked-files=all']).catch(() => '');
+  const snap = new Map<string, string>();
+  const parts = raw.split('\0');
+  for (let i = 0; i < parts.length; i++) {
+    const entry = parts[i];
+    if (entry.length < 4) continue;
+    const path = entry.slice(3);
+    // A rename's second NUL field is its old path, not an entry of its own.
+    if (entry[0] === 'R' || entry[0] === 'C') i++;
+    const body = await readFile(join(dir, path)).catch(() => null);
+    snap.set(path, body === null ? '' : createHash('sha1').update(body).digest('hex'));
+  }
+  return snap;
+}
+
+/**
+ * MV-128. What step zero commits: the paths init created or changed, minus the
+ * vendor's per-checkout paths. A literal `shared` path beats a `local` glob, so
+ * `graphify-out/graph.json` stays while the rest of `graphify-out/` goes. A
+ * top-level directory whose every changed file is in the set is named once.
+ */
+function stepZeroPaths(
+  before: Map<string, string>,
+  after: Map<string, string>,
+  specs: AdapterSpec[],
+): string[] {
+  const local = specs.flatMap((s) => s.local);
+  const shared = new Set(specs.flatMap((s) => s.shared));
+  const isLocal = local.length > 0 ? picomatch(local, { dot: true }) : () => false;
+  const changed = [...after.keys()].filter((p) => after.get(p) !== before.get(p));
+  const keep = new Set(changed.filter((p) => shared.has(p) || !isLocal(p)));
+  const top = (p: string): string => p.split('/')[0];
+  const out = new Set<string>();
+  for (const p of [...keep].sort()) {
+    const t = top(p);
+    // Named once only when nothing else git reports under it would come along
+    // (`git add -- <dir>` adds every dirty path beneath), and never a vendor
+    // directory that holds local outputs: `graphify-out` would read as all of
+    // them even when the ignore lines keep git to `graph.json`.
+    const whole =
+      t !== p &&
+      !isLocal(`${t}/_`) &&
+      [...after.keys()].filter((q) => top(q) === t).every((q) => keep.has(q));
+    out.add(whole ? t : p);
+  }
+  return [...out];
+}
+
+const shellQuote = (p: string): string => (/^[\w./@+-]+$/.test(p) ? p : `'${p.replace(/'/g, `'\\''`)}'`);
+
 async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   let f: Flags;
   try {
@@ -343,6 +442,28 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     warn(badGrapher);
     return 2;
   }
+  // MV-128: a tool init would run and cannot find refuses init, here, before
+  // `git init` and before the first file — the same line the lifecycle prints,
+  // so the brain is never half-made over a binary nobody installed.
+  // Read the config itself when there is one: the MV-91 read below comes after
+  // `git init` and `.multivac/`, and this refusal must precede both. A config
+  // that will not load is refused below by name (MV-114); the flags stand in.
+  const kept = (await exists(join(dir, CONFIG_PATH))) ? await loadConfig(dir).catch(() => null) : null;
+  const wouldRun = await toolsInitWouldRun(dir, kept, f);
+  const missingTools: string[] = [];
+  for (const { name, spec } of wouldRun) {
+    const bins = await missingRequired(spec, dir);
+    if (bins.length > 0) missingTools.push(`${name}: ${binaryMissing(name, spec, bins, 'brain')}`);
+  }
+  if (missingTools.length > 0) {
+    for (const m of missingTools) warn(`init refused — ${m}`);
+    warn(
+      '  init runs the declared tools\' own init in the brain, and nothing was written: ' +
+        'install them and re-run, or leave the flag off and declare the tool later',
+    );
+    return 1;
+  }
+
   await mkdir(dir, { recursive: true });
 
   // The mark, once, where a human is watching: `init` is the only command that
@@ -433,6 +554,8 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
 
   // The brain must be visible to git before anything is written into it.
   await ensureVisibleToGit(dir, report);
+  // MV-128: what is already dirty is the user's; step zero is the difference.
+  const beforeInit = await dirtySnapshot(dir);
 
   // 2. machinery: config.yml (flags land here), gitignored cache/ + worktrees/
   // (change apply puts one checkout per change there — never committed).
@@ -598,6 +721,18 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // the ordinary case and it is a no-op.
   if (f.agents.length > 0) await doorsCommand.run([], { cwd: dir });
 
+  // MV-128: declared at init, installed at init. The same two functions the
+  // lifecycle calls, self-limiting and never throwing: an installed tool runs
+  // nothing, and a tool that fails is reported and left for the next `change`
+  // to retry. After the door and hooks, so a vendor rewriting harness settings
+  // is merged over by the next projection; the graph last, so it sees the
+  // files init wrote.
+  const equipCfg = await loadConfig(dir).catch(() => null);
+  if (equipCfg !== null) {
+    await runScaffold(dir, equipCfg, false);
+    await ensureGraphs(dir, equipCfg);
+  }
+
   // The last word is a call to action, not a full stop. init leaves a brain
   // that is scaffolded and empty, and "load the skill" alone left the reader
   // to discover session zero — that there are two flows and which one is
@@ -612,7 +747,20 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // fresh brain therefore always refused at `change new`, and the closing
   // report — the one place a stranger is looking — never mentioned the commit
   // that unblocks it.
-  emit('init:   0. commit what was just written: git add -A && git commit -m "multivac init"');
+  // MV-128: the pathspec is what init wrote — never `-A`, which in a brain==code
+  // repo committed the user's uncommitted work as "multivac init".
+  const brainSpecs = equipCfg === null
+    ? []
+    : ([adapterFor(equipCfg, 'brain', 'sdd'), adapterFor(equipCfg, 'brain', 'grapher')] as const)
+        .map((n, i) => (n ? (i === 0 ? sddSpec(n) : grapherSpec(n, equipCfg.graphers)) : null))
+        .filter((s): s is AdapterSpec => s !== null);
+  const zero = stepZeroPaths(beforeInit, await dirtySnapshot(dir), brainSpecs);
+  emit(
+    'init:   0. commit what was just written: ' +
+      (zero.length > 0
+        ? `git add -- ${zero.map(shellQuote).join(' ')} && git commit -m "multivac init"`
+        : 'nothing — everything init writes is already committed'),
+  );
   emit('init:   1. load the multivac skill in your agent — it carries both protocols');
   emit(
     brainIsCode

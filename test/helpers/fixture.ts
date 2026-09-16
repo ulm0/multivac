@@ -2,8 +2,10 @@
 // git repos with committed files. Neutral acme naming, no real-world content.
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { delimiter, dirname, join } from 'node:path';
+import { SPECKIT_INTEGRATION_JSON } from './recorded.js';
 
 export interface ScratchEcosystem {
   brain: string;
@@ -121,4 +123,34 @@ export function makeScratchEcosystem(tmpdir: string): ScratchEcosystem {
   });
 
   return { brain, repos: { api, web } };
+}
+
+/**
+ * MV-128. `specify` and `graphify` stubs that write what each vendor's state
+ * probe reads, and a PATH made of them, node and the system dirs — never the
+ * host's, where the real tools may be installed and would run. `runs` is a file
+ * each stub appends its argv to. The graphify stub also writes a cache file,
+ * which is `local` and must stay out of anything committed.
+ */
+export function vendorPath(): { path: string; runs: string } {
+  const bin = mkdtempSync(join(tmpdir(), 'mvac-vendors-'));
+  const runs = join(bin, 'runs.log');
+  const stub = (name: string, body: string): void => {
+    const p = join(bin, name);
+    writeFileSync(p, `#!/bin/sh\necho "${name} $*" >> '${runs}'\n${body}exit 0\n`);
+    chmodSync(p, 0o755);
+  };
+  stub(
+    'specify',
+    `mkdir -p .specify/memory\n` +
+      `printf '# [PROJECT_NAME] Constitution\\n' > .specify/memory/constitution.md\n` +
+      `cat > .specify/integration.json <<'EOF'\n${SPECKIT_INTEGRATION_JSON}EOF\n`,
+  );
+  stub(
+    'graphify',
+    `mkdir -p graphify-out/cache\n` +
+      `printf '{"nodes":[],"links":[]}\\n' > graphify-out/graph.json\n` +
+      `printf 'x\\n' > graphify-out/cache/entry\n`,
+  );
+  return { path: [bin, dirname(process.execPath), '/usr/bin', '/bin'].join(delimiter), runs };
 }

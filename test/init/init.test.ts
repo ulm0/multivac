@@ -18,7 +18,10 @@ import { doctorReport } from '../../src/commands/doctor.js';
 import { init } from '../../src/commands/init.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { layoutError, loadConfig } from '../../src/lib/config.js';
-import { gitInit } from '../helpers/fixture.js';
+import { gitInit, vendorPath } from '../helpers/fixture.js';
+// MV-128: init runs the declared tools, so a host with spec-kit or graphify
+// installed would run the real ones here. Stubs, on a PATH built for it.
+process.env.PATH = vendorPath().path;
 
 const tmp = (): string => mkdtempSync(join(tmpdir(), 'mvac-init-'));
 
@@ -414,7 +417,9 @@ test('the closing report names the commit that unblocks the next command — MV-
 
   assert.equal(c.code, 0);
   assert.match(c.out, /0\. commit what was just written/);
-  assert.match(c.out, /git add -A && git commit/);
+  // MV-128: what init wrote, by path — never the sweep.
+  assert.match(c.out, /git add -- .*\.multivac.* && git commit/);
+  assert.doesNotMatch(c.out, /git add -A/);
 });
 
 test('init refuses a config it cannot read, and the gate stays armed — MV-114', async () => {
