@@ -10,6 +10,36 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## 0.13.0 — 2026-09-16
+
+**Changed**
+
+- **`init` installs the SDD and grapher it declares.** `init --sdd speckit
+  --grapher graphify` used to write both names into the config and the door
+  and install neither: a fresh repo got no `.specify/` and no `graphify-out/`.
+  `init` now runs the tool's own init and the graph's first build in the brain,
+  the same way `change` does, and runs neither where the tool is already
+  installed. (MV-128)
+- **`init` refuses a tool it would run and cannot find, before writing
+  anything.** It exits 1, before `git init`, naming the binary, the install
+  line and the vendor's repository. Nothing is required for a tool it would not
+  run: one already installed, `opsx`, which has no init on record, or an SDD
+  under `sdd_auto: false`. **If you upgrade**: a script or CI job that runs
+  `init --sdd speckit` or `init --grapher graphify` where the tool is not
+  installed exited 0 and now exits 1. (MV-128)
+- **A graph's first build adds its ignore lines first.** For graphify that is
+  `.graphifyignore`, keeping `.claude/`, `.multivac/`, `.specify/`, `specs/` and
+  `openspec/` out of the graph, and `graphify-out/*` with
+  `!graphify-out/graph.json` in `.gitignore`. Missing lines are appended and
+  yours are left alone; a rule of yours that still ignores `graph.json` is
+  named. This applies wherever a first build runs, `init` or `change`. Measured
+  on graphify 0.9.29, a fresh brain's first graph went from 223 KB, most of it
+  spec-kit's own files, to under 3 KB. (MV-128)
+- **Step 0 of `init` commits only what `init` wrote.** It printed
+  `git add -A`, which in a repo with code also committed your uncommitted work
+  as "multivac init". It now lists the paths `init` created or changed, leaving
+  out the tools' per-checkout outputs. (MV-128)
+
 ## 0.12.0 — 2026-09-16
 
 **Changed**
