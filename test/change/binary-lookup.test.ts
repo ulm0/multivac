@@ -208,11 +208,16 @@ test('found nowhere, speckit and codegraph: the scaffold, the build, the gate an
   const codegraph = grapherSpec('codegraph')!;
   const ctx = { cwd: brain };
   await onPath(join(tmp, 'empty'), async () => {
-    const created = await capture(() => change.run(['new', 'sk', 'Sk'], ctx));
+    // MV-129: the SDD the steps need, missing, refuses `change new` before it
+    // writes, and the refusal names the vendor as every other surface does.
+    const refused = await capture(() => change.run(['new', 'sk', 'Sk'], ctx));
+    assert.equal(refused.code, 1);
+    assert.equal(existsSync(join(brain, '.multivac/changes/sk.md')), false, 'nothing written');
+    assertNames(missingLines(refused.out).filter((l) => l.startsWith('change new refused — speckit')), 'speckit', speckit, 'the refusal');
+    // Without the SDD, the build still runs and names its own vendor — a notice.
+    const created = await capture(() => change.run(['new', 'sk', 'Sk', '--no-sdd'], ctx));
     assert.equal(created.code, 0);
-    const out = missingLines(created.out);
-    assertNames(out.filter((l) => l.startsWith('sdd speckit')), 'speckit', speckit, 'the scaffold');
-    assertNames(out.filter((l) => l.startsWith('graph codegraph')), 'codegraph', codegraph, 'the build');
+    assertNames(missingLines(created.out).filter((l) => l.startsWith('graph codegraph')), 'codegraph', codegraph, 'the build');
     const doctor = await doctorReport(brain);
     assert.equal(doctor.exit, 0);
     assertNames(missingLines(doctor.lines.filter((l) => l.includes('speckit @')).join('\n')), 'speckit', speckit, 'doctor');

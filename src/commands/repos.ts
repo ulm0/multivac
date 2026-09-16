@@ -20,6 +20,7 @@ import { gitFailure, gitlinkInIndex, lsTreeGitlink, submoduleAdd } from '../lib/
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
+import { equip, missingTools } from '../adapters/equip.js';
 
 const execFileP = promisify(execFile);
 
@@ -275,7 +276,16 @@ export const reposCommand: Command = {
     if (sub === 'sync') {
       const { lines, exit } = await reposSync(ctx.cwd, a.shallow === true);
       for (const l of lines) say(l);
-      return exit;
+      // MV-129: a repo that is cloned, fetched and mounted but has no SDD and
+      // no graph is not set up — measured on 0.13.0, sync left a declared
+      // sibling with neither and exited 0. Equip every writable repo on disk,
+      // and exit 1 if a tool it would run cannot be found; each such repo is
+      // named by the line the scaffold or the build prints for it, and every
+      // other repo is still equipped.
+      const cfg = await loadConfig(ctx.cwd);
+      const missing = await missingTools(ctx.cwd, cfg, { sdd: true, grapher: true });
+      await equip(ctx.cwd, cfg, false);
+      return missing.length > 0 ? 1 : exit;
     }
     say(`unknown subcommand "${sub}" — usage: multivac repos [sync [--shallow]]`);
     return 2;

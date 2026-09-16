@@ -24,8 +24,9 @@ import { ritualChecklist } from '../lib/ritual.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
-import { runScaffold, sddGate, sddInstructions } from '../adapters/sdd.js';
-import { ensureGraphs, graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
+import { sddGate, sddInstructions } from '../adapters/sdd.js';
+import { graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
+import { equip, missingTools } from '../adapters/equip.js';
 import { graphTrackedGate } from '../adapters/tracked.js';
 import { readOnly } from '../adapters/detect.js';
 import { evaluate, fmtAge, stalenessLines } from './verify.js';
@@ -114,12 +115,11 @@ async function gateSdd(
   // would fix that is the tool's own init. This is the single funnel for plan,
   // apply and close, so one call covers all three. A scaffold that fails
   // changes nothing here — the gate below still refuses on its own terms.
-  await runScaffold(brain, cfg, noSdd);
   // The other half of the same idea (MV-87): a declared repo with no graph is
   // one the agent cannot navigate, and the graph is what it reads in order to
   // do the work. Skipped where the probe finds the grapher installed (MV-124),
   // so this is one probe per scope on every run after the first.
-  await ensureGraphs(brain, cfg);
+  await equip(brain, cfg, noSdd);
   const { ok, lines } = await sddGate(brain, cfg, gate, slug, noSdd);
   for (const l of lines) (ok ? say : warn)(l);
   return ok;
@@ -598,6 +598,19 @@ async function cmdNew(
   } else {
     parsed = scaffoldChange(slug, title);
   }
+  // MV-129: the SDD tool this change's steps need, where the machine cannot
+  // run it, is refused here, before the reservation and the commit. Measured on 0.13.0:
+  // `change new` committed first, then said `specify` could not run, then
+  // printed the steps that need it — a change opened on steps nobody can take.
+  const missing = await missingTools(brain, cfg, { sdd: !noSdd, grapher: false });
+  if (missing.length > 0) {
+    for (const m of missing) warn(`change new refused — ${m}`);
+    warn(
+      '  the steps this change prints need that tool, and nothing was written: install it and re-run, ' +
+        'or pass `--no-sdd` to skip the SDD for one run',
+    );
+    return 1;
+  }
   // Allocate before anyone else reads the table: IDs picked by hand collide,
   // and the collision only shows up at merge. Dirty check, reservation,
   // scaffold and the bookkeeping commit happen under one lock — a concurrent
@@ -661,8 +674,7 @@ async function cmdNew(
   // The first moment the tool's steps are printed is the first moment they
   // have to be runnable: scaffold before printing, so the lines below name
   // chat commands that exist.
-  await runScaffold(brain, cfg, noSdd);
-  await ensureGraphs(brain, cfg);
+  await equip(brain, cfg, noSdd);
   runSdd(cfg, 'new', slug, noSdd);
   return 0;
 }
@@ -702,6 +714,8 @@ async function cmdPlan(
       say(`${key}: ${abs}${entry.isBrain ? ' (brain==code)' : ''}`);
     }
   }
+  // MV-129: the gate above equipped what was on disk; a repo just cloned was not.
+  await equip(brain, cfg, noSdd);
   say('landing order:');
   landingPlan(change).forEach((s, i) => say(`  stage ${i + 1}: ${s.repos.join(', ')}`));
   const states = await invariantStates(brain);
@@ -791,6 +805,9 @@ async function cmdApply(
     }
     workspaces.push(`${key}: ${await ensureWorkspace(brain, abs, slug, key)}`);
   }
+  // MV-129: the gate above equipped what was on disk; a repo just cloned or
+  // created was not.
+  await equip(brain, cfg, noSdd);
   runSdd(cfg, 'apply', slug, noSdd);
   say(`work here — one checkout per repo, nobody else's tree moves:`);
   for (const w of workspaces) say(`  ${w}`);

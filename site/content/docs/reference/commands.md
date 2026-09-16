@@ -863,6 +863,20 @@ its age:
 api: present at ../api — could not fetch: Could not resolve host: example.com; its channel ref stays as last fetched (`git -C ../api fetch`)
 ```
 
+### Tools in every repo
+
+`repos sync` also installs the declared SDD and grapher in every repo it finds
+on disk and may write in: the tool's own init where it has never run, and the
+graph's first build where there is no graph. A repo where both are installed
+runs neither. A read-only repo, declared `managed: false` or a shallow clone,
+gets nothing, which is why `repos sync --shallow` on a CI machine needs no
+vendor tool.
+
+A tool it would run and cannot find is named, repo by repo, with where to get
+it. Every other repo is still set up, and the run exits 1.
+
+What the tools write is left in each repo's working tree, uncommitted.
+
 ### The brain mount
 
 `repos sync` also makes sure every repo it finds on disk has the brain mounted,
@@ -1064,7 +1078,15 @@ never gates `verify`, and `close` releases the reservation if the change never
 used it — used meaning the rule was stated in place of the scaffolded RESERVED
 text, or an anchor names the ID. Then prints the SDD steps bound to the `new`
 point — with the artifact each will be checked for — if an `sdd` is declared
-and `sdd_auto` is on. `plan`, `apply` and `close` **refuse** while those
+and `sdd_auto` is on.
+
+Before it writes anything, `new` refuses, with exit 1, when that SDD's own
+init would have to run somewhere and the tool cannot be found: every step it
+prints needs that tool. It names the repo and where to get the tool, and
+`--no-sdd` skips it for one run. A missing grapher is only a notice here;
+`close` is where a missing graph refuses.
+
+`plan`, `apply` and `close` **refuse** while those
 artifacts are missing; see
 [Graphers and SDD](/docs/reference/graphers-and-sdd/#the-gate-what-the-tool-really-produces).
 

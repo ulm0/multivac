@@ -10,8 +10,8 @@
     "semantic_hash": ""
   },
   "package.json": {
-    "mtime": 1789587652.529125,
-    "ast_hash": "a7086174eec4c94c866f5919fc3247ff",
+    "mtime": 1789593068.90171,
+    "ast_hash": "1a6c7e77b9bf92b67b00686f336a3c35",
     "semantic_hash": ""
   },
   "site/go.mod": {
@@ -75,8 +75,8 @@
     "semantic_hash": ""
   },
   "src/commands/change.ts": {
-    "mtime": 1789419467.8210595,
-    "ast_hash": "4c6f62e283b8fe080aa4d52dbf78fe7a",
+    "mtime": 1789593971.9512289,
+    "ast_hash": "127890118ff6fe74393316bb2b033380",
     "semantic_hash": ""
   },
   "src/commands/count.ts": {
@@ -105,13 +105,13 @@
     "semantic_hash": ""
   },
   "src/commands/init.ts": {
-    "mtime": 1789589488.7840872,
-    "ast_hash": "9023907311bc592ced8db3ea9c5d22e6",
+    "mtime": 1789593971.9515467,
+    "ast_hash": "ff9c49aac4183c3041d448919d4e7338",
     "semantic_hash": ""
   },
   "src/commands/repos.ts": {
-    "mtime": 1789586200.4846935,
-    "ast_hash": "4b21915dbdb392de5805eb108688003f",
+    "mtime": 1789593971.9519274,
+    "ast_hash": "7bb059d34a7527c15b8f59de0691fb0b",
     "semantic_hash": ""
   },
   "src/commands/seed.ts": {
@@ -290,8 +290,8 @@
     "semantic_hash": ""
   },
   "test/helpers/fixture.ts": {
-    "mtime": 1789589488.7844331,
-    "ast_hash": "f2e5f6fdd902a27de2048c23d83fc803",
+    "mtime": 1789593971.9528635,
+    "ast_hash": "a7220d2e971ab9ea6b29199d435fa32a",
     "semantic_hash": ""
   },
   "test/helpers/regex.test.ts": {
@@ -630,8 +630,8 @@
     "semantic_hash": ""
   },
   ".multivac/invariants.md": {
-    "mtime": 1789589492.006849,
-    "ast_hash": "7e15dab0e41af3c2d8034db9a0bb9952",
+    "mtime": 1789593974.8679826,
+    "ast_hash": "21c0ac5a0194dfa36265607a0fc0d528",
     "semantic_hash": ""
   },
   ".multivac/ritual.md": {
@@ -750,8 +750,8 @@
     "semantic_hash": ""
   },
   "site/content/docs/reference/commands.md": {
-    "mtime": 1789589488.780952,
-    "ast_hash": "9e7a61ac1de7cb80865744da2a8e19ee",
+    "mtime": 1789593971.942863,
+    "ast_hash": "152ab70e2f909a15ac2c01f26fdb09de",
     "semantic_hash": ""
   },
   "site/content/docs/reference/configuration.md": {
@@ -760,8 +760,8 @@
     "semantic_hash": ""
   },
   "site/content/docs/reference/graphers-and-sdd.md": {
-    "mtime": 1789589488.7822914,
-    "ast_hash": "40c7e857ddce13ea49ba4fea430cd88a",
+    "mtime": 1789593971.9450624,
+    "ast_hash": "5baf0fddd2ee0f6d6f4a94f80e8e0f3b",
     "semantic_hash": ""
   },
   "site/content/docs/reference/hooks.md": {
@@ -1085,8 +1085,8 @@
     "semantic_hash": ""
   },
   "CHANGELOG.md": {
-    "mtime": 1789587652.5288804,
-    "ast_hash": "1ac0c2c1db4b18a4625cdd6b286bf561",
+    "mtime": 1789593068.9012196,
+    "ast_hash": "576e6f7d3402cc39a36023487f2fec98",
     "semantic_hash": ""
   },
   "test/invariants/changelog.test.ts": {
@@ -1535,8 +1535,8 @@
     "semantic_hash": ""
   },
   ".multivac/projected.yml": {
-    "mtime": 1789588617.5268402,
-    "ast_hash": "ba149a284c471632493e76e56dff4c9f",
+    "mtime": 1789592242.5407279,
+    "ast_hash": "04229ea3f3ace14d9bef29ae62484138",
     "semantic_hash": ""
   },
   "specs/010-the-brain-knows-what-projected-it/checklists/requirements.md": {
@@ -3280,8 +3280,8 @@
     "semantic_hash": ""
   },
   "test/change/per-root.test.ts": {
-    "mtime": 1789415504.440737,
-    "ast_hash": "fa21c0277cdd47172dd79b2372906002",
+    "mtime": 1789593971.952621,
+    "ast_hash": "0b910e8835dc74df04c1a633d312d026",
     "semantic_hash": ""
   },
   ".multivac/changes/archive/one-resolver-per-root.md": {
@@ -3315,8 +3315,8 @@
     "semantic_hash": ""
   },
   "test/change/binary-lookup.test.ts": {
-    "mtime": 1789415504.4396224,
-    "ast_hash": "d79784b296bb07fa723ed9fb7c8f8b1d",
+    "mtime": 1789593971.952264,
+    "ast_hash": "b0328593720b04811b3396302e5f0a84",
     "semantic_hash": ""
   },
   "test/helpers/recorded.ts": {
@@ -3540,8 +3540,38 @@
     "semantic_hash": ""
   },
   ".multivac/changes/archive/equip-brain-at-init.md": {
-    "mtime": 1789589492.0058737,
+    "mtime": 1789592242.5395322,
     "ast_hash": "1587876d517e45fb0e931e809659d9eb",
+    "semantic_hash": ""
+  },
+  "src/adapters/equip.ts": {
+    "mtime": 1789593971.9485343,
+    "ast_hash": "5211ecdb50dbd3c21688687b1157314b",
+    "semantic_hash": ""
+  },
+  "specs/054-equip-on-sync-and-lifecycle/plan.md": {
+    "mtime": 1789593971.9461367,
+    "ast_hash": "bf8d32a343bd71deed8cc15fce9967a6",
+    "semantic_hash": ""
+  },
+  "specs/054-equip-on-sync-and-lifecycle/spec.md": {
+    "mtime": 1789593971.9473393,
+    "ast_hash": "6274276539ffa7c1a23a8d8256269d71",
+    "semantic_hash": ""
+  },
+  "specs/054-equip-on-sync-and-lifecycle/tasks.md": {
+    "mtime": 1789593971.94748,
+    "ast_hash": "e5b6838880eccf5220cb5f581db4479d",
+    "semantic_hash": ""
+  },
+  "test/change/equip-lifecycle.test.ts": {
+    "mtime": 1789593971.952475,
+    "ast_hash": "da5242068d3fe6edaae4eae61f37352b",
+    "semantic_hash": ""
+  },
+  ".multivac/changes/archive/equip-on-sync-and-lifecycle.md": {
+    "mtime": 1789593974.8668096,
+    "ast_hash": "ade994142cb3149c17d06214003f4d18",
     "semantic_hash": ""
   }
 }

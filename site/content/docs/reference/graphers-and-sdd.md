@@ -223,7 +223,7 @@ not one of them:
 | ~~git hooks~~ | never | the shims run `verify` only |
 
 The **first build** is separate, because a repo cannot be refreshed before it
-has been built. `init`, `change new` and the gates build the graph in every declared
+has been built. `init`, `repos sync`, `change new` and the gates build the graph in every declared
 repo on disk that is not read-only where the grapher is not installed — missing,
 or partial like a 0-byte `graph.json` — with the adapter's `create` where it
 declares one, its `refresh` otherwise, and skip every repo where it is
@@ -451,7 +451,8 @@ read by the probe above, never a directory being there.
 | `opsx` | `openspec/config.yaml` or `openspec/config.yml` | **unverified — not recorded, and never guessed** |
 
 `init`, `change new`, `change plan`, `change apply` and `change close` run it in **every
-declared repo on disk** where the tool is missing — the brain and the siblings
+declared repo on disk** where the tool is missing, and `repos sync` does the
+same after it clones and fetches, — the brain and the siblings
 alike — print it first, and skip a repo entirely where it is installed. A
 read-only repo, declared `managed: false` or a shallow clone, is skipped in
 silence:
