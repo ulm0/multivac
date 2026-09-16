@@ -132,10 +132,11 @@ export function makeScratchEcosystem(tmpdir: string): ScratchEcosystem {
  * each stub appends its argv to. The graphify stub also writes a cache file,
  * which is `local` and must stay out of anything committed.
  */
-export function vendorPath(): { path: string; runs: string } {
+export function vendorPath(tools: ('specify' | 'graphify')[] = ['specify', 'graphify']): { path: string; runs: string } {
   const bin = mkdtempSync(join(tmpdir(), 'mvac-vendors-'));
   const runs = join(bin, 'runs.log');
-  const stub = (name: string, body: string): void => {
+  const stub = (name: 'specify' | 'graphify', body: string): void => {
+    if (!tools.includes(name)) return;
     const p = join(bin, name);
     writeFileSync(p, `#!/bin/sh\necho "${name} $*" >> '${runs}'\n${body}exit 0\n`);
     chmodSync(p, 0o755);

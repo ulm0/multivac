@@ -19,9 +19,7 @@ import {
   sddSpec,
   type AdapterSpec,
 } from '../adapters/registry.js';
-import { runScaffold } from '../adapters/sdd.js';
-import { ensureGraphs } from '../adapters/refresh.js';
-import { initState } from '../lib/init-state.js';
+import { equip, toolsToRun, type ToolRun } from '../adapters/equip.js';
 import { doorsCommand } from './doors.js';
 import {
   BRAIN_PATHS,
@@ -342,19 +340,20 @@ async function toolsInitWouldRun(
   dir: string,
   declared: Config | null,
   f: Flags,
-): Promise<{ name: string; spec: AdapterSpec }[]> {
-  const out: { name: string; spec: AdapterSpec }[] = [];
-  const sdd = declared ? adapterFor(declared, 'brain', 'sdd') : f.sdd;
-  const sddS = sdd && (declared?.sddAuto ?? true) ? sddSpec(sdd) : null;
-  if (sdd && sddS?.scaffold && (await initState(sddS, dir)).state === 'missing') {
-    out.push({ name: sdd, spec: sddS });
-  }
-  const grapher = declared ? adapterFor(declared, 'brain', 'grapher') : f.grapher;
-  const grapherS = grapher ? grapherSpec(grapher, declared?.graphers ?? {}) : null;
-  if (grapher && grapherS && (await initState(grapherS, dir)).state !== 'installed') {
-    out.push({ name: grapher, spec: grapherS });
-  }
-  return out;
+): Promise<ToolRun[]> {
+  // MV-129: the same predicate `change new` and `repos sync` ask, over the one
+  // root init equips.
+  return toolsToRun(
+    [
+      {
+        scope: 'brain',
+        dir,
+        sdd: declared ? adapterFor(declared, 'brain', 'sdd') : f.sdd,
+        grapher: declared ? adapterFor(declared, 'brain', 'grapher') : f.grapher,
+      },
+    ],
+    { sdd: declared?.sddAuto ?? true, graphers: declared?.graphers ?? {} },
+  );
 }
 
 /**
@@ -728,10 +727,7 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // is merged over by the next projection; the graph last, so it sees the
   // files init wrote.
   const equipCfg = await loadConfig(dir).catch(() => null);
-  if (equipCfg !== null) {
-    await runScaffold(dir, equipCfg, false);
-    await ensureGraphs(dir, equipCfg);
-  }
+  if (equipCfg !== null) await equip(dir, equipCfg, false);
 
   // The last word is a call to action, not a full stop. init leaves a brain
   // that is scaffolded and empty, and "load the skill" alone left the reader

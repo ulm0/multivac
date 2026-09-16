@@ -20,6 +20,7 @@ import { change } from '../../src/commands/change.js';
 import { loadConfig } from '../../src/lib/config.js';
 import { renderFlow } from '../../src/doors/flow.js';
 import { sddInstructions } from '../../src/adapters/sdd.js';
+import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -92,13 +93,16 @@ test('an sdd only an absent repo resolves refuses, naming the root, never a sile
 });
 
 test('a per-repo sdd prints its steps at change new', async () => {
-  const { ctx } = eco([
+  const { web, ctx } = eco([
     'doors: [agents]',
     'repos:',
     '  web:',
     '    path: ../acme-web',
     '    sdd: speckit',
   ]);
+  // Installed where it applies: this is about the steps, and since MV-129 a
+  // spec-kit `change new` would have to run and cannot find is a refusal.
+  write(web, '.specify/integration.json', SPECKIT_INTEGRATION_JSON);
   const c = await capture(() => change.run(['new', 'per-b', 'Per b'], ctx));
   assert.match(c.out, /sdd speckit: run \/speckit\.specify in your agent to write the spec for per-b/);
 });
