@@ -81,3 +81,26 @@ test('the brain cannot be declared unmanaged, under any key — MV-125', async (
     await assert.rejects(() => loadConfig(dir), /the brain is always managed/, key);
   }
 });
+
+// MV-127. The address other people clone the brain from. Hand-authored: the
+// tool writes it commented and never derives it, because a brain's own origin
+// can be a machine-local ssh alias and this value lands in every consumer's
+// `.gitmodules`.
+
+test('brain_url loads, a misspelling is refused, an empty one is refused — MV-127', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-brainurl-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  const write = (body: string) => writeFileSync(join(dir, '.multivac/config.yml'), body);
+
+  write('doors: [agents]\nbrain_url: git@github.com:acme/brain.git\nrepos:\n  brain: .\n');
+  assert.equal((await loadConfig(dir)).brainUrl, 'git@github.com:acme/brain.git');
+
+  write('doors: [agents]\nbrain_ur1: git@github.com:acme/brain.git\nrepos:\n  brain: .\n');
+  await assert.rejects(() => loadConfig(dir), /unknown key "brain_ur1"/);
+
+  write('doors: [agents]\nbrain_url: "   "\nrepos:\n  brain: .\n');
+  await assert.rejects(() => loadConfig(dir), /"brain_url" is empty/);
+
+  write('doors: [agents]\nrepos:\n  brain: .\n');
+  assert.equal((await loadConfig(dir)).brainUrl, undefined, 'undeclared is undeclared');
+});

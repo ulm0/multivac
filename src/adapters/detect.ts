@@ -9,7 +9,7 @@ import { access, readdir, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import { doorTargets, type AdapterSpec } from './registry.js';
-import { isShallow } from '../lib/git.js';
+import { isShallow, run as gitRun } from '../lib/git.js';
 import type { Config, RepoEntry } from '../types.js';
 
 export async function pathExists(p: string): Promise<boolean> {
@@ -242,6 +242,13 @@ export interface Detected {
   doors: string[];
   sdd?: string;
   grapher?: string;
+  /**
+   * MV-127. This repo's `origin` url, if it has one. A SUGGESTION for
+   * `brain_url`, written commented out — never a declaration, because an
+   * origin can be a machine-local ssh alias and the value ends up in every
+   * consumer's `.gitmodules`.
+   */
+  origin?: string;
 }
 
 /**
@@ -261,5 +268,6 @@ export async function detectAdapters(dir: string): Promise<Detected> {
   for (const [name, t] of Object.entries(doorTargets)) {
     if (t.detect && (await has(t.detect))) d.doors.push(name);
   }
+  d.origin = (await gitRun(dir, ['remote', 'get-url', 'origin']).catch(() => '')) || undefined;
   return d;
 }

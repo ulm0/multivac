@@ -453,14 +453,49 @@ branches   api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4;
 
 Where each consumer repo mounts the brain, as a git submodule. Both the
 staleness check and `doctor`'s `pins` line read the gitlink at this path.
+`multivac repos sync` creates it, from [`brain_url`](#brain_url).
 
 **Without it:** `.brain`, which is also the name `verify` prefers when it
 runs from a consumer repo and has to find the brain. If a repo has no gitlink
 there:
 
 ```txt
-pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain)
+pins       api: no brain mount at .brain — run `multivac repos sync` to add it
 ```
+
+### `brain_url`
+
+| | |
+| --- | --- |
+| type | string — a git url |
+| default | none |
+| example | `brain_url: git@github.com:acme/brain.git` |
+
+The address other people clone the brain from. `multivac repos sync` writes it
+into each consumer's `.gitmodules` when it mounts the brain there, so it has to
+be the url **everyone** can reach, not the one on your machine.
+
+**Hand-authored — the tool never writes this field**, and never works it out
+from `git remote get-url origin`. A brain's own origin is often a local ssh
+alias (`git@work-github:acme/brain.git`), and a guess would land in every
+consumer's `.gitmodules`, broken for everybody else. `multivac init` writes the
+key commented out, with the origin it found as a suggestion:
+
+```yaml
+# brain_url: git@work-github:acme/brain.git   # the URL others clone the brain from — uncomment to let `repos sync` mount it
+```
+
+Read it, fix it if it is an alias, and uncomment it.
+
+**Without it:** `repos sync` mounts nothing, and says so once:
+
+```txt
+no brain_url in .multivac/config.yml — multivac will not guess it from a git remote; add the URL other people clone the brain from, then re-run `multivac repos sync`
+```
+
+A url git refuses is reported by cause. That includes a local path: git blocks
+the `file` transport for submodules, and multivac does not switch that
+protection off in your repos.
 
 ### `requires`
 

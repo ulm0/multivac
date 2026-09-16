@@ -31,6 +31,7 @@ import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings } from '../doors/settings.js';
 import { installHooks } from '../hooks/install.js';
+import { gitlinkInIndex, lsTreeGitlink } from '../lib/git.js';
 import { adapterFor, missingRequired, readOnly } from '../adapters/detect.js';
 import {
   type DoorTarget,
@@ -316,6 +317,7 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
 
   // Per repo, not once for all of them: MV-90 resolves the graph block with the
   // grapher that applies THERE, and a body rendered before the loop cannot know.
+  const unmounted: string[] = [];
   for (const [key, entry] of Object.entries(config.repos)) {
     const consumerBody = renderConsumerDoor(config, key);
     if (entry.isBrain) {
@@ -342,6 +344,20 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     // The grapher `adapterFor` resolves for this repo (MV-122) — the answer
     // doctor and `change close` get, so a `none` repo wires no refresh.
     report(key, await projectInto(dir, consumerBody, config, adapterFor(config, key, 'grapher')));
+    // MV-127: the door just installed a gate that reads the brain through the
+    // mount. Say which repos have no mount to read, so "door + hooks updated"
+    // is not the last word on a repo where nothing can be verified. Offline:
+    // `doors` reports the state and never makes the mount (Principle IV).
+    if (!(await lsTreeGitlink(dir, config.mount).catch(() => null))
+      && !(await gitlinkInIndex(dir, config.mount).catch(() => null))) {
+      unmounted.push(key);
+    }
+  }
+  if (unmounted.length > 0) {
+    say(
+      `mounts     ${unmounted.join(', ')}: no brain mount at ${config.mount} — ` +
+        `unverified there until \`multivac repos sync\``,
+    );
   }
   // MV-86. Bare `doors` re-projects and leaves the record alone, ON PURPOSE:
   // people run it after editing doors: or grapher:, and if that restamped, the

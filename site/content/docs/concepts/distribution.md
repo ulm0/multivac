@@ -37,7 +37,8 @@ door is committed. Rendering makes no filesystem check and no network call.
 ## The mount
 
 Every code repo mounts the brain — default folder `.brain/`, configurable
-per ecosystem. An agent entering a consumer repo finds the brain there, and
+per ecosystem, as a git submodule that `repos sync` adds from `brain_url` and
+leaves for you to commit. An agent entering a consumer repo finds the brain there, and
 the consumer door tells it what binds and that the change may cross repos.
 
 One exception, and it is the common one for a single project: when the brain

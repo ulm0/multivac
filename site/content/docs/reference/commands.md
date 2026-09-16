@@ -558,7 +558,25 @@ $ cd ../api && mvac verify
 .knowledge is mounted but is not a multivac brain — its pin predates the brain, or points at the wrong commit. Update the submodule (git submodule update --remote .knowledge) or fix the pin.
 ```
 
-Only a repo with no mount in reach at all gets the `run multivac init .` hint.
+A repo with no mount in reach at all splits two ways.
+
+**If multivac put hooks there** — `doors` did, and the brain was never mounted —
+there is no law to check the commit against. `verify` says nothing was checked,
+names the fix, and exits **0**, so the repo's commits are not locked by hooks
+that cannot work:
+
+```txt
+$ cd ../api && mvac verify
+/home/you/api was NOT verified — it carries a multivac door but no brain is mounted here. Nothing in this checkout was checked against any law. Fix: run `multivac repos sync` in the brain, then commit the mount here.
+```
+
+This is the same thing the hooks already do on a machine where multivac is not
+installed: warn loudly, let the commit through. It is recognised by the header
+line in the hook script multivac wrote, so a hook of your own in
+`.multivac/hooks/` does not count.
+
+**Otherwise** — a repo multivac never touched — it gets the `run multivac init .`
+hint, and exit 2.
 
 ### Pin staleness
 
@@ -641,6 +659,7 @@ api: door + hooks updated
 api: notice: CLAUDE.md exists as a regular file — merge it into AGENTS.md and remove it to get the symlink
 payments: notice: not found at ../payments — run `multivac repos sync` to clone it
 ledger: not managed, read-only — nothing projected …
+mounts     api: no brain mount at .brain — unverified there until `multivac repos sync`
 ```
 
 For the brain and each declared repo on disk: writes the managed block in
@@ -652,7 +671,12 @@ A read-only repo — declared `managed: false`, or a shallow clone — gets none
 it, and one line says so. A door or hooks projected there before it became
 read-only are left in place. Repos not on disk are reported and skipped, exit 0.
 `doors` writes working trees — never commits, never clones. An invalid config
-exits **1** here (not 2). Per-target detail:
+exits **1** here (not 2).
+
+The hooks it installs read the law through the brain mount, and `doors` never
+makes that mount — it does not touch the network. The `mounts` line names every
+repo that was given hooks but has no mount for them to read; run
+`multivac repos sync` to fix them. Per-target detail:
 [Agent integrations](../integrations).
 
 ### `.multivac/flow.md` — what your declarations oblige
@@ -692,7 +716,7 @@ grapher    graphify @ brain: missing (no graphify-out/graph.json) → run `graph
 grapher    graphify @ api: missing (no graphify-out/graph.json) → run `graphify update .` there
 repos      1/2 present · payments missing → `multivac repos sync` (git clone git@example.com:acme/payments.git ../payments)
 branches   brain: on main @ abc1234 — brain==code, verify reads this working tree; 2 behind its own channel origin/main @ def5678 → git -C . pull · api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
-pins       api: no brain mount at .brain — add the brain as a gitlink (git submodule add <brain-url> .brain) · payments: not cloned
+pins       api: no brain mount at .brain — run `multivac repos sync` to add it · payments: not cloned
 hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac on PATH)
 enact      who enacts is not a fact on disk — multivac never fabricates git identity …, so an agent commits as the person … UNGATEABLE by design …, not an oversight; enforcement is the forge's merge button
 law        118 anchors parse
@@ -706,7 +730,7 @@ untracked  nothing build-critical untracked
 | `grapher` | one line per scope (brain + each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** |
 | `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `sdd` and `grapher` lines say `out of scope, not a gap` in place of a state |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
-| `pins` | the brain mount in each consumer, and how far behind its channel it is — a read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write |
+| `pins` | the brain mount in each consumer, and how far behind its channel it is. A mount that is staged and not yet committed says so, instead of calling itself missing. A read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
 | `enact` | printed on every run, and it reports an **absence**: who enacts a row is not a fact on disk. multivac never fabricates a git identity, and a hook runs with the caller's permissions, so a gate installed here is one the same process can skip. Ungateable by design rather than missing — the enforcement is the forge's merge button, held by an account the agent does not have. The half that IS checked — enactment landing in its own commit — is `verify`'s `enact` line, read from the index |
 | `untracked` | brain paths a `.gitignore` swallows (WARNING — the law cannot ship), then untracked, non-ignored files that look build-critical |
@@ -814,6 +838,47 @@ its age:
 
 ```txt
 api: present at ../api — could not fetch: Could not resolve host: example.com; its channel ref stays as last fetched (`git -C ../api fetch`)
+```
+
+### The brain mount
+
+`repos sync` also makes sure every repo it finds on disk has the brain mounted,
+because the hooks `doors` installs there read the law through that mount. It is
+a reconciliation, not a one-off setup step: a repo you declare today and a repo
+you declared months ago get the same check on every run, and whatever is out of
+line gets fixed.
+
+```txt
+$ mvac repos sync
+api: present at ../api — fetched
+api: brain mounted at .brain
+payments: cloned git@example.com:acme/payments.git -> ../payments
+payments: mounted the brain at .brain — staged in ../payments, commit it there (multivac does not commit in your repos)
+web: present at ../web — fetched
+web: filled the empty brain mount at .brain
+```
+
+| what it finds | what it does |
+| --- | --- |
+| no gitlink at `mount` | adds the brain as a submodule from [`brain_url`](../configuration/#brain_url). A directory that is already a clone of the brain is adopted, with no download |
+| a gitlink, but the directory is empty | fills it (`git submodule update --init`) — what a consumer cloned without `--recurse-submodules` looks like |
+| a gitlink whose directory has files but is not a brain | nothing; reports it. That is a pin older than the brain, or one someone moved, and updating it is your call |
+| a gitlink staged and not committed | nothing; tells you to commit it |
+| a gitlink whose recorded url is not `brain_url` | nothing; reports the difference and the `git submodule set-url` that would change it. A consumer may point at a fork on purpose |
+| a read-only repo, or the brain itself | nothing |
+
+**It never commits.** The mount is left staged in each consumer, for whoever
+owns that repo to review and commit.
+
+**It needs `brain_url`.** Without it no mount is made, and the missing key is
+named once. multivac does not take the brain's own `origin` instead — see
+[`brain_url`](../configuration/#brain_url) for why.
+
+A mount git refuses is reported by cause, the other repos still sync, and the
+run exits 1:
+
+```txt
+web: could not mount the brain at .brain — fatal: '.brain' already exists and is not a valid git repo
 ```
 
 An unknown subcommand exits 2:

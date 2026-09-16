@@ -107,6 +107,14 @@ export interface Config {
   channel?: string;
   /** Where the brain mounts inside code repos. Default ".brain". */
   mount: string;
+  /**
+   * yml key: brain_url. The address other people clone the brain from, written
+   * verbatim into each consumer's `.gitmodules` by `repos sync`.
+   * **Hand-authored — the tool never writes this field**, and never derives it
+   * from a git remote: a brain's own origin can be a machine-local SSH alias,
+   * and a guess propagates to everyone who clones. MV-127.
+   */
+  brainUrl?: string;
   repos: Record<string, RepoEntry>;
 }
 

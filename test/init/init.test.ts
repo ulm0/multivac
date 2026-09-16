@@ -518,3 +518,31 @@ test('a legacy brain is judged by its own graphers: before anything moves — MV
   assert.match(readFileSync(join(typo, 'invariants.md'), 'utf8'), /old law/, 'nothing was moved');
   assert.throws(() => statSync(join(typo, '.multivac/invariants.md')));
 });
+
+// MV-127. `repos sync` mounts the brain in each consumer with this url, so the
+// key has to exist — but multivac may not decide it. A brain's own origin can
+// be a machine-local ssh alias, and the value is written into every consumer's
+// `.gitmodules`, where everyone else reads it.
+
+test('init suggests brain_url from origin, commented, and never declares it — MV-127', async () => {
+  const dir = tmp();
+  gitInit(dir);
+  execFileSync('git', ['-C', dir, 'remote', 'add', 'origin', 'git@gh-work:acme/brain.git'], {
+    stdio: 'ignore',
+  });
+
+  await init.run([], { cwd: dir });
+  const cfg = readFileSync(join(dir, '.multivac/config.yml'), 'utf8');
+  assert.match(cfg, /^# brain_url: git@gh-work:acme\/brain\.git/m, 'suggested from origin');
+  assert.equal((await loadConfig(dir)).brainUrl, undefined, 'a comment is not a declaration');
+});
+
+test('init says so when there is no origin to suggest — MV-127', async () => {
+  const dir = tmp();
+  gitInit(dir);
+
+  await init.run([], { cwd: dir });
+  const cfg = readFileSync(join(dir, '.multivac/config.yml'), 'utf8');
+  assert.match(cfg, /^# brain_url: {3}# no git remote detected/m);
+  assert.equal((await loadConfig(dir)).brainUrl, undefined);
+});

@@ -154,6 +154,34 @@ export const SHIM_HEADER = '# multivac hook shim — managed by `multivac doors`
 export const isOurShim = (text: string): boolean => text.includes(SHIM_HEADER);
 
 /**
+ * MV-127. Has multivac projected a door into this checkout?
+ *
+ * The question `verify` asks once it has no config and no brain in reach: is
+ * this a repo multivac claimed and then left unable to read any law, or a repo
+ * it has never touched? The first gets a warning and exit 0 — the promise the
+ * shim itself prints for a multivac it cannot run — and the second keeps
+ * `run multivac init .` and exit 2.
+ *
+ * Asked of the shim's own marker, not of a path: `.multivac/` is a directory
+ * anyone can create, while SHIM_HEADER is a line only this tool writes. And
+ * asked where the shim actually lives: `alongside` installs INTO a hooksPath
+ * the repo already claimed (husky's, say), so `.multivac/hooks` alone would
+ * miss exactly the repos whose own gate multivac was careful not to disarm.
+ */
+export async function hasProjectedDoor(dir: string): Promise<boolean> {
+  const dirs = [join(dir, HOOKS_DIR)];
+  const configured = await gitConfigPath(dir, 'core.hooksPath');
+  if (configured !== null) dirs.push(resolveHooksPath(dir, configured).dir);
+  for (const hooks of dirs) {
+    for (const name of ['pre-commit', 'pre-push']) {
+      const text = await readFile(join(hooks, name), 'utf8').catch(() => '');
+      if (isOurShim(text)) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * MV-108. Does this hook RUN multivac, as opposed to mentioning it?
  *
  * It used to be `/\bmvac\b|multivac/` over the whole file, hand-copied into
