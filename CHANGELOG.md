@@ -10,6 +10,47 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## 0.12.0 — 2026-09-16
+
+**Changed**
+
+- **`repos sync` mounts the brain in every repo it gates.** `doors` installs
+  hooks that read the law through the brain mount, and until now nothing made
+  that mount: it was a manual `git submodule add` in each repo. `repos sync`
+  now checks the mount in every declared repo on disk, on every run. A repo
+  with no mount gets the brain added as a submodule, and a directory that
+  already holds a copy of the brain is adopted without downloading it. An empty
+  mount is filled. A mount that holds something other than a brain, or records
+  a different url, is reported and left alone. The mount is left staged:
+  multivac never commits in your repos. A read-only repo is skipped, and a
+  mount git refuses is quoted by its cause and exits 1 without stopping the
+  rest. `doctor`, `doors` and the consumer door now name `multivac repos sync`
+  as the fix; `doctor` says when a mount is staged but not committed, and
+  `doors` lists the repos it gave hooks with no mount to read. (MV-127)
+- **`brain_url` is a new config key: the address everyone clones the brain
+  from.** `repos sync` writes it into each repo's `.gitmodules`, so multivac
+  never takes it from your `origin`, which may be an ssh alias only your
+  machine knows. `init` writes it commented out, with the origin it found as a
+  suggestion. Without it, `repos sync` makes no mount, and names the key once
+  when a repo needs one. **If you upgrade**: add `brain_url`, then run
+  `repos sync`; it stages a mount in every writable repo on disk that lacks
+  one, for you to review and commit there. multivac 0.10.0 and 0.11.0 refuse a
+  config that uses the key, and 0.9.0 and older ignore it. (MV-127)
+- **`verify` no longer locks the commits of a repo whose brain it cannot
+  reach.** In a repo where multivac installed hooks and no brain is mounted,
+  it exited 2 on every commit and advised `multivac init .`, which would create
+  a second brain. It now warns that nothing was verified, names
+  `multivac repos sync`, and exits 0, as the hooks already do on a machine with
+  no multivac. It recognises the hooks by the header line multivac writes,
+  including hooks it installed into another tool's hooks directory. A repo
+  without those hooks still exits 2, as does a stale `.brain` mount.
+  **If you upgrade**: repos locked this way commit again as soon as the
+  multivac their hooks run is 0.12.0; nothing needs re-projecting. (MV-127)
+- **The documentation site names no law IDs.** Its pages explain behaviour in
+  plain words; IDs stay in the law table, the brain's records and this
+  changelog. The pages changed in 0.11.0, and this release makes it a rule.
+  (MV-126)
+
 ## 0.11.0 — 2026-09-14
 
 **Changed**
