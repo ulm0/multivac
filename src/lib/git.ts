@@ -309,6 +309,48 @@ export async function lsTreeGitlink(
 }
 
 /**
+ * Sha of a gitlink staged in `repo`'s index at `path`, or null. MV-127.
+ *
+ * Not the same question as `lsTreeGitlink`, and the difference is load-bearing:
+ * `git submodule add` writes the gitlink to the INDEX, so a mount just created
+ * is invisible to HEAD until a human commits it. Asking HEAD alone would make
+ * the mount pass try to add a mount it made a minute ago, which git answers
+ * with `fatal: '<path>' already exists in the index`.
+ */
+export async function gitlinkInIndex(
+  repo: string,
+  path: string,
+): Promise<string | null> {
+  const out = await run(repo, ['ls-files', '-s', '--', path]).catch(() => '');
+  const m = out.match(/^160000 ([0-9a-f]{40}) \d+\t/m);
+  return m ? m[1] : null;
+}
+
+/**
+ * Add the brain as a submodule at `path` in `repo`. MV-127.
+ *
+ * Reaches the network, so only `repos sync` may call it. Leaves the gitlink and
+ * `.gitmodules` STAGED: multivac does not commit in somebody else's repo.
+ *
+ * Deliberately NOT passed `-c protocol.file.allow=always`. git blocks the
+ * `file` transport for submodules since the CVE-2022-39253 fix, so a
+ * local-path `brain_url` fails here — and re-opening that hole on a consumer's
+ * repo to make a local path convenient is not multivac's call. The failure is
+ * quoted like any other.
+ *
+ * A `path` that already holds a clone of the brain is adopted into the index
+ * without a network round-trip, and `.gitmodules` records the url passed here,
+ * never whatever that clone's own origin says.
+ */
+export async function submoduleAdd(
+  repo: string,
+  url: string,
+  path: string,
+): Promise<void> {
+  await run(repo, ['submodule', 'add', url, path]);
+}
+
+/**
  * The subset of `paths` git would ignore in `repo`. The paths need not exist:
  * check-ignore answers for what a write there WOULD do — which is the whole
  * point, init asks before writing. Exit 1 (nothing ignored) and exit 128

@@ -460,8 +460,14 @@ async function pinsLine(brain: string, cfg: Config): Promise<string> {
     }
     const pin = await git.lsTreeGitlink(dir, cfg.mount).catch(() => null);
     if (!pin) {
+      // MV-127: multivac makes this mount now, so the fix is multivac's own
+      // command. A mount already in the index is not missing — telling a human
+      // to create what they have staged is the report lying about the state.
+      const staged = await git.gitlinkInIndex(dir, cfg.mount).catch(() => null);
       parts.push(
-        `${key}: no brain mount at ${cfg.mount} — add the brain as a gitlink (git submodule add <brain-url> ${cfg.mount})`,
+        staged
+          ? `${key}: brain mount staged, not committed — commit it in ${e.path}`
+          : `${key}: no brain mount at ${cfg.mount} — run \`multivac repos sync\` to add it`,
       );
       continue;
     }

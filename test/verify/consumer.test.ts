@@ -10,6 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gitInit, makeScratchEcosystem, type ScratchEcosystem } from '../helpers/fixture.js';
 import { verify } from '../../src/commands/verify.js';
+import { SHIM_HEADER } from '../../src/hooks/install.js';
 
 function git(cwd: string, ...args: string[]): string {
   return execFileSync('git', ['-C', cwd, ...args], { stdio: ['ignore', 'pipe', 'ignore'] })
@@ -147,4 +148,65 @@ test('the scoped header counts what it evaluated, not the whole brain', async ()
   assert.match(out, /2 of 3 brain claims anchor into "api"/);
   // No coverage percentage: the scoped denominator would read as a collapse.
   assert.doesNotMatch(out, /anchored \(/);
+});
+
+// MV-127. A door with no brain in reach: multivac claimed this repo and can
+// read no law in it. Blocking every commit there contradicts the shim's own
+// promise, and `multivac init .` would scaffold a second brain.
+
+test('a repo carrying a multivac door but no brain warns and exits 0 — MV-127', async () => {
+  const e = mountedEco(...LAW); // web has no mount
+  mkdirSync(join(e.repos.web, '.multivac', 'hooks'), { recursive: true });
+  writeFileSync(join(e.repos.web, '.multivac', 'hooks', 'pre-commit'), `#!/bin/sh\n${SHIM_HEADER}\nexec mvac verify\n`);
+  const { code, out } = await captured(() => runVerify(e.repos.web));
+  assert.equal(code, 0);
+  assert.match(out, /was NOT verified/);
+  assert.match(out, /multivac repos sync/);
+  // The advice that would have created a second brain is gone from this case.
+  assert.doesNotMatch(out, /multivac init/);
+});
+
+test('a hook somebody else wrote is not a multivac door — exit 2 stands — MV-127', async () => {
+  const e = mountedEco(...LAW);
+  mkdirSync(join(e.repos.web, '.multivac', 'hooks'), { recursive: true });
+  writeFileSync(join(e.repos.web, '.multivac', 'hooks', 'pre-commit'), '#!/bin/sh\n# husky\nexit 0\n');
+  const { code, out } = await captured(() => runVerify(e.repos.web));
+  assert.equal(code, 2);
+  assert.match(out, /no \.multivac\/config\.yml in .* — run `multivac init \.` to create it/);
+  assert.doesNotMatch(out, /was NOT verified/);
+});
+
+test('a door does not override the stale-mount message — MV-127', async () => {
+  const e = mountedEco(...LAW);
+  mkdirSync(join(e.repos.web, '.multivac', 'hooks'), { recursive: true });
+  writeFileSync(join(e.repos.web, '.multivac', 'hooks', 'pre-push'), `#!/bin/sh\n${SHIM_HEADER}\nexec mvac verify --strict\n`);
+  mkdirSync(join(e.repos.web, '.brain'), { recursive: true });
+  writeFileSync(join(e.repos.web, '.brain', 'README.md'), '# empty pin\n');
+  const { code, out } = await captured(() => runVerify(e.repos.web));
+  assert.equal(code, 2);
+  assert.match(out, /\.brain is mounted but is not a multivac brain/);
+  assert.doesNotMatch(out, /was NOT verified/);
+});
+
+test('a door never changes a checkout whose brain IS reachable — MV-127', async () => {
+  const e = mountedEco(...LAW); // api mounts a real brain
+  mkdirSync(join(e.repos.api, '.multivac', 'hooks'), { recursive: true });
+  writeFileSync(join(e.repos.api, '.multivac', 'hooks', 'pre-commit'), `#!/bin/sh\n${SHIM_HEADER}\nexec mvac verify\n`);
+  const { code, out } = await captured(() => runVerify(e.repos.api));
+  assert.equal(code, 0);
+  assert.match(out, /scoped to repo "api"/);
+  assert.doesNotMatch(out, /was NOT verified/);
+});
+
+test('a shim installed alongside a hooksPath the repo claimed is a door too — MV-127', async () => {
+  // `alongside`: husky already owns core.hooksPath, so the shim went INTO
+  // .husky/. Asking .multivac/hooks alone would lock exactly the repos whose
+  // own gate multivac took care not to disarm.
+  const e = mountedEco(...LAW);
+  mkdirSync(join(e.repos.web, '.husky'), { recursive: true });
+  writeFileSync(join(e.repos.web, '.husky', 'pre-commit'), `#!/bin/sh\n${SHIM_HEADER}\nexec mvac verify\n`);
+  git(e.repos.web, 'config', 'core.hooksPath', '.husky');
+  const { code, out } = await captured(() => runVerify(e.repos.web));
+  assert.equal(code, 0);
+  assert.match(out, /was NOT verified/);
 });

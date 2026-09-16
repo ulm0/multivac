@@ -143,6 +143,16 @@ function renderConfig(f: Flags, d: Detected, brainIsCode: boolean): string {
       `# grapher: ${d.grapher}`,
     );
   }
+  // MV-127: `repos sync` mounts the brain in each consumer with this url, and
+  // multivac never guesses it. A brain's own origin can be a machine-local ssh
+  // alias, and the value is written into every consumer's `.gitmodules`, where
+  // everyone else reads it. So: suggested, commented, and a comment is not a
+  // declaration.
+  lines.push(
+    d.origin
+      ? `# brain_url: ${d.origin}   # the URL others clone the brain from — uncomment to let \`repos sync\` mount it`
+      : '# brain_url:   # no git remote detected — the URL others clone the brain from, for `repos sync` to mount',
+  );
   if (brainIsCode) {
     // brain==code: this repo already has source, so it is its own code repo.
     lines.push(

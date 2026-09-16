@@ -129,6 +129,7 @@ Declare your repos in `.multivac/config.yml`:
 
 ```yaml
 doors: [agents]
+brain_url: git@example.com:acme/brain.git   # what every consumer mounts
 repos:
   api: ../acme-api          # bare string = shorthand for { path: ... }
   payments:
@@ -137,6 +138,20 @@ repos:
 ```
 
 The key (`api`) is the registry name anchors use — never the directory name.
+
+Then bring every repo in line, and give each one its door:
+
+```bash
+mvac repos sync   # clone what is missing, mount the brain in each repo
+mvac doors        # write each repo's door and hooks
+```
+
+`repos sync` mounts the brain at `.brain` in every repo and leaves it staged;
+commit it in each repo. `brain_url` has to be the address everyone clones the
+brain from — `init` suggests your `origin`, but that may be an ssh alias only
+your machine knows. Run the same two commands again whenever you declare
+another repo: `repos sync` checks every repo each time, so the new one is
+mounted and the rest are left as they are.
 
 ### One repo? Say so
 

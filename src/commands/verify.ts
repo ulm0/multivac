@@ -26,6 +26,7 @@ import {
 } from '../lib/git.js';
 import { samePath } from '../lib/paths.js';
 import { dim, green, red, say, warn, yellow } from '../lib/out.js';
+import { hasProjectedDoor } from '../hooks/install.js';
 import {
   collectBrainAnchors,
   parseClaimRows,
@@ -1013,6 +1014,22 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
               `or points at the wrong commit. Update the submodule ` +
               `(git submodule update --remote ${rel}) or fix the pin.`,
           );
+        }
+        // MV-127. A door with no brain in reach: multivac claimed this repo and
+        // can read no law in it — not one claim, pass or fail. Blocking every
+        // commit over that contradicts the shim's own promise ("No runnable
+        // multivac never blocks a commit: it warns loudly and exits 0") and
+        // advising `init` here would scaffold a SECOND brain. Say nothing was
+        // checked, name the command that makes checking possible, and get out
+        // of the way. A repo with no door keeps the init hint below, and its
+        // exit 2.
+        if (await hasProjectedDoor(startDir)) {
+          warn(
+            `${startDir} was NOT verified — it carries a multivac door but no brain ` +
+              `is mounted here. Nothing in this checkout was checked against any law. ` +
+              `Fix: run \`multivac repos sync\` in the brain, then commit the mount here.`,
+          );
+          return 0;
         }
       }
     } else if (repoFlag !== undefined) {

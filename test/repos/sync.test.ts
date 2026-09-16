@@ -111,7 +111,13 @@ test('a shallow clone line says multivac will not write there, and a full one is
 
   const rw = makeBrain('brain-rw', `repos:\n  lib:\n    path: ../acme-lib-rw\n    url: file://${remote}\n`);
   const full = await reposSync(rw, false);
-  assert.deepEqual(full.lines, [`lib: cloned file://${remote} -> ../acme-lib-rw`]);
+  assert.equal(full.lines[0], `lib: cloned file://${remote} -> ../acme-lib-rw`);
+  // MV-127: a writable repo with no mount and no brain_url gets the one notice
+  // that names the undeclared key — and nothing per-repo.
+  assert.deepEqual(full.lines.slice(1), [
+    'no brain_url in .multivac/config.yml — multivac will not guess it from a git remote; ' +
+      'add the URL other people clone the brain from, then re-run `multivac repos sync`',
+  ]);
 
   assert.match((reposCommand.usage ?? []).join('\n'), /multivac will not write there/);
 });

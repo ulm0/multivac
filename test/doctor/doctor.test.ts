@@ -57,7 +57,9 @@ repos:
   assert.match(repos, /git clone git@acme\.example:acme\/billing\.git/);
 
   const pins = line(lines, 'pins');
-  assert.match(pins, /api: no brain mount at \.brain/);
+  // MV-127: multivac makes this mount now, so the fix is its own command.
+  assert.match(pins, /api: no brain mount at \.brain — run `multivac repos sync` to add it/);
+  assert.doesNotMatch(pins, /git submodule add/);
   assert.match(pins, /billing: not cloned/);
 
   const hooks = line(lines, 'hooks');
@@ -481,4 +483,19 @@ test('doctor names the branch each repo is parked on, and whether it is the chan
   // Back on the channel: no drama, and it says the two agree.
   g(eco.repos.api, 'checkout', '-q', 'main');
   assert.match(line((await doctorReport(eco.brain)).lines, 'branches'), /api: on main @ [0-9a-f]{7} = channel origin\/main/);
+});
+
+test('doctor: a mount staged but not committed is not called missing — MV-127', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-staged-')));
+  // A gitlink in the index only — what `repos sync` leaves behind for a human
+  // to commit. Telling that human to create what they already have staged is
+  // the report lying about the state.
+  const sha = execFileSync('git', ['-C', eco.brain, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  execFileSync('git', ['-C', eco.repos.api, 'update-index', '--add', '--cacheinfo', `160000,${sha},.brain`], {
+    stdio: 'ignore',
+  });
+  const { lines } = await doctorReport(eco.brain);
+  const pins = line(lines, 'pins');
+  assert.match(pins, /api: brain mount staged, not committed — commit it in/);
+  assert.doesNotMatch(pins, /api: no brain mount/);
 });

@@ -428,3 +428,19 @@ test('a duplicate gate left by an older doors is printed, and nothing is deleted
   assert.match(notice!, /by hand/); // and says who removes it
   assert.equal(JSON.parse(read(settingsFile)).hooks.PostToolUse.length, 2); // deleted nothing
 });
+
+test('doors names the repos it gated with no mount to read — offline, never mounting — MV-127', async () => {
+  // The scratch ecosystem's consumers carry no .brain gitlink.
+  const { code, out } = await runDoors();
+  assert.equal(code, 0);
+  const mounts = out.find((l) => l.startsWith('mounts'));
+  assert.ok(mounts, 'a mounts line is printed');
+  assert.match(mounts, /api/);
+  assert.match(mounts, /no brain mount at \.brain — unverified there until `multivac repos sync`/);
+  // doors reports; it never makes the mount (Principle IV: no network here).
+  assert.equal(existsSync(join(eco.repos.api, '.gitmodules')), false);
+  assert.equal(existsSync(join(eco.repos.api, '.brain')), false);
+
+  // The consumer door names multivac's command before git's.
+  assert.match(read(eco.repos.api, 'AGENTS.md'), /ask the brain's owner to run `multivac repos sync`/);
+});

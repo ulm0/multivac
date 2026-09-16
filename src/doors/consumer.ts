@@ -61,7 +61,7 @@ export function renderConsumerDoor(config: Config, repoKey: string): string {
     // First, not fourth. It is the only instruction here with an ordering
     // requirement: everything else can be read in any order, and this one has
     // to happen before the rest is trustworthy.
-    `**First, before reading anything in it:** \`git submodule update --init --remote ${mount}\``,
+    `**First, before reading anything in it:** if \`${mount}\` is empty, ask the brain's owner to run \`multivac repos sync\`, or fill it yourself with \`git submodule update --init --remote ${mount}\``,
     'The pin stays where the last commit left it, so a present mount is not a',
     `current one — unrefreshed, you decide against the law as it was weeks ago.${gate}`,
     '',

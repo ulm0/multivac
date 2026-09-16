@@ -331,12 +331,21 @@ export async function readConfig(brainDir: string): Promise<Config> {
     // Every key this function reads, plus `requires`, which version.ts reads
     // from the raw text rather than from here.
     [
-      'authorities', 'blocking', 'channel', 'doors', 'grapher', 'grapher_auto',
-      'graphers', 'mount', 'repos', 'requires', 'sdd', 'sdd_auto', 'staleness',
-      'strict_pre_push', 'tracker',
+      'authorities', 'blocking', 'brain_url', 'channel', 'doors', 'grapher',
+      'grapher_auto', 'graphers', 'mount', 'repos', 'requires', 'sdd',
+      'sdd_auto', 'staleness', 'strict_pre_push', 'tracker',
     ],
     '',
   );
+
+  // MV-127: hand-authored, never derived. A blank string is somebody's
+  // half-finished edit, not a URL — refuse it rather than write it into every
+  // consumer's `.gitmodules`.
+  const brainUrlRaw = optString(o.brain_url, 'brain_url');
+  if (brainUrlRaw !== undefined && brainUrlRaw.trim() === '') {
+    fail('"brain_url" is empty — state the URL other people clone the brain from, or remove the key');
+  }
+  const brainUrl = brainUrlRaw?.trim();
 
   const blockingRaw = o.blocking ?? ['absent', 'count', 'each'];
   const blocking = stringList(blockingRaw, 'blocking') as Mode[];
@@ -435,6 +444,7 @@ export async function readConfig(brainDir: string): Promise<Config> {
     strictPrePush,
     channel: optString(o.channel, 'channel'),
     mount: optString(o.mount, 'mount') ?? '.brain',
+    brainUrl,
     repos,
   };
 }
