@@ -10,6 +10,92 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## 0.14.0 — 2026-09-16
+
+**Added**
+
+- **`multivac repos check`.** It reports, per declared repo and offline,
+  whether the path is the declared clone, and whether the repo's declared SDD
+  and graph are installed and committed, its project document written, and its
+  mount in place. It exits 1 when any repo is not. It runs git and reads files,
+  and never a vendor tool, so CI can run `repos sync --shallow && repos check`
+  with no tool installed. (MV-132)
+- **Code reaches a repo only through a change.** Where a repo declares an SDD
+  with automation on, `verify` refuses a commit or a local merge that changes
+  code outside the branch of an open change declaring that repo. multivac's
+  own files, the doors, and the SDD's and grapher's files are not code. A new
+  `pre-merge-commit` hook runs the same check on a local merge, and
+  `verify --strict --range <base>..<head> --branch <name>` runs it over a merge
+  request in CI, catching a commit made with `--no-verify`. `doctor` says it
+  binds only where the forge requires that pipeline and protects the default
+  branch. `--no-sdd` is recorded in the change file as `sdd_skipped`.
+  **If you upgrade** with an SDD declared: run `multivac doors` to install the
+  new hook, then commit code on a change's branch, not on `main`. A release is
+  a change too: `CHANGELOG.md` and `package.json` count as code. (MV-137)
+- **`.multivac/ecosystem.json`.** The brain keeps a graph of its own
+  declarations: repos, law rows (without their text), anchors and changes,
+  and how they link. Nothing machine-dependent goes in it, so the same
+  declarations render the same bytes. `init`, `doors` and every lifecycle
+  commit in the brain write it; `verify` says when it is stale, without
+  gating. graphify reads it with `--graph .multivac/ecosystem.json`, and the
+  doors name it. (MV-139, MV-141)
+
+**Changed**
+
+- **`repos sync` and the lifecycle install what they declare.** `repos sync`
+  runs each repo's SDD init and first graph build, and exits 1 naming a tool
+  it would run and cannot find. `change plan` and `change apply` do the same
+  after they clone or create a repo, and `change new` refuses a missing SDD
+  before writing anything. **If you upgrade**: a `repos sync` in CI where a
+  declared tool is not installed exited 0 and now exits 1; use
+  `repos sync --shallow`, which writes nothing. (MV-129)
+- **The SDD's init follows your doors.** spec-kit is initialised with the
+  integration for each declared harness door (`specify integration install`
+  for the rest), and OpenSpec with `openspec init --tools` for all of them.
+  graphify's own project install runs for each declared door, and an absolute
+  path it writes into a hook is rewritten to the bare `graphify`. (MV-130,
+  MV-131)
+- **`change apply` carries the SDD files onto the change branch.** Files your
+  SDD wrote before `apply`, such as `specs/<n>-<slug>/` or an uncommitted
+  `.specify/`, are copied into the worktree, committed there and removed from
+  the checkout, so the merge no longer stops on an untracked copy. A modified
+  tracked file, or an ignored one, is refused before anything moves. (MV-133)
+- **`change land` commits the graph on the change branch.** Before its push
+  line, `land` refreshes each ready repo's shared graph in the change's
+  checkout and commits it there. `change close` refreshes before it prints the
+  archive commit and puts a changed brain graph in it. Building, installing,
+  gating and refreshing graphs during a change now covers only the brain and
+  the repos the change names; `repos sync` still covers every repo. (MV-134)
+- **A project document is judged against its tool's own template.** A
+  constitution is still the template when it matches the sha256 spec-kit
+  recorded, or still carries one of the template's own tokens outside an HTML
+  comment; the refusal names the token. A written document that cites `[1]` or
+  `[API]` no longer fails. `change new` asks for an unwritten document, saying
+  the principles come from you. OpenSpec's `context:` in `openspec/config.yaml`
+  is reported, never gated. The door says an active row outranks a project
+  document. (MV-135)
+- **Session zero, in order.** `init` ends with the whole of session zero:
+  declare `repos:` before the first commit, sync, both flows with the one that
+  fits marked, the project document, then the law, `doors` and `verify`.
+  `seed` reports each repo's graph and project document. The skill runs sync,
+  seed, the open questions, the project document, the law and then doors.
+  (MV-136)
+- **`verify` in a consumer's change worktree** takes the brain, the change and
+  the repo from the worktree's path, instead of exiting 2 over an empty mount.
+  (MV-138)
+- **The graph's promises match what happens.** The door says "refreshed after
+  your edits" only where a declared harness has a post-edit hook. That refresh
+  now runs in the repository of the file you edited, when it holds a graph.
+  `flow.md` and `doctor` say that asking the graph cannot be checked. Where
+  graphify's own install covers a declared door, the door points to graphify's
+  section instead of repeating its verbs. (MV-140)
+- **`repos` and `doctor` report clone state.** A repo is `cloned`, `missing`
+  or `invalid` (a plain directory, a directory inside another repository, a
+  repository with no commit, or a different remote), not `present` because
+  its path exists. **If you upgrade**: a script that parsed `present` from
+  `multivac repos` or `doctor` needs `cloned`. (MV-141)
+- **The documentation describes this flow end to end.** (MV-141)
+
 ## 0.13.0 — 2026-09-16
 
 **Changed**
