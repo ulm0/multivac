@@ -10,6 +10,30 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## 0.14.1 — 2026-09-17
+
+**Fixed**
+
+- **A change closed on its own branch passes `verify --range`.** Landing a
+  change through one merge request puts its archive commit on the same branch,
+  so at the head of the range the change file is archived, and 0.14.0 refused
+  the whole request as code outside a change. A release is exactly that. The
+  range reader now accepts a change archived at the head and not at the base.
+  A change already archived at the base still admits no code. **If you
+  upgrade**: a merge request refused this way passes once its pipeline runs
+  0.14.1. (MV-142)
+- **A fresh brain's first commit passes the code-in-change check.** In a brain
+  initialised with an SDD and graphify, the commit `init` tells you to make was
+  refused over `.gitignore` and `.agents/`. `.gitignore`, and the harness
+  directories that spec-kit, OpenSpec and graphify install into (`.claude/`,
+  `.agents/`, `.cursor/` and the rest), are no longer code. In `.github/`, only
+  the door file is exempt; workflows are still code. (MV-142)
+
+**Documentation**
+
+- The merge request job in the code-in-change reference now covers a branch
+  that closes its own change. multivac's own pipeline runs that job. (MV-142)
+
 ## 0.14.0 — 2026-09-16
 
 **Added**
