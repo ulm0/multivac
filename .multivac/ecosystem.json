@@ -2907,8 +2907,8 @@
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1195",
-   "state": "proposed",
-   "authority": "open"
+   "state": "active",
+   "authority": "specified"
   },
   {
    "id": "law:MV-15",
