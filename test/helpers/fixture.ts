@@ -2,7 +2,7 @@
 // git repos with committed files. Neutral acme naming, no real-world content.
 
 import { execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { SPECKIT_INTEGRATION_JSON } from './recorded.js';
@@ -161,5 +161,8 @@ export function vendorPath(
       `printf 'x\\n' > graphify-out/cache/entry\n`,
   );
   stub('openspec', `mkdir -p openspec/specs\nprintf 'schema: spec-driven\\n' > openspec/config.yaml\n`);
-  return { path: [bin, dirname(process.execPath), '/usr/bin', '/bin'].join(delimiter), runs };
+  // node only, never its directory: that is where a global `mvac` lives, and a
+  // hook in the scratch repo would run the host's multivac instead of none.
+  symlinkSync(process.execPath, join(bin, 'node'));
+  return { path: [bin, '/usr/bin', '/bin'].join(delimiter), runs };
 }

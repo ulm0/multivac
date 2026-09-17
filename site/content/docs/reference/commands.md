@@ -534,6 +534,9 @@ directories.
 ```
 
 A `close-<slug>` branch is read where the change it archives is still open.
+In a range, a branch that closed its own change is read from the archive: the
+change is archived at the head and not at the base, so it was open inside the
+range.
 A consumer checkout reads a mounted brain, which can lag the change: there the
 line refuses only under `--strict`. A range whose base is not in the clone is
 not answered, and refuses under `--strict`.

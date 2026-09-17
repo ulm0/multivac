@@ -61,6 +61,32 @@ selfverify:
     PNPM_HOME: "$CI_PROJECT_DIR/.pnpm-store"
     npm_config_store_dir: "$CI_PROJECT_DIR/.pnpm-store"
 
+# Code lands in a change (MV-137, MV-142). The git hooks ask it at commit and at
+# merge, and a hook can be skipped; this job asks it again over every commit of
+# the merge request, against the branch the request comes from. It binds only
+# because this project requires the pipeline to pass before a merge. The whole
+# history, so the base of the range is in the clone.
+change-gate:
+  stage: test
+  image: node:24
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  before_script:
+    - corepack enable
+    - corepack prepare --activate  # the version is package.json's packageManager, not a second pin
+  script:
+    - pnpm install --frozen-lockfile
+    - pnpm run build
+    - node dist/cli.js verify --strict --range "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA" --branch "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME"
+  cache:
+    key: pnpm
+    paths:
+      - .pnpm-store/
+  variables:
+    PNPM_HOME: "$CI_PROJECT_DIR/.pnpm-store"
+    npm_config_store_dir: "$CI_PROJECT_DIR/.pnpm-store"
+    GIT_DEPTH: 0
+
 pages:
   stage: deploy
   image: hugomods/hugo:std-go-git-0.165.0

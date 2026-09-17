@@ -28,11 +28,21 @@ export interface CodeLine {
 
 /** Paths multivac, a door, the SDD or the grapher own: never "code" (MV-137). */
 export function nonCodeGlobs(cfg: Config): string[] {
-  const out = new Set<string>(['.multivac/**', '.gitmodules', `${cfg.mount}/**`, `${cfg.mount}`, '.husky/**']);
+  // MV-142: `.gitignore` too. `init`, the SDD and the grapher write their
+  // ignore lines there, and a fresh brain's step 0 commit carries it.
+  const out = new Set<string>(['.multivac/**', '.gitmodules', `${cfg.mount}/**`, `${cfg.mount}`, '.husky/**', '.gitignore']);
+  // A harness's own directory holds what its tools install for it — skills,
+  // commands, rules, hook configs (spec-kit, OpenSpec and graphify all write
+  // there) — so the directory is the harness's, not code. `.github` is not a
+  // harness directory: only the door file inside it is.
+  const harness = (p: string): void => {
+    const top = p.split('/')[0];
+    out.add(p.includes('/') && top.startsWith('.') && top !== '.github' ? `${top}/**` : p);
+  };
   for (const t of Object.values(doorTargets)) {
-    out.add(t.door);
-    if (t.skill) out.add(`${t.skill.split('/').slice(0, 2).join('/')}/**`);
-    if (t.hookConfig) out.add(t.hookConfig.path);
+    harness(t.door);
+    if (t.skill) harness(t.skill);
+    if (t.hookConfig) harness(t.hookConfig.path);
   }
   out.add('AGENTS.md');
   const names = new Set<string>();
@@ -50,13 +60,14 @@ export function nonCodeGlobs(cfg: Config): string[] {
     for (const step of spec.steps ?? []) if (step.artifact) out.add(`${step.artifact.split('/')[0]}/**`);
     for (const p of spec.projectSteps ?? []) out.add(p.artifact);
     if (spec.graphignoreFile) out.add(spec.graphignoreFile);
-    for (const f of spec.harness?.hookFiles ?? []) out.add(f);
+    for (const f of spec.harness?.hookFiles ?? []) harness(f);
+    for (const pl of Object.values(spec.harness?.platforms ?? {})) harness(pl.probe);
   }
   return [...out];
 }
 
-async function readChange(brainDir: string, slug: string, rev: string | null): Promise<ChangeFile | null> {
-  const rel = `${CHANGES_DIR}/${slug}.md`;
+async function readChange(brainDir: string, slug: string, rev: string | null, dir = CHANGES_DIR): Promise<ChangeFile | null> {
+  const rel = `${dir}/${slug}.md`;
   try {
     const text = rev === null
       ? readFileSync(join(changesDir(brainDir), `${slug}.md`), 'utf8')
@@ -135,7 +146,16 @@ export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | 
     const slug = closing ? cand.slice('close-'.length) : cand;
     // `close-<slug>` archives the change, so it is read where it was still open.
     const rev = brainRepo && closing ? (o.range ? o.range.base : 'HEAD') : brainRepo && o.range ? o.range.head : null;
-    const ch = await readChange(o.brainDir, slug, rev);
+    let ch = await readChange(o.brainDir, slug, rev);
+    // MV-142: a change landed through one merge request is closed on its own
+    // branch, so at the range's head it is archived. Archived at the head and
+    // not at the base means it was open inside this range, which is where the
+    // code came in; archived at the base means it was already closed.
+    if (!ch && brainRepo && o.range && !closing) {
+      const closedHere = await readChange(o.brainDir, slug, o.range.head, `${CHANGES_DIR}/archive`);
+      const closedBefore = await readChange(o.brainDir, slug, o.range.base, `${CHANGES_DIR}/archive`);
+      if (closedHere && !closedBefore) ch = { ...closedHere, status: 'open' };
+    }
     if (!ch || ch.status !== 'open') continue;
     if (!(repoKey in ch.repos)) {
       return {
