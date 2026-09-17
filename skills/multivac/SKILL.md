@@ -16,12 +16,17 @@ anything else:
 
 > Does this ecosystem already exist as code, or are we starting from scratch?
 
-- **Existing code** → discovery flow, `references/discovery.md`: run
-  `mvac seed`, draft the map and the proposed law from its inventory,
-  validate with the human in blast-radius batches, then `mvac doors`.
+- **Existing code** → discovery flow, `references/discovery.md`: `mvac repos
+  sync` to clone and equip every declared repo, `mvac seed`, the open
+  questions to the human, each repo's project document written from the
+  human's principles, the proposed law validated in blast-radius batches, then
+  `mvac doors`.
 - **From scratch** → interview flow, `references/interview.md`: draw the law
-  out of the person's head, decide the first slice only, land it as the
-  first change.
+  out of the person's head, write the project document from their
+  non-negotiables, decide the first slice only, land it as the first change.
+
+Whichever branch: declare `repos:` in `.multivac/config.yml` before the brain's
+first commit. Once committed, the config changes only inside a change.
 
 Both paths converge on the same steady state: an anchored law, doors in
 every repo, every subsequent decision entering as a change. From there the
@@ -84,7 +89,13 @@ refuses work for not having been planned first (MV-89).
 8. **`moved` is normal, not an alarm.** When verify rewrites a glob in
    place, review the diff like any other edit and let it ride the same
    branch.
-9. **Walk the ritual `close` prints.** `.multivac/ritual.md` is the team's
+9. **Code lands on a change's branch.** With an SDD declared, a commit or a
+   merge that changes code outside the branch of an open change declaring
+   that repo is refused, at commit, at merge and in the merge request
+   pipeline. Start the change, `apply` it, and write the code in the worktree
+   it prints. Changes to `.multivac/`, the doors and the tools' own files are
+   not code.
+10. **Walk the ritual `close` prints.** `.multivac/ritual.md` is the team's
    half of the closing ceremony — reviews, announcements, what ships before
    what. multivac prints it and checks none of it; take each line to the
    human before calling the change done.
@@ -101,8 +112,9 @@ refuses work for not having been planned first (MV-89).
 
 ## Ask the graph before you read the tree
 
-If the door names a grapher, a code graph is being kept current for you after
-every edit. Use it to orient before grepping — one call answers what a search
+If the door names a grapher, a code graph is kept current for you: after every
+edit where your harness has a post-edit hook, and at `change land`, which
+commits it on the change's branch. Use it to orient before grepping — one call answers what a search
 takes many — and use **that tool's own verbs**, which are not interchangeable:
 
 | grapher | ask |
@@ -114,3 +126,11 @@ Hand `codegraph` a sentence and you get nothing; hand `graphify` a bare
 identifier and you have thrown away what it is for. The door prints the exact
 verbs for the grapher this brain declares — read them there rather than
 guessing, and if it says the tool has no query command, believe it and grep.
+Where the tool's own install wrote its section into the door file (graphify's
+`## graphify`), that section is the manual for its verbs.
+
+How the repos, law rows, anchors and changes relate is a second graph,
+`.multivac/ecosystem.json`, rendered from the brain's declarations. With
+graphify, ask it with `--graph .multivac/ecosystem.json`, for example
+`graphify explain "INV-12" --graph .multivac/ecosystem.json`, before walking
+the law table and the change files by hand.

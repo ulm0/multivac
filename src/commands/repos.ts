@@ -11,15 +11,19 @@
 
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { readdir } from 'node:fs/promises';
 import type { Command, Config, RepoEntry } from '../types.js';
-import { CONFIG_PATH, loadConfig } from '../lib/config.js';
+import { CONFIG_PATH, ConfigError, loadConfig } from '../lib/config.js';
 import { pathExists, readOnly } from '../adapters/detect.js';
-import { gitFailure, gitlinkInIndex, lsTreeGitlink, submoduleAdd } from '../lib/git.js';
+import { gitFailure, gitlinkInIndex, inHead, lsTreeGitlink, submoduleAdd } from '../lib/git.js';
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
+import { cloneFix, cloneState, projectDocVerdict } from '../lib/repo-state.js';
+import { adapterFor } from '../adapters/detect.js';
+import { grapherSpec, sddSpec } from '../adapters/registry.js';
+import { initState } from '../lib/init-state.js';
 import { equip, missingTools } from '../adapters/equip.js';
 
 const execFileP = promisify(execFile);
@@ -35,11 +39,16 @@ export async function reposList(brainDir: string): Promise<string[]> {
   }
   const lines: string[] = [];
   for (const [key, e] of entries) {
-    const there = await pathExists(resolve(brainDir, e.path));
-    const url = e.url ? `  (${e.url})` : there ? '' : '  — no url, cannot sync';
+    const dir = resolve(brainDir, e.path);
+    // MV-141: the clone state MV-132 decides, not a path being there — a plain
+    // directory and a repository with no commit both read as present.
+    const st = await cloneState(e, dir);
+    const word = st.state === 'cloned' ? 'cloned ' : st.state === 'absent' ? 'missing' : 'invalid';
+    const url = e.url ? `  (${e.url})` : st.state === 'absent' ? '  — no url, cannot sync' : '';
+    const fix = st.state === 'cloned' || st.state === 'absent' ? '' : ` — ${cloneFix(key, e, st)}`;
     // MV-125: read, fetched and verified, never written.
-    const why = await readOnly(cfg, key, resolve(brainDir, e.path));
-    lines.push(`${key.padEnd(12)} ${there ? 'present' : 'missing'}  ${e.path}${url}${why ? ` — ${why}, read-only` : ''}`);
+    const why = await readOnly(cfg, key, dir);
+    lines.push(`${key.padEnd(12)} ${word}  ${e.path}${url}${fix}${why ? ` — ${why}, read-only` : ''}`);
   }
   return lines;
 }
@@ -241,19 +250,90 @@ async function urlDrift(cfg: Config, dest: string, mount: string): Promise<strin
   );
 }
 
+/**
+ * MV-132. Is every declared repo cloned as declared and, where multivac may
+ * write, set up — offline, with no vendor on PATH? One line per root; exit 1
+ * when any root fails. The CI recipe is `repos sync --shallow && repos check`:
+ * a shallow clone is read-only, so it is checked for its clone alone.
+ */
+export async function reposCheck(brainDir: string): Promise<{ lines: string[]; exit: number }> {
+  const cfg = await loadConfig(brainDir);
+  const entries: [string, RepoEntry][] = Object.entries(cfg.repos);
+  if (!entries.some(([, e]) => e.isBrain)) entries.unshift(['brain', { path: '.', isBrain: true }]);
+  const lines: string[] = [];
+  let exit = 0;
+  const pad = Math.max(...entries.map(([k]) => k.length), 5);
+  for (const [key, e] of entries) {
+    const dir = resolve(brainDir, e.path);
+    const st = await cloneState(e, dir);
+    const head = `${key.padEnd(pad)}  `;
+    if (st.state !== 'cloned') {
+      exit = 1;
+      lines.push(`${head}FAIL ${cloneFix(key, e, st)}`);
+      continue;
+    }
+    const why = await readOnly(cfg, key, dir);
+    if (why) {
+      lines.push(`${head}ok   cloned — ${why}, read-only: its tools are not checked`);
+      continue;
+    }
+    const facts: string[] = [];
+    const fails: string[] = [];
+    const sdd = adapterFor(cfg, key, 'sdd');
+    const sddS = sdd ? sddSpec(sdd) : null;
+    if (sdd && sddS) {
+      const s = await initState(sddS, dir);
+      if (s.state !== 'installed') fails.push(`${sdd} ${s.state}${s.state === 'missing' ? '' : ` (${s.reason})`} → \`multivac repos sync\``);
+      else {
+        const inHeadFile = [];
+        for (const f of sddS.state.files) if (await inHead(dir, f)) inHeadFile.push(f);
+        if (inHeadFile.length === 0) fails.push(`${sdd} installed but ${sddS.state.files.join(' or ')} is not committed → commit it`);
+        else facts.push(`${sdd} installed and committed`);
+      }
+      for (const p of sddS.projectSteps ?? []) {
+        const { verdict: v, why } = await projectDocVerdict(dir, p);
+        if (v === 'written') facts.push(`${p.artifact} written`);
+        // MV-135: a report-only document is a fact, never a failure.
+        else if (p.reportOnly) facts.push(`${p.artifact} ${why ?? v} (optional, reported)`);
+        else fails.push(`${p.artifact} ${v}${why ? ` (${why})` : ''} → ${p.run}`);
+      }
+    }
+    const grapher = adapterFor(cfg, key, 'grapher');
+    const gS = grapher ? grapherSpec(grapher, cfg.graphers) : null;
+    if (grapher && gS) {
+      const g = await initState(gS, dir);
+      const art = gS.artifacts[0];
+      if (g.state !== 'installed') fails.push(`${grapher} ${g.state}${g.state === 'missing' ? '' : ` (${g.reason})`} → \`multivac repos sync\``);
+      else if (gS.artifactKind === 'local') facts.push(`${grapher} built here (local, never committed)`);
+      else if (!(await inHead(dir, art))) fails.push(`${grapher} built but ${art} is not committed → commit it`);
+      else facts.push(`${grapher} built and committed`);
+    } else if (grapher) {
+      facts.push(`${grapher} unverified, not checked`);
+    }
+    if (fails.length > 0) {
+      exit = 1;
+      lines.push(`${head}FAIL ${[...fails, ...facts].join(' · ')}`);
+    } else {
+      lines.push(`${head}ok   cloned${facts.length ? ` · ${facts.join(' · ')}` : ''}`);
+    }
+  }
+  return { lines, exit };
+}
+
 /** What repos takes. One declaration: citty parses it, and the subcommand is a positional. */
 const ARGS = {
-  sub: { type: 'positional', required: false, description: 'list (default) or sync' },
+  sub: { type: 'positional', required: false, description: 'list (default), sync or check' },
   shallow: { type: 'boolean', description: 'sync only: --depth 1' },
 } satisfies ArgsDef;
 
 export const reposCommand: Command = {
   name: 'repos',
-  help: 'list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest',
+  help: 'list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest; `repos check` verifies them offline',
   usage: [
-    'usage: multivac repos [sync] [--shallow]',
+    'usage: multivac repos [sync [--shallow] | check]',
     '  (no sub)    list every declared repo: present or missing, and its path',
     '  sync        clone the missing ones, fetch the rest so the channel ref is current',
+    '  check       offline: every declared repo cloned as declared, its tools set up and committed; exit 1 if not',
     '  --shallow   sync only: --depth 1 — a shallow clone is read-only: multivac will not write there',
     'verify never fetches, so a channel ref is only as current as the last sync.',
   ],
@@ -287,7 +367,20 @@ export const reposCommand: Command = {
       await equip(ctx.cwd, cfg, false);
       return missing.length > 0 ? 1 : exit;
     }
-    say(`unknown subcommand "${sub}" — usage: multivac repos [sync [--shallow]]`);
+    if (sub === 'check') {
+      try {
+        const { lines, exit } = await reposCheck(ctx.cwd);
+        for (const l of lines) say(l);
+        return exit;
+      } catch (e) {
+        if (e instanceof ConfigError) {
+          warn(e.message);
+          return 2;
+        }
+        throw e;
+      }
+    }
+    say(`unknown subcommand "${sub}" — usage: multivac repos [sync [--shallow] | check]`);
     return 2;
   },
 };

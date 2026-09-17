@@ -8,7 +8,7 @@
 import type { Config, GrapherDecl } from '../types.js';
 import { binaryMissing, grapherSpec, sddSpec, type AdapterSpec } from './registry.js';
 import { missingRequired, sddRoots, type ReadOnly } from './detect.js';
-import { ensureGraphs, graphScopes } from './refresh.js';
+import { ensureGraphs, graphScopes, installHarness } from './refresh.js';
 import { runScaffold } from './sdd.js';
 import { initState } from '../lib/init-state.js';
 
@@ -89,7 +89,11 @@ export async function missingTools(
  * every root that lacks them. Self-limiting and never throwing: an installed
  * tool runs nothing, and a tool that fails is reported per root.
  */
-export async function equip(brain: string, cfg: Config, noSdd: boolean): Promise<void> {
+export async function equip(brain: string, cfg: Config, noSdd: boolean, only?: string[]): Promise<void> {
   await runScaffold(brain, cfg, noSdd);
-  await ensureGraphs(brain, cfg);
+  // MV-134: in the lifecycle, the graph work stops at the brain and the repos
+  // the change names; `repos sync` and `init` pass no `only` and reach every root.
+  await ensureGraphs(brain, cfg, only);
+  // MV-131: after the graph exists, the grapher's own install into each harness.
+  await installHarness(brain, cfg, only);
 }

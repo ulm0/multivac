@@ -56,8 +56,10 @@ test('the page sorts declared obligations into automatic, gate and yours', async
     assert.ok(page.includes(h), `missing heading: ${h}`);
   }
   // The grapher's work is automatic; its artifact is a gate.
-  assert.match(page, /the code graph is built where a declared repo has no `graphify-out\/graph\.json`/);
-  assert.match(page, /`change close` refuses while a declared, present repo has no `graphify-out\/graph\.json`/);
+  assert.match(page, /the code graph is built where `multivac repos sync` or a change reaches a repo with no `graphify-out\/graph\.json`, refreshed .*at `change land`, where it is committed on the change branch, and at `change close`/);
+  assert.match(page, /`change close` refuses while the brain or a repo the change names has no `graphify-out\/graph\.json`/);
+  // MV-140: asking the graph is named as unchecked, with graphify's own reason.
+  assert.match(page, /^- asking `graphify` before reading the tree — no committed file records a query: graphify writes only an untracked `graphify-out\/cache\/last_query_stamp`/m);
 });
 
 test('a gating row leads with the command that refuses and names the artifact', async () => {

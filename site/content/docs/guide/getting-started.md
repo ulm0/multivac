@@ -21,16 +21,20 @@ init: wrote .multivac/ritual.md — empty; what you write there, `change close` 
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
 
 init: done — the brain is scaffolded and empty. Session zero fills it:
+init:   before step 0, declare every repo this brain governs under `repos:` in .multivac/config.yml — once committed, the config changes only inside a change
 init:   0. commit what was just written: git add -- .multivac AGENTS.md && git commit -m "multivac init"
 init:   1. load the multivac skill in your agent — it carries both protocols
-init:   2. interview — no code here yet, so the law comes from a human, claim by claim
-init:   3. a human enacts each row in .multivac/invariants.md, then `multivac verify`
+init:   2. `multivac repos sync` — clones every declared repo and installs its declared tools
+init:   3. discovery, for code that exists — `multivac seed` inventories it, then draft proposed claims from it
+init:      interview, for code that does not — the law comes from a human, claim by claim ← this repo holds none
+init:   4. a human enacts each row in .multivac/invariants.md, then `multivac doors` and `multivac verify`
 ```
 
-Step 2 is the branch [Session zero](../session-zero) turns on, and `init`
-picks it for you: tracked source in the repo means discovery (`mvac seed`,
-then proposed claims drafted off its inventory), an empty repo means the
-interview.
+Step 3 is the branch [Session zero](../session-zero) turns on. `init` prints
+both and marks the one that fits this directory: tracked source means
+discovery, an empty repo means the interview. A new brain for code that lives
+in other repos is empty, and still wants discovery. Declare `repos:` before the
+first commit: after it, a changed config needs an open change.
 
 Exactly these files, nothing else:
 
@@ -40,8 +44,11 @@ AGENTS.md                    the door — first thing any agent reads
 .multivac/changes/           one file per ecosystem change (empty)
 .multivac/config.yml         the registry: repos, doors, adapters
 .multivac/ritual.md          the closing ceremony, empty but for one comment
+.multivac/ecosystem.json     how repos, law rows, anchors and changes relate; generated
+.multivac/projected.yml      which multivac projected this brain last
 .multivac/hooks/pre-commit   runs `mvac verify` on every commit
 .multivac/hooks/pre-push     same, on push
+.multivac/hooks/pre-merge-commit  same, on a local merge
 .multivac/.gitignore         ignores .multivac/cache/ and .multivac/worktrees/
 ```
 
@@ -86,18 +93,22 @@ symlink — `--provider claude` is what adds it.
 
 ```markdown
 <!-- multivac:begin -->
-# multivac
+## multivac — brain door
 
-This brain is empty on purpose. Load the multivac skill and fill it:
-- existing ecosystem: `multivac seed`, then validate the proposed rows
-- from scratch: run the interview
+This repo is the brain: the source of law and change for its ecosystem.
 
-The law lives in `.multivac/invariants.md` (anchored claims); every decision enters
-as a `multivac change`. The ritual — the closing ceremony no tool can
-check — is `.multivac/ritual.md`, printed by `change close`. Run
-`multivac verify` before acting on anything you read here.
+- Law lives in `.multivac/invariants.md`. Cite rows by ID; a rule quoted without its ID does not bind.
+- Every ecosystem decision enters as a change: see `.multivac/changes/` and run `multivac change`.
+- The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.
+- Check the law against the code before acting: `multivac verify`.
+- How the repos, the law's rows, their anchors and the changes relate is `.multivac/ecosystem.json`, rendered from the brain's declarations, as plain node-link JSON.
+
+brain empty — load the multivac skill to fill it.
 <!-- multivac:end -->
 ```
+
+With `--sdd` or `--grapher`, the door also carries that tool's flow and the
+graph's verbs, and `init` installs the tool in the brain.
 
 `.multivac/invariants.md` is the law table with its format and zero rows:
 
@@ -125,7 +136,8 @@ pretended.
 
 ## Next
 
-Declare your repos in `.multivac/config.yml`:
+Declare your repos in `.multivac/config.yml`, before the first commit. Once the
+config is committed, changing it needs an open change:
 
 ```yaml
 doors: [agents]
@@ -142,7 +154,8 @@ The key (`api`) is the registry name anchors use — never the directory name.
 Then bring every repo in line, and give each one its door:
 
 ```bash
-mvac repos sync   # clone what is missing, mount the brain in each repo
+mvac repos sync   # clone what is missing, mount the brain, install each repo's declared tools
+mvac repos check  # offline: is each repo the declared clone, with its tools and documents set up
 mvac doors        # write each repo's door and hooks
 ```
 

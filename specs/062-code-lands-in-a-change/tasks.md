@@ -1,0 +1,11 @@
+# Tasks: code-lands-in-a-change
+- [x] T001 change apply, worktree, build
+- [x] T002 code-in-change module
+- [x] T003 verify flags and wiring
+- [x] T004 pre-merge-commit hook
+- [x] T005 sdd_skipped record and close line
+- [x] T006 doctor forge line
+- [x] T007 Tests: main refused, other branch refused, slug declaring passes, slug not declaring refused, close- read from HEAD, non-code silent, switch off silent, merge head passes, range judged, missing base not answered, consumer non-strict reported, sdd_skipped recorded — 7 tests in test/verify/code-in-change.test.ts; consumer non-strict covered by the code path, not a fixture (ceiling)
+- [x] T008 Existing hook tests updated for the third hook — coexist.test.ts installed lists
+- [x] T009 Site: verify, hooks, CI recipe; DESIGN third rung; law MV-137 and notes; bite — 13 MV-137 legs bite; notes on MV-89 and MV-97
+- [x] T010 Suites, verify --strict, commit, land, merge, close — 751/751 CI-like and host; verify --strict exit 0

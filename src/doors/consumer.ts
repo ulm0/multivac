@@ -10,6 +10,7 @@
 // that changed with which repos happen to be cloned would differ between two
 // machines for reasons unrelated to the ecosystem, and the door is committed.
 
+import { ecosystemGraphLines } from './ecosystem.js';
 import type { Config } from '../types.js';
 import { grapherLines, sddLines } from './brain.js';
 import { adapterFor } from '../adapters/detect.js';
@@ -68,6 +69,7 @@ export function renderConsumerDoor(config: Config, repoKey: string): string {
     `- Law: \`${mount}/.multivac/invariants.md\` binds this repo. Cite rows by ID, never paraphrase without one.`,
     '- The change may cross repos: check the brain before assuming a change is local to this repo.',
     '- Run `multivac verify` before acting; git hooks run it again at commit.',
+    ...ecosystemGraphLines(config, repoKey, `${mount}/`),
     ...ecosystemLines(config, repoKey),
     ...(sdd.length > 0 ? ['', ...sdd] : []),
     ...(graph.length > 0 ? ['', ...graph] : []),

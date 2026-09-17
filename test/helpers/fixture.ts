@@ -132,10 +132,12 @@ export function makeScratchEcosystem(tmpdir: string): ScratchEcosystem {
  * each stub appends its argv to. The graphify stub also writes a cache file,
  * which is `local` and must stay out of anything committed.
  */
-export function vendorPath(tools: ('specify' | 'graphify')[] = ['specify', 'graphify']): { path: string; runs: string } {
+export function vendorPath(
+  tools: ('specify' | 'graphify' | 'openspec')[] = ['specify', 'graphify', 'openspec'],
+): { path: string; runs: string } {
   const bin = mkdtempSync(join(tmpdir(), 'mvac-vendors-'));
   const runs = join(bin, 'runs.log');
-  const stub = (name: 'specify' | 'graphify', body: string): void => {
+  const stub = (name: 'specify' | 'graphify' | 'openspec', body: string): void => {
     if (!tools.includes(name)) return;
     const p = join(bin, name);
     writeFileSync(p, `#!/bin/sh\necho "${name} $*" >> '${runs}'\n${body}exit 0\n`);
@@ -149,9 +151,15 @@ export function vendorPath(tools: ('specify' | 'graphify')[] = ['specify', 'grap
   );
   stub(
     'graphify',
-    `mkdir -p graphify-out/cache\n` +
+    // MV-131: `install --project --platform <p>` writes that platform's probe.
+    `if [ "$1" = install ]; then p=""; for a; do p="$a"; done\n` +
+      `  case "$p" in cursor) mkdir -p .cursor/rules && printf 'x\\n' > .cursor/rules/graphify.mdc;;\n` +
+      `  *) mkdir -p ".$p/skills/graphify" && printf 'x\\n' > ".$p/skills/graphify/SKILL.md";; esac\n` +
+      `  exit 0\nfi\n` +
+      `mkdir -p graphify-out/cache\n` +
       `printf '{"nodes":[],"links":[]}\\n' > graphify-out/graph.json\n` +
       `printf 'x\\n' > graphify-out/cache/entry\n`,
   );
+  stub('openspec', `mkdir -p openspec/specs\nprintf 'schema: spec-driven\\n' > openspec/config.yaml\n`);
   return { path: [bin, dirname(process.execPath), '/usr/bin', '/bin'].join(delimiter), runs };
 }

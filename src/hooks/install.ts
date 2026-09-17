@@ -34,7 +34,9 @@ import { onPath, pathExists } from '../adapters/detect.js';
 const execFileP = promisify(execFile);
 
 export const HOOKS_DIR = '.multivac/hooks';
-export const HOOK_NAMES = ['pre-commit', 'pre-push'] as const;
+// MV-137: `pre-merge-commit` runs the same verify a commit does, so a local
+// merge of a branch that is no open change is judged like a commit on it.
+export const HOOK_NAMES = ['pre-commit', 'pre-push', 'pre-merge-commit'] as const;
 export type HookName = (typeof HOOK_NAMES)[number];
 
 /** Manager artifacts that mean "this repo already has a hook set-up". */

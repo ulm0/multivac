@@ -161,7 +161,7 @@ test('fresh repo: strategy fresh, hooksPath ours', async () => {
   const r = await installHooks(dir);
   assert.equal(r.strategy, 'fresh');
   assert.equal(r.dir, '.multivac/hooks');
-  assert.deepEqual(r.installed, ['pre-commit', 'pre-push']);
+  assert.deepEqual(r.installed, ['pre-commit', 'pre-push', 'pre-merge-commit']);
   assert.deepEqual(r.chained, []);
   assert.deepEqual(r.refused, []);
   assert.equal(git(dir, 'config', 'core.hooksPath'), '.multivac/hooks');
@@ -366,7 +366,7 @@ test('foreign core.hooksPath: install alongside, never repoint', async () => {
   const r = await installHooks(dir);
   assert.equal(r.strategy, 'alongside');
   assert.equal(r.dir, '.githooks');
-  assert.deepEqual(r.installed, ['pre-commit', 'pre-push']);
+  assert.deepEqual(r.installed, ['pre-commit', 'pre-push', 'pre-merge-commit']);
   assert.deepEqual(r.refused, []);
   assert.equal(git(dir, 'config', 'core.hooksPath'), '.githooks', 'never repointed');
   assert.equal(existsSync(join(dir, '.multivac/hooks/pre-commit')), false);
@@ -397,7 +397,7 @@ test('foreign hooksPath with the name taken: refusal names the exact step, file 
   assert.match(r.refused[0].fix, /append this line to \.githooks\/pre-commit: mvac verify \|\| exit 1/);
   assert.equal(readFileSync(join(dir, '.githooks/pre-commit'), 'utf8'), theirs);
   // the free name still got the shim
-  assert.deepEqual(r.installed, ['pre-push']);
+  assert.deepEqual(r.installed, ['pre-push', 'pre-merge-commit']);
   assert.equal(git(dir, 'config', 'core.hooksPath'), '.githooks');
 
   // and doctor reports the same state with the same fix
@@ -484,7 +484,7 @@ test('an absolute foreign core.hooksPath: the shims land where git looks, not in
   const r = await installHooks(dir);
   assert.equal(r.strategy, 'alongside');
   assert.equal(r.dir, foreign, 'reported as configured, not rewritten');
-  assert.deepEqual(r.installed, ['pre-commit', 'pre-push']);
+  assert.deepEqual(r.installed, ['pre-commit', 'pre-push', 'pre-merge-commit']);
   assert.deepEqual(r.refused, []);
   assert.equal(git(dir, 'config', 'core.hooksPath'), foreign, 'never repointed');
 
@@ -521,7 +521,7 @@ test('a `~` core.hooksPath expands to $HOME: the shims land where git looks, not
 
   const r = await withHome(home, () => installHooks(dir));
   assert.equal(r.strategy, 'alongside');
-  assert.deepEqual(r.installed, ['pre-commit', 'pre-push']);
+  assert.deepEqual(r.installed, ['pre-commit', 'pre-push', 'pre-merge-commit']);
   assert.deepEqual(r.refused, []);
   for (const name of ['pre-commit', 'pre-push']) {
     assert.ok(existsSync(join(expanded, name)), `${name} is where git will look`);
@@ -584,7 +584,7 @@ test('an absolute foreign hooksPath refuses, wires and reports exactly as a rela
   assert.equal(r.refused[0].path, `${foreign}/pre-commit`);
   assert.match(r.refused[0].fix, /append this line to .*\/pre-commit: mvac verify \|\| exit 1/);
   assert.equal(readFileSync(join(foreign, 'pre-commit'), 'utf8'), theirs, 'byte-untouched');
-  assert.deepEqual(r.installed, ['pre-push'], 'the free name still got the shim');
+  assert.deepEqual(r.installed, ['pre-push', 'pre-merge-commit'], 'the free names still got the shim');
 
   // doctor names the same state, read from the same directory
   await capture(() => init.run([], { cwd: dir }));
@@ -630,7 +630,7 @@ test('our own hooks dir spelled absolutely is ours, not a foreign gate', async (
   const r = await installHooks(dir);
   assert.equal(r.strategy, 'fresh', 'the long spelling names the same directory');
   assert.equal(r.dir, '.multivac/hooks');
-  assert.deepEqual(r.installed, ['pre-commit', 'pre-push']);
+  assert.deepEqual(r.installed, ['pre-commit', 'pre-push', 'pre-merge-commit']);
   assert.ok(existsSync(join(dir, '.multivac/hooks/pre-commit')));
   assert.equal(
     git(dir, 'config', 'core.hooksPath'),

@@ -32,16 +32,18 @@ import {
   loadConfig,
   readConfig,
   CONFIG_PATH,
+  ECOSYSTEM_PATH,
 } from '../lib/config.js';
 import { ritualSeed } from '../lib/ritual.js';
 import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
 import { acid, bold, dim, say, warn } from '../lib/out.js';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { banner } from '../lib/banner.js';
+import { writeEcosystem } from '../doors/ecosystem.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { PRECOMMIT_MISSING_FIX, installHooks } from '../hooks/install.js';
-import { adapterFor, detectAdapters, missingRequired, type Detected } from '../adapters/detect.js';
+import { adapterFor, adaptersByRoot, detectAdapters, missingRequired, type Detected } from '../adapters/detect.js';
 
 export type { Detected };
 
@@ -661,6 +663,12 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   }
   await mkdir(join(dir, CHANGES_DIR), { recursive: true });
   await writeIfMissing(join(dir, CHANGES_DIR, '.gitkeep'), '');
+  // MV-141: the door just written names the ecosystem graph (MV-139), so the
+  // graph is written from the declarations this run leaves, not at `doors`.
+  if (cfg) {
+    const wrote = await writeEcosystem(dir, cfg).catch(() => false);
+    if (wrote) report(`init: wrote ${ECOSYSTEM_PATH} — how repos, rows, anchors and changes relate; generated`);
+  }
 
   // 4. enforcement floor: versioned hooks + core.hooksPath — but never over
   // the repo's own gates. The strategy used is part of the report.
@@ -751,6 +759,11 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
         .map((n, i) => (n ? (i === 0 ? sddSpec(n) : grapherSpec(n, equipCfg.graphers)) : null))
         .filter((s): s is AdapterSpec => s !== null);
   const zero = stepZeroPaths(beforeInit, await dirtySnapshot(dir), brainSpecs);
+  // MV-136: session zero whole, in the order that works. `repos:` before the
+  // first commit, because a config modified after it needs an open change.
+  // Both flows, the fitting one marked rather than chosen: a new brain for
+  // code that lives in other repos holds no files, and was told to interview.
+  emit(`init:   before step 0, declare every repo this brain governs under \`repos:\` in ${CONFIG_PATH} — once committed, the config changes only inside a change`);
   emit(
     'init:   0. commit what was just written: ' +
       (zero.length > 0
@@ -758,12 +771,15 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
         : 'nothing — everything init writes is already committed'),
   );
   emit('init:   1. load the multivac skill in your agent — it carries both protocols');
-  emit(
-    brainIsCode
-      ? 'init:   2. discovery — `multivac seed` inventories this code, then draft proposed claims from it'
-      : 'init:   2. interview — no code here yet, so the law comes from a human, claim by claim',
-  );
-  emit('init:   3. a human enacts each row in .multivac/invariants.md, then `multivac verify`');
+  emit('init:   2. `multivac repos sync` — clones every declared repo and installs its declared tools');
+  emit(`init:   3. discovery, for code that exists — \`multivac seed\` inventories it, then draft proposed claims from it${brainIsCode ? ' ← this repo holds code' : ''}`);
+  emit(`init:      interview, for code that does not — the law comes from a human, claim by claim${brainIsCode ? '' : ' ← this repo holds none'}`);
+  const gated = equipCfg === null
+    ? false
+    : [...adaptersByRoot(equipCfg, 'sdd').keys()].some((n) => (sddSpec(n)?.projectSteps ?? []).some((p) => !p.reportOnly));
+  const last = gated ? 5 : 4;
+  if (gated) emit('init:   4. write each repo\'s project document from the human\'s principles — `multivac repos check` names every one not written');
+  emit(`init:   ${last}. a human enacts each row in .multivac/invariants.md, then \`multivac doors\` and \`multivac verify\``);
   return 0;
 }
 

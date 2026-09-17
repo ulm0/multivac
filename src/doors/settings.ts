@@ -88,10 +88,20 @@ type Json = Record<string, unknown>;
  *   an entry declaring none keeps its bytes. The values are bare words (a test
  *   holds that), so nothing is quoted.
  */
-export function refreshHookCmd(refresh: string, env: Record<string, string> = {}): string {
+export function refreshHookCmd(refresh: string, env: Record<string, string> = {}, artifact?: string): string {
   const exported = Object.entries(env).map(([k, v]) => `${k}=${v}`).join(' ');
+  // MV-140: the repo of the file just edited, when that repo holds the graph.
+  // The hook ran in the session's directory, so an edit inside a named
+  // sibling's worktree refreshed the brain's graph and left the sibling's
+  // stale. The harness hands the payload on stdin; `file_path` is read in the
+  // foreground, before the refresh is detached. Anything else stays where it was.
+  const here = artifact
+    ? `f=$(sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -n 1); ` +
+      `t=$(git -C "$(dirname "\${f:-.}")" rev-parse --show-toplevel 2>/dev/null); ` +
+      `[ -n "$t" ] && [ -e "$t/${artifact}" ] && cd "$t"; `
+    : '';
   return (
-    `${REFRESH_HEAD} PATH="$PATH:$PWD/node_modules/.bin"; ${exported ? `export ${exported}; ` : ''}` +
+    `${REFRESH_HEAD} ${here}PATH="$PATH:$PWD/node_modules/.bin"; ${exported ? `export ${exported}; ` : ''}` +
     `find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ` +
     `mkdir -p ${CACHE} && mkdir "$L" 2>/dev/null || exit 0; ` +
     `{ ${refresh}; rmdir "$L"; } >/dev/null 2>&1 </dev/null & exit 0`
@@ -246,7 +256,7 @@ function duplicateNotice(hooks: Json, event: string): string | null {
  */
 export function mergeClaudeSettings(
   raw: string | null,
-  opts: { refresh?: string | null; matcher?: string; env?: Record<string, string> } = {},
+  opts: { refresh?: string | null; matcher?: string; env?: Record<string, string>; artifact?: string } = {},
 ): { text: string; notices: string[] } {
   let obj: unknown = {};
   if (raw !== null && raw.trim() !== '') {
@@ -283,7 +293,7 @@ export function mergeClaudeSettings(
     if (added) notices.push(added);
   }
   if (opts.refresh) {
-    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh, opts.env), { matcher });
+    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh, opts.env, opts.artifact), { matcher });
   } else {
     // No grapher declared, or its binary is gone: our hook goes with it —
     // a hook pointing at a missing tool is worse than no hook. Every match is

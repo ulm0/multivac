@@ -28,6 +28,7 @@ import {
   type AdapterSpec,
 } from '../adapters/registry.js';
 import {
+  adaptersByRoot,
   type ReadOnly,
   type SddRoot,
   missingRequired,
@@ -35,7 +36,8 @@ import {
   readOnly,
   sddRoots,
 } from '../adapters/detect.js';
-import { flowLines, stepsGating } from '../adapters/sdd.js';
+import { flowLines, scaffoldCommands, stepsGating } from '../adapters/sdd.js';
+import { cloneFix, cloneState, projectDocVerdict } from '../lib/repo-state.js';
 import { graphScopes } from '../adapters/refresh.js';
 import { readLaw } from '../change/reserve.js';
 import {
@@ -160,13 +162,19 @@ async function projectDocLines(
       const path = join(root.dir, p.artifact);
       const st = await stat(path).catch(() => null);
       let found: string | null = null;
-      if (st) {
-        // Scaffolded is not written: spec-kit installs the constitution as its
-        // own template, so a file full of placeholders is a placeholder, and
-        // calling it "present" would be the fakery this report exists to avoid.
-        const text = p.placeholder ? await readFile(path, 'utf8').catch(() => '') : '';
-        if (p.placeholder && new RegExp(p.placeholder).test(text)) {
-          found = `${p.artifact} is still the unfilled template shipped by the tool (placeholders remain) → ${p.run}`;
+      // MV-132: one verdict for doctor, `repos check` and the gate. Scaffolded
+      // is not written, and neither is empty: a 0-byte file used to read as present.
+      const { verdict, why } = await projectDocVerdict(root.dir, p);
+      if (p.reportOnly) {
+        // MV-135: a report-only document is a key, reported and never gated.
+        found = verdict === 'written'
+          ? `${p.artifact} \`${p.reportOnly.key}:\` written — reported, never gated`
+          : `${p.artifact} ${why ?? verdict} → ${p.run} (optional: reported, never gated)`;
+      } else if (st && verdict === 'empty') {
+        found = `${p.artifact} is empty → ${p.run}`;
+      } else if (st) {
+        if (verdict === 'template') {
+          found = `${p.artifact} is still the unfilled template shipped by the tool (${why}) → ${p.run}`;
         } else {
           const day = new Date(st.mtimeMs).toISOString().slice(0, 10);
           found =
@@ -232,13 +240,13 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
     let state: string = st.state;
     if (st.state === 'missing') {
       state = `missing (no ${stateLabel(spec)})`;
-      if (sc) state += ` — declared but never run here; \`change new\` runs the tool's own \`${sc.run}\`, doctor never does (it writes the vendor's files into the tree)`;
+      if (sc) state += ` — declared but never run here; \`change new\` runs the tool's own \`${scaffoldCommands(sc, cfg.doors).commands.join(' && ')}\`, doctor never does (it writes the vendor's files into the tree)`;
     } else if (st.state === 'unevaluable') {
       // Unreadable is not uninstalled: the fix is the file's permissions, never an init.
       state = `unevaluable (${st.reason}) — make it readable; no init is run over it`;
     } else if (st.state === 'partial') {
       state = `partial (${st.reason})`;
-      if (sc) state += ` — the lifecycle will not run the init over it, since a re-run can revert edited files; run \`${sc.run}\` there yourself`;
+      if (sc) state += ` — the lifecycle will not run the init over it, since a re-run can revert edited files; run \`${scaffoldCommands(sc, cfg.doors).commands.join(' && ')}\` there yourself`;
     }
     const bin = missing.length === 0 ? 'binary ok' : `binary missing → ${binaryMissing(root.sdd, spec, missing, root.scope)}`;
     out.push(label('sdd') + `${root.sdd} @ ${root.scope}: ${state} · ${bin} · ${auto}`);
@@ -338,7 +346,30 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
           ? ` · IGNORED by .gitignore → remove the rule, then \`git -C ${s.dir} add ${art}\`, then commit it`
           : ` · NOT COMMITTED → \`git -C ${s.dir} add ${art}\`, then commit it`;
     }
+    // MV-131: the grapher's own install into each declared harness. Reported
+    // from its probe file; doctor runs nothing.
+    if (spec.harness) {
+      const absent: string[] = [];
+      for (const door of cfg.doors) {
+        const p = spec.harness.platforms[door];
+        if (p && !(await pathExists(join(s.dir, p.probe)))) absent.push(p.key);
+      }
+      if (absent.length > 0) {
+        msg += ` · harness install missing for ${absent.join(', ')} → ${absent.map((k) => `\`${spec.harness!.run.replace('{key}', k)}\``).join(', ')}`;
+      }
+      // MV-140: the door cites the tool's own section instead of its verbs, so
+      // a door file without that section leaves the agent with names only.
+      const covered = cfg.doors.filter((d) => spec.harness!.platforms[d]);
+      const door = await readFile(join(s.dir, 'AGENTS.md'), 'utf8').catch(() => '');
+      if (covered.length > 0 && !new RegExp(`^## ${s.name}\\b`, 'm').test(door)) {
+        msg += ` · AGENTS.md has no \`## ${s.name}\` section, which the door cites → \`${spec.harness.run.replace('{key}', spec.harness.platforms[covered[0]]!.key)}\``;
+      }
+    }
     out.push(label('grapher') + msg);
+  }
+  // MV-140: asking the graph is the agent's, and nothing records it.
+  if (out.length > 0) {
+    out.push(label('grapher') + 'navigation: ungateable — no committed file records that a graph was asked before the tree was read; a nudge, never a gate');
   }
   // Where the refresh actually comes from. The harness post-edit hook is the
   // live path when a declared door target has one; git hooks never refresh.
@@ -348,8 +379,8 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
       label('grapher') +
         (postEdit.length > 0
           ? `refresh path: ${postEdit.join(', ')} post-edit hook (installed when the binary is present) · ` +
-            '`change close` is the net · git hooks never refresh'
-          : 'refresh path: `change close` only — no declared harness has a post-edit hook · git hooks never refresh'),
+            '`change land` commits it on the change branch · `change close` is the net · git hooks never refresh'
+          : 'refresh path: `change land` and `change close` only — no declared harness has a post-edit hook · git hooks never refresh'),
     );
   }
   return out;
@@ -360,17 +391,21 @@ async function reposLine(brain: string, cfg: Config): Promise<string> {
   if (entries.length === 0) return `none declared — add repos: to ${CONFIG_PATH}`;
   const missing: string[] = [];
   const notes: string[] = [];
-  let present = 0;
+  let cloned = 0;
   for (const [key, e] of entries) {
     const dir = resolve(brain, e.path);
     // MV-125: a fact about scope, noted whether or not the repo is on disk.
     const why = e.isBrain ? null : await readOnly(cfg, key, dir);
     if (why) notes.push(`${key}: ${why}, read-only`);
+    // MV-141: MV-132's clone state, not a path being there.
+    const st = await cloneState(e, dir);
     if (e.isBrain) {
-      present++;
+      cloned++;
       notes.push(`${key}: brain==code (this repo)`);
-    } else if (await pathExists(dir)) {
-      present++;
+    } else if (st.state === 'cloned') {
+      cloned++;
+    } else if (st.state !== 'absent') {
+      notes.push(`${key}: ${cloneFix(key, e, st)}`);
     } else {
       missing.push(
         e.url
@@ -379,7 +414,7 @@ async function reposLine(brain: string, cfg: Config): Promise<string> {
       );
     }
   }
-  return [`${present}/${entries.length} present`, ...notes, ...missing].join(' · ');
+  return [`${cloned}/${entries.length} cloned`, ...notes, ...missing].join(' · ');
 }
 
 /**
@@ -780,6 +815,15 @@ export async function doctorReport(
     // that as covering the whole law would be reading coverage out of silence
     // — the one rule no local gate can arm has to say so in the same report.
     label('enact') + ENACTMENT_UNGATEABLE,
+    // MV-137: what makes code-in-change binding is a forge setting.
+    ...(cfg.sddAuto && adaptersByRoot(cfg, 'sdd').size > 0
+      ? [
+          label('forge') +
+            'code lands in a change only where the forge requires the merge request pipeline to run ' +
+            '`multivac verify --strict --range <base>..<head> --branch <name>` and nobody can push to the default branch — ' +
+            'ungateable from disk: multivac cannot read either setting, and a hook can be skipped',
+        ]
+      : []),
     label('law') + lawLine(law),
     label('untracked') + (await untrackedLine(brainDir, cfg, law.anchors)),
   ];

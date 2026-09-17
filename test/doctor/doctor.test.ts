@@ -52,7 +52,7 @@ repos:
   assert.equal(lines.some((l) => l.startsWith('grapher')), false);
 
   const repos = line(lines, 'repos');
-  assert.match(repos, /2\/3 present/);
+  assert.match(repos, /2\/3 cloned/);
   assert.match(repos, /billing missing → `multivac repos sync`/);
   assert.match(repos, /git clone git@acme\.example:acme\/billing\.git/);
 
@@ -81,7 +81,7 @@ repos:
   const { lines, exit } = await doctorReport(eco.brain);
   assert.equal(exit, 0); // not "config invalid"
   const repos = line(lines, 'repos');
-  assert.match(repos, /1\/2 present/);
+  assert.match(repos, /1\/2 cloned/);
   assert.match(repos, /pagos missing → `multivac repos sync`/);
   assert.match(repos, /git clone git@acme\.example:acme\/pagos\.git \.\.\/pagos/);
 });
@@ -104,9 +104,9 @@ repos:
     const sdd = line(lines, 'sdd');
     // The scope is part of the verdict now (MV-87): a root, not an ecosystem.
     assert.match(sdd, /opsx @ brain: missing \(no openspec\)/);
-    // No init was verified for this tool, so none is named: the clause below
-    // belongs to the adapter that declares a scaffold, not to every absence.
-    assert.doesNotMatch(sdd, /declared but never run here/);
+    // MV-130: opsx's init is measured now, so doctor names the one the
+    // lifecycle would run for these doors.
+    assert.match(sdd, /declared but never run here; `change new` runs the tool's own `openspec init --tools agents --no-animation \.`/);
     assert.match(sdd, /binary missing → `openspec` found on neither PATH nor brain's node_modules\/\.bin — install opsx: npm i -g @fission-ai\/openspec \(https:\/\/github\.com\/Fission-AI\/OpenSpec\)/);
     assert.match(sdd, /sdd_auto on — the lifecycle prints this tool's own steps and refuses/);
     // The flow lines name every step and what proves it.
@@ -118,7 +118,7 @@ repos:
     assert.match(all, /gates — change plan: refuses without openspec\/changes\/<slug>\/proposal\.md/);
     assert.match(all, /change close: refuses without openspec\/changes\/archive\/<n>-<n>-<n>-<slug>/);
     // OpenSpec has no project-level document; doctor says so rather than inventing one.
-    assert.match(all, /project law — this tool has no project-level document/);
+    assert.match(all, /opsx project law @ brain: openspec\/config\.yaml missing → write `context:` .*\(optional: reported, never gated\)/);
   } finally {
     process.env.PATH = old;
   }
@@ -208,7 +208,7 @@ test('doctor: the constitution is reported present, missing and stale — doctor
   writeFileSync(doc, '# [PROJECT_NAME] Constitution\n\n## [PRINCIPLE_1_NAME]\n');
   assert.match(
     await sddLines(),
-    /is still the unfilled template shipped by the tool \(placeholders remain\) → run \/speckit\.constitution/,
+    /is still the unfilled template shipped by the tool \(placeholders remain: \[[A-Z0-9_]+\]\) → run \/speckit\.constitution/,
   );
 
   // Present but older than the law's newest row: drift, reported as such.

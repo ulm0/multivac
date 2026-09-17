@@ -51,6 +51,12 @@ brain that lies from day one — the exact thing verify exists to prevent.
   `AGENTS.md`, where the tool never writes, or onto their own page that the
   door links to.
 - **Map page**: the boundaries, one page.
+- **Project document**: after you read back the non-negotiables, write the
+  project document of each repo that exists and whose SDD declares one
+  (spec-kit: `/speckit.constitution`, in a session opened in that repo). Write
+  it from their answers and cite the rows it restates by ID; never invent a
+  principle. Run `mvac repos sync` first, so each declared repo is cloned and
+  equipped. Where a document and an active row disagree, the row wins.
 - **Proposed claims**: every non-negotiable becomes a `proposed` row in the
   law table, authority suggested by you, enacted by the human
   (accept / correct / discard, same as discovery). Most rows have no

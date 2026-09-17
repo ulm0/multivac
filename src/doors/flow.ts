@@ -23,7 +23,7 @@
 // concrete id is written in this file at all, not even as an example.
 
 import type { Config } from '../types.js';
-import { grapherSpec, sddSpec, unverifiedGrapher } from '../adapters/registry.js';
+import { doorTargets, grapherSpec, sddSpec, unverifiedGrapher } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
 import { adaptersByRoot } from '../adapters/detect.js';
 import { stateLabel } from '../lib/init-state.js';
@@ -87,6 +87,14 @@ export function renderFlow(config: Config): string {
       const verb = /\/[\w.:-]+/.exec(s.run)?.[0] ?? s.at;
       yours.push(`- \`${verb}\` — ${proofOf(s).slice('ungateable: '.length)}${inRoots(roots)}`);
     }
+    // MV-135: the project document, from the same step the gate reads.
+    for (const p of spec.projectSteps ?? []) {
+      if (p.reportOnly) {
+        yours.push(`- \`${p.artifact}\` \`${p.reportOnly.key}:\` — ${p.run}; optional, reported and never gated${inRoots(roots)}`);
+      } else {
+        gate.push(`- \`change plan\` refuses while \`${p.artifact}\` is missing, empty or still the template, in every repo where \`${name}\` is installed${inRoots(roots)}`);
+      }
+    }
   }
   if (sdds.size === 0) {
     yours.push('- no SDD tool is declared, so no specification flow is printed or gated');
@@ -101,12 +109,18 @@ export function renderFlow(config: Config): string {
       continue;
     }
     verified = true;
+    // MV-140: what MV-134 does, not what came before it.
     auto.push(
-      `- the code graph is built where a declared repo has no \`${spec.artifacts[0]}\`, and refreshed at \`change close\`, in ${every(roots) ? 'every declared repo' : roots.join(', ')}`,
+      `- the code graph is built where \`multivac repos sync\` or a change reaches a repo with no \`${spec.artifacts[0]}\`, refreshed ${config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit) ? 'after each edit through the harness hook, and ' : ''}at \`change land\`, where it is committed on the change branch, and at \`change close\`, in ${every(roots) ? 'every declared repo' : roots.join(', ')}`,
     );
     if (config.grapherAuto) {
       gate.push(
-        `- \`change close\` refuses while a declared, present repo has no \`${spec.artifacts[0]}\`${inRoots(roots)}`,
+        `- \`change close\` refuses while the brain or a repo the change names has no \`${spec.artifacts[0]}\`${inRoots(roots)}`,
+      );
+    }
+    if (spec.queries && spec.queries.length > 0) {
+      yours.push(
+        `- asking \`${name}\` before reading the tree — no committed file records a query${name === 'graphify' ? ': graphify writes only an untracked `graphify-out/cache/last_query_stamp`, a query that found nothing writes it too, and its own Claude hook nudges toward a query without blocking a read' : ''}${inRoots(roots)}`,
       );
     }
   }

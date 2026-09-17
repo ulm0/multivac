@@ -3,8 +3,19 @@
 You are standing in a brain that is empty while the code already exists.
 Your job: turn the code's boundaries into a map and a proposed law, get the
 human to enact it, and project doors. The flow is
-**seed → questions → interview → law**: the seeder reads and asks; a human
-answers; you draft; the human enacts. Never skip the human.
+**sync → seed → questions → interview → project document → law → doors**: the
+seeder reads and asks; a human answers; you draft; the human enacts. Never
+skip the human.
+
+## 0. Sync
+
+```
+mvac repos sync
+```
+
+Clones every declared repo that is not on disk, and installs each repo's
+declared SDD and grapher. Draft no law over a repo that is not cloned, or that
+has no graph to ask. `mvac repos check` says, per repo, what is still missing.
 
 ## 1. Run the seeder
 
@@ -29,9 +40,10 @@ to `.multivac/seed-report.md`, grouped by category per declared repo:
   sql, api specs, docker, terraform, ci, package manifests, env examples.**
 
 Test fixtures, `examples/` and vendored trees are excluded; each category
-lists at most 25 files plus a count. Nothing in the report is law. If a
-declared repo is missing locally, seed reports it unevaluated; run
-`mvac repos sync` first if you need full coverage.
+lists at most 25 files plus a count. Each repo's `### setup` lines say
+whether its graph is built and its project document written. Nothing in the
+report is law. If a declared repo is missing locally, seed reports it
+unevaluated; run `mvac repos sync` first.
 
 ## 2. Read the inventory BY CATEGORY, not by repo
 
@@ -122,7 +134,16 @@ Whatever the session doesn't reach stays `proposed`: visible, counted,
 non-blocking. Never bulk-accept to finish faster — an enacted lie is worse
 than an unvalidated truth.
 
-## 7. Project the doors
+## 7. Write each repo's project document
+
+After the first batch is validated, write the project document of every repo
+whose SDD declares one (spec-kit: `/speckit.constitution`, in a session opened
+in that repo). Write it from the human's answers and cite the rows it restates
+by ID. Never invent principles to fill it. Where it and an active row
+disagree, the row wins. `change plan` refuses while it is missing, empty or
+still the template.
+
+## 8. Project the doors
 
 ```
 mvac doors

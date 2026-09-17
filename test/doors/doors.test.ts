@@ -212,7 +212,7 @@ test('brain door carries the SDD flow when one is declared', () => {
   assert.match(door, /`change land` → run \/opsx:archive <slug> in your agent/);
   assert.match(door, /`change close` refuses without it/);
   // OpenSpec has no project-level document; that gap is stated, not invented.
-  assert.match(door, /this tool has no project-level document/);
+  assert.match(door, /project context `openspec\/config\.yaml` `context:` — .*Optional: reported, never gated\./);
   // sdd_auto off: the flow still binds, the door says to run it unprompted
   assert.match(renderBrainDoor({ ...cfg, sddAuto: false }, 1), /run each step yourself/);
 

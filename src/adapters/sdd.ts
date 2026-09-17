@@ -26,16 +26,19 @@ import {
   type GatePoint,
   type LifecyclePoint,
   type SddStep,
+  type SddScaffold,
 } from './registry.js';
 import {
   adaptersByRoot,
   artifactHit,
   findBinary,
   missingRequired,
+  pathExists,
   readOnly,
   sddRoots,
   type SddRoot,
 } from './detect.js';
+import { projectDocVerdict } from '../lib/repo-state.js';
 import { initState, stateLabel } from '../lib/init-state.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
 
@@ -234,6 +237,40 @@ async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise
  * — `init` for the brain (MV-128) and the change lifecycle — and `verify`,
  * `doctor` and `doors` never do (MV-75).
  */
+/**
+ * MV-130. The vendor's own commands that set its tool up for the declared
+ * doors, and the doors it has no verified integration for. The init was
+ * `--integration claude` whatever the team used, so a cursor or codex brain got
+ * spec-kit's claude skills and nothing its own harness reads.
+ */
+export function scaffoldCommands(
+  scaffold: SddScaffold,
+  doors: string[],
+): { commands: string[]; gaps: string[] } {
+  const mapped = doors.filter((d) => scaffold.integrations[d]);
+  const gaps = doors
+    .filter((d) => d !== 'agents' && !scaffold.integrations[d])
+    .map((d) => `${d} has no verified integration for this tool`);
+  const keys = [...new Set(mapped.map((d) => scaffold.integrations[d].key))];
+  if (scaffold.run.includes('{keys}')) {
+    return keys.length > 0
+      ? { commands: [scaffold.run.replace('{keys}', keys.join(','))], gaps }
+      : { commands: [], gaps: [...gaps, 'no declared door maps to an integration of this tool'] };
+  }
+  const first = keys[0] ?? scaffold.fallback;
+  if (first === undefined) {
+    return { commands: [], gaps: [...gaps, 'no declared door maps to an integration of this tool'] };
+  }
+  const commands = [scaffold.run.replace('{key}', first)];
+  const firstSafe = Object.values(scaffold.integrations).find((i) => i.key === first)?.safe ?? true;
+  for (const key of keys.slice(1)) {
+    const safe = Object.values(scaffold.integrations).find((i) => i.key === key)!.safe;
+    if (scaffold.add && safe && firstSafe) commands.push(scaffold.add.replace('{key}', key));
+    else gaps.push(`${key} cannot be installed beside ${first} without forcing it, and multivac never forces an integration`);
+  }
+  return { commands, gaps };
+}
+
 export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): Promise<void> {
   if (!cfg.sddAuto || noSdd) return;
   const roots = await sddRoots(brain, cfg);
@@ -257,7 +294,7 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
       warn(
         `sdd ${root.sdd}: ${root.scope} is ${before.state} — ${before.reason} — ` +
           (sc
-            ? `the init is not run over it, since a re-run can revert edited files; run \`${sc.run}\` in ${root.scope} yourself`
+            ? `the init is not run over it, since a re-run can revert edited files; run \`${scaffoldCommands(sc, cfg.doors).commands.join(' && ')}\` in ${root.scope} yourself`
             : `multivac does not know this tool's init command and will not guess one. Install it (${spec.installHint}) and finish its own init there yourself`),
       );
       continue;
@@ -270,16 +307,23 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
       );
       continue;
     }
+    const { commands, gaps } = scaffoldCommands(sc, cfg.doors);
+    for (const g of gaps) warn(`sdd ${root.sdd}: ${root.scope}: ${g} — install it there yourself if you need it`);
+    if (commands.length === 0) continue;
     // Printed BEFORE it runs: it writes the vendor's files into the tree.
     say(
       `sdd ${root.sdd}: ${dir} is missing in ${root.scope} — running the tool's own init ` +
-        `there: \`${sc.run}\``,
+        `there: \`${commands.join(' && ')}\``,
     );
-    const verdict = await toolVerdict(spec, sc.run, root.dir);
+    let verdict: Verdict = { kind: 'ok' };
+    for (const cmd of commands) {
+      verdict = await toolVerdict(spec, cmd, root.dir);
+      if (verdict.kind !== 'ok') break;
+    }
     if (verdict.kind === 'missing') {
       // One line per root: the lookup reads each root's own node_modules/.bin
       // (MV-123), so found or not is a fact about the root, not the machine.
-      warn(`sdd ${root.sdd}: \`${sc.run}\` cannot be run — ${binaryMissing(root.sdd, spec, verdict.bins, root.scope)}`);
+      warn(`sdd ${root.sdd}: \`${commands.join(' && ')}\` cannot be run — ${binaryMissing(root.sdd, spec, verdict.bins, root.scope)}`);
       continue;
     }
     // The probe decides, not the exit code. A tool that returns 0 without
@@ -291,7 +335,7 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
       continue;
     }
     warn(
-      `sdd ${root.sdd}: \`${sc.run}\` ` +
+      `sdd ${root.sdd}: \`${commands.join(' && ')}\` ` +
         (after.state === 'missing' ? `left no ${dir}` : `left ${dir} ${after.state} (${after.reason})`) +
         ` in ${root.scope}` +
         (verdict.kind === 'failed'
@@ -302,6 +346,21 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
         ` — run it in ${root.scope} by hand; until then the gates refuse on their own terms`,
     );
   }
+}
+
+/**
+ * MV-133. A change's artifacts live on its branch: `change apply` carries them
+ * into the change worktree and out of the checkout. So a proof for `slug` is
+ * looked for in the checkout first and, when none is there, in the change's own
+ * worktree for that root — the root handed back names where it was found, so
+ * whatever reads the file reads it there.
+ */
+async function slugHits(brain: string, root: SddRoot, slug: string, want: string): Promise<{ root: SddRoot; hits: string[] }> {
+  const hits = await artifactHit(root.dir, want);
+  if (hits.length > 0) return { root, hits };
+  const wt = join(brain, '.multivac', 'worktrees', slug, root.scope);
+  if (!(await pathExists(wt))) return { root, hits };
+  return { root: { ...root, dir: wt }, hits: await artifactHit(wt, want) };
 }
 
 /**
@@ -348,7 +407,7 @@ export async function sddGate(
       continue;
     }
     const roots = present.filter((r) => declared.includes(r.scope));
-    const one = await judgeSdd(name, roots, declared, gate, slug);
+    const one = await judgeSdd(brain, name, roots, declared, gate, slug);
     ok = ok && one.ok;
     lines.push(...one.lines);
   }
@@ -362,6 +421,7 @@ export async function sddGate(
 
 /** One adapter's verdict at `gate`, judged only in the roots that resolve to it. */
 async function judgeSdd(
+  brain: string,
   name: string,
   roots: SddRoot[],
   declared: string[],
@@ -382,7 +442,8 @@ async function judgeSdd(
   // A tool with no project-level document declares none (opsx declares
   // `projectSteps: []`, because its `context:` key is not one), and is
   // untouched by this pass.
-  const projectDocs = gate === PROJECT_DOC_GATE ? (spec.projectSteps ?? []) : [];
+  // A report-only document is never gated (MV-135).
+  const projectDocs = gate === PROJECT_DOC_GATE ? (spec.projectSteps ?? []).filter((p) => !p.reportOnly) : [];
   if (gating.length === 0 && ledgered.length === 0 && projectDocs.length === 0) {
     // Never faked: a tool with no step to prove at this point is SAID to have
     // none. spec-kit has no archive equivalent, so `close` is simply not gated.
@@ -421,8 +482,8 @@ async function judgeSdd(
     // a single hit wins there, several refuse there, and a later root is never
     // consulted, which is the same root that decided under the old code.
     let clash: { root: SddRoot; rels: string[] } | null = null;
-    for (const root of roots) {
-      const hits = await artifactHit(root.dir, want);
+    for (const r of roots) {
+      const { root, hits } = await slugHits(brain, r, slug, want);
       if (hits.length > 1) {
         clash = { root, rels: hits };
         break;
@@ -517,8 +578,8 @@ async function judgeSdd(
     // MV-113, the same rule for the ledger: a step proved by two books is a
     // step nobody can read. Refused by name rather than resolved by sort order.
     let clash: { root: SddRoot; rels: string[] } | null = null;
-    for (const root of roots) {
-      const hits = await artifactHit(root.dir, want);
+    for (const r of roots) {
+      const { root, hits } = await slugHits(brain, r, slug, want);
       if (hits.length > 1) {
         clash = { root, rels: hits };
         break;
@@ -596,16 +657,15 @@ async function judgeSdd(
       continue;
     }
     for (const root of owning) {
-      // Read, do not probe. A directory, a broken symlink and an unreadable
-      // file are all "not a written document", and reading collapses the three
-      // into one path instead of three special cases.
-      const body = await readText(join(root.dir, doc.artifact));
+      // The one verdict `doctor` and `repos check` read too (MV-132, MV-135).
+      // A directory, a broken symlink and an unreadable file are all missing.
+      const { verdict, why } = await projectDocVerdict(root.dir, doc);
       const at = `${root.scope}:${doc.artifact}`;
-      if (body === null) {
+      if (verdict === 'missing') {
         refuse(`${at} is missing or unreadable`);
         continue;
       }
-      if (body.trim() === '') {
+      if (verdict === 'empty') {
         refuse(`${at} is empty`);
         continue;
       }
@@ -613,10 +673,8 @@ async function judgeSdd(
       // and the second one looks like success from a directory listing. Worded
       // apart from the artifact loop's template refusal too — MV-65 pins that
       // sentence to exactly one place, and this is a different check.
-      if (doc.placeholder && new RegExp(doc.placeholder).test(body)) {
-        refuse(
-          `${at} is still the unfilled template shipped by the tool (placeholders remain — the tool asks the author to replace them)`,
-        );
+      if (verdict === 'template') {
+        refuse(`${at} is still the unfilled template shipped by the tool (${why} — the tool asks the author to replace them)`);
         continue;
       }
       // Age is deliberately not read here. `doctor` reports STALE; the law

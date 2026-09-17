@@ -282,9 +282,9 @@ test('a repo opted out of graphing gets no graph block in its door', async () =>
   assert.equal(readFileSync(join(eco.repos.api, 'AGENTS.md'), 'utf8').includes('code graph'), false);
 });
 
-// --- FR-014: the refresh reaches every declared repo ---
+// --- MV-134: the refresh reaches the repos the change names, and no other ---
 
-test('close refreshes a declared repo the change never named', async () => {
+test('close refreshes the repos the change names and leaves the others alone', async () => {
   const { brain, ctx, slug } = ecosystem(['grapher: writes-nothing']);
   await capture(() => change.run(['new', slug, 'Points expire'], ctx));
   const file = join(brain, '.multivac/changes', `${slug}.md`);
@@ -297,5 +297,6 @@ test('close refreshes a declared repo the change never named', async () => {
   );
   for (const d of [brain, join(brain, '../acme-api'), join(brain, '../acme-web')]) graph(d);
   const c = await capture(() => change.run(['close', slug], ctx));
-  assert.match(c.out, /graph writes-nothing @ web: refreshed/);
+  assert.match(c.out, /graph writes-nothing @ api: refreshed/);
+  assert.doesNotMatch(c.out, /@ web:/);
 });

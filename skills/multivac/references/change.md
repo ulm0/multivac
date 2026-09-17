@@ -127,17 +127,27 @@ The file also carries per-repo status
   Where git cannot make
   a worktree, apply branches in place and refuses outright if the tree holds
   someone else's uncommitted work — commit or stash it, then re-run.
+  The SDD files you wrote before `apply` (spec-kit's `specs/<n>-<slug>/`, an
+  uncommitted `.specify/`) are **carried onto the branch**: copied into the
+  worktree, committed there, removed from the checkout (MV-133). Write the code
+  in the worktree; a commit of code anywhere else is refused (MV-137).
 - **land** prints the landing plan in graph order — roots first, an edge's
   target only after its source lands, parallel where no edge says otherwise —
   and for each ready repo hands you the push and the MR to open. It opens
   nothing itself: multivac has no forge integration, so the merge request and
   its description are yours. `land --landed <repo>` is you telling it one
   merged; it reads the channel ref to offer a conclusion, never to record one.
+  Before the push line, `land` refreshes the ready repo's code graph in the
+  change's worktree and **commits it on the branch** (MV-134), with the brain's
+  `.multivac/ecosystem.json` where the repo is the brain (MV-139). A detached
+  HEAD or an ignored graph is refused by name. In CI, the merge request
+  pipeline runs `verify --strict --range <base>..<head> --branch <name>`, which
+  refuses code outside a change's branch even when a hook was skipped.
 
 ## close — the gate
 
-**The graph gate (MV-90).** A declared grapher must be installed in every
-declared root on disk that is not read-only (MV-125) — its own state file, a `graph.json` that parses, not a
+**The graph gate (MV-90).** A declared grapher must be installed in the brain
+and in every repo the change names that is not read-only (MV-125, MV-134) — its own state file, a `graph.json` that parses, not a
 path being there (MV-124) — or close refuses and names every root that is not.
 The build-where-missing pass runs inside the gate, so a fresh ecosystem builds
 rather than refuses; a root whose binary is found on neither PATH nor its
@@ -151,8 +161,10 @@ A shared graph must also be in each root's committed HEAD, not only staged
 (MV-103): close names the add and the commit, and runs neither. codegraph's
 database is local, built in each checkout and never committed.
 
-The refresh that follows covers each declared repo on disk that is not
-read-only, not only the ones this change named. A read-only repo — declared
+The refresh that follows covers the brain and the repos this change names. It
+runs before the archive commit is printed, and a brain graph it changed is in
+that commit, with `.multivac/ecosystem.json`; for a named repo whose graph
+changed, close prints the commit to make there (MV-134). A read-only repo — declared
 `managed: false`, or a shallow clone — is never scaffolded, built, refreshed,
 projected into or gated, and `plan` and `apply` refuse a change that names one
 (MV-125).
@@ -190,18 +202,21 @@ When a `grapher:` is declared and its binary is found — on PATH or in that
 repo's `node_modules/.bin` (MV-123) — `doors` wires the
 refresh into your harness's **post-edit hook**, so the map is current for the
 next question you ask it. It is backgrounded and silent: it never delays an
-edit, never fails one, and skips when a refresh is already running. `change
-close` runs the same refresh as the **safety net**, for edits made outside a
-harness — taking the same lock, but waiting on it rather than skipping, since
-close is the last chance to pick those edits up.
+edit, never fails one, and skips when a refresh is already running. It refreshes
+the repository of the file you edited, when that repository holds a graph, so an
+edit in a sibling's worktree refreshes that sibling (MV-140). `change land`
+refreshes and commits the graph on the branch, and `change close` runs the
+refresh as the **safety net** for edits made outside a harness, taking the same
+lock but waiting on it rather than skipping.
 
 A `grapher:` multivac has not verified is reported as **unverified** and
 nothing is run: it will not derive an artifact path or a refresh command from
 a name. Declare the contract under `graphers:` in `.multivac/config.yml`
 (`artifact` and `refresh`, optionally `create`/`binary`/`install`) and the tool
-works with no merge request against multivac. **Git hooks never refresh** — the shims run `verify` only. Nothing is
-staged or committed either way: graph output lands only in dedicated chore
-commits, if your project commits it at all.
+works with no merge request against multivac. **Git hooks never refresh** — the shims run `verify` only. The
+refresh module itself runs no git: `land` makes the graph commit and `close`
+prints it. Asking the graph before you read the tree is yours: no committed
+file records a query.
 
 ## The SDD flow — the lifecycle instructs, YOU run, the gate checks
 
@@ -239,15 +254,16 @@ Run those anyway. "Ungateable" means the check is missing, not the obligation.
 and **amended** as the product moves, version bumped, Sync Impact Report
 prepended. Create it if it is absent — and "absent" includes the file spec-kit
 scaffolds for you: `specify init` writes the template unfilled, so a repo can
-carry a `constitution.md` full of `[ALL_CAPS]` placeholders and have no
-constitution at all. Both doors say so at session start — `init` writes the
+carry a `constitution.md` full of the template's own tokens, such as
+`[PROJECT_NAME]`, and have no constitution at all. Write it with the human's
+principles, never your own. Where it and an active row disagree, the row wins. Both doors say so at session start — `init` writes the
 instruction into the door it scaffolds, `doors` into the brain door — and `doctor`
 reports the document missing, still-a-template, present, or **stale** — older
 than the law's newest row, which is the law moving while the constitution did
 not. Its CONTENT is never judged (MV-57) — no machine can decide whether a
 principle still fits — but `change plan` REFUSES while the document is absent,
-unreadable, empty, or still carrying the template's `[ALL_CAPS]` tokens
-(MV-76). Staleness stays a report: the law moving is not proof the principles
+unreadable, empty, or still the template: byte-identical to the one spec-kit
+recorded, or carrying one of its tokens outside HTML comments (MV-76, MV-135). Staleness stays a report: the law moving is not proof the principles
 must.
 OpenSpec has no such document, and multivac says that rather than inventing one.
 

@@ -47,6 +47,8 @@ export interface ChangeFile {
   landing_order: string[][];
   invariants: { touches: string[]; adds: string[]; retires: string[] };
   claims: ChangeClaim[];
+  /** MV-137. The lifecycle points run with the SDD skipped (`--no-sdd`), in order. */
+  sdd_skipped?: string[];
 }
 
 export interface ParsedChange {
@@ -72,7 +74,7 @@ function strList(v: unknown, key: string, errs: string[]): string[] {
 /** Validate a parsed frontmatter object into a ChangeFile, or throw listing every problem. */
 /** Every frontmatter key the lifecycle carries through a rewrite. */
 const KNOWN_KEYS = [
-  'slug', 'status', 'horizon', 'issue', 'repos', 'landing_order', 'invariants', 'claims',
+  'slug', 'status', 'horizon', 'issue', 'repos', 'landing_order', 'invariants', 'claims', 'sdd_skipped',
 ];
 
 export function normalizeChange(raw: unknown, label: string): ChangeFile {
@@ -98,6 +100,12 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
   if (o.issue !== undefined && o.issue !== null) {
     if (typeof o.issue === 'number' && Number.isInteger(o.issue) && o.issue > 0) issue = o.issue;
     else errs.push('"issue" must be a positive whole number — the tracker issue number');
+  }
+
+  let sddSkipped: string[] | undefined;
+  if (o.sdd_skipped !== undefined && o.sdd_skipped !== null) {
+    if (Array.isArray(o.sdd_skipped) && o.sdd_skipped.every((p) => typeof p === 'string')) sddSkipped = o.sdd_skipped as string[];
+    else errs.push('"sdd_skipped" must be a list of lifecycle points');
   }
 
   let horizon: Horizon | undefined;
@@ -205,6 +213,7 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
     landing_order: lo,
     invariants,
     claims,
+    ...(sddSkipped?.length ? { sdd_skipped: sddSkipped } : {}),
   };
 }
 
@@ -271,6 +280,7 @@ export function serializeChange(change: ChangeFile, body: string): string {
       landing_order: change.landing_order,
       invariants: change.invariants,
       claims: change.claims,
+      ...(change.sdd_skipped?.length ? { sdd_skipped: change.sdd_skipped } : {}),
     },
     // lineWidth: 0 — never fold prose onto continuation lines: the writer's
     // statement comes back the way it was written. Quoting is the library's job.

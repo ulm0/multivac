@@ -13,22 +13,28 @@ import { join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
 import {
   CHANGES_DIR,
+  CONFIG_PATH,
   DEFAULT_CHANNEL,
+  ECOSYSTEM_PATH,
   LAW_PATH,
   RITUAL_PATH,
   loadConfig,
 } from '../lib/config.js';
-import { lastFetchAge, lsFiles, revParse, run as gitRun } from '../lib/git.js';
+import { ignoredPaths, lastFetchAge, lsFiles, revParse, run as gitRun } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { ritualChecklist } from '../lib/ritual.js';
+import { writeEcosystem } from '../doors/ecosystem.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
-import type { GatePoint, LifecyclePoint } from '../adapters/registry.js';
+import { grapherSpec, type GatePoint, type LifecyclePoint } from '../adapters/registry.js';
 import { sddGate, sddInstructions } from '../adapters/sdd.js';
 import { graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
 import { equip, missingTools } from '../adapters/equip.js';
+import { projectDocLines } from '../adapters/project-doc.js';
+import { cloneFix, cloneState } from '../lib/repo-state.js';
+import { doCarry, planCarry, type CarryPlan } from '../change/carry.js';
 import { graphTrackedGate } from '../adapters/tracked.js';
-import { readOnly } from '../adapters/detect.js';
+import { adapterFor, adaptersByRoot, readOnly } from '../adapters/detect.js';
 import { evaluate, fmtAge, stalenessLines } from './verify.js';
 import {
   ChangeError,
@@ -68,6 +74,15 @@ export async function commitBookkeeping(
   paths: string[],
   message: string,
 ): Promise<void> {
+  // MV-139: a brain bookkeeping commit carries the governance graph its own
+  // edit changed, so the committed graph moves with the declarations.
+  if (paths.some((p) => p.startsWith('.multivac/')) && existsSync(join(brain, CONFIG_PATH))) {
+    const cfg = await loadConfig(brain).catch(() => null);
+    if (cfg) {
+      await writeEcosystem(brain, cfg);
+      paths = [...paths, ECOSYSTEM_PATH];
+    }
+  }
   const dirty = await gitRun(brain, ['status', '--porcelain', '--', ...paths]).catch(() => '');
   if (!dirty.trim()) return;
   try {
@@ -118,8 +133,10 @@ async function gateSdd(
   // The other half of the same idea (MV-87): a declared repo with no graph is
   // one the agent cannot navigate, and the graph is what it reads in order to
   // do the work. Skipped where the probe finds the grapher installed (MV-124),
-  // so this is one probe per scope on every run after the first.
-  await equip(brain, cfg, noSdd);
+  // so this is one probe per scope on every run after the first. The graph
+  // half reaches only the repos the change names (MV-134).
+  const named = await loadChange(brain, slug).then((p) => Object.keys(p.change.repos), () => []);
+  await equip(brain, cfg, noSdd, named);
   const { ok, lines } = await sddGate(brain, cfg, gate, slug, noSdd);
   for (const l of lines) (ok ? say : warn)(l);
   return ok;
@@ -147,6 +164,26 @@ async function refuseReadOnly(brain: string, cfg: Config, slug: string, keys: st
   }
   if (refused.length === 0) return true;
   warn(`${slug} names ${refused.length === 1 ? 'a repo' : 'repos'} multivac may not write in (MV-125) — nothing was cloned, branched or bumped:`);
+  for (const l of refused) warn(l);
+  return false;
+}
+
+/**
+ * MV-132. A named repo whose directory is there but is not the declared clone
+ * — not a repository, inside another one, with no commit, or with no remote
+ * matching its url — is refused before anything moves. Cloning over it is
+ * impossible and branching in it would branch the wrong repository.
+ */
+async function refuseUncloned(brain: string, cfg: Config, slug: string, keys: string[]): Promise<boolean> {
+  const refused: string[] = [];
+  for (const key of keys) {
+    const entry = repoEntryOf(cfg, key);
+    const st = await cloneState(entry, resolve(brain, entry.path));
+    if (st.state === 'cloned' || st.state === 'absent') continue;
+    refused.push(`${key}: ${cloneFix(key, entry, st)}`);
+  }
+  if (refused.length === 0) return true;
+  warn(`${slug} names ${refused.length === 1 ? 'a repo' : 'repos'} present on disk but not the declared clone (MV-132) — nothing was cloned, branched or bumped:`);
   for (const l of refused) warn(l);
   return false;
 }
@@ -353,6 +390,63 @@ function repoAbs(brain: string, cfg: Config, key: string): string | null {
   return entry ? resolve(brain, entry.path) : null;
 }
 
+/** The shared graph artifact of `key`'s grapher, or undefined where there is none to commit. */
+function sharedGraph(cfg: Config, key: string): string | undefined {
+  const name = adapterFor(cfg, key, 'grapher');
+  const spec = name ? grapherSpec(name, cfg.graphers) : null;
+  return spec?.artifactKind === 'shared' ? spec.artifacts[0] : undefined;
+}
+
+/**
+ * MV-134. The shared graph lands with the change. It is refreshed in the
+ * checkout that holds the change's branch — its worktree, or the repo branched
+ * in place — and committed there by pathspec, through the hooks, before the
+ * push line, so the merge carries a graph of the merged tree. Closing used to
+ * refresh after the merge and leave the artifact modified, and every close
+ * from 052 to 058 in this repository needed a graph commit made by hand.
+ * The refresh module still touches no git (MV-50): the commit is made here.
+ * Returns false, naming why, when the graph cannot be committed there.
+ */
+async function commitGraph(brain: string, cfg: Config, key: string, slug: string): Promise<boolean> {
+  const art = sharedGraph(cfg, key);
+  const repo = repoAbs(brain, cfg, key);
+  if (!art || !repo || !existsSync(repo) || (await readOnly(cfg, key, repo))) return true;
+  const wt = worktreePath(brain, slug, key);
+  const dir = existsSync(join(wt, '.git')) ? wt : repo;
+  const branch = await currentBranch(dir);
+  if (branch === null) {
+    warn(`${key}: the graph cannot land with ${slug} — ${dir} is on a detached HEAD; \`git -C ${dir} switch ${slug}\`, then re-run land`);
+    return false;
+  }
+  if (branch !== slug) return true; // the change's branch is not checked out here
+  await refreshGraph(adapterFor(cfg, key, 'grapher')!, dir, key, cfg.graphers);
+  if (!existsSync(join(dir, art))) return true; // not built: the refresh said why
+  if ((await ignoredPaths(dir, [art])).length > 0) {
+    warn(
+      `${key}: the graph cannot land with ${slug} — ${art} is ignored in ${dir}; ` +
+        `\`git -C ${dir} check-ignore -v ${art}\` names the rule: remove it, then re-run land`,
+    );
+    return false;
+  }
+  // A brain checkout carries its governance graph on the branch too (MV-139).
+  const own = existsSync(join(dir, CONFIG_PATH)) ? await loadConfig(dir).catch(() => null) : null;
+  if (own) await writeEcosystem(dir, own);
+  await commitBookkeeping(dir, own ? [art, ECOSYSTEM_PATH] : [art], `graph: ${slug} — refreshed on the change branch`);
+  return true;
+}
+
+/**
+ * MV-137. A skipped SDD is recorded in the change, not left in a terminal: the
+ * point is appended to `sdd_skipped` when `--no-sdd` skips a declared SDD. The
+ * caller saves it with the commit it already makes. True when it recorded.
+ */
+function recordSkip(cfg: Config, change: ParsedChange['change'], at: string, noSdd: boolean): boolean {
+  if (!noSdd || !cfg.sddAuto || adaptersByRoot(cfg, 'sdd').size === 0) return false;
+  const list = change.sdd_skipped ?? [];
+  if (!list.includes(at)) change.sdd_skipped = [...list, at];
+  return true;
+}
+
 /** Paths git lists (tab-indented) in a "would be overwritten by checkout" abort. */
 const blockedPaths = (message: string): string[] =>
   [...message.matchAll(/^\t(.+?)\s*$/gm)].map((m) => m[1]);
@@ -475,6 +569,14 @@ async function removeWorktrees(
     if (!existsSync(wt)) continue;
     const repo = repoAbs(brain, cfg, key);
     if (!repo) continue;
+    // MV-134: the branch carries the committed graph, so a graph the post-edit
+    // hook refreshed afterwards is derived output, not work. Restored only
+    // when it is the one thing left: anything else keeps the worktree.
+    const art = sharedGraph(cfg, key);
+    const dirty = (await gitRun(wt, ['status', '--porcelain']).catch(() => '')).split('\n').filter(Boolean);
+    if (art && dirty.length > 0 && dirty.every((l) => l.slice(3) === art)) {
+      await gitRun(wt, ['checkout', '--', art]).catch(() => {});
+    }
     try {
       await gitRun(repo, ['worktree', 'remove', wt]);
       say(`${key}: worktree removed (${wt})`);
@@ -673,8 +775,10 @@ async function cmdNew(
   say(`  3. claims: [{ id: ${reserved?.id ?? '<ID>'}, statement: "..." }]  # what close verifies`);
   // The first moment the tool's steps are printed is the first moment they
   // have to be runnable: scaffold before printing, so the lines below name
-  // chat commands that exist.
-  await equip(brain, cfg, noSdd);
+  // chat commands that exist. A new change names no repo yet, so the graph
+  // work stays in the brain (MV-134).
+  await equip(brain, cfg, noSdd, []);
+  if (cfg.sddAuto && !noSdd) for (const l of await projectDocLines(brain, cfg)) say(l);
   runSdd(cfg, 'new', slug, noSdd);
   return 0;
 }
@@ -687,8 +791,13 @@ async function cmdPlan(
 ): Promise<number> {
   // The propose-equivalent must have LANDED before there is anything to plan.
   if (!(await gateSdd(brain, cfg, 'plan', slug, noSdd))) return 1;
-  const { change } = await loadChange(brain, slug);
+  const planned = await loadChange(brain, slug);
+  const { change } = planned;
   assertStarted(change);
+  if (recordSkip(cfg, change, 'plan', noSdd)) {
+    await saveChange(brain, planned);
+    await commitBookkeeping(brain, [changeRel(slug)], `change plan: ${slug} — SDD skipped`);
+  }
   const keys = Object.keys(change.repos);
   if (keys.length === 0) {
     warn(`${changeRel(slug)} declares no repos — add repos: { <key>: { status: planned } }`);
@@ -696,6 +805,7 @@ async function cmdPlan(
   }
   // Before the clone loop: a read-only repo is never cloned on a change's behalf.
   if (!(await refuseReadOnly(brain, cfg, slug, keys))) return 1;
+  if (!(await refuseUncloned(brain, cfg, slug, keys))) return 1;
   let rc = 0;
   for (const key of keys) {
     let entry: Config['repos'][string];
@@ -715,7 +825,7 @@ async function cmdPlan(
     }
   }
   // MV-129: the gate above equipped what was on disk; a repo just cloned was not.
-  await equip(brain, cfg, noSdd);
+  await equip(brain, cfg, noSdd, keys);
   say('landing order:');
   landingPlan(change).forEach((s, i) => say(`  stage ${i + 1}: ${s.repos.join(', ')}`));
   const states = await invariantStates(brain);
@@ -779,6 +889,24 @@ async function cmdApply(
   for (const key of keys) entries.set(key, repoEntryOf(cfg, key));
   // Before the status bump, so a refused apply leaves the change where it was.
   if (!(await refuseReadOnly(brain, cfg, slug, keys))) return 1;
+  if (!(await refuseUncloned(brain, cfg, slug, keys))) return 1;
+  // MV-133: plan what each repo's checkout carries onto the change branch, and
+  // refuse what cannot be carried, before the status bump writes anything.
+  const carries = new Map<string, CarryPlan>();
+  const carryRefusals: string[] = [];
+  for (const key of keys) {
+    const entry = repoEntryOf(cfg, key);
+    const abs = resolve(brain, entry.path);
+    if (!existsSync(abs)) continue;
+    const plan = await planCarry(abs, cfg, key, slug);
+    carries.set(key, plan);
+    carryRefusals.push(...plan.refusals);
+  }
+  if (carryRefusals.length > 0) {
+    warn(`${slug}: SDD files that cannot be carried onto the change branch (MV-133) — nothing was branched or bumped:`);
+    for (const r of carryRefusals) warn(r);
+    return 1;
+  }
   // The status bump is committed BEFORE any branch is made, so the branch
   // base — the tip of the current branch — already carries the declaration,
   // the reserved row and the post-bump status: every worktree inherits the
@@ -789,6 +917,7 @@ async function cmdApply(
   for (const key of keys) {
     parsed.change.repos[key].status = bump(parsed.change.repos[key].status, 'branched');
   }
+  recordSkip(cfg, parsed.change, 'apply', noSdd);
   await saveChange(brain, parsed);
   await commitBookkeeping(
     brain,
@@ -803,11 +932,18 @@ async function cmdApply(
       if (entry.url) await clone(entry.url, abs, key);
       else await greenfield(abs, key, slug, cfg);
     }
-    workspaces.push(`${key}: ${await ensureWorkspace(brain, abs, slug, key)}`);
+    const wt = await ensureWorkspace(brain, abs, slug, key);
+    workspaces.push(`${key}: ${wt}`);
+    const plan = carries.get(key);
+    const sddName = adapterFor(cfg, key, 'sdd');
+    if (plan && sddName) {
+      const n = await doCarry(abs, wt, slug, plan, sddName);
+      if (n > 0) say(`${key}: carried ${n} ${sddName} file${n === 1 ? '' : 's'} onto ${slug} and committed them there`);
+    }
   }
   // MV-129: the gate above equipped what was on disk; a repo just cloned or
   // created was not.
-  await equip(brain, cfg, noSdd);
+  await equip(brain, cfg, noSdd, keys);
   runSdd(cfg, 'apply', slug, noSdd);
   say(`work here — one checkout per repo, nobody else's tree moves:`);
   for (const w of workspaces) say(`  ${w}`);
@@ -936,6 +1072,7 @@ async function cmdLand(
     );
   }
   const plan = landingPlan(change);
+  let rc = 0;
   for (const [i, s] of plan.entries()) {
     say(`stage ${i + 1} [${s.state}] ${s.repos.map((k) => `${k}:${change.repos[k].status}`).join(' ')}`);
     if (s.state === 'ready') {
@@ -944,6 +1081,10 @@ async function cmdLand(
         const ev = existsSync(abs) ? await mergedLocally(abs, slug) : null;
         if (ev?.merged) {
           say(`  ${k}: ${slug} is already merged into ${ev.ref} — record it: multivac change land ${slug} --landed ${k}`);
+          continue;
+        }
+        if (!(await commitGraph(brain, cfg, k, slug))) {
+          rc = 1;
           continue;
         }
         // A repo with no origin lands locally; telling it to push is noise.
@@ -966,7 +1107,7 @@ async function cmdLand(
     runSdd(cfg, 'land', slug, noSdd);
     say(`all stages landed — run \`multivac change close ${slug}\``);
   }
-  return 0;
+  return rc;
 }
 
 async function cmdClose(
@@ -1027,10 +1168,15 @@ async function cmdClose(
   }
   // The archive-equivalent has to have HAPPENED — not been printed at.
   if (!(await gateSdd(brain, cfg, 'close', slug, noSdd))) return 1;
+  const parsed = await loadChange(brain, slug);
+  assertStarted(parsed.change);
+  const closing = Object.keys(parsed.change.repos);
   // MV-90, and deliberately BELOW the --abandon path above: an abandoned change
   // made no claims and landed nothing, so demanding an artifact from it would
   // punish dropping work — the one moment an operator is already giving up.
-  const graph = await graphGate(brain, cfg, slug, noGrapher);
+  // Over the brain and the repos this change names (MV-134): a repo it never
+  // touched is not this close's to refuse over.
+  const graph = await graphGate(brain, cfg, slug, noGrapher, closing);
   for (const l of graph.lines) (graph.ok ? say : warn)(l);
   if (!graph.ok) return 1;
   // MV-103: existence was half the question. A graph that lives in one working
@@ -1038,16 +1184,13 @@ async function cmdClose(
   // where the door still tells every agent to ask it, so a shared one must be
   // in HEAD (MV-124). Second, because a root whose grapher is not installed is
   // the refusal above and should not be reported twice.
-  const tracked = await graphTrackedGate(brain, cfg, slug, noGrapher);
+  const tracked = await graphTrackedGate(brain, cfg, slug, noGrapher, closing);
   for (const l of tracked.lines) (tracked.ok ? say : warn)(l);
   if (!tracked.ok) return 1;
-  const parsed = await loadChange(brain, slug);
-  assertStarted(parsed.change);
   // A change declaring nothing lands nothing, and `unlanded` over an empty map
   // is empty — so close used to sail past the very check that stops `plan` and
   // `apply`, archiving a change that never named a repo and releasing its
   // reservation. The gate is on the declaration, not on its leftovers.
-  const closing = Object.keys(parsed.change.repos);
   if (closing.length === 0) {
     warn(`${changeRel(slug)} declares no repos — declare them, then re-run close`);
     warn('  repos: { <key>: { status: landed } }   # every repo this change touched');
@@ -1101,6 +1244,10 @@ async function cmdClose(
   // just verified green.
   const anchored = await anchoredClaimIds(brain);
   runSdd(cfg, 'close', slug, noSdd);
+  recordSkip(cfg, parsed.change, 'close', noSdd);
+  if (parsed.change.sdd_skipped?.length) {
+    say(`sdd: skipped for this change at ${parsed.change.sdd_skipped.join(', ')} (--no-sdd) — recorded in its archive`);
+  }
   const dest = await archiveChange(brain, parsed);
   say(`archived -> ${relative(brain, dest)}`);
   // A reservation the change never used goes back to the pool; the worktrees
@@ -1116,7 +1263,23 @@ async function cmdClose(
   // repointLawLinks touches it on EVERY close that has a row to repoint — not
   // only when a reservation was released. Omitting it left the law dirty in
   // exactly the normal case, and the next `change new` refuses over that.
-  const paths = [relative(brain, dest), changeRel(slug), LAW_PATH];
+  // MV-134: the refresh runs BEFORE the commit is printed, over the brain and
+  // the repos this change names, and what it changes goes into a printed
+  // commit. It used to run after, over every declared repo, and left the graph
+  // modified for a hand-made commit nobody was told about.
+  const graphs: string[] = [];
+  const siblings: string[] = [];
+  for (const s of await graphScopes(brain, cfg, closing)) {
+    if (!s.name || s.readOnly) continue;
+    await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
+    const art = sharedGraph(cfg, s.scope);
+    if (!art || !(await gitRun(s.dir, ['status', '--porcelain', '--', art]).catch(() => '')).trim()) continue;
+    if (s.dir === brain) graphs.push(art);
+    else siblings.push(`${s.scope}: graph refreshed — commit it the way that repo lands work: git -C ${s.dir} add -- ${art} && git -C ${s.dir} commit -m "graph: refresh after ${slug}" -- ${art}`);
+  }
+  // MV-139: the governance graph after the archive, in the same commit.
+  await writeEcosystem(brain, cfg);
+  const paths = [relative(brain, dest), changeRel(slug), LAW_PATH, ...graphs, ECOSYSTEM_PATH];
   const list = paths.join(' ');
   const commit = `git -C ${brain} add -- ${list} && git commit -m "Archive the ${slug} change"`;
   // Where that commit lands depends on where the brain is standing. On a
@@ -1139,19 +1302,8 @@ async function cmdClose(
   } else {
     say(`archived — commit this: ${commit} (no origin remote — the direct commit is the landing)`);
   }
-  await removeWorktrees(brain, cfg, Object.keys(parsed.change.repos), slug);
-  // The graph refreshes itself in every declared root on disk that multivac
-  // may write in (MV-125) — not only the repos this change happened to name
-  // (MV-90 amending MV-87). This list used
-  // to be built here by hand from `parsed.change.repos`, a second enumeration
-  // of what `graphScopes` already returns, and the two disagreed by design: a
-  // repo moved by another change, a merge or a sync was left describing a tree
-  // that was gone, for a reader whose whole instruction is to trust the graph
-  // instead of reading the tree. Never staged, never committed; graph output
-  // lands only in dedicated chore commits.
-  for (const s of await graphScopes(brain, cfg)) {
-    if (s.name && !s.readOnly) await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
-  }
+  for (const l of siblings) say(l);
+  await removeWorktrees(brain, cfg, closing, slug);
   // The rest of the ceremony is the team's: printed at the moment it matters,
   // never verified, never gating. Nothing written = nothing printed.
   const ritual = await ritualChecklist(brain);

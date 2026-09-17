@@ -11,10 +11,21 @@ the multivac skill; the skill asks the one question that matters:
 Two flows, one destination: an anchored law, doors in every repo, every
 subsequent decision entering as a `change`.
 
-## Existing ecosystem: seed → questions → interview → law
+## Existing ecosystem: sync → seed → questions → interview → law
 
 The seeder reads and asks; a human answers; the agent drafts; the human
 enacts. Never skip the human.
+
+### 0. Sync
+
+```txt
+$ mvac repos sync
+```
+
+Declare `repos:` before the brain's first commit, then sync. It clones every
+declared repo not on disk and installs each one's declared SDD and grapher, so
+nothing is drafted over a repo nobody can read or ask a graph about.
+`mvac repos check` names what is still missing.
 
 ### 1. Seed
 
@@ -53,8 +64,17 @@ Nothing here is law: the agent drafts `proposed` rows from it; a human enacts.
 - sql/migrations/001_accounts.sql
 ```
 
+Each repo also gets a `### setup` section:
+
+```markdown
+### setup
+
+- graph graphify: built
+- project document .specify/memory/constitution.md: template (placeholders remain: [PROJECT_NAME]) → run /speckit.constitution in your agent …
+```
+
 A declared repo missing locally is reported unevaluated; run
-`mvac repos sync` first if you need full coverage.
+`mvac repos sync` first.
 
 ### 2. Read by category, not by repo
 
@@ -117,7 +137,15 @@ Whatever the session doesn't reach stays `proposed`: visible, counted,
 non-blocking. Never bulk-accept to finish faster — an enacted lie is worse
 than an unvalidated truth.
 
-### 7. Project the doors
+### 7. Write each repo's project document
+
+After the first batch, write the project document of every repo whose SDD
+declares one, such as spec-kit's constitution, in a session opened in that
+repo. It comes from the human's answers and cites the rows it restates.
+Where it and an active row disagree, the row wins. `change plan` refuses while
+it is missing, empty or still the template.
+
+### 8. Project the doors
 
 ```txt
 $ mvac doors

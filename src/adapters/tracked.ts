@@ -46,6 +46,7 @@ export async function graphTrackedGate(
   cfg: Config,
   slug: string,
   noGrapher: boolean,
+  only?: string[],
 ): Promise<GateResult> {
   if (adaptersByRoot(cfg, 'grapher').size === 0) return { ok: true, lines: [] };
   // The skip switches are the graph gate's, and they cover this half too: one
@@ -55,7 +56,7 @@ export async function graphTrackedGate(
 
   const uncommitted: string[] = [];
   const ignored: string[] = [];
-  for (const s of await graphScopes(brain, cfg)) {
+  for (const s of await graphScopes(brain, cfg, only)) {
     const spec = s.name === undefined ? null : grapherSpec(s.name, cfg.graphers);
     if (spec === null) continue; // unverified or none: out of scope, as MV-90 has it
     if (s.readOnly) continue; // not multivac's to commit in (MV-125)

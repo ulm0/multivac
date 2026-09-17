@@ -31,6 +31,8 @@ export const CHANGES_DIR = '.multivac/changes';
 export const RITUAL_PATH = '.multivac/ritual.md';
 /** MV-96: derived, rewritten whole by `doors`. Never authored. */
 export const FLOW_PATH = '.multivac/flow.md';
+/** MV-139: the ecosystem's governance graph, rendered from the brain's declarations. */
+export const ECOSYSTEM_PATH = '.multivac/ecosystem.json';
 /**
  * Every tracked file `init` writes — the check-ignore targets. A repo-level
  * ignore (saleor's `.gitignore` starts with `.*`) can swallow the whole brain

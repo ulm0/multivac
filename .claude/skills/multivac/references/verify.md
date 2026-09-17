@@ -90,6 +90,22 @@ across every repo instead, on purpose, when that is the question.
 Every run prints a `read` line per repo naming the ref and its sha. Quote that
 line when a result is surprising — it usually explains it.
 
+## The lines that are not claims
+
+Three lines sit under the claims, and each one answers a question about the
+commit rather than about the law:
+
+- **`enact`**: whether this commit makes a row `active` beside the code it
+  anchors (MV-81). A refusal here means the enactment goes in its own commit.
+- **`code`**: where the SDD is declared, whether the code being committed or
+  merged lands on the branch of an open change that declares this repo
+  (MV-137). A refusal names the branch; the fix is to start the change and
+  commit in its worktree, never to skip the hook. In CI the same line judges a
+  range: `verify --strict --range <base>..<head> --branch <name>`.
+- **`ecosystem`**: `.multivac/ecosystem.json` no longer matches the brain's
+  declarations (MV-139). It never gates; `multivac doors` renders it, and every
+  lifecycle commit in the brain carries it.
+
 ## Reporting a run to a human
 
 Give the verdict, not the transcript. The exit code, the count, and then only

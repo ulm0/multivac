@@ -17,6 +17,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
+import { reposCommand } from '../../src/commands/repos.js';
 import { loadConfig } from '../../src/lib/config.js';
 import { renderFlow } from '../../src/doors/flow.js';
 import { sddInstructions } from '../../src/adapters/sdd.js';
@@ -318,12 +319,12 @@ test("the brain's own grapher wins over the ecosystem's everywhere the brain is 
   const cfg = await loadConfig(brain);
   const { renderBrainDoor } = await import('../../src/doors/brain.js');
   const door = renderBrainDoor(cfg, 1);
-  assert.match(door, /kept fresh for you by `codegraph` at `\.codegraph\/codegraph\.db` — refreshed after your edits; it is built in each checkout, so never commit it\./);
+  assert.match(door, /kept fresh for you by `codegraph` at `\.codegraph\/codegraph\.db` — refreshed at `change land` and `change close`; it is built in each checkout, so never commit it\./);
   assert.equal(door.includes('graphify'), false);
 
   const page = renderFlow(cfg);
-  assert.match(page, /has no `\.codegraph\/codegraph\.db`, and refreshed at `change close`, in brain$/m);
-  assert.match(page, /has no `graphify-out\/graph\.json`, and refreshed at `change close`, in api$/m);
+  assert.match(page, /no `\.codegraph\/codegraph\.db`, refreshed .*at `change close`, in brain$/m);
+  assert.match(page, /no `graphify-out\/graph\.json`, refreshed .*at `change close`, in api$/m);
 
   const { doctorReport } = await import('../../src/commands/doctor.js');
   const report = (await doctorReport(brain)).lines.join('\n');
@@ -332,6 +333,8 @@ test("the brain's own grapher wins over the ecosystem's everywhere the brain is 
   assert.doesNotMatch(report, /graphify @ brain/);
 
   await capture(() => change.run(['new', 'own-graph', 'Own graph'], ctx));
+  // The change names no repo, so `repos sync` builds api (MV-134).
+  await capture(() => reposCommand.run(['sync'], ctx));
   const c = await capture(() => change.run(['close', 'own-graph'], ctx));
   assert.ok(existsSync(join(brain, '.codegraph/codegraph.db')), 'the brain was built with its own grapher');
   assert.equal(existsSync(join(brain, 'graphify-out')), false, 'and not with the ecosystem one');

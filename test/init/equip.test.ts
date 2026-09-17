@@ -36,7 +36,7 @@ async function run(argv: string[], cwd: string, path = vendors.path): Promise<{ 
 
 const runsOf = (tool: string): number =>
   existsSync(vendors.runs)
-    ? readFileSync(vendors.runs, 'utf8').split('\n').filter((l) => l.startsWith(`${tool} `)).length
+    ? readFileSync(vendors.runs, 'utf8').split('\n').filter((l) => l.startsWith(`${tool} `) && !l.startsWith(`${tool} install`)).length
     : 0;
 
 test('declared at init, installed at init: spec-kit scaffolded and the graph built — MV-128', async () => {
@@ -59,7 +59,7 @@ test('declared at init, installed at init: spec-kit scaffolded and the graph bui
   assert.equal(runsOf('graphify'), graphify + 1, 'a built graph is not rebuilt');
 });
 
-test('sdd_auto: false and a tool with no recorded init run nothing — MV-128', async () => {
+test('sdd_auto: false runs nothing, and opsx is installed like speckit — MV-128, MV-130', async () => {
   const off = tmp();
   gitInit(off);
   mkdirSync(join(off, '.multivac'), { recursive: true });
@@ -69,11 +69,16 @@ test('sdd_auto: false and a tool with no recorded init run nothing — MV-128', 
   assert.equal(runsOf('specify'), before);
   assert.equal(existsSync(join(off, '.specify')), false);
 
+  const missing = tmp();
+  const refused = await run(['--sdd', 'opsx'], missing, bare);
+  assert.equal(refused.code, 1, 'opsx has a measured init now, so its binary is required');
+  assert.match(refused.out, /github\.com\/Fission-AI\/OpenSpec/);
+
   const opsx = tmp();
   gitInit(opsx);
-  const { code, out } = await run(['--sdd', 'opsx'], opsx, bare);
-  assert.equal(code, 0, 'opsx has no recorded init, so nothing runs and nothing is required');
-  assert.match(out, /does not know this tool's init command and will not guess one/);
+  const { code, out } = await run(['--sdd', 'opsx'], opsx);
+  assert.equal(code, 0, out);
+  assert.ok(existsSync(join(opsx, 'openspec/config.yaml')));
 });
 
 test('a tool init would run and cannot find refuses init before anything is written — MV-128', async () => {
@@ -133,7 +138,8 @@ test('before the first build, the ignore lines go in, appended — MV-128', asyn
   const { code, out } = await run(['--grapher', 'graphify'], dir);
   assert.equal(code, 0, out);
   assert.match(out, /graph graphify @ brain: wrote \.graphifyignore \(\+5\) and \.gitignore \(\+2\) before the first build/);
-  assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), 'node_modules/\ngraphify-out/*\n!graphify-out/graph.json\n');
+  // MV-131 adds the vendor's install backup after the build's own lines.
+  assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), 'node_modules/\ngraphify-out/*\n!graphify-out/graph.json\n*.graphify-bak\n');
   assert.match(readFileSync(join(dir, '.graphifyignore'), 'utf8'), /^\.claude\/\n\.multivac\/\n\.specify\/\nspecs\/\nopenspec\/\n$/);
   const zero = out.split('\n').find((l) => /0\. commit what was just written/.test(l)) ?? '';
   assert.match(zero, /\s\.gitignore(\s|$)/);

@@ -311,7 +311,7 @@ test('init carries the sdd project law into the door it writes', async () => {
   await init.run(['--sdd', 'opsx'], { cwd: other });
   assert.match(
     readFileSync(join(other, 'AGENTS.md'), 'utf8'),
-    /this tool has no project-level document/,
+    /project context `openspec\/config\.yaml` `context:`/,
   );
 
   // No sdd, no section — nothing invented for a brain that declared none.
@@ -320,22 +320,36 @@ test('init carries the sdd project law into the door it writes', async () => {
   assert.doesNotMatch(readFileSync(join(bare, 'AGENTS.md'), 'utf8'), /project law/);
 });
 
-test('init closes on the session-zero call to action, its branch already decided', async () => {
-  // Nothing tracked: no ecosystem to read, so the law has to come from a human.
+test('init closes on session zero whole: repos first, sync, both flows with the fitting one marked — MV-136', async () => {
+  // Nothing tracked: the interview is marked, and discovery is still printed —
+  // a new brain for code in other repos is empty too.
   const bare = await capture(() => init.run([], { cwd: tmp() }));
   assert.match(bare.out, /init: done — the brain is scaffolded and empty/);
-  assert.match(bare.out, /1\. load the multivac skill/);
-  assert.match(bare.out, /2\. interview/);
-  assert.doesNotMatch(bare.out, /discovery/);
+  const steps = bare.out.split('\n').filter((l) => l.startsWith('init:   '));
+  assert.match(steps[0], /^init: {3}before step 0, declare every repo this brain governs under `repos:` in \.multivac\/config\.yml — once committed, the config changes only inside a change$/);
+  assert.match(steps[1], /^init: {3}0\. commit what was just written: /);
+  assert.match(steps[2], /^init: {3}1\. load the multivac skill/);
+  assert.match(steps[3], /^init: {3}2\. `multivac repos sync` — clones every declared repo and installs its declared tools$/);
+  assert.match(steps[4], /^init: {3}3\. discovery, for code that exists — `multivac seed` inventories it, then draft proposed claims from it$/);
+  assert.match(steps[5], /^init: {6}interview, for code that does not — .* ← this repo holds none$/);
+  assert.match(steps[6], /^init: {3}4\. a human enacts each row .*then `multivac doors` and `multivac verify`$/);
+  assert.equal(steps.length, 7, 'no project-document step without an SDD that gates one');
 
-  // Tracked source: there is an ecosystem to inventory, so `seed` leads.
+  // Tracked source: discovery is marked. A gating SDD adds the project document.
   const code = tmp();
   gitInit(code);
   writeFileSync(join(code, 'index.ts'), 'export const one = 1;\n');
   execFileSync('git', ['add', 'index.ts'], { cwd: code });
   const seeded = await capture(() => init.run([], { cwd: code }));
-  assert.match(seeded.out, /2\. discovery — `multivac seed`/);
-  assert.doesNotMatch(seeded.out, /interview/);
+  assert.match(seeded.out, /3\. discovery, for code that exists — .* ← this repo holds code$/m);
+  assert.doesNotMatch(seeded.out, /holds none/);
+
+  const withSdd = tmp();
+  mkdirSync(join(withSdd, '.multivac'), { recursive: true });
+  writeFileSync(join(withSdd, '.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nsdd_auto: false\nrepos: {}\n');
+  const gated = await capture(() => init.run([], { cwd: withSdd }));
+  assert.match(gated.out, /^init: {3}4\. write each repo's project document from the human's principles — `multivac repos check` names every one not written$/m);
+  assert.match(gated.out, /^init: {3}5\. a human enacts each row/m);
 });
 
 test('init keeps an existing config.yml untouched', async () => {
@@ -550,4 +564,12 @@ test('init says so when there is no origin to suggest — MV-127', async () => {
   const cfg = readFileSync(join(dir, '.multivac/config.yml'), 'utf8');
   assert.match(cfg, /^# brain_url: {3}# no git remote detected/m);
   assert.equal((await loadConfig(dir)).brainUrl, undefined);
+});
+
+test('init writes the ecosystem graph the door it writes names — MV-141', async () => {
+  const dir = tmp();
+  const out = await capture(() => init.run([], { cwd: dir }));
+  assert.match(out.out, /init: wrote \.multivac\/ecosystem\.json — how repos, rows, anchors and changes relate; generated/);
+  assert.match(readFileSync(join(dir, '.multivac/ecosystem.json'), 'utf8'), /"repo:brain"/);
+  assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /`\.multivac\/ecosystem\.json`/);
 });

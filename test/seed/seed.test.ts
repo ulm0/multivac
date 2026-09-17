@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { initRepo, makeScratchEcosystem } from '../helpers/fixture.js';
 import { seed, REPORT_PATH } from '../../src/commands/seed.js';
 import { classify } from '../../src/seed/inventory.js';
+import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 
 test('classify buckets boundary files, first category wins, rest dropped', () => {
   const buckets = classify([
@@ -277,4 +278,34 @@ test('seed on a pnpm-monorepo-shaped tree reads the build graph and ignores fixt
   assert.ok(!report.includes('fixtures') && !report.includes('examples/blog'));
   // prose prior art is named to the interviewer
   assert.match(report, /prior art, read it first: [^\n]*CONTRIBUTING\.md/);
+});
+
+test('seed reports each repo\'s graph and project document, and names the written ones in question 3 — MV-136', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-seed-setup-'));
+  const brain = join(tmp, 'brain');
+  const api = join(tmp, 'api');
+  const web = join(tmp, 'web');
+  initRepo(api, {
+    '.pre-commit-config.yaml': 'repos: []\n',
+    'docs/adr/0001-x.md': '# ADR\n',
+    '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
+    '.specify/memory/constitution.md': '# API Constitution\n\n### I. Law first\n',
+    'graphify-out/graph.json': '{}\n',
+  });
+  initRepo(web, {
+    'package.json': '{}\n',
+    '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
+    '.specify/memory/constitution.md': '# [PROJECT_NAME] Constitution\n',
+  });
+  initRepo(brain, {
+    '.multivac/config.yml': 'doors: [agents]\nsdd: speckit\ngrapher: graphify\nrepos:\n  api: ../api\n  web: ../web\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  assert.equal(await seed.run([], { cwd: brain }), 0);
+  const report = readFileSync(join(brain, '.multivac/seed-report.md'), 'utf8');
+  const section = (key: string): string => report.slice(report.indexOf(`## ${key} (`), report.indexOf('\n## ', report.indexOf(`## ${key} (`) + 1));
+  assert.match(section('api'), /### setup\n\n- graph graphify: built\n- project document \.specify\/memory\/constitution\.md: written/);
+  assert.match(section('web'), /- graph graphify: missing → `multivac repos sync`/);
+  assert.match(section('web'), /- project document \.specify\/memory\/constitution\.md: template \(placeholders remain: \[PROJECT_NAME\]\) → run \/speckit\.constitution/);
+  assert.match(report, /Written project documents: api:\.specify\/memory\/constitution\.md — where one and an active row disagree, the row wins/);
 });

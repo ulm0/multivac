@@ -22,12 +22,14 @@ import { surfaceFrom, undeclared } from '../lib/args.js';
 import { parseArgs, type ArgsDef } from 'citty';
 import { PROJECTED_PATH, recordBody, selfVersion } from '../lib/version.js';
 import { ConfigError, LAW_PATH, loadConfig,
+  ECOSYSTEM_PATH,
   FLOW_PATH,
 } from '../lib/config.js';
 import { say, warn } from '../lib/out.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderFlow } from '../doors/flow.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
+import { writeEcosystem } from '../doors/ecosystem.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings } from '../doors/settings.js';
 import { installHooks } from '../hooks/install.js';
@@ -160,6 +162,7 @@ async function installHookConfig(
   refresh: string | null,
   env: Record<string, string>,
   notices: string[],
+  artifact?: string,
 ): Promise<void> {
   const settingsFile = join(dir, hookConfig.path);
   try {
@@ -169,6 +172,7 @@ async function installHookConfig(
       refresh: hookConfig.postEdit ? refresh : null,
       matcher: hookConfig.postEdit,
       env,
+      artifact,
     });
     await mkdir(dirname(settingsFile), { recursive: true });
     await writeFile(settingsFile, merged.text);
@@ -245,7 +249,7 @@ async function projectInto(
       }
     }
     if (t.skill) installSkill(dir, t.skill, notices);
-    if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, spec?.env ?? {}, notices);
+    if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, spec?.env ?? {}, notices, spec?.artifacts[0]);
   }
   const hooks = await installHooks(dir, { strictPrePush: config.strictPrePush });
   if (hooks.strategy === 'chained') {
@@ -311,6 +315,13 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
   try {
     await writeFile(flowFile, applyManagedBlock(await readOrNull(flowFile), renderFlow(config), flowFile));
     say(`brain: ${FLOW_PATH} — what your declarations oblige, sorted; generated, binds nothing`);
+  } catch (e) {
+    say(`brain: notice: ${(e as Error).message}`);
+  }
+  // MV-139: the governance graph, beside the page, from the same declarations.
+  try {
+    await writeEcosystem(brainDir, config);
+    say(`brain: ${ECOSYSTEM_PATH} — how repos, rows, anchors and changes relate; generated`);
   } catch (e) {
     say(`brain: notice: ${(e as Error).message}`);
   }
