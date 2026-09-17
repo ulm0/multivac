@@ -295,8 +295,16 @@ The application ladder — one layer that asks, two that do not:
 | layer | mechanism | coverage | strength |
 | --- | --- | --- | --- |
 | 0 | the door instructs: "run `multivac verify` before acting" | any agent that reads `AGENTS.md` | weak — obedience |
-| 1 | **git hooks**: `pre-commit` and `pre-push` run `verify` (default policy: only blocking modes gate) | **universal** — everything that commits | strong |
+| 1 | **git hooks**: `pre-commit`, `pre-push` and `pre-merge-commit` run `verify` (default policy: only blocking modes gate) | **universal** — everything that commits | strong |
 | 2 | harness hooks (session start, post-edit) | per harness, **as data** in `targets.yml` | best UX: catches before the commit |
+
+**A third reader, outside the session, for code (MV-137).** With an SDD
+declared, code lands only through the branch of an open change that declares
+the repo. The git hooks ask it at commit and at merge, and a hook can be
+skipped. So the merge request pipeline asks it again over the whole range,
+`verify --strict --range <base>..<head> --branch <name>`. That reader binds
+only where the forge requires the pipeline and protects the default branch,
+which no file on disk records; `doctor` says so.
 
 Two enforcing layers and no third is the design, not a gap. Both fire inside
 the session, while the agent that caused the drift is still there to fix it;
@@ -317,7 +325,8 @@ replaces the other:
 **The harness is the ceiling; git is the floor.** Where harness hooks exist,
 95% gets caught early and the git hook rarely fires. Where they don't —
 "any coding agent" includes harnesses with no hook API at all — the git hook
-guarantees nothing false lands. Harness-only enforcement would quietly turn
+is the floor every commit passes, and a hook can be skipped, which is why the
+merge request pipeline asks again (MV-137). Harness-only enforcement would quietly turn
 "any agent" into "any agent with hooks".
 
 Layer 2 ships as `targets.yml` data — whoever wants their harness contributes
@@ -913,7 +922,9 @@ brain takes whatever shape the project needs. The reference brain's
 numbered-pages form is form, not mechanism. A `--template` may exist later,
 as data.
 
-**No native graph, ever.** The grapher is a declared adapter, per repo or
+**No native code graph, ever.** multivac renders its OWN declarations as a
+graph, `.multivac/ecosystem.json`: repos, law rows, anchors and changes, never
+a line of code (MV-139). Code graphs stay the grapher's. The grapher is a declared adapter, per repo or
 global — and a *verified* one: the registry states each tool's artifact and
 refresh, and refuses to derive either from a name. That derivation existed,
 and a survey of ~47 graph tools found it described exactly one of them. An
@@ -1153,7 +1164,7 @@ and the session hook must run everywhere.
 | state | behavior |
 | --- | --- |
 | declared and present | adapter active |
-| declared and absent | notice, feature off, **exit 0** |
+| declared and absent | `verify`, `doctor`, `doors`: notice, **exit 0**; `init`, `repos sync`, `change`: refuse with **exit 1** where the tool would run (MV-128, MV-129) |
 | not declared | nothing, not even a notice |
 
 ### Artifact ≠ binary
@@ -1245,10 +1256,12 @@ multivac may write in (not `managed: false`, not a shallow clone, MV-125):
   arbitrary length**, each step bound to a lifecycle point
   (`new`/`plan`/`apply`/`land`/`close`) rather than to a step name, plus
   **`projectSteps`** for a project-level document — spec-kit's constitution,
-  written once and amended as the product moves; OpenSpec has none and the
-  registry says so. Opt-out is explicit — `sdd_auto: false` in
+  written once and amended as the product moves; OpenSpec's `context:` in
+  `openspec/config.yaml` is declared report-only, because the vendor calls it
+  optional. Opt-out is explicit — `sdd_auto: false` in
   `.multivac/config.yml`, or `--no-sdd` on a single change. A
-  declared-but-absent binary degrades as usual: notice, feature off, exit 0.
+  declared-but-absent binary is a notice where multivac only reads, and a
+  refusal naming the install where a command would run it (MV-128, MV-129).
 - **The steps are gated on what the tool really produces** (owner decision,
   2026-08-15). Printing an instruction nobody checks is the
   discipline-that-nothing-verifies this tool exists to end, so every step

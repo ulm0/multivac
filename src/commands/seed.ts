@@ -10,6 +10,10 @@ import { surfaceFrom, undeclared } from '../lib/args.js';
 import { parseArgs, type ArgsDef } from 'citty';
 import { loadConfig } from '../lib/config.js';
 import { lsFiles } from '../lib/git.js';
+import { adapterFor, readOnly } from '../adapters/detect.js';
+import { grapherSpec, sddSpec } from '../adapters/registry.js';
+import { initState } from '../lib/init-state.js';
+import { projectDocVerdict } from '../lib/repo-state.js';
 import { say, warn } from '../lib/out.js';
 import { classify } from '../seed/inventory.js';
 
@@ -43,7 +47,7 @@ function deployStacks(deploy: string[], terraform: string[], docker: string[]): 
  * answer them; guessed answers become wrong law. They are the interview's
  * input.
  */
-function openQuestions(gates: string[], prose: string[], stacks: string[]): string[] {
+function openQuestions(gates: string[], prose: string[], stacks: string[], docs: string[] = []): string[] {
   const lines = [
     '',
     '## open questions — the interview needs these answered',
@@ -65,7 +69,10 @@ function openQuestions(gates: string[], prose: string[], stacks: string[]): stri
     '3. **Which authority wins?** When two sources disagree, the law table',
     '   must name the winner before the disagreement is found the hard way.' +
       (stacks.length > 1 ? ` This ecosystem deploys via ${stacks.join(', ')} in parallel.` : '') +
-      (gates.length > 0 && prose.length > 0 ? ' Machine gates and prose docs both exist here.' : ''),
+      (gates.length > 0 && prose.length > 0 ? ' Machine gates and prose docs both exist here.' : '') +
+      (docs.length > 0
+        ? ` Written project documents: ${nameSome(docs)} — where one and an active row disagree, the row wins, so ask which rows each one restates.`
+        : ''),
   ];
   return lines;
 }
@@ -100,6 +107,7 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
   const deploy: string[] = [];
   const terraform: string[] = [];
   const docker: string[] = [];
+  const docs: string[] = [];
 
   const keys = Object.keys(cfg.repos);
   if (keys.length === 0) {
@@ -117,6 +125,28 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
     }
     present++;
     lines.push('', `## ${key} (${entry.path})`);
+    // MV-136: whether the repo is set up, before anyone drafts law over it —
+    // read from the vendor's files, never by running the vendor.
+    const setup: string[] = [];
+    const ro = await readOnly(cfg, key, repoDir);
+    const g = adapterFor(cfg, key, 'grapher');
+    const gs = g ? grapherSpec(g, cfg.graphers) : null;
+    if (g && gs) {
+      const st = (await initState(gs, repoDir)).state;
+      setup.push(`- graph ${g}: ${st === 'installed' ? 'built' : `${st}${ro ? ` — read-only (${ro}), not built by multivac` : ' → `multivac repos sync`'}`}`);
+    }
+    const s = adapterFor(cfg, key, 'sdd');
+    const ss = s ? sddSpec(s) : null;
+    for (const p of ss?.projectSteps ?? []) {
+      const { verdict, why } = await projectDocVerdict(repoDir, p);
+      if (verdict === 'written') {
+        if (!p.reportOnly) docs.push(`${keys.length > 1 ? `${key}:` : ''}${p.artifact}`);
+        setup.push(`- project document ${p.artifact}: written`);
+      } else {
+        setup.push(`- project document ${p.artifact}: ${verdict}${why ? ` (${why})` : ''} → ${p.run}${p.reportOnly ? ' (optional)' : ''}`);
+      }
+    }
+    if (setup.length > 0) lines.push('', '### setup', '', ...setup);
     const buckets = classify(files);
     if (buckets.size === 0) {
       lines.push('', 'No boundary files found.');
@@ -137,7 +167,7 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
 
   if (skipped.length > 0) lines.push('', '## skipped', '', ...skipped);
   if (present > 0) {
-    lines.push(...openQuestions(gates, prose, deployStacks(deploy, terraform, docker)));
+    lines.push(...openQuestions(gates, prose, deployStacks(deploy, terraform, docker), docs));
   }
   lines.push(
     '',

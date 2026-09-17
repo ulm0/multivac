@@ -77,7 +77,7 @@ test('doctor: brain==code needs no mount, no pin, no "add repos:" nudge', async 
   assert.equal(exit, 0);
   const repos = lines.find((l) => l.startsWith('repos'));
   const pins = lines.find((l) => l.startsWith('pins'));
-  assert.match(String(repos), /1\/1 present · brain: brain==code \(this repo\)/);
+  assert.match(String(repos), /1\/1 cloned · brain: brain==code \(this repo\)/);
   assert.doesNotMatch(String(repos), /add repos:/);
   assert.match(String(pins), /brain==code — no mount to pin/);
   assert.doesNotMatch(String(pins), /submodule add/);

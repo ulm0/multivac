@@ -164,21 +164,31 @@ export interface SddProjectStep {
   /** When to revisit it, in the tool's own terms. */
   revisit: string;
   /**
-   * ERE matching a placeholder that only the SHIPPED TEMPLATE still carries.
-   * Some tools scaffold the file unfilled, so its mere existence proves
-   * nothing — spec-kit installs `constitution.md` byte-identical to the
-   * template. A document still matching this has not been written yet.
+   * The fill-in tokens only the SHIPPED TEMPLATE carries, literally. Some tools
+   * scaffold the file unfilled, so its mere existence proves nothing —
+   * spec-kit installs `constitution.md` byte-identical to the template. A
+   * document still carrying one outside an HTML comment has not been written.
    *
    * This is the pin MV-65 rejected for a per-step artifact, and it is the
-   * right one here for the reason MV-65 gives: it rejected the pin because
-   * `# Implementation Plan: [FEATURE]` is a line spec-kit never asks anyone to
-   * change, so a finished plan keeps it. These tokens are the opposite —
-   * `/speckit.constitution` explicitly instructs the author to replace
-   * `[PROJECT_NAME]` and every `[PRINCIPLE_N_*]` — so a written document
-   * carries none of them. Unlike whole-file equality it needs no template on
-   * disk, so it cannot fail open when the template is gone.
+   * right one here for the reason MV-65 gives: `/speckit.constitution`
+   * explicitly instructs the author to replace `[PROJECT_NAME]` and every
+   * `[PRINCIPLE_N_*]`, so a written document carries none of them. Unlike
+   * whole-file equality it needs no template on disk, so it cannot fail open
+   * when the template is gone. MV-135: the tool's OWN tokens, not a pattern —
+   * `\[[A-Z0-9_]+\]` refused a written document citing `[1]` or `[API]`.
    */
-  placeholder?: string;
+  placeholders?: string[];
+  /**
+   * MV-135. A JSON file the tool writes beside the document, whose `sha256` is
+   * the template it installed. A document with that sha256 is the template,
+   * whatever tokens it carries. Unreadable, it adds nothing: the tokens still decide.
+   */
+  templateRecord?: string;
+  /**
+   * MV-135. The document is a key of a YAML file (`artifact`), a non-empty
+   * string of at most `limit` bytes, reported and never gated.
+   */
+  reportOnly?: { key: string; limit: number };
 }
 
 /**
@@ -201,8 +211,23 @@ export interface SddProjectStep {
  * says so instead of guessing a command to run on someone else's machine.
  */
 export interface SddScaffold {
-  /** The vendor's own init command, verbatim. Runs in each root that is missing it. */
+  /**
+   * The vendor's own init command, verbatim but for one placeholder: `{key}`
+   * takes the first declared door's integration, `{keys}` all of them joined
+   * by commas. Runs in each root that is missing the tool.
+   */
   run: string;
+  /** MV-130: the vendor's command adding one more integration, `{key}` per further door. */
+  add?: string;
+  /**
+   * MV-130: door -> the vendor's own integration for it, measured on a named
+   * version. `safe` is the vendor's multi-install flag: an integration that is
+   * not safe is never installed beside another, and multivac never forces it.
+   * A door missing here has no verified integration and is named as a gap.
+   */
+  integrations: Record<string, { key: string; safe: boolean }>;
+  /** MV-130: the integration used when no declared door maps to one. */
+  fallback?: string;
   /** What running it actually wrote, and how that was established. */
   note: string;
 }
@@ -270,6 +295,19 @@ export interface AdapterSpec {
   graphignore?: string[];
   /** Grapher only: the file the tool reads `graphignore` from, in the root. */
   graphignoreFile?: string;
+  /**
+   * MV-131. Grapher only: the tool's own project install into a harness.
+   * `run` takes `{key}`; `platforms` maps a door to the vendor's platform and
+   * the file that proves it is installed; `hookFiles` are the files it writes
+   * hook commands into, whose absolute binary path is rewritten to the bare
+   * name; `ignore` lines go into `.gitignore` before the first install.
+   */
+  harness?: {
+    run: string;
+    platforms: Record<string, { key: string; probe: string }>;
+    hookFiles: string[];
+    ignore: string[];
+  };
   /** Grapher only: a shared artifact is committed; a local one is built in each checkout (MV-124). */
   artifactKind?: 'shared' | 'local';
   /**
@@ -436,17 +474,40 @@ const sdd: Record<string, AdapterSpec> = {
     installHint: 'npm i -g @fission-ai/openspec',
     refresh: 'openspec update',
     automation: 'sdd_auto',
-    // NO `scaffold`. `openspec init` is one of the tool's terminal commands,
-    // but what it writes — and which flags a non-interactive run needs — was
-    // never verified by running it, and MV-59 forbids a contract nobody read
-    // from a primary source. A declared-but-absent opsx therefore gets the
-    // stated gap and the install line; a guessed init command would run on
-    // someone else's repo, which is the one place a guess costs more than a
-    // wrong printout. Three verified lines close this whenever someone runs it.
-    // OpenSpec has NO project-level document. `openspec/config.yaml`'s
-    // `context:` is the nearest thing and it ships commented out, unvalidated
-    // and never required — declaring it as a constitution would be a lie.
-    projectSteps: [],
+    scaffold: {
+      run: 'openspec init --tools {keys} --no-animation .',
+      // MV-130, measured 2026-09-16 on openspec 1.13.0 in a scratch repo with
+      // DO_NOT_TRACK=1 and OPENSPEC_TELEMETRY=0: `openspec init --tools
+      // claude,cursor --no-animation .` exited 0 and wrote openspec/config.yaml,
+      // openspec/specs/.gitkeep, openspec/changes/archive/.gitkeep, and six
+      // commands and six skills under each of .claude/ and .cursor/. The tool
+      // keys are the ones its `init --help` lists; it names `windsurf` as an
+      // accepted alias ("now devin").
+      integrations: {
+        agents: { key: 'agents', safe: true },
+        claude: { key: 'claude', safe: true },
+        cursor: { key: 'cursor', safe: true },
+        codex: { key: 'codex', safe: true },
+        gemini: { key: 'gemini', safe: true },
+        opencode: { key: 'opencode', safe: true },
+        copilot: { key: 'github-copilot', safe: true },
+        windsurf: { key: 'windsurf', safe: true },
+      },
+      note: 'One command installs every declared tool: `--tools` takes them comma-separated. It writes openspec/config.yaml, the gitkeeps and per-tool commands and skills, and nothing is written outside the repo.',
+    },
+    // MV-135. OpenSpec's project context, not a constitution: `openspec init`
+    // (1.13.0) writes `openspec/config.yaml` with `context:` commented out,
+    // documented as optional, injected into every artifact's instructions, and
+    // ignored above 51200 bytes (dist/core/project-config.js). Reported, never
+    // gated: a gate would be stricter than the vendor that defines it.
+    projectSteps: [
+      {
+        run: 'write `context:` in openspec/config.yaml — the tech stack, conventions and domain openspec injects into every artifact',
+        artifact: 'openspec/config.yaml',
+        revisit: 'when the stack or the conventions change; openspec defines no cadence and calls the field optional',
+        reportOnly: { key: 'context', limit: 51200 },
+      },
+    ],
     steps: [
       {
         at: 'new',
@@ -512,7 +573,24 @@ const sdd: Record<string, AdapterSpec> = {
     refresh: 'specify check',
     automation: 'sdd_auto',
     scaffold: {
-      run: 'specify init --here --integration claude --force --ignore-agent-tools',
+      run: 'specify init --here --integration {key} --force --ignore-agent-tools',
+      add: 'specify integration install {key}',
+      // MV-130, measured 2026-09-16 on spec-kit 1.0.7 with `specify integration
+      // list`: the key per harness and its "Multi-install Safe" column. In a
+      // project holding claude, `specify integration install cursor-agent`
+      // exited 0 and recorded both; `install opencode` refused, naming
+      // `--force`, and changed nothing. agents.md has no spec-kit key: its
+      // `generic` integration exits 1 without a `--commands-dir` no harness
+      // here is known to read, so a brain with no harness door keeps claude.
+      integrations: {
+        claude: { key: 'claude', safe: true },
+        cursor: { key: 'cursor-agent', safe: true },
+        codex: { key: 'codex', safe: true },
+        gemini: { key: 'gemini', safe: true },
+        opencode: { key: 'opencode', safe: false },
+        copilot: { key: 'copilot', safe: false },
+      },
+      fallback: 'claude',
       // Verified by running it in a scratch repo, not read off a README: it
       // writes `.specify/**` — scripts, templates, and memory/constitution.md
       // as the UNFILLED template — plus ten .claude/skills/speckit-*/SKILL.md.
@@ -532,10 +610,18 @@ const sdd: Record<string, AdapterSpec> = {
       {
         run: 'run /speckit.constitution in your agent to write the project principles — spec-kit ships .specify/memory/constitution.md as an unfilled template, so an untouched repo has no constitution, only a placeholder',
         artifact: '.specify/memory/constitution.md',
-        // Verified against a real `specify init`: the installed file is the
-        // template, `[PROJECT_NAME]`/`[PRINCIPLE_1_NAME]` and all. Existence
-        // alone would report a constitution nobody has written.
-        placeholder: '\\[[A-Z0-9_]+\\]',
+        // Verified against a real `specify init` (1.0.7, 2026-09-16): the
+        // installed file is the template, these 20 tokens and all, and
+        // `.constitution-template.json` beside it records its sha256.
+        // Existence alone would report a constitution nobody has written.
+        placeholders: [
+          '[PROJECT_NAME]', '[PRINCIPLE_1_NAME]', '[PRINCIPLE_1_DESCRIPTION]', '[PRINCIPLE_2_NAME]',
+          '[PRINCIPLE_2_DESCRIPTION]', '[PRINCIPLE_3_NAME]', '[PRINCIPLE_3_DESCRIPTION]', '[PRINCIPLE_4_NAME]',
+          '[PRINCIPLE_4_DESCRIPTION]', '[PRINCIPLE_5_NAME]', '[PRINCIPLE_5_DESCRIPTION]', '[SECTION_2_NAME]',
+          '[SECTION_2_CONTENT]', '[SECTION_3_NAME]', '[SECTION_3_CONTENT]', '[GOVERNANCE_RULES]',
+          '[GUIDANCE_FILE]', '[CONSTITUTION_VERSION]', '[RATIFICATION_DATE]', '[LAST_AMENDED_DATE]',
+        ],
+        templateRecord: '.specify/memory/.constitution-template.json',
         revisit:
           'once at start, then on every principle change: amend it in place, bump CONSTITUTION_VERSION by semver (MAJOR removes/redefines, MINOR adds, PATCH clarifies) and prepend the Sync Impact Report. Spec-kit defines no cadence — `/speckit.plan`\'s Constitution Check and `/speckit.analyze` only surface drift, they never edit the file',
       },
@@ -662,6 +748,28 @@ const knownGraphers: Record<string, GrapherEntry> = {
     // in `.gitignore` left `graph.json` the one output git reports.
     graphignore: ['.claude/', '.multivac/', '.specify/', 'specs/', 'openspec/'],
     graphignoreFile: '.graphifyignore',
+    // MV-131, measured 2026-09-16 on graphify 0.9.29 in scratch repos with HOME
+    // isolated: `graphify install --project --platform <p>` exited 0 for each
+    // platform below, wrote nothing under $HOME, and wrote the probe listed.
+    // claude, codex and gemini also wrote hook commands naming the binary by
+    // this machine's absolute path (`/Users/<user>/.local/bin/graphify
+    // hook-guard …`); over an existing `.claude/settings.json` it kept every
+    // hook already there, added its own, and left `settings.json.graphify-bak`.
+    // A second run added nothing. It has no windsurf platform.
+    harness: {
+      run: 'graphify install --project --platform {key}',
+      platforms: {
+        agents: { key: 'agents', probe: '.agents/skills/graphify/SKILL.md' },
+        claude: { key: 'claude', probe: '.claude/skills/graphify/SKILL.md' },
+        cursor: { key: 'cursor', probe: '.cursor/rules/graphify.mdc' },
+        codex: { key: 'codex', probe: '.codex/skills/graphify/SKILL.md' },
+        opencode: { key: 'opencode', probe: '.opencode/skills/graphify/SKILL.md' },
+        gemini: { key: 'gemini', probe: '.gemini/skills/graphify/SKILL.md' },
+        copilot: { key: 'copilot', probe: '.copilot/skills/graphify/SKILL.md' },
+      },
+      hookFiles: ['.claude/settings.json', '.codex/hooks.json', '.gemini/settings.json'],
+      ignore: ['*.graphify-bak'],
+    },
     env: {},
     binaries: ['graphify'],
     required: ['graphify'],

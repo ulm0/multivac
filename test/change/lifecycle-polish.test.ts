@@ -296,7 +296,7 @@ test('close names the commit that stores the archive, scoped to this change', as
   // scoped paths, never add -A; the released reservation's law edit rides too
   assert.match(
     out,
-    /archived — commit this: git -C .* add -- \.multivac\/changes\/archive\/say-commit\.md \.multivac\/changes\/say-commit\.md \.multivac\/invariants\.md && git commit -m "Archive the say-commit change"/,
+    /archived — commit this: git -C .* add -- \.multivac\/changes\/archive\/say-commit\.md \.multivac\/changes\/say-commit\.md \.multivac\/invariants\.md \.multivac\/ecosystem\.json && git commit -m "Archive the say-commit change"/,
   );
   assert.doesNotMatch(out, /add -A/);
   // no origin remote: the direct commit is the landing, and close says so

@@ -400,3 +400,12 @@ export async function ignoredPaths(
     return [];
   }
 }
+
+/** git@host:a/b.git, https://host/a/b.git, host/a/b -> "host/a/b". */
+export const normUrl = (u: string): string =>
+  u
+    .trim()
+    .replace(/\.git\/?$/, '')
+    .replace(/^[a-z+]+:\/\/(?:[^@/]+@)?/, '')
+    .replace(/^(?:[^@/]+@)?([^:/]+):/, '$1/')
+    .toLowerCase();

@@ -3,7 +3,7 @@
 // always; present/unique gate only under --strict; moved self-heals, exit 0.
 
 import { parseArgs, type ArgsDef } from 'citty';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
 import { changesDir, parseChange } from '../change/file.js';
@@ -13,19 +13,15 @@ import {
   loadConfig,
   ConfigError,
   CONFIG_PATH,
+  ECOSYSTEM_PATH,
   DEFAULT_CHANNEL,
   LAW_PATH,
 } from '../lib/config.js';
-import {
-  currentBranch,
-  lastFetchAge,
-  lsTreeGitlink,
-  revParse,
-  unmergedFiles,
-  run as git,
-} from '../lib/git.js';
+import { currentBranch, lastFetchAge, lsTreeGitlink, normUrl, revParse, run as git, unmergedFiles } from '../lib/git.js';
 import { samePath } from '../lib/paths.js';
 import { dim, green, red, say, warn, yellow } from '../lib/out.js';
+import { codeInChangeLine } from '../lib/code-in-change.js';
+import { renderEcosystem } from '../doors/ecosystem.js';
 import { hasProjectedDoor } from '../hooks/install.js';
 import {
   collectBrainAnchors,
@@ -706,6 +702,26 @@ export async function resolveSources(
 }
 
 /**
+ * MV-138. A checkout under a brain's `.multivac/worktrees/<slug>/<key>` is the
+ * worktree `change apply` made for that repo, and its path names the brain, the
+ * change and the key. The mount inside it is a submodule nobody initialised, so
+ * the mount lookup below found an empty directory and exited 2 in the one
+ * checkout the change hands back. Null when the path is not one, or the brain
+ * it names has no config.
+ */
+export function worktreeBrain(dir: string): { brain: string; slug: string; key: string; root: string } | null {
+  let real: string;
+  try {
+    real = realpathSync(dir);
+  } catch {
+    return null;
+  }
+  const m = /^(.*)\/\.multivac\/worktrees\/([^/]+)\/([^/]+)(?:\/.*)?$/.exec(real);
+  if (!m || !existsSync(join(m[1], CONFIG_PATH))) return null;
+  return { brain: m[1], slug: m[2], key: m[3], root: join(m[1], '.multivac', 'worktrees', m[2], m[3]) };
+}
+
+/**
  * A cwd without a config may be a consumer repo with the brain mounted in a
  * subdirectory. A mount is any direct child directory that IS a brain (has
  * .multivac/config.yml); `.brain` — the default mount name — wins outright.
@@ -752,14 +768,6 @@ export function findStaleMount(dir: string): string | null {
   return null;
 }
 
-/** git@host:a/b.git, https://host/a/b.git, host/a/b -> "host/a/b". */
-const normUrl = (u: string): string =>
-  u
-    .trim()
-    .replace(/\.git\/?$/, '')
-    .replace(/^[a-z+]+:\/\/(?:[^@/]+@)?/, '')
-    .replace(/^(?:[^@/]+@)?([^:/]+):/, '$1/')
-    .toLowerCase();
 
 /**
  * Which registry key is this consumer checkout? Match by path (the entry
@@ -970,10 +978,12 @@ const ARGS = {
   check: { type: 'boolean', description: 'never writes: a moved leg is reported, not self-healed' },
   worktree: { type: 'boolean', description: "read every declared repo's working tree" },
   repo: { type: 'string', description: 'scope to one declared repo' },
+  range: { type: 'string', description: 'CI: judge the non-merge commits of <base>..<head> (MV-137)' },
+  branch: { type: 'string', description: 'CI: the branch the range belongs to' },
 } satisfies ArgsDef;
 
 /** The surface as verify has always worded it; the check comes from ARGS. */
-const TAKES = '[dir], --strict, --check, --worktree, --repo <key>';
+const TAKES = '[dir], --strict, --check, --worktree, --repo <key>, --range <base>..<head>, --branch <name>';
 
 async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   const bad = undeclared('verify', argv, surfaceFrom(ARGS), TAKES);
@@ -989,15 +999,42 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   const worktree = a.worktree === true;
   const repoFlag = typeof a.repo === 'string' ? a.repo : undefined;
   const startDir = resolve(ctx.cwd, a.dir ?? '.');
+  // MV-137: the CI reader. Both halves, or neither: a range judged against no
+  // branch would have to guess which change it belongs to.
+  let range: { base: string; head: string; branch: string } | undefined;
+  if (a.range !== undefined || a.branch !== undefined) {
+    const m = typeof a.range === 'string' ? /^(.+?)\.\.(.+)$/.exec(a.range) : null;
+    if (!m || typeof a.branch !== 'string' || a.branch === '') {
+      warn('--range <base>..<head> and --branch <name> go together — in a merge request pipeline: --range "$CI_MERGE_REQUEST_DIFF_BASE_SHA..$CI_COMMIT_SHA" --branch "$CI_MERGE_REQUEST_SOURCE_BRANCH_NAME"');
+      return 2;
+    }
+    range = { base: m[1], head: m[2], branch: a.branch };
+  }
 
   let ev: Evaluated;
   let brainDir = startDir;
   let scope: VerifyScope | undefined;
+  // A mounted brain is a pin and can lag the brain; a worktree's is the brain itself.
+  let lagging = false;
+  let changeWorktree: string | undefined;
   try {
-    // Consumer repo: no config here, but the brain is mounted in a subdir.
-    if (!existsSync(join(startDir, CONFIG_PATH))) {
+    const wt = existsSync(join(startDir, CONFIG_PATH)) ? null : worktreeBrain(startDir);
+    if (wt) {
+      const cfg = await loadConfig(wt.brain);
+      const key = repoFlag ?? wt.key;
+      if (!cfg.repos[key]) {
+        throw new ConfigError(
+          `this is ${wt.slug}'s worktree for "${key}", which the brain at ${wt.brain} does not declare — declared: ${Object.keys(cfg.repos).join(', ') || '(none)'}`,
+        );
+      }
+      scope = { repoKey: key, dir: wt.root };
+      brainDir = wt.brain;
+      changeWorktree = wt.slug;
+    } else if (!existsSync(join(startDir, CONFIG_PATH))) {
+      // Consumer repo: no config here, but the brain is mounted in a subdir.
       const mount = findMount(startDir);
       if (mount) {
+        lagging = true;
         const cfg = await loadConfig(mount);
         scope = { repoKey: await resolveRepoKey(cfg, mount, startDir, repoFlag), dir: startDir };
         brainDir = mount;
@@ -1066,7 +1103,7 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   const unanchored = rows.filter((r) => !anchors.some((a) => a.claimId === r.id));
   const anchored = rows.length - unanchored.length;
   if (scope) {
-    say(`scoped to repo "${scope.repoKey}" · brain at ${brainDir}`);
+    say(`scoped to repo "${scope.repoKey}" · brain at ${brainDir}${changeWorktree ? ` (the change worktree for ${changeWorktree})` : ''}`);
     say(`${anchored} of ${rows.length} brain claims anchor into "${scope.repoKey}"`);
   } else {
     const pct = rows.length ? ` (${Math.round((anchored / rows.length) * 100)}%)` : '';
@@ -1150,11 +1187,32 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   // read deciding whether this commit may proceed. Silent unless it applies.
   const conf = scope ? null : await configLine(brainDir);
   if (conf) say(conf.text);
+  // MV-139: the committed governance graph against a fresh rendering. Reported,
+  // never gating: parallel branches each render it, and a merge resolves by
+  // re-rendering, so a gate would refuse work nobody did wrong.
+  if (!scope) {
+    const want = await renderEcosystem(brainDir, cfg).catch(() => null);
+    const have = await readFile(join(brainDir, ECOSYSTEM_PATH), 'utf8').catch(() => null);
+    if (want !== null && have !== want) {
+      say(`  ${dim('ecosystem')} ${ECOSYSTEM_PATH} is ${have === null ? 'absent' : 'stale'} — \`multivac doors\` renders it; reported, never gating`);
+    }
+  }
+  // MV-137: the code in this commit, merge or range, and the change it lands in.
+  const code = await codeInChangeLine({
+    brainDir,
+    cfg,
+    repoKey: scope ? scope.repoKey : Object.entries(cfg.repos).find(([, e]) => e.isBrain)?.[0],
+    repoDir: scope ? scope.dir : brainDir,
+    consumer: lagging,
+    strict,
+    range,
+  });
+  if (code) say(code.text);
   // MV-107, answered by the same index-vs-HEAD read the enactment check just
   // made, so the law is compared once and reported twice rather than read twice.
   if (lawGone) say(lawGone.text);
   const finalExit: 0 | 1 =
-    staleBlocking > 0 || enact.gates || conf?.gates === true || lawGone?.gates === true
+    staleBlocking > 0 || enact.gates || conf?.gates === true || lawGone?.gates === true || code?.gates === true
       ? 1
       : exitCode;
   // The summary counts THE predicate — the same `gating` set the per-leg lines
@@ -1162,7 +1220,7 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   // different arguments. `blockingBroken` answers a different question (blocking
   // modes alone, --strict ignored) and printing it here made `--strict` runs say
   // "0 blocking broken · exit 1" under a line marked blocking.
-  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0) + (conf?.gates ? 1 : 0) + (lawGone?.gates ? 1 : 0);
+  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0) + (conf?.gates ? 1 : 0) + (lawGone?.gates ? 1 : 0) + (code?.gates ? 1 : 0);
   // A pending claim is a real failure a change file is holding back: exit 0 is
   // the grace, silence is not. Name what is masked and who masks it.
   const masking = [
@@ -1204,7 +1262,7 @@ export const verify: Command = {
   name: 'verify',
   help: 'check anchors against the declared repos (deterministic, offline)',
   usage: [
-    'usage: multivac verify [dir] [--strict] [--check] [--worktree] [--repo <key>]',
+    'usage: multivac verify [dir] [--strict] [--check] [--worktree] [--repo <key>] [--range <base>..<head> --branch <name>]',
     '  --strict      broken present/unique legs also exit 1, not just tombstones;',
     '                and a finished change — every declared claim resolving,',
     '                every declared repo landed — is refused as unclosed',
@@ -1212,6 +1270,9 @@ export const verify: Command = {
     '  --worktree    read every declared repo\'s working tree instead of its',
     '                channel ref — local state across the ecosystem, on purpose',
     '  --repo <key>  scope to one declared repo (consumer checkouts only)',
+    '  --range <base>..<head> --branch <name>',
+    '                CI: judge the code in the range\'s non-merge commits against',
+    '                the branch — it must be an open change declaring this repo',
     'from the brain, a sibling repo is read at its channel ref (the ecosystem',
     'as published) and the brain itself at its working tree; from a consumer',
     'repo, its working tree — the content about to be committed there. Every',

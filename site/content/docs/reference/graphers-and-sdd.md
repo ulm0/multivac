@@ -89,15 +89,18 @@ Declared repos are the exception, because they are the tool's own data:
 
 ## The three-state policy
 
-| state | behaviour |
-| --- | --- |
-| **not declared** | nothing. Not even a notice. `doctor` prints no line for it. |
-| **declared, nothing present** | notice, feature off, **exit 0** |
-| **declared, artifact or binary present** | adapter active |
+| state | `verify`, `doctor`, `doors` | `init`, `repos sync`, `change` |
+| --- | --- | --- |
+| **not declared** | nothing, not even a notice | nothing |
+| **declared, binary absent** | a notice, **exit 0** | refuses with **exit 1**, naming the binary, the install line and the vendor, before writing anything, where the tool would run |
+| **declared, installed** | adapter active | adapter active; nothing is re-run |
 
-Declaring means "this project uses it" — which stays true on a machine that
-does not have it yet. `mvac init . --sdd speckit` writes the config whether or
-not `specify` exists. **No absent adapter ever turns `verify` red.**
+Declaring means "this project uses it", which stays true on a machine that does
+not have it yet. The surfaces that only read (`verify`, `doctor`, `doors`) never
+turn red over an absent tool. The commands that set a repo up run the tool, so
+they refuse where it cannot run: `init --sdd speckit` without `specify`, a
+`repos sync` that would equip a repo, a `change new` whose SDD is missing. An
+SDD under `sdd_auto: false`, or a tool already installed, is not required.
 
 That is why not-declared and declared-but-absent are different states: the
 first is "we do not use one", the second is "we use one, it is not here", and
@@ -252,6 +255,36 @@ Before this, the graph was only ever built for repos a change explicitly
 touched, so a repo had to be worked on before it could be navigated — backwards
 for an agent that reads the graph in order to do the work.
 
+**The grapher's own install into each harness.** graphify also ships a
+project install per agent harness: a skill, a rule or hooks that tell that
+agent to ask the graph. Once a repo's graph is built, the same commands run
+`graphify install --project --platform <p>` there for each declared door that
+does not have it yet:
+
+| door | platform | installed when this exists |
+| --- | --- | --- |
+| `agents` | `agents` | `.agents/skills/graphify/SKILL.md` |
+| `claude` | `claude` | `.claude/skills/graphify/SKILL.md` |
+| `cursor` | `cursor` | `.cursor/rules/graphify.mdc` |
+| `codex` | `codex` | `.codex/skills/graphify/SKILL.md` |
+| `opencode` | `opencode` | `.opencode/skills/graphify/SKILL.md` |
+| `gemini` | `gemini` | `.gemini/skills/graphify/SKILL.md` |
+| `copilot` | `copilot` | `.copilot/skills/graphify/SKILL.md` |
+
+graphify has no windsurf platform, and that door is named instead.
+
+The hooks graphify writes for claude, codex and gemini name the binary by the
+absolute path it has on the machine that ran the install. Those files are
+committed, so multivac rewrites that path to plain `graphify`, found on `PATH`
+on every machine, and says so. `*.graphify-bak`, the backup graphify leaves of
+a settings file it edited, goes into `.gitignore` first. `doctor` names a door
+whose install is missing, with the command, and runs nothing.
+
+```txt
+graph graphify @ brain: installed into claude (`graphify install --project --platform claude`)
+graph graphify @ brain: .claude/settings.json named graphify by an absolute path — rewritten to `graphify`, found on PATH
+```
+
 **The harness post-edit hook.** `doors` writes it into the hook config of each
 declared target whose harness has such a hook — for Claude Code that is one
 more entry in the same managed `.claude/settings.json` merge that carries
@@ -260,8 +293,29 @@ more entry in the same managed `.claude/settings.json` merge that carries
 ```json
 { "matcher": "Edit|Write|MultiEdit",
   "hooks": [{ "type": "command",
-              "command": "L=.multivac/cache/graph-refresh.lock; PATH=\"$PATH:$PWD/node_modules/.bin\"; … mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0" }] }
+              "command": "L=.multivac/cache/graph-refresh.lock; f=$(sed -n … | head -n 1); t=$(git -C \"$(dirname \"${f:-.}\")\" rev-parse --show-toplevel 2>/dev/null); [ -n \"$t\" ] && [ -e \"$t/graphify-out/graph.json\" ] && cd \"$t\"; PATH=\"$PATH:$PWD/node_modules/.bin\"; … mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0" }] }
 ```
+
+The hook first reads the edited file's path from what the harness passes it.
+When that file sits in a git repository holding the graph, the refresh runs
+there, under that repository's lock. So an edit in a change worktree of another
+repo refreshes that repo's graph, not the session's. Otherwise it runs where
+the session is.
+
+The door promises "refreshed after your edits" only where a declared harness
+has this hook. Elsewhere it says the graph is refreshed at `change land` and
+`change close`.
+
+**Asking the graph is yours.** No committed file records that an agent asked
+the graph before reading the tree. graphify writes only an untracked
+`graphify-out/cache/last_query_stamp`, and a query that found nothing writes it
+too. graphify's own Claude hook nudges toward a query and blocks no read.
+`flow.md` and `doctor` say so.
+
+Where graphify's own install covers a declared door, it writes a `## graphify`
+section into that door file, with its verbs and when to use them. The multivac
+door then names the commands and points to that section rather than repeating
+it. `doctor` reports a door file where the section is missing.
 
 The hook appends the repository's `node_modules/.bin` to `PATH`, so it reaches
 the same binary the lookup found when `doors` decided to wire it. After that it
@@ -292,15 +346,30 @@ Three properties, on purpose:
   `doctor` says what is missing.
 
 For a harness with no post-edit hook, nothing is installed and the graph
-refreshes at `change close` only. `doctor` names the live path:
+refreshes at `change land` and `change close` only. `doctor` names the live path:
 
 ```txt
-grapher    refresh path: claude post-edit hook (installed when the binary is present) · `change close` is the net · git hooks never refresh
+grapher    refresh path: claude post-edit hook (installed when the binary is present) · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh
 ```
 
+**`change land` commits the graph.** Before it prints the push line for a
+ready repo, `land` refreshes that repo's graph in the checkout that holds the
+change's branch, and commits the graph there when it changed. The merge then
+carries a graph of the merged tree:
+
+```txt
+graph graphify @ api: refreshed (`graphify update .`) — artifact left uncommitted
+committed: graph: points-expire — refreshed on the change branch
+  api: git -C /home/you/api push -u origin points-expire
+```
+
+A repo on a detached HEAD, or one whose graph is ignored, cannot take that
+commit. `land` names it and exits 1. A read-only repo, and a grapher whose
+artifact is built in each checkout, get no refresh and no commit.
+
 **`change close`, the net.** A change can land edits made outside the harness,
-so close still **runs** the refresh — in the brain and in each declared repo
-on disk that is not read-only, using the grapher that root resolves: its own
+so close still **runs** the refresh — in the brain and in each repo the change
+names that is not read-only, using the grapher that root resolves: its own
 `grapher:`, the brain's own entry included, else the ecosystem's, and none where
 that is `none` — and reports each scope's result:
 
@@ -330,9 +399,14 @@ that closes it, else the lines naming an error, a refusal, a denial or something
 not found, else the last lines — at most three. The cause words are English; a
 tool that says it otherwise is quoted by its last lines.
 
-multivac never stages or commits the refreshed artifact. Graph output is
-regenerated locally; commit it only in dedicated chore commits, if your
-project commits it at all.
+The refresh at close runs before the archive commit is printed. A brain graph
+it changed is part of that commit. For each named repo whose graph changed,
+close prints the commit to make there. A change worktree whose only
+uncommitted file is the graph gets that file restored, and is removed. The refresh module itself never runs git: the
+commits are made by `land` and printed by `close`.
+
+A declared repo that no change names is left alone by the lifecycle.
+`repos sync` builds its first graph.
 
 No grapher is declared by default. A newborn brain is two content files, and a
 graph of that is noise.
@@ -417,7 +491,7 @@ sdd        opsx @ brain: installed · binary ok · sdd_auto on — the lifecycle
 sdd        opsx @ api: installed · binary ok · sdd_auto on — …
 sdd        opsx flow — new: run /opsx:propose <slug> in your agent … [proof: openspec/changes/<slug>/proposal.md — `change plan` refuses without it]
 sdd        opsx gates — change plan: refuses without openspec/changes/<slug>/proposal.md · change apply: refuses without openspec/changes/<slug>/tasks.md · change close: refuses without openspec/changes/archive/<n>-<n>-<n>-<slug>
-sdd        opsx project law — this tool has no project-level document; nothing to create, nothing to keep fresh
+sdd        opsx project law @ brain: openspec/config.yaml `context:` written — reported, never gated
 ```
 
 ```txt
@@ -447,13 +521,34 @@ read by the probe above, never a directory being there.
 
 | key | installed when | the tool's own init |
 | --- | --- | --- |
-| `speckit` | `.specify/integration.json` passes its check | `specify init --here --integration claude --force --ignore-agent-tools` |
-| `opsx` | `openspec/config.yaml` or `openspec/config.yml` | **unverified — not recorded, and never guessed** |
+| `speckit` | `.specify/integration.json` passes its check | `specify init --here --integration <key> --force --ignore-agent-tools`, then `specify integration install <key>` for each further door |
+| `opsx` | `openspec/config.yaml` or `openspec/config.yml` | `openspec init --tools <keys> --no-animation .` |
+
+The integration follows your `doors:`, from a map measured by running each
+vendor's own tool:
+
+| door | spec-kit | openspec |
+| --- | --- | --- |
+| `agents` | — | `agents` |
+| `claude` | `claude` | `claude` |
+| `cursor` | `cursor-agent` | `cursor` |
+| `codex` | `codex` | `codex` |
+| `gemini` | `gemini` | `gemini` |
+| `opencode` | `opencode` (not safe beside another) | `opencode` |
+| `copilot` | `copilot` (not safe beside another) | `github-copilot` |
+| `windsurf` | — | `windsurf` |
+
+spec-kit marks some integrations unsafe to install beside another. multivac
+installs the first and names the rest; it never passes `--force` to put them
+together. A door with no integration for the tool is named too. With no
+harness door at all, spec-kit gets `claude`: its `generic` integration needs a
+commands directory no harness here is known to read. A door you add after the
+tool is installed is not added to it; run the vendor's own install for it.
 
 `init`, `change new`, `change plan`, `change apply` and `change close` run it in **every
-declared repo on disk** where the tool is missing, and `repos sync` does the
-same after it clones and fetches, — the brain and the siblings
-alike — print it first, and skip a repo entirely where it is installed. A
+declared repo on disk** where the tool is missing — the brain and the siblings
+alike — print it first, and skip a repo entirely where it is installed.
+`repos sync` does the same after it clones and fetches. A
 read-only repo, declared `managed: false` or a shallow clone, is skipped in
 silence:
 
@@ -716,17 +811,22 @@ sdd        speckit project law — revisit: once at start, then on every princip
 
 Scaffolded is not written. `specify init` installs `constitution.md`
 byte-identical to its own template, so the file exists in every fresh repo and
-its existence proves nothing. A document still carrying the template's
-`[ALL_CAPS]` placeholders is reported as what it is:
+its existence proves nothing. A document is still the template when it is
+byte-identical to the one spec-kit recorded in
+`.specify/memory/.constitution-template.json`, or when it still carries one of
+the template's own tokens, such as `[PROJECT_NAME]`. The line names the token:
 
 ```txt
-sdd        speckit project law — .specify/memory/constitution.md is still the unfilled template shipped by the tool (placeholders remain) → run /speckit.constitution …
+sdd        speckit project law @ brain: .specify/memory/constitution.md is still the unfilled template shipped by the tool (placeholders remain: [PROJECT_NAME]) → run /speckit.constitution …
 ```
 
-Those two states are also a **gate**. `change plan` refuses while the document
-is missing, unreadable, empty, or still carrying the template's `[ALL_CAPS]`
-tokens — the tokens `/speckit.constitution` explicitly asks the author to
-replace, so a written constitution has none:
+A written constitution may keep the template's HTML comments, and may cite
+`[1]` or `[API]`: only the template's own tokens, outside comments, count.
+
+Those states are also a **gate**. `change plan` refuses while the document is
+missing, unreadable, empty, or still the template. The tokens are the ones
+`/speckit.constitution` explicitly asks the author to replace, so a written
+constitution has none:
 
 ```txt
 sdd speckit: `change plan <slug>` refused — .specify/memory/constitution.md is missing or unreadable — looked in brain
@@ -747,9 +847,24 @@ sdd        speckit project law — .specify/memory/constitution.md present (last
 ```
 
 It stays a report. Whether a principle still fits the product is a judgement,
-and no file mtime can make it. OpenSpec has no project-level document at all —
-its `openspec/config.yaml` `context:` ships commented out and unvalidated — so
-multivac says that rather than inventing one.
+and no file mtime can make it.
+
+`change new` asks for the document before `change plan` refuses over it. For
+each repo where the tool is installed and the document is not written, it
+prints one line. That line does not tell the agent to continue unattended: the
+principles come from you.
+
+```txt
+sdd speckit @ brain: .specify/memory/constitution.md is template (placeholders remain: [PROJECT_NAME]) — run /speckit.constitution in your agent … Ask the human for the principles and write their answers; `change plan` refuses until it is written
+```
+
+Where a project document and an active row of `.multivac/invariants.md`
+disagree, the row wins. Amend the document, or change the row through a change.
+The brain door says so.
+
+OpenSpec's nearest equivalent is `context:` in `openspec/config.yaml`.
+`openspec init` writes it commented out, openspec calls it optional, and it
+ignores one over 51200 bytes. multivac reports it and never gates on it.
 
 ### `sdd_auto` and `--no-sdd`
 

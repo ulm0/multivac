@@ -222,11 +222,36 @@ Anything else uncommitted that the switch would overwrite stops `apply` by
 name, with the command that parks it — never a raw git error, never a silent
 loss.
 
+### The SDD files ride onto the branch
+
+Your SDD writes a change's artifacts, such as spec-kit's `specs/<n>-<slug>/`,
+into the checkout, before any branch exists. `apply` moves them onto the
+change's branch: it copies them into the worktree, commits them there, and
+removes them from the checkout. The SDD's own shared files that are not yet
+committed, such as a freshly installed `.specify/`, go the same way.
+
+```txt
+brain: carried 3 speckit files onto points-expire and committed them there
+```
+
+So the merge lands them, and no untracked copy is left to stop it. A tracked
+file you modified in the checkout, or one git ignores, cannot be moved safely.
+`apply` names it and stops before it bumps anything:
+
+```txt
+brain: specs/004-points-expire/tasks.md is tracked and modified here — commit or stash it in ~/eco/brain, then re-run
+```
+
+For spec-kit, the worktree also gets its own `.specify/feature.json`, so
+`/speckit.implement` run there finds the feature.
+
 ## land — the order is law
 
 ```txt
 $ mvac change land points-expire
 stage 1 [ready] api:branched
+graph graphify @ api: refreshed (`graphify update .`) — artifact left uncommitted
+committed: graph: points-expire — refreshed on the change branch
   api: git -C ~/eco/acme-api push -u origin points-expire
   api: open MR points-expire -> main (state the landing order in the description)
   api: once merged: multivac change land points-expire --landed api
@@ -235,7 +260,17 @@ stage 2 [blocked] web:branched
 ```
 
 `land` reports stage by stage: what is ready to push and MR now, what is
-blocked behind an earlier stage. When an MR merges, record it:
+blocked behind an earlier stage. Before each push line it refreshes that repo's
+code graph in the change's worktree and commits it on the branch, so the merge
+carries a graph of the merged tree.
+
+The code you push is judged too. Where an SDD is declared, a commit or a merge
+of code that is not on the branch of an open change declaring the repo is
+refused by the git hooks, and the merge request pipeline asks again with
+`verify --strict --range`. See
+[Code lands in a change](../../reference/commands/#code-lands-in-a-change).
+
+When an MR merges, record it:
 
 ```txt
 $ mvac change land points-expire --landed api
@@ -268,7 +303,8 @@ claims**:
 $ mvac change close points-expire
 INV-02: ok
 archived -> .multivac/changes/archive/points-expire.md
-archived — commit this: git -C ~/eco/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
+graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
+archived — commit this: git -C ~/eco/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md graphify-out/graph.json .multivac/ecosystem.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/api)
 web: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/web)
 

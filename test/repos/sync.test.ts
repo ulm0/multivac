@@ -79,7 +79,7 @@ test('sync clones missing repos with url, skips the rest, reports failures', asy
   assert.equal(tracked, head, 'origin/main was refreshed by sync');
 
   const list = await reposList(brain);
-  assert.match(list.join('\n'), /lib\s+present/);
+  assert.match(list.join('\n'), /lib\s+cloned/);
   assert.match(list.join('\n'), /nourl\s+missing\s+.*no url, cannot sync/);
 });
 

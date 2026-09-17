@@ -88,7 +88,9 @@ The two are not redundant; they catch different failure modes:
 **The harness is the ceiling; git is the floor.** Where harness hooks exist,
 most drift is caught early and the git hook rarely fires. Where they don't —
 "any coding agent" includes harnesses with no hook API at all — the git hook
-guarantees nothing false lands.
+is the floor every commit passes. A hook can be skipped, so where the forge
+requires it, the merge request pipeline runs the same `verify` over every
+commit in the request.
 
 The hooks travel with the clone: `multivac init` points `core.hooksPath` at a
 versioned `.multivac/hooks/` directory, so there is no install step to

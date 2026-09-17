@@ -17,6 +17,7 @@ import { initRepo, makeScratchEcosystem } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { doorsCommand } from '../../src/commands/doors.js';
+import { reposCommand } from '../../src/commands/repos.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { grapherSpec, sddSpec, type AdapterSpec } from '../../src/adapters/registry.js';
 
@@ -101,6 +102,9 @@ async function walk(where: Placement) {
   initRepo(brain, {
     'AGENTS.md': '# door\n',
     '.multivac/config.yml': 'doors: [agents, claude]\nsdd: opsx\ngrapher: graphify\nrepos:\n  brain: .\n',
+    // Installed: this walks the binary lookup across surfaces, and since
+    // MV-130 an opsx that is missing runs `openspec init` first.
+    'openspec/config.yaml': 'schema: spec-driven\n',
     '.multivac/invariants.md':
       '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
   });
@@ -257,7 +261,8 @@ test("a copy in api's node_modules/.bin runs in api and leaves the brain's missi
   writeFileSync(join(eco.brain, '.multivac/config.yml'), 'doors: [agents]\ngrapher: graphify\nrepos:\n  api: ../acme-api\n');
   stubs(join(eco.repos.api, 'node_modules', '.bin'), 'local', join(tmp, 'ran'));
   await onPath(join(tmp, 'empty'), async () => {
-    const c = await capture(() => change.run(['new', 'sib', 'Sib'], { cwd: eco.brain }));
+    // `repos sync` reaches every declared repo; a change reaches only the ones it names (MV-134).
+    const c = await capture(() => reposCommand.run(['sync'], { cwd: eco.brain }));
     assert.match(c.out, /graph graphify @ api: built \(`graphify update \.`\)/);
     assert.match(c.out, /graph graphify @ brain: build skipped — `graphify` found on neither PATH nor brain's node_modules\/\.bin/);
     const doctor = (await doctorReport(eco.brain)).lines.filter((l) => l.startsWith('grapher'));

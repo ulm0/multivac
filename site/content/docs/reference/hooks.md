@@ -62,7 +62,7 @@ api: door + hooks updated
 payments: notice: not found at ../payments — run `multivac repos sync` to clone it
 ```
 
-Two files, both this shim:
+Three files, `pre-commit`, `pre-push` and `pre-merge-commit`, all this shim. The third runs `verify` on a local merge, so a merge of a branch that is no open change is judged like a commit on it:
 
 ```sh
 #!/bin/sh

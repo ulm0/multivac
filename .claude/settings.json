@@ -24,10 +24,30 @@
         "hooks": [
           {
             "type": "command",
-            "command": "L=.multivac/cache/graph-refresh.lock; PATH=\"$PATH:$PWD/node_modules/.bin\"; find \"$L\" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; mkdir -p .multivac/cache && mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0"
+            "command": "L=.multivac/cache/graph-refresh.lock; f=$(sed -n 's/.*\"file_path\"[[:space:]]*:[[:space:]]*\"\\([^\"]*\\)\".*/\\1/p' | head -n 1); t=$(git -C \"$(dirname \"${f:-.}\")\" rev-parse --show-toplevel 2>/dev/null); [ -n \"$t\" ] && [ -e \"$t/graphify-out/graph.json\" ] && cd \"$t\"; PATH=\"$PATH:$PWD/node_modules/.bin\"; find \"$L\" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; mkdir -p .multivac/cache && mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0"
           }
         ],
         "matcher": "Edit|Write|MultiEdit"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard search"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard read"
+          }
+        ]
       }
     ]
   }

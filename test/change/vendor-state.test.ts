@@ -144,7 +144,7 @@ test('opsx specs without its config are partial: warned with the install line, a
   await inEnv(b.bin, async () => {
     const c = await capture(() => change.run(['new', 'half', 'Half'], b.ctx));
     assert.deepEqual(lines(b.marker), []);
-    assert.match(c.out, /sdd opsx: brain is partial — openspec is there and openspec\/config\.yaml or openspec\/config\.yml is not — .*will not guess one.*npm i -g @fission-ai\/openspec/);
+    assert.match(c.out, /sdd opsx: brain is partial — openspec is there and openspec\/config\.yaml or openspec\/config\.yml is not — the init is not run over it.*run `openspec init --tools agents --no-animation \.` in brain yourself/);
   });
 });
 
@@ -280,7 +280,8 @@ test("codegraph's build, refresh and post-edit hook carry its opt-outs; graphify
   });
 
   const g = brainWith('doors: [agents]\ngrapher: graphify\nrepos:\n  brain: .\n');
-  write(join(g.bin, 'graphify'), `#!/bin/sh\necho "$DO_NOT_TRACK" >> '${g.marker}'\nmkdir -p graphify-out && echo '{}' > graphify-out/graph.json\n`, 0o755);
+  // MV-131: the project install writes its probe and is not what this counts.
+  write(join(g.bin, 'graphify'), `#!/bin/sh\n[ \"$1\" = install ] && { p=; for a; do p=$a; done; mkdir -p \".$p/skills/graphify\" && : > \".$p/skills/graphify/SKILL.md\"; exit 0; }\necho "$DO_NOT_TRACK" >> '${g.marker}'\nmkdir -p graphify-out && echo '{}' > graphify-out/graph.json\n`, 0o755);
   await inEnv(g.bin, async () => {
     await capture(() => change.run(['new', 'env-c', 'Env c'], g.ctx));
     assert.deepEqual(lines(g.marker), ['0'], 'an entry declaring no env leaves the parent environment alone');

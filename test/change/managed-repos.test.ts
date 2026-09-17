@@ -19,7 +19,7 @@ import { loadConfig } from '../../src/lib/config.js';
 import { change } from '../../src/commands/change.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { doctorReport } from '../../src/commands/doctor.js';
-import { reposList, reposSync } from '../../src/commands/repos.js';
+import { reposCommand, reposList, reposSync } from '../../src/commands/repos.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 
 for (const [k, v] of Object.entries({
@@ -110,7 +110,10 @@ function eco(
   const bin = join(tmp, 'bin');
   const marker = join(tmp, 'ran');
   for (const tool of ['specify', 'graphify']) {
-    write(join(bin, tool), `#!/bin/sh\necho "${tool} $(pwd -P)" >> '${marker}'\n`, 0o755);
+    // MV-131: graphify's project install writes its probe and is not counted;
+    // these tests count builds and refreshes.
+    const install = tool === 'graphify' ? '[ \"$1\" = install ] && { p=; for a; do p=$a; done; mkdir -p \".$p/skills/graphify\" && : > \".$p/skills/graphify/SKILL.md\"; exit 0; }\n' : '';
+    write(join(bin, tool), `#!/bin/sh\n${install}echo "${tool} $(pwd -P)" >> '${marker}'\n`, 0o755);
   }
   const ran = (tool: string, dir = payments): number =>
     (existsSync(marker) ? readFileSync(marker, 'utf8').split('\n') : []).filter((l) => l === `${tool} ${dir}`).length;
@@ -176,6 +179,10 @@ for (const sibling of ['not managed', 'shallow'] as const) {
       assert.equal(e.ran('graphify'), 0, c.out);
       assert.doesNotMatch(c.out, /payments/);
       assert.equal(git(e.payments, 'status', '--porcelain'), '');
+      // `repos sync` reaches every declared repo, and still not this one.
+      await capture(() => reposCommand.run(['sync'], e.ctx));
+      assert.equal(e.ran('graphify'), 0);
+      assert.equal(git(e.payments, 'status', '--porcelain'), '');
     });
   });
 
@@ -230,7 +237,11 @@ test('a sibling with no managed key and a full clone is scaffolded, built and pr
     const c = await capture(() => change.run(['new', 'probe', 'Probe'], e.ctx));
     assert.equal(c.code, 0, c.out);
     assert.equal(e.ran('specify'), 1, c.out);
-    assert.equal(e.ran('graphify'), 1, c.out);
+    // A new change names no repo, so its graph work stays in the brain (MV-134)...
+    assert.equal(e.ran('graphify'), 0, c.out);
+    // ...and `repos sync` builds it.
+    await capture(() => reposCommand.run(['sync'], e.ctx));
+    assert.equal(e.ran('graphify'), 1);
     const d = await capture(() => doorsCommand.run([], e.ctx));
     assert.match(d.out, /^payments: door \+ hooks updated$/m);
     assert.ok(existsSync(join(e.payments, 'AGENTS.md')));

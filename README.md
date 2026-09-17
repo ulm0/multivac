@@ -17,6 +17,13 @@ surfaces: closing a change prints the team's ritual — who reviews, who is
 told, what ships before what — as a checklist, never as a gate. Deterministic
 core, no API key required; git is the enforcement floor.
 
+Declare a spec-driven development tool (spec-kit or OpenSpec) and a code graph
+(graphify or codegraph), and multivac installs them in every repo it sets up,
+gates each change on the tool's own artifacts, commits each repo's graph on the
+change's branch, and refuses code that reaches a repo outside a change. The
+brain also keeps `.multivac/ecosystem.json`, a graph of how its repos, law rows
+and changes relate.
+
 **Status: released, and early.** It is on npm — [CHANGELOG.md](CHANGELOG.md)
 says what each release contained. The day-one capability is implemented and
 tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the `change`

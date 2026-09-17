@@ -1,6 +1,7 @@
 // Run a grapher's refresh in one directory. Execution only: this module
-// never spawns git, so the refreshed artifact cannot be staged — graph
-// output is regenerated locally and lands only in dedicated chore commits.
+// never spawns git, so the refreshed artifact cannot be staged here — the
+// lifecycle commits a shared one from change.ts, on the change's branch at
+// `land` (MV-134).
 // Which roots are read-only is asked of `readOnly` (MV-125), whose one git
 // read lives in src/lib/git.ts and asks, never stages.
 
@@ -62,6 +63,18 @@ async function takeLock(dir: string, label: string): Promise<(() => Promise<void
       await sleep(POLL_MS);
     }
   }
+}
+
+/**
+ * The one way a grapher's declared command runs: through a shell (MV-115), in
+ * the root, with the entry's opt-outs over the inherited environment (MV-124)
+ * and the root's node_modules/.bin reachable after PATH (MV-123).
+ */
+async function runDeclared(spec: AdapterSpec, run: string, dir: string): Promise<void> {
+  await execFileP('sh', ['-c', run], {
+    cwd: dir,
+    env: { ...process.env, ...spec.env, PATH: [process.env.PATH, localBin(dir)].filter(Boolean).join(delimiter) },
+  });
 }
 
 /**
@@ -130,10 +143,7 @@ export async function refreshGraph(
     // second place the lookup above found the binary in — so what runs is what
     // was found, and a copy on PATH still wins. MV-124: the entry's opt-outs
     // over the inherited environment, outside the declared command.
-    await execFileP('sh', ['-c', run], {
-      cwd: dir,
-      env: { ...process.env, ...spec.env, PATH: [process.env.PATH, localBin(dir)].filter(Boolean).join(delimiter) },
-    });
+    await runDeclared(spec, run, dir);
     say(`${label}: ${first ? 'built' : 'refreshed'} (\`${run}\`) — ${spec.artifactKind === 'local' ? 'local artifact, never committed' : 'artifact left uncommitted'}`);
   } catch (e) {
     // The tool's cause, not node's `Command failed: <cmd>`, which only repeats
@@ -158,17 +168,19 @@ export interface GraphScope {
 }
 
 /**
- * The brain plus every declared repo on disk, each carrying the grapher that
+ * The brain plus every declared repo on disk — or, given `only`, the brain
+ * plus those of them a change names (MV-134) — each carrying the grapher that
  * applies to it — resolved by `adapterFor` for every root, the brain's own
  * entry included, and undefined where the root resolves `none` (MV-122) —
  * and whether it is read-only (MV-125). The same list `doctor` reports over,
  * so the report and the runner cannot disagree about which scopes exist; the
  * build, the refresh and both gates skip a read-only one.
  */
-export async function graphScopes(brain: string, cfg: Config): Promise<GraphScope[]> {
+export async function graphScopes(brain: string, cfg: Config, only?: string[]): Promise<GraphScope[]> {
   const scopes: GraphScope[] = [{ scope: 'brain', dir: brain, name: adapterFor(cfg, 'brain', 'grapher') }];
   for (const [key, e] of Object.entries(cfg.repos)) {
     if (e.isBrain) continue; // already the brain
+    if (only && !only.includes(key)) continue; // a repo the change does not name
     const dir = resolve(brain, e.path);
     if (!(await pathExists(dir))) continue;
     const why = await readOnly(cfg, key, dir);
@@ -207,7 +219,13 @@ export async function graphScopes(brain: string, cfg: Config): Promise<GraphScop
  * `graphify-out/` ignores the directory, and git cannot re-include a file under
  * an excluded directory — so that is said, never fixed by editing their line.
  */
-async function writeIgnores(name: string, spec: AdapterSpec, dir: string, scope: string): Promise<void> {
+async function writeIgnores(
+  name: string,
+  spec: AdapterSpec,
+  dir: string,
+  scope: string,
+  before = 'the first build',
+): Promise<void> {
   const wrote: string[] = [];
   const targets: [string | undefined, string[]][] = [
     [spec.graphignoreFile, spec.graphignore ?? []],
@@ -224,7 +242,7 @@ async function writeIgnores(name: string, spec: AdapterSpec, dir: string, scope:
     await writeFile(path, `${text}${sep}${add.join('\n')}\n`);
     wrote.push(`${file} (+${add.length})`);
   }
-  if (wrote.length > 0) say(`graph ${name} @ ${scope}: wrote ${wrote.join(' and ')} before the first build`);
+  if (wrote.length > 0) say(`graph ${name} @ ${scope}: wrote ${wrote.join(' and ')} before ${before}`);
   if (spec.artifactKind !== 'shared') return;
   for (const shared of await ignoredPaths(dir, spec.shared)) {
     warn(
@@ -234,8 +252,79 @@ async function writeIgnores(name: string, spec: AdapterSpec, dir: string, scope:
   }
 }
 
-export async function ensureGraphs(brain: string, cfg: Config): Promise<void> {
-  for (const s of await graphScopes(brain, cfg)) {
+
+/**
+ * MV-131. Absolute paths to `bin` in hook commands, rewritten to the bare name.
+ * A versioned hook that names `/Users/<user>/.local/bin/graphify` works on one
+ * machine; the bare name is found on PATH everywhere, the same way multivac's
+ * own hooks name `mvac` (MV-115). Only a path ending in `/<bin>` followed by a
+ * space is touched, so a string that merely mentions the tool is left alone.
+ */
+export function bareBinary(text: string, bin: string): string {
+  const esc = bin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return text.replace(new RegExp(`(["'\\s])/[^"'\\s]*/${esc}(?= )`, 'g'), `$1${bin}`);
+}
+
+/**
+ * MV-131. The grapher's own project install, per declared door, in every
+ * writable root that lacks it. graphify ships one per harness — a skill, a
+ * rule, hooks — and nothing ran it, so a declared grapher reached no agent but
+ * through multivac's door. Measured on graphify 0.9.29 (see the registry).
+ *
+ * After the first build, because the install tells the agent to query a graph
+ * that should already exist. A door with no measured platform is named and
+ * skipped. The hooks it writes are rewritten to the bare binary name.
+ */
+export async function installHarness(brain: string, cfg: Config, only?: string[]): Promise<void> {
+  for (const s of await graphScopes(brain, cfg, only)) {
+    if (!s.name || s.readOnly) continue;
+    const spec = grapherSpec(s.name, cfg.graphers);
+    const h = spec?.harness;
+    if (!spec || !h) continue;
+    // Only over a graph that is there: the install points every agent at it,
+    // and a root whose graph is missing or unreadable is the build's to report.
+    if ((await initState(spec, s.dir)).state !== 'installed') continue;
+    const label = `graph ${s.name} @ ${s.scope}`;
+    const todo: string[] = [];
+    for (const door of cfg.doors) {
+      const p = h.platforms[door];
+      if (!p) {
+        warn(`${label}: ${door} has no ${s.name} platform — its own install is not run for it`);
+        continue;
+      }
+      if (!(await pathExists(join(s.dir, p.probe)))) todo.push(p.key);
+    }
+    if (todo.length === 0) continue;
+    const missing = await missingRequired(spec, s.dir);
+    if (missing.length > 0) {
+      say(`${label}: harness install not run — ${binaryMissing(s.name, spec, missing, s.scope)}`);
+      continue;
+    }
+    await writeIgnores(s.name, { ...spec, graphignore: [], ignore: h.ignore }, s.dir, s.scope, 'its first project install');
+    for (const key of todo) {
+      const run = h.run.replace('{key}', key);
+      try {
+        await runDeclared(spec, run, s.dir);
+        say(`${label}: installed into ${key} (\`${run}\`)`);
+      } catch (e) {
+        warn(`${label}: \`${run}\` failed (${quoteFailure(e as { stderr?: string; stdout?: string; message: string })}) — run it there by hand`);
+      }
+    }
+    const bin = spec.required[0];
+    for (const f of h.hookFiles) {
+      const path = join(s.dir, f);
+      const text = await readFile(path, 'utf8').catch(() => null);
+      if (text === null) continue;
+      const bare = bareBinary(text, bin);
+      if (bare === text) continue;
+      await writeFile(path, bare);
+      say(`${label}: ${f} named ${bin} by an absolute path — rewritten to \`${bin}\`, found on PATH`);
+    }
+  }
+}
+
+export async function ensureGraphs(brain: string, cfg: Config, only?: string[]): Promise<void> {
+  for (const s of await graphScopes(brain, cfg, only)) {
     if (!s.name) continue; // no grapher resolves for this scope: silence
     if (s.readOnly) continue; // not multivac's to write (MV-125): silence
     const spec = grapherSpec(s.name, cfg.graphers);
@@ -293,6 +382,7 @@ export async function graphGate(
   cfg: Config,
   slug: string,
   noGrapher: boolean,
+  only?: string[],
 ): Promise<GateResult> {
   if (adaptersByRoot(cfg, 'grapher').size === 0) {
     return { ok: true, lines: [] }; // no declared root resolves a grapher: silence
@@ -307,12 +397,12 @@ export async function graphGate(
   }
   // Build where not installed before judging. Idempotent and self-limiting: an
   // installed root costs one probe.
-  await ensureGraphs(brain, cfg);
+  await ensureGraphs(brain, cfg, only);
 
   const missing: string[] = [];
   const unevaluable: string[] = [];
   const lines: string[] = [];
-  for (const s of await graphScopes(brain, cfg)) {
+  for (const s of await graphScopes(brain, cfg, only)) {
     const spec = s.name === undefined ? null : grapherSpec(s.name, cfg.graphers);
     // Unverified is out of scope, not a gap: demanding an artifact whose path
     // would have to be guessed is Principle V's invented integration wearing a

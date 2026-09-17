@@ -672,7 +672,9 @@ AGENTS.md                  the door
 .multivac/invariants.md    the law table
 .multivac/changes/         one file per ecosystem change
 .multivac/ritual.md        the closing ceremony
-.multivac/hooks/           pre-commit and pre-push shims
+.multivac/flow.md          what the declarations oblige; generated
+.multivac/ecosystem.json   how repos, law rows, anchors and changes relate; generated
+.multivac/hooks/           pre-commit, pre-push and pre-merge-commit shims
 .multivac/cache/           gitignored
 .multivac/worktrees/       one checkout per open change, gitignored
 ```

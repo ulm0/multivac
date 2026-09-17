@@ -1,7 +1,8 @@
 // Brain door: the block AGENTS.md carries at the brain's root.
 
+import { ecosystemGraphLines } from './ecosystem.js';
 import type { Config } from '../types.js';
-import { grapherSpec, sddSpec } from '../adapters/registry.js';
+import { doorTargets, grapherSpec, sddSpec } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
 import { parseClaimRows } from '../anchor/parse.js';
 import { adapterFor } from '../adapters/detect.js';
@@ -31,6 +32,11 @@ export function projectLawLines(sdd: string): string[] {
   if (!spec) return [];
   const lines: string[] = [];
   for (const p of spec.projectSteps ?? []) {
+    if (p.reportOnly) {
+      lines.push(`  - project context \`${p.artifact}\` \`${p.reportOnly.key}:\` — ${p.run}. Optional: reported, never gated.`);
+      lines.push(`    revisit: ${p.revisit}`);
+      continue;
+    }
     // The proof half, exactly as every per-change step line carries it: this
     // line said CREATE IT IF ABSENT in capitals and nothing checked it, which
     // is the gap MV-76 closes. Now it names what refuses.
@@ -41,6 +47,9 @@ export function projectLawLines(sdd: string): string[] {
   }
   if ((spec.projectSteps ?? []).length === 0) {
     lines.push('  - this tool has no project-level document — nothing to write once and amend');
+  } else {
+    // MV-135: which one wins, said where the document is named.
+    lines.push('  - where a project document and an active row of `.multivac/invariants.md` disagree, the row wins: amend the document, or change the row through a change');
   }
   return lines;
 }
@@ -68,19 +77,32 @@ export function grapherLines(config: Config, name: string | undefined): string[]
   // repeating a guess in the door is the one thing MV-59 forbids.
   const spec = grapherSpec(name, config.graphers);
   if (!spec) return [];
+  // MV-140: "after your edits" only where a declared harness has the post-edit
+  // hook that makes it true; elsewhere the lifecycle is the refresh.
+  const fresh = config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit)
+    ? 'refreshed after your edits'
+    : 'refreshed at `change land` and `change close`';
   const lines = [
     `- A code graph is kept fresh for you by \`${name}\` at \`${spec.artifacts[0]}\` — ` +
-      // A shared artifact: committing it is the project's call (MV-50 leaves
-      // it to dedicated chore commits), and multivac's own refresh path touches
-      // no git. A local one is built in each checkout and never committed
+      // A shared artifact is committed on the change's branch by `change land`
+      // (MV-134). A local one is built in each checkout and never committed
       // (MV-124), so the door does not invite it.
       (spec.artifactKind === 'local'
-        ? 'refreshed after your edits; it is built in each checkout, so never commit it.'
-        : 'refreshed after your edits; multivac never stages it, but you can track and commit it.'),
+        ? `${fresh}; it is built in each checkout, so never commit it.`
+        : `${fresh}, and committed on the change branch by \`change land\`.`),
   ];
-  if (spec.queries && spec.queries.length > 0) {
+  const ask = 'ASK IT BEFORE READING THE TREE RAW.';
+  // MV-140 (I-55): where the tool's own install writes its section into a
+  // declared door, that section carries the verbs and when to use them; the
+  // door names the commands and points there instead of saying it twice.
+  const cites = spec.harness !== undefined && config.doors.some((d) => spec.harness!.platforms[d] !== undefined);
+  if (spec.queries && spec.queries.length > 0 && cites) {
     lines.push(
-      '  ASK IT BEFORE READING THE TREE RAW. It answers in one call what grep takes many, and it is this tool\'s verbs, not a generic one:',
+      `  ${ask} ${spec.queries.map((q) => `\`${q.run.split(' "')[0]}\``).join(', ')} — how and when to use each is in the \`## ${name}\` section ${name}'s own install writes into this file.`,
+    );
+  } else if (spec.queries && spec.queries.length > 0) {
+    lines.push(
+      `  ${ask} It answers in one call what grep takes many, and it is this tool's verbs, not a generic one:`,
     );
     for (const q of spec.queries) lines.push(`  - \`${q.run}\` — ${q.answers}`);
   } else {
@@ -153,6 +175,7 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     '- Every ecosystem decision enters as a change: see `.multivac/changes/` and run `multivac change`.',
     '- The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.',
     '- Check the law against the code before acting: `multivac verify`.',
+    ...ecosystemGraphLines(config, 'brain', ''),
     ...grapherLines(config, adapterFor(config, 'brain', 'grapher')),
   ];
   lines.push(...sddLines(config, adapterFor(config, 'brain', 'sdd')));

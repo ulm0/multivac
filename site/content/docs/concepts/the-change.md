@@ -67,6 +67,12 @@ listed as a claim is not re-checked here — the pre-commit hook is what catches
 it, on every commit, which is the earlier and stricter place. Declare the rows
 you amend as claims if you want `close` to be the one that answers.
 
+Where an SDD is declared, the code comes through the change as well. A commit
+or a merge of code outside the branch of an open change that declares the repo
+is refused, and so is a merge request whose commits do so, when the pipeline
+runs `verify --strict --range`. A change is how code reaches a repo, not a
+description written next to it.
+
 Updating the documentation stops being discipline and becomes mechanism.
 Nothing new is invented: the change declares before what today gets checked
 after, when anyone remembers.

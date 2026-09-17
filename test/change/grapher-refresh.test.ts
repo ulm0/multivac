@@ -1,8 +1,9 @@
 // `change close` runs the declared grapher's refresh — for real. A fake
 // grapher, found on a PATH this file builds, touches the artifact; close
-// reports the run and the artifact changed and stays uncommitted (graph output
-// lands only in dedicated chore commits). An absent binary degrades to the
-// install notice, and a grapher that exits non-zero never fails the close.
+// reports the run and prints an archive commit that carries the artifact
+// (MV-134). `change land` refreshes and commits it on the change branch. An
+// absent binary degrades to the install notice, and a grapher that exits
+// non-zero never fails the close.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,6 +21,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initRepo } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
+import { reposCommand } from '../../src/commands/repos.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { GRAPH_LOCK } from '../../src/doors/settings.js';
 import { GRAPHIFY_0929_READONLY } from '../helpers/recorded.js';
@@ -106,7 +108,7 @@ const withPath = async (dir: string, fn: () => Promise<void>): Promise<void> => 
   }
 };
 
-test('close runs the grapher refresh: artifact changed and stays uncommitted', async () => {
+test('close refreshes before its archive commit, and that commit carries the graph', async () => {
   const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-'));
   const brain = makeBrain(tmp);
   const bin = makeGrapherBin(tmp, '#!/bin/sh\necho refreshed >> fakegraph-out/graph.json\n');
@@ -115,15 +117,86 @@ test('close runs the grapher refresh: artifact changed and stays uncommitted', a
   await withPath(bin, async () => {
     const { code, out } = await capture(() => change.run(['close', 'graph-run'], { cwd: brain }));
     assert.equal(code, 0);
-    assert.match(out, /graph fakegraph @ brain: refreshed \(`fakegraph update \.`\) — artifact left uncommitted/);
+    const refreshed = out.search(/graph fakegraph @ brain: refreshed \(`fakegraph update \.`\)/);
+    const recipe = out.search(/archived — commit this: git -C .* add -- \.multivac\/changes\/archive\/graph-run\.md \.multivac\/changes\/graph-run\.md \.multivac\/invariants\.md fakegraph-out\/graph\.json /);
+    assert.ok(refreshed >= 0 && recipe > refreshed, out);
   });
   const after = readFileSync(join(brain, 'fakegraph-out/graph.json'), 'utf8');
   assert.notEqual(after, before, 'the refresh touched the artifact');
-  assert.match(after, /refreshed/);
-  // never staged, never committed: git sees the modified artifact in the tree
+  // close prints the commit and makes none: the refresh module touches no git (MV-50)
   assert.match(git(brain, 'status', '--porcelain'), /^ M fakegraph-out\/graph\.json$/m);
-  const lastCommit = git(brain, 'show', '--stat', '--name-only', '--format=', 'HEAD');
-  assert.ok(!lastCommit.includes('fakegraph-out'), 'no commit carries the artifact');
+});
+
+/** Open `slug` on the brain and apply it: a worktree on the change branch. */
+async function appliedChange(brain: string, slug: string): Promise<string> {
+  const ctx = { cwd: brain };
+  assert.equal(await change.run(['new', slug, `Graph land ${slug}`], ctx), 0);
+  const parsed = await loadChange(brain, slug);
+  parsed.change.repos = { brain: { status: 'planned' } };
+  parsed.change.landing_order = [['brain']];
+  parsed.change.invariants.adds = [];
+  await saveChange(brain, parsed);
+  assert.equal(await change.run(['apply', slug], ctx), 0);
+  return join(brain, '.multivac/worktrees', slug, 'brain');
+}
+
+test('land refreshes the graph on the change branch and commits it there, before the land line — MV-134', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-land-'));
+  const brain = makeBrain(tmp);
+  const bin = makeGrapherBin(tmp, '#!/bin/sh\necho refreshed >> fakegraph-out/graph.json\n');
+  const wt = await appliedChange(brain, 'graph-land');
+  const mainHead = git(brain, 'rev-parse', 'HEAD');
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() => change.run(['land', 'graph-land'], { cwd: brain }));
+    assert.equal(code, 0, out);
+    const committed = out.search(/committed: graph: graph-land — refreshed on the change branch/);
+    assert.ok(committed >= 0 && out.search(/brain: no origin remote — land locally/) > committed, out);
+  });
+  assert.equal(git(wt, 'log', '-1', '--format=%s'), 'graph: graph-land — refreshed on the change branch');
+  assert.match(git(wt, 'show', 'HEAD:fakegraph-out/graph.json'), /refreshed/);
+  assert.equal(git(wt, 'status', '--porcelain'), '');
+  assert.equal(git(brain, 'rev-parse', 'HEAD'), mainHead, 'the checkout is not touched');
+  assert.doesNotMatch(git(brain, 'status', '--porcelain'), /fakegraph-out/);
+});
+
+test('land refuses a graph it cannot commit on the branch: ignored, or a detached HEAD — MV-134', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-land-no-'));
+  const brain = join(tmp, 'acme-brain');
+  initRepo(brain, {
+    'AGENTS.md': '# door\n',
+    '.gitignore': 'fakegraph-out/\n',
+    '.multivac/config.yml': `doors: [agents]\ngrapher: fakegraph\n${DECL_CREATE}repos:\n  brain: .\n`,
+    '.multivac/invariants.md':
+      '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
+  });
+  const bin = makeGrapherBin(tmp, BUILD_OR_REFRESH);
+  await withPath(bin, async () => {
+    const wt = await appliedChange(brain, 'graph-ignored');
+    const ignored = await capture(() => change.run(['land', 'graph-ignored'], { cwd: brain }));
+    assert.equal(ignored.code, 1, ignored.out);
+    assert.match(ignored.out, /brain: the graph cannot land with graph-ignored — fakegraph-out\/graph\.json is ignored in .*; `git -C .* check-ignore -v fakegraph-out\/graph\.json` names the rule/);
+    assert.doesNotMatch(ignored.out, /land locally/);
+
+    git(wt, 'checkout', '-q', '--detach');
+    const detached = await capture(() => change.run(['land', 'graph-ignored'], { cwd: brain }));
+    assert.equal(detached.code, 1, detached.out);
+    assert.match(detached.out, /brain: the graph cannot land with graph-ignored — .* is on a detached HEAD; `git -C .* switch graph-ignored`/);
+  });
+});
+
+test('close removes a worktree whose only uncommitted file is the graph — MV-134', async () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-wt-'));
+  const brain = makeBrain(tmp);
+  const bin = makeGrapherBin(tmp, '#!/bin/sh\necho refreshed >> fakegraph-out/graph.json\n');
+  const wt = await appliedChange(brain, 'graph-wt');
+  writeFileSync(join(wt, 'fakegraph-out/graph.json'), '{"nodes":1}\n'); // what a post-edit hook leaves
+  assert.equal(await change.run(['land', 'graph-wt', '--landed', 'brain'], { cwd: brain }), 0);
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() => change.run(['close', 'graph-wt'], { cwd: brain }));
+    assert.equal(code, 0, out);
+    assert.match(out, /brain: worktree removed/);
+  });
+  assert.equal(existsSync(wt), false);
 });
 
 test('absent grapher binary degrades to the install notice, close still 0', async () => {
@@ -255,9 +328,10 @@ const BUILD_OR_REFRESH =
   '#!/bin/sh\nmkdir -p fakegraph-out\n' +
   'case "$1" in build) echo built > fakegraph-out/graph.json;; *) echo refreshed >> fakegraph-out/graph.json;; esac\n';
 
-test('a declared repo no change has touched still gets its first graph', async () => {
-  // The graph is what the agent reads in order to do the work, so building it
-  // only for repos a change already touched is the wrong end of the change.
+test('repos sync builds a declared repo no change names; a change builds only what it names — MV-134', async () => {
+  // The graph is what the agent reads in order to do the work, so `repos sync`
+  // builds every declared repo. A change reaches the brain and the repos it
+  // names, and leaves nothing behind in a repo nobody is working in.
   const tmp = mkdtempSync(join(tmpdir(), 'mvac-graph-first-'));
   const brain = makeBrain(
     tmp,
@@ -268,19 +342,22 @@ test('a declared repo no change has touched still gets its first graph', async (
   const bin = makeGrapherBin(tmp, BUILD_OR_REFRESH);
 
   await withPath(bin, async () => {
-    const { out } = await capture(() => change.run(['new', 'graph-first', 'Graph first'], { cwd: brain }));
+    const opened = await capture(() => change.run(['new', 'graph-first', 'Graph first'], { cwd: brain }));
+    assert.doesNotMatch(opened.out, /graph fakegraph @ (api|web):/);
+    assert.ok(!existsSync(join(tmp, 'acme-api/fakegraph-out')));
+
+    const { out } = await capture(() => reposCommand.run(['sync'], { cwd: brain }));
     // Built, not "refreshed", and with the adapter's OWN create command.
     assert.match(out, /graph fakegraph @ api: built \(`fakegraph build \.`\)/);
     assert.match(out, /graph fakegraph @ web: built \(`fakegraph build \.`\)/);
     // The brain already had one: nothing runs there, and nothing is said.
     assert.doesNotMatch(out, /graph fakegraph @ brain:/);
-
     assert.ok(existsSync(join(tmp, 'acme-api/fakegraph-out/graph.json')));
     assert.ok(existsSync(join(tmp, 'acme-web/fakegraph-out/graph.json')));
 
-    // Self-limiting: the artifact now exists everywhere, so the next lifecycle
-    // command builds nothing at all.
-    const again = await capture(() => change.run(['new', 'graph-again', 'Graph again'], { cwd: brain }));
+    // Self-limiting: the artifact now exists everywhere, so the next sync
+    // builds nothing at all.
+    const again = await capture(() => reposCommand.run(['sync'], { cwd: brain }));
     assert.doesNotMatch(again.out, /graph fakegraph @ .*: built/);
   });
 });
@@ -297,7 +374,13 @@ test('a missing binary on the build path is a notice, never a failed lifecycle',
   let code = -1;
   let out = '';
   await withPath(join(tmp, 'nobin'), async () => {
-    ({ code, out } = await capture(() => change.run(['new', 'graph-nobin', 'Graph nobin'], { cwd: brain })));
+    await capture(() => change.run(['new', 'graph-nobin', 'Graph nobin'], { cwd: brain }));
+    const parsed = await loadChange(brain, 'graph-nobin');
+    parsed.change.repos = { api: { status: 'planned' } };
+    parsed.change.landing_order = [['api']];
+    parsed.change.invariants.adds = [];
+    await saveChange(brain, parsed);
+    ({ code, out } = await capture(() => change.run(['plan', 'graph-nobin'], { cwd: brain })));
   });
   assert.equal(code, 0);
   assert.match(out, /graph fakegraph @ api: build skipped — `fakegraph` found on neither PATH nor api's node_modules\/\.bin — install fakegraph: npm i -g fakegraph \(.*\), then `fakegraph build \.` there/);

@@ -677,9 +677,9 @@ test('a stale project document still reports, never gates', async () => {
   assert.equal(off2.code, 0);
   assert.doesNotMatch(off2.out, /constitution/);
 
-  // And a tool that declares no project document is untouched: opsx's
-  // `projectSteps` is deliberately empty, so there is nothing to gate on.
-  assert.equal(sddSpec('opsx')!.projectSteps!.length, 0);
+  // And a tool whose project document is report-only is never gated on it:
+  // opsx's `context:` is optional by the vendor's own word (MV-135).
+  assert.ok(sddSpec('opsx')!.projectSteps!.every((p) => p.reportOnly));
   config(['doors: [agents]', 'sdd: opsx', 'repos:', '  brain: .']);
   artifact('openspec/changes/proj-doc/proposal.md');
   const opsx = await capture(() => change.run(['plan', 'proj-doc'], ctx));
@@ -835,17 +835,28 @@ test("a scaffold that fails as spec-kit 1.0.6 does is quoted by its cause, not i
   }
 });
 
-test('an adapter with no verified init states the gap instead of guessing one', async () => {
-  // openspec's CLI has an `init`, but what it writes was never verified by
-  // running it — and a guessed command would run against someone's repo.
-  // MV-59's rule, one layer up from graphers.
+test('opsx runs its measured init for the declared doors — MV-130', async () => {
+  // openspec 1.13.0: `openspec init --tools <csv> --no-animation .` was run in
+  // a scratch repo and what it wrote recorded, so MV-59's "never guessed" is
+  // met by measurement, not by a gap.
   rmSync(join(brain, 'openspec'), { recursive: true, force: true });
-  config(['doors: [agents]', 'sdd: opsx', 'repos:', '  brain: .']);
+  const log = join(tmp, 'openspec-runs');
+  rmSync(log, { force: true });
+  writeFileSync(
+    join(bin, 'openspec'),
+    `#!/bin/sh\necho "$@ DO_NOT_TRACK=$DO_NOT_TRACK OPENSPEC_TELEMETRY=$OPENSPEC_TELEMETRY" >> '${log}'\ncase "$1" in init) mkdir -p openspec && printf 'schema: spec-driven\\n' > openspec/config.yaml;; esac\nexit 0\n`,
+  );
+  chmodSync(join(bin, 'openspec'), 0o755);
+  config(['doors: [agents, claude]', 'sdd: opsx', 'repos:', '  brain: .']);
   const c = await capture(() => change.run(['plan', 'scaffold-a'], ctx));
-  assert.match(c.out, /sdd opsx: declared, and nothing of it is in brain/);
-  assert.match(c.out, /will not guess one/);
-  assert.match(c.out, /npm i -g @fission-ai\/openspec/);
-  assert.equal(sddSpec('opsx')!.scaffold, undefined);
+  assert.match(c.out, /sdd opsx: scaffolded — brain:openspec is there now/);
+  assert.equal(
+    readFileSync(log, 'utf8').split('\n').find((l) => l.startsWith('init')),
+    'init --tools agents,claude --no-animation . DO_NOT_TRACK=1 OPENSPEC_TELEMETRY=0',
+  );
+  rmSync(join(bin, 'openspec'), { force: true });
+  rmSync(join(brain, 'openspec'), { recursive: true, force: true });
+  config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
 });
 
 test('--no-sdd and sdd_auto: false turn the scaffold off with everything else', async () => {
@@ -986,19 +997,22 @@ test('a root whose init fails does not decide the fate of the roots after it', a
   }
 });
 
-test('an adapter with no declared init states the gap once per root that lacks it', async () => {
-  // MV-59's rule survives the cascade: a tool whose init was never verified
-  // gets none, in every root, and the gap is stated where it applies rather
-  // than once for an ecosystem.
+test('opsx is initialised in every root that lacks it — MV-130', async () => {
   const api = join(tmp, 'acme-api');
   rmSync(join(brain, 'openspec'), { recursive: true, force: true });
   rmSync(join(api, 'openspec'), { recursive: true, force: true });
+  writeFileSync(
+    join(bin, 'openspec'),
+    "#!/bin/sh\ncase \"$1\" in init) mkdir -p openspec && printf 'schema: spec-driven\\n' > openspec/config.yaml;; esac\nexit 0\n",
+  );
+  chmodSync(join(bin, 'openspec'), 0o755);
   cascadeConfig('opsx');
   const c = await capture(() => change.run(['new', 'cascade-d', 'Cascade d'], ctx));
-  assert.match(c.out, /sdd opsx: declared, and nothing of it is in brain/);
-  assert.match(c.out, /sdd opsx: declared, and nothing of it is in api/);
-  assert.match(c.out, /will not guess one/);
-  assert.equal(sddSpec('opsx')!.scaffold, undefined);
+  assert.match(c.out, /sdd opsx: scaffolded — brain:openspec is there now/);
+  assert.match(c.out, /sdd opsx: scaffolded — api:openspec is there now/);
+  rmSync(join(bin, 'openspec'), { force: true });
+  rmSync(join(brain, 'openspec'), { recursive: true, force: true });
+  rmSync(join(api, 'openspec'), { recursive: true, force: true });
   config(['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .']);
   commitAll();
 });

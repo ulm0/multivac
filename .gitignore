@@ -11,6 +11,8 @@ dist-test/
 graphify-out/cache/
 graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 graphify-out/graph.html
+graphify-out/*
+!graphify-out/graph.json
 site/public/
 site/.hugo_build.lock
 site/_vendor/
@@ -19,3 +21,4 @@ site/_vendor/
 # git worktree per subagent, written by the harness and never by this tool. It
 # reached 524 MB in one session and shows up as untracked in every status.
 .claude/worktrees/
+*.graphify-bak

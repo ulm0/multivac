@@ -81,9 +81,9 @@ coalesced behind a lock, so the map is fresh for the next question you ask it.
 `change close` runs the same refresh as a safety net for edits made outside a
 harness. Git hooks never refresh — they run `verify` only.
 
-Two constraints keep this honest. The refresh module never invokes git, so the
-artifact is left uncommitted and graph output lands only in dedicated chore
-commits, if your project commits it at all. And a grapher multivac has not
+Two constraints keep this honest. The refresh module never invokes git:
+`change land` commits the graph on the change's branch, so it merges with the
+code it describes. And a grapher multivac has not
 verified gets no derived paths and no invented verbs — it is reported
 UNVERIFIED until its contract is declared, which any project can do in its own
 config without a merge request against multivac.
