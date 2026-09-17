@@ -125,7 +125,15 @@ test('step zero names what init wrote, never the user\'s work, never -A — MV-1
 
   // Running it verbatim commits exactly that, and leaves the user's work dirty.
   const cmd = zero.replace(/^.*?0\. commit what was just written: /, '');
-  execFileSync('sh', ['-c', `git -c user.email=t@acme.example -c user.name=t ${cmd.replace(/^git /, '').replace(/ && git commit/, ' && git -c user.email=t@acme.example -c user.name=t commit')}`], { cwd: dir, stdio: 'ignore' });
+  // Through the hooks init installed, run by THIS build's multivac and never the
+  // host's: a fresh brain's step 0 has to pass the code-in-change gate (MV-142).
+  const hookBin = mkdtempSync(join(tmpdir(), 'mvac-hookbin-'));
+  writeFileSync(join(hookBin, 'mvac'), `#!/bin/sh\nexec '${process.execPath}' '${join(process.cwd(), 'dist/cli.js')}' "$@"\n`, { mode: 0o755 });
+  execFileSync('sh', ['-c', `git -c user.email=t@acme.example -c user.name=t ${cmd.replace(/^git /, '').replace(/ && git commit/, ' && git -c user.email=t@acme.example -c user.name=t commit')}`], {
+    cwd: dir,
+    stdio: 'ignore',
+    env: { ...process.env, PATH: [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':') },
+  });
   const status = execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' });
   assert.match(status, /^ M README\.md$/m);
   assert.match(status, /^\?\? notes\.txt$/m);

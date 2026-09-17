@@ -14,6 +14,9 @@ import { verify } from '../../src/commands/verify.js';
 import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
+import { loadConfig } from '../../src/lib/config.js';
+import { nonCodeGlobs } from '../../src/lib/code-in-change.js';
+import picomatch from 'picomatch';
 
 process.env.PATH = [dirname(process.execPath), '/usr/bin', '/bin'].join(delimiter);
 for (const [k, v] of Object.entries({
@@ -171,6 +174,41 @@ test('CI judges a range against its branch, and a base not in the clone is not a
   assert.match(gone.out, /code {6}not answered — base 0123456789abcdef0123456789abcdef01234567 is not in this clone — fetch the whole history \(GIT_DEPTH: 0\) · blocking under --strict/);
 
   assert.equal((await verifyIn(b, '--range', `${base}..${head}`)).code, 2, '--range needs --branch');
+});
+
+test('a change closed on its own branch is judged as it was while open; one closed before the range is not — MV-142', async () => {
+  const b = brain();
+  const base = git(b, 'rev-parse', 'HEAD');
+  git(b, 'switch', '-qc', 'feat');
+  put(b, '.multivac/changes/feat.md', openChange('feat'));
+  git(b, 'add', '.multivac/changes');
+  git(b, 'commit', '-qm', 'open');
+  stageCode(b);
+  git(b, 'commit', '-qm', 'code', '--no-verify');
+  mkdirSync(join(b, '.multivac/changes/archive'), { recursive: true });
+  renameSync(join(b, '.multivac/changes/feat.md'), join(b, '.multivac/changes/archive/feat.md'));
+  git(b, 'add', '-A', '.multivac/changes');
+  git(b, 'commit', '-qm', 'archive');
+  const head = git(b, 'rev-parse', 'HEAD');
+  const ok = await verifyIn(b, '--strict', '--range', `${base}..${head}`, '--branch', 'feat');
+  assert.equal(ok.code, 0, ok.out);
+  assert.match(ok.out, /lands in open change feat/);
+
+  // Closed already at the base: new code on its old branch is not its code.
+  stageCode(b);
+  git(b, 'commit', '-qm', 'late code', '--no-verify');
+  const late = await verifyIn(b, '--strict', '--range', `${head}..HEAD`, '--branch', 'feat');
+  assert.equal(late.code, 1, late.out);
+  assert.match(late.out, /on branch feat, which is no open change declaring brain/);
+});
+
+test('what init, the SDD and the grapher write for a harness is not code; .github workflows are — MV-142', async () => {
+  const cfg = { ...(await loadConfig(brain())), grapher: 'graphify' } as Awaited<ReturnType<typeof loadConfig>>;
+  const nonCode = picomatch(nonCodeGlobs(cfg), { dot: true });
+  for (const p of ['.gitignore', '.graphifyignore', '.agents/skills/graphify/SKILL.md', '.agents/skills/speckit-plan/SKILL.md', '.claude/commands/opsx/propose.md', '.cursor/rules/graphify.mdc', '.claude/CLAUDE.md', '.github/copilot-instructions.md', 'AGENTS.md']) {
+    assert.ok(nonCode(p), p);
+  }
+  for (const p of ['.github/workflows/ci.yml', 'src/a.ts', 'package.json']) assert.ok(!nonCode(p), p);
 });
 
 test('with sdd_auto off, or no SDD, nothing is judged; doctor names what makes it binding — MV-137', async () => {

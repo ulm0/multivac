@@ -119,6 +119,15 @@
    "issue": null
   },
   {
+   "id": "change:ci-code-gate",
+   "label": "ci-code-gate",
+   "file_type": "change",
+   "source_file": ".multivac/changes/archive/ci-code-gate.md",
+   "status": "archived",
+   "horizon": null,
+   "issue": null
+  },
+  {
    "id": "change:close-keeps-used-reservations",
    "label": "close-keeps-used-reservations",
    "file_type": "change",
@@ -2144,6 +2153,13 @@
    "repo": "brain"
   },
   {
+   "id": "glob:brain:test/init/equip.test.ts",
+   "label": "brain:test/init/equip.test.ts",
+   "file_type": "anchor",
+   "source_file": "test/init/equip.test.ts",
+   "repo": "brain"
+  },
+  {
    "id": "glob:brain:test/init/hook-shim.test.ts",
    "label": "brain:test/init/hook-shim.test.ts",
    "file_type": "anchor",
@@ -2884,6 +2900,15 @@
    "source_location": "L1181",
    "state": "active",
    "authority": "specified"
+  },
+  {
+   "id": "law:MV-142",
+   "label": "MV-142",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1195",
+   "state": "proposed",
+   "authority": "open"
   },
   {
    "id": "law:MV-15",
@@ -3976,6 +4001,26 @@
    "target": "law:MV-26",
    "relation": "claims",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:ci-code-gate",
+   "target": "law:MV-142",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:ci-code-gate",
+   "target": "law:MV-142",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:ci-code-gate",
+   "target": "repo:brain",
+   "relation": "lands_in",
+   "confidence": "EXTRACTED",
+   "stage": 1,
+   "status": "landed"
   },
   {
    "source": "change:close-keeps-used-reservations",
@@ -6983,7 +7028,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 12
+   "legs": 15
   },
   {
    "source": "glob:brain:.gitlab/issue_templates/*.md",
@@ -7135,7 +7180,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 14
+   "legs": 15
   },
   {
    "source": "glob:brain:site/content/docs/reference/configuration.md",
@@ -7571,7 +7616,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 5
+   "legs": 8
   },
   {
    "source": "glob:brain:src/lib/config.ts",
@@ -7979,6 +8024,12 @@
    "legs": 11
   },
   {
+   "source": "glob:brain:test/init/equip.test.ts",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
+  },
+  {
    "source": "glob:brain:test/init/hook-shim.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
@@ -8094,7 +8145,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 3
+   "legs": 4
   },
   {
    "source": "glob:brain:test/verify/config-gate.test.ts",
@@ -11100,6 +11151,59 @@
    "mode": "absent",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1184"
+  },
+  {
+   "source": "law:MV-142",
+   "target": "change:ci-code-gate",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "law:MV-142",
+   "target": "glob:brain:.gitlab-ci.yml",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1196",
+   "legs": 3
+  },
+  {
+   "source": "law:MV-142",
+   "target": "glob:brain:site/content/docs/reference/commands.md",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1201"
+  },
+  {
+   "source": "law:MV-142",
+   "target": "glob:brain:src/lib/code-in-change.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1199",
+   "legs": 3
+  },
+  {
+   "source": "law:MV-142",
+   "target": "glob:brain:test/init/equip.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1204"
+  },
+  {
+   "source": "law:MV-142",
+   "target": "glob:brain:test/verify/code-in-change.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1200"
   },
   {
    "source": "law:MV-15",
