@@ -110,6 +110,15 @@
    "issue": null
   },
   {
+   "id": "change:change-file-cites",
+   "label": "change-file-cites",
+   "file_type": "change",
+   "source_file": ".multivac/changes/change-file-cites.md",
+   "status": "planned",
+   "horizon": "next",
+   "issue": null
+  },
+  {
    "id": "change:changes-do-not-collide",
    "label": "changes-do-not-collide",
    "file_type": "change",
