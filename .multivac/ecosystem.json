@@ -551,6 +551,15 @@
    "issue": null
   },
   {
+   "id": "change:speckit-writes-once",
+   "label": "speckit-writes-once",
+   "file_type": "change",
+   "source_file": ".multivac/changes/speckit-writes-once.md",
+   "status": "planned",
+   "horizon": "now",
+   "issue": null
+  },
+  {
    "id": "change:sql-statement-scanner",
    "label": "sql-statement-scanner",
    "file_type": "change",
