@@ -1,12 +1,13 @@
 ---
 slug: doors-reach-every-harness
-status: planned
+status: open
 horizon: now
 repos: {}
 landing_order: []
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-143
   retires: []
 claims: []
 ---

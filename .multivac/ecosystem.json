@@ -249,7 +249,7 @@
    "label": "doors-reach-every-harness",
    "file_type": "change",
    "source_file": ".multivac/changes/doors-reach-every-harness.md",
-   "status": "planned",
+   "status": "open",
    "horizon": "now",
    "issue": null
   },
@@ -3001,6 +3001,15 @@
    "authority": "specified"
   },
   {
+   "id": "law:MV-143",
+   "label": "MV-143",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1205",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
    "id": "law:MV-15",
    "label": "MV-15",
    "file_type": "law",
@@ -4371,6 +4380,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:doors-reach-every-harness",
+   "target": "law:MV-143",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:each-file-answers",
@@ -11302,6 +11317,12 @@
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1200"
+  },
+  {
+   "source": "law:MV-143",
+   "target": "change:doors-reach-every-harness",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-15",

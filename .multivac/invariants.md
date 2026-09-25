@@ -1202,3 +1202,4 @@ checks them on every commit.
 <!-- @anchor MV-142 brain:src/lib/code-in-change.ts /'\.husky\/\*\*', '\.gitignore'\]/ unique -->
 <!-- @anchor MV-142 brain:src/lib/code-in-change.ts /top\.startsWith\('\.'\) && top !== '\.github'/ unique -->
 <!-- @anchor MV-142 brain:test/init/equip.test.ts /a fresh brain's step 0 has to pass the code-in-change gate/ unique -->
+| MV-143 | RESERVED by change doors-reach-every-harness — state the rule here before close. | open | proposed | 2026-09-25 | [changes/doors-reach-every-harness.md](changes/doors-reach-every-harness.md) |
