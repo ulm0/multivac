@@ -227,6 +227,15 @@
    "issue": null
   },
   {
+   "id": "change:doors-reach-every-harness",
+   "label": "doors-reach-every-harness",
+   "file_type": "change",
+   "source_file": ".multivac/changes/doors-reach-every-harness.md",
+   "status": "planned",
+   "horizon": "now",
+   "issue": null
+  },
+  {
    "id": "change:each-file-answers",
    "label": "each-file-answers",
    "file_type": "change",
