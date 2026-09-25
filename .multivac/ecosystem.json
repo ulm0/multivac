@@ -146,6 +146,15 @@
    "issue": null
   },
   {
+   "id": "change:codegraph-worktrees-and-verbs",
+   "label": "codegraph-worktrees-and-verbs",
+   "file_type": "change",
+   "source_file": ".multivac/changes/codegraph-worktrees-and-verbs.md",
+   "status": "planned",
+   "horizon": "next",
+   "issue": null
+  },
+  {
    "id": "change:constitution-state",
    "label": "constitution-state",
    "file_type": "change",
