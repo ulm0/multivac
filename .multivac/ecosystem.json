@@ -434,6 +434,15 @@
    "issue": null
   },
   {
+   "id": "change:opsx-through-its-cli",
+   "label": "opsx-through-its-cli",
+   "file_type": "change",
+   "source_file": ".multivac/changes/opsx-through-its-cli.md",
+   "status": "planned",
+   "horizon": "now",
+   "issue": null
+  },
+  {
    "id": "change:presence-is-not-identity",
    "label": "presence-is-not-identity",
    "file_type": "change",
