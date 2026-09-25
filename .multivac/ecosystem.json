@@ -587,6 +587,15 @@
    "issue": null
   },
   {
+   "id": "change:skill-cites-references",
+   "label": "skill-cites-references",
+   "file_type": "change",
+   "source_file": ".multivac/changes/skill-cites-references.md",
+   "status": "planned",
+   "horizon": "later",
+   "issue": null
+  },
+  {
    "id": "change:speckit-writes-once",
    "label": "speckit-writes-once",
    "file_type": "change",
