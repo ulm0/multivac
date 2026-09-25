@@ -317,6 +317,15 @@
    "issue": null
   },
   {
+   "id": "change:graph-answers-where-asked",
+   "label": "graph-answers-where-asked",
+   "file_type": "change",
+   "source_file": ".multivac/changes/graph-answers-where-asked.md",
+   "status": "planned",
+   "horizon": "now",
+   "issue": null
+  },
+  {
    "id": "change:graph-navigation-honest",
    "label": "graph-navigation-honest",
    "file_type": "change",
