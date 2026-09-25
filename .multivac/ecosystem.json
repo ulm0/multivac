@@ -506,6 +506,15 @@
    "issue": null
   },
   {
+   "id": "change:sdd-artifacts-land",
+   "label": "sdd-artifacts-land",
+   "file_type": "change",
+   "source_file": ".multivac/changes/sdd-artifacts-land.md",
+   "status": "planned",
+   "horizon": "now",
+   "issue": null
+  },
+  {
    "id": "change:sdd-shared-committed",
    "label": "sdd-shared-committed",
    "file_type": "change",
