@@ -43,6 +43,11 @@ export function nonCodeGlobs(cfg: Config): string[] {
     harness(t.door);
     if (t.skill) harness(t.skill);
     if (t.hookConfig) harness(t.hookConfig.path);
+    // MV-143: a file a target used to project is still a door file while it is
+    // being removed. Cursor's target became native, which took `.cursor/` out of
+    // this set with it — and the `doors` run that deletes the old rules file
+    // would then have been refused as code landing outside a change (MV-137).
+    if (t.retired) harness(t.retired.path);
   }
   out.add('AGENTS.md');
   const names = new Set<string>();

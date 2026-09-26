@@ -4,7 +4,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gitInit, vendorPath } from '../helpers/fixture.js';
@@ -92,4 +92,75 @@ test('doctor names a missing harness install and runs nothing — MV-131', async
     process.env.PATH = orig;
   }
   assert.equal(existsSync(probe), false, 'doctor ran nothing');
+});
+
+test('the door is linked before the vendor writes there — MV-143', async () => {
+  const dir = tmp();
+  const first = await run(['--provider', 'claude', '--grapher', 'graphify'], dir);
+  assert.equal(first.code, 0, first.out);
+  assert.equal(readlinkSync(join(dir, 'CLAUDE.md')), 'AGENTS.md');
+  // `repos sync` equips a repo it just cloned and projects no doors there, so
+  // the vendor used to arrive first and leave a regular CLAUDE.md that MV-108
+  // then forbids replacing. That state is this: no link, no probe.
+  rmSync(join(dir, 'CLAUDE.md'));
+  rmSync(join(dir, '.claude/skills/graphify'), { recursive: true });
+  const again = await run([], dir);
+  assert.equal(again.code, 0, again.out);
+  assert.equal(readlinkSync(join(dir, 'CLAUDE.md')), 'AGENTS.md');
+  const link = again.out.indexOf("linked CLAUDE.md -> AGENTS.md before graphify's own install");
+  const install = again.out.indexOf('installed into claude');
+  assert.ok(link !== -1, again.out);
+  assert.ok(install !== -1, again.out);
+  assert.ok(link < install, `the link must come first:\n${again.out}`);
+  // Nothing to say once the link is ours.
+  const third = await run([], dir);
+  assert.doesNotMatch(third.out, /linked CLAUDE\.md/);
+});
+
+test('a door somebody else wrote is left alone, and the run names it — MV-108, MV-143', async () => {
+  const dir = tmp();
+  writeFileSync(join(dir, 'CLAUDE.md'), 'a human wrote this door\n');
+  const { code, out } = await run(['--provider', 'claude', '--grapher', 'graphify'], dir);
+  assert.equal(code, 0, out);
+  assert.equal(readFileSync(join(dir, 'CLAUDE.md'), 'utf8'), 'a human wrote this door\n');
+  assert.match(out, /CLAUDE\.md exists as a regular file — merge it into AGENTS\.md and remove it/);
+});
+
+test('the bare rewrite runs on a root whose platforms are all installed — MV-131', async () => {
+  const dir = tmp();
+  const first = await run(['--provider', 'claude', '--grapher', 'graphify'], dir);
+  assert.equal(first.code, 0, first.out);
+  // What a vendor install run by hand afterwards leaves behind. The rewrite used
+  // to sit after an early return that fired as soon as every probe was present,
+  // so this path was committed and broke for everyone but its author.
+  writeFileSync(
+    join(dir, '.claude/settings.json'),
+    '{"hooks":{"PreToolUse":[{"hooks":[{"type":"command","command":"/opt/x/bin/graphify hook-guard read"}]}]}}\n',
+  );
+  const again = await run([], dir);
+  assert.equal(again.code, 0, again.out);
+  const settings = readFileSync(join(dir, '.claude/settings.json'), 'utf8');
+  assert.match(settings, /"graphify hook-guard read"/);
+  assert.doesNotMatch(settings, /opt\/x\/bin/);
+  assert.match(again.out, /\.claude\/settings\.json named graphify by an absolute path — rewritten to `graphify`/);
+  assert.doesNotMatch(again.out, /installed into/, 'nothing was installed on this run');
+});
+
+test('a platform whose file repeats the canonical section is skipped — MV-143', async () => {
+  const dir = tmp();
+  // The section a section-writing platform already put in the canonical door.
+  writeFileSync(join(dir, 'AGENTS.md'), '# door\n\n## graphify\n\nask the graph first\n');
+  const { code, out } = await run(['--provider', 'cursor', '--grapher', 'graphify'], dir);
+  assert.equal(code, 0, out);
+  assert.match(out, /cursor skipped — AGENTS\.md already carries the `## graphify` section/);
+  assert.equal(existsSync(join(dir, '.cursor/rules/graphify.mdc')), false, 'no second copy written');
+  assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /^## graphify$/m, 'the section is still there');
+});
+
+test('without the section, the redundant platform runs as before — MV-143', async () => {
+  const dir = tmp();
+  const { code, out } = await run(['--provider', 'cursor', '--grapher', 'graphify'], dir);
+  assert.equal(code, 0, out);
+  assert.ok(existsSync(join(dir, '.cursor/rules/graphify.mdc')), out);
+  assert.doesNotMatch(out, /cursor skipped/);
 });

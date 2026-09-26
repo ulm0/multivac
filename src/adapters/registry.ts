@@ -42,6 +42,14 @@ export interface DoorTarget {
   hookConfig?: { path: string; shape: string; postEdit?: string };
   /** Path whose presence makes `init` propose this target. */
   detect?: string;
+  /**
+   * MV-143. A file this target used to project and no longer does, with the
+   * `head` multivac itself wrote above the block when it created it. One `doors`
+   * run removes multivac's block and deletes the file when nothing but that head
+   * is left, so a retired target leaves no second door behind (MV-73) and an
+   * operator's own lines survive (MV-108).
+   */
+  retired?: { path: string; head?: string };
 }
 
 /**
@@ -304,7 +312,20 @@ export interface AdapterSpec {
    */
   harness?: {
     run: string;
-    platforms: Record<string, { key: string; probe: string }>;
+    /**
+     * Per door target: the vendor's own platform key, the file that proves it
+     * installed, and — MV-143 — WHERE that platform writes the vendor's own
+     * section, measured, never inferred from the platform's name. `canonical`
+     * writes it into AGENTS.md; `own-door` writes the harness's own root door
+     * file, which reaches AGENTS.md only where that door is a symlink to it;
+     * `none` writes no section anywhere. `redundant` marks a platform whose own
+     * file only repeats what that section already says, so it is skipped where
+     * the section is present.
+     */
+    platforms: Record<
+      string,
+      { key: string; probe: string; section: 'canonical' | 'own-door' | 'none'; redundant?: true }
+    >;
     hookFiles: string[];
     ignore: string[];
   };
@@ -414,12 +435,21 @@ export const doorTargets: Record<string, DoorTarget> = {
     detect: 'CLAUDE.md',
   },
   cursor: {
-    door: '.cursor/rules/multivac.mdc',
-    kind: 'stub',
-    note: 'Cursor reads AGENTS.md at the project root, so this target is optional. Take it when you want the door pinned into every chat: only .mdc files under .cursor/rules carry the frontmatter that sets alwaysApply.',
+    door: 'AGENTS.md',
+    kind: 'native',
+    // MV-143. This was a `stub`: a second copy of the door under
+    // .cursor/rules, pinned into every chat with `alwaysApply`. Cursor reads
+    // AGENTS.md at the project root — its own docs say so, and the previous
+    // note said so while projecting a file anyway — so the stub was a door
+    // that could disagree with the canonical one, and the grapher's cursor
+    // platform writes a third copy of the graph instructions beside it. The
+    // file this target used to write is retired below.
+    note: 'Cursor reads AGENTS.md at the project root. Nothing to project beyond the canonical door; a rules file under .cursor/rules would be a second door that can disagree with it.',
     source: 'https://cursor.com/docs/context/rules',
-    frontmatter:
-      '---\ndescription: multivac door — ecosystem law, brain location\nalwaysApply: true\n---',
+    retired: {
+      path: '.cursor/rules/multivac.mdc',
+      head: '---\ndescription: multivac door — ecosystem law, brain location\nalwaysApply: true\n---',
+    },
     detect: '.cursor',
   },
   opencode: {
@@ -756,16 +786,25 @@ const knownGraphers: Record<string, GrapherEntry> = {
     // hook-guard …`); over an existing `.claude/settings.json` it kept every
     // hook already there, added its own, and left `settings.json.graphify-bak`.
     // A second run added nothing. It has no windsurf platform.
+    // MV-143, measured 2026-09-25 on graphify 0.9.29 in fresh git repos with
+    // HOME and GIT_CONFIG_GLOBAL isolated, each repo carrying an AGENTS.md with
+    // a managed block and a graph already built. `## graphify` in AGENTS.md:
+    // codex, opencode and amp (no door target) wrote it; claude wrote a regular
+    // root CLAUDE.md and gemini a regular GEMINI.md instead; agents, cursor and
+    // copilot wrote no section anywhere. With CLAUDE.md or GEMINI.md a symlink
+    // to AGENTS.md, both wrote the section THROUGH the link — once after two
+    // runs, the managed block untouched, the link still a link. A dangling link
+    // was followed too: the install created AGENTS.md and wrote into it.
     harness: {
       run: 'graphify install --project --platform {key}',
       platforms: {
-        agents: { key: 'agents', probe: '.agents/skills/graphify/SKILL.md' },
-        claude: { key: 'claude', probe: '.claude/skills/graphify/SKILL.md' },
-        cursor: { key: 'cursor', probe: '.cursor/rules/graphify.mdc' },
-        codex: { key: 'codex', probe: '.codex/skills/graphify/SKILL.md' },
-        opencode: { key: 'opencode', probe: '.opencode/skills/graphify/SKILL.md' },
-        gemini: { key: 'gemini', probe: '.gemini/skills/graphify/SKILL.md' },
-        copilot: { key: 'copilot', probe: '.copilot/skills/graphify/SKILL.md' },
+        agents: { key: 'agents', probe: '.agents/skills/graphify/SKILL.md', section: 'none' },
+        claude: { key: 'claude', probe: '.claude/skills/graphify/SKILL.md', section: 'own-door' },
+        cursor: { key: 'cursor', probe: '.cursor/rules/graphify.mdc', section: 'none', redundant: true },
+        codex: { key: 'codex', probe: '.codex/skills/graphify/SKILL.md', section: 'canonical' },
+        opencode: { key: 'opencode', probe: '.opencode/skills/graphify/SKILL.md', section: 'canonical' },
+        gemini: { key: 'gemini', probe: '.gemini/skills/graphify/SKILL.md', section: 'own-door' },
+        copilot: { key: 'copilot', probe: '.copilot/skills/graphify/SKILL.md', section: 'none' },
       },
       hookFiles: ['.claude/settings.json', '.codex/hooks.json', '.gemini/settings.json'],
       ignore: ['*.graphify-bak'],

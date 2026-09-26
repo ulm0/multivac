@@ -2,7 +2,7 @@
 
 import { ecosystemGraphLines } from './ecosystem.js';
 import type { Config } from '../types.js';
-import { doorTargets, grapherSpec, sddSpec } from '../adapters/registry.js';
+import { doorTargets, grapherSpec, sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
 import { parseClaimRows } from '../anchor/parse.js';
 import { adapterFor } from '../adapters/detect.js';
@@ -27,7 +27,7 @@ export function countActiveInvariants(md: string): number {
  * agent is only told about on the SECOND command is a constitution nobody
  * writes.
  */
-export function projectLawLines(sdd: string): string[] {
+export function projectLawLines(sdd: string, lawPrefix = ''): string[] {
   const spec = sddSpec(sdd);
   if (!spec) return [];
   const lines: string[] = [];
@@ -48,8 +48,10 @@ export function projectLawLines(sdd: string): string[] {
   if ((spec.projectSteps ?? []).length === 0) {
     lines.push('  - this tool has no project-level document — nothing to write once and amend');
   } else {
-    // MV-135: which one wins, said where the document is named.
-    lines.push('  - where a project document and an active row of `.multivac/invariants.md` disagree, the row wins: amend the document, or change the row through a change');
+    // MV-135: which one wins, said where the document is named. MV-143: at the
+    // path THIS root can open — a consumer reads the law under its mount, and
+    // the brain's own relative path resolves to nothing there.
+    lines.push(`  - where a project document and an active row of \`${lawPrefix}.multivac/invariants.md\` disagree, the row wins: amend the document, or change the row through a change`);
   }
   return lines;
 }
@@ -67,6 +69,25 @@ export function projectLawLines(sdd: string): string[] {
  * A tool with no query surface gets a line saying exactly that. Silence there
  * would read as "no graph"; an invented verb would be worse.
  */
+/**
+ * MV-143. The declared doors whose platform writes the vendor's own section
+ * INTO the canonical door: `canonical` outright, or `own-door` where that
+ * harness's door is a symlink to it, which `installHarness` now creates before
+ * the vendor runs. The one rule two surfaces ask — the door, deciding whether
+ * to cite that section, and `doctor`, deciding which install would write it.
+ * Order follows the declared doors, so the first entry is the one to name.
+ */
+export function sectionDoors(config: Config, spec: AdapterSpec): string[] {
+  const platforms = spec.harness?.platforms;
+  if (!platforms) return [];
+  return config.doors.filter((d) => {
+    const p = platforms[d];
+    if (!p) return false;
+    if (p.section === 'canonical') return true;
+    return p.section === 'own-door' && doorTargets[d]?.kind === 'symlink';
+  });
+}
+
 export function grapherLines(config: Config, name: string | undefined): string[] {
   // MV-90: the same rendering serves the brain's door and every consumer's, so
   // the two cannot drift. Every caller passes what `adapterFor` resolved for
@@ -95,7 +116,12 @@ export function grapherLines(config: Config, name: string | undefined): string[]
   // MV-140 (I-55): where the tool's own install writes its section into a
   // declared door, that section carries the verbs and when to use them; the
   // door names the commands and points there instead of saying it twice.
-  const cites = spec.harness !== undefined && config.doors.some((d) => spec.harness!.platforms[d] !== undefined);
+  // MV-143: asked of the platforms that WRITE that section, not of any platform
+  // at all. This brain's door cited it because `agents` was declared, while
+  // graphify's `agents` platform writes only a skill — the section was there
+  // because the `claude` platform wrote through the CLAUDE.md link, which is a
+  // different root's accident away from being false.
+  const cites = sectionDoors(config, spec).length > 0;
   if (spec.queries && spec.queries.length > 0 && cites) {
     lines.push(
       `  ${ask} ${spec.queries.map((q) => `\`${q.run.split(' "')[0]}\``).join(', ')} — how and when to use each is in the \`## ${name}\` section ${name}'s own install writes into this file.`,
@@ -125,7 +151,7 @@ export function grapherLines(config: Config, name: string | undefined): string[]
  * root that resolves `none` gets no block rather than one about a tool of
  * that name.
  */
-export function sddLines(config: Config, name: string | undefined): string[] {
+export function sddLines(config: Config, name: string | undefined, lawPrefix = ''): string[] {
   if (!name) return [];
   const spec = sddSpec(name);
   const lines = [
@@ -137,7 +163,7 @@ export function sddLines(config: Config, name: string | undefined): string[] {
   // The project-level document: the law of the project, not of one change.
   // Written once, then amended as the product moves — so the door tells the
   // agent to create it when it is not there.
-  lines.push(...projectLawLines(name));
+  lines.push(...projectLawLines(name, lawPrefix));
   // The per-change flow, in the tool's own order and length. Each line ends
   // with what proves it ran, or with why nothing ever can.
   for (const s of spec?.steps ?? []) {

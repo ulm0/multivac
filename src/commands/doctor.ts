@@ -15,6 +15,8 @@ import {
   layoutError,
   loadConfig,
 } from '../lib/config.js';
+import { sectionDoors } from '../doors/brain.js';
+import { CANONICAL_DOOR, hasGrapherSection } from '../doors/link.js';
 import * as git from '../lib/git.js';
 import { initState, stateLabel } from '../lib/init-state.js';
 import { say, warn } from '../lib/out.js';
@@ -359,10 +361,15 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
       }
       // MV-140: the door cites the tool's own section instead of its verbs, so
       // a door file without that section leaves the agent with names only.
-      const covered = cfg.doors.filter((d) => spec.harness!.platforms[d]);
-      const door = await readFile(join(s.dir, 'AGENTS.md'), 'utf8').catch(() => '');
-      if (covered.length > 0 && !new RegExp(`^## ${s.name}\\b`, 'm').test(door)) {
-        msg += ` · AGENTS.md has no \`## ${s.name}\` section, which the door cites → \`${spec.harness.run.replace('{key}', spec.harness.platforms[covered[0]]!.key)}\``;
+      // MV-143: asked of the platforms that WRITE the section, by the same rule
+      // the door uses, and the command offered is one of those platforms. This
+      // named `--platform agents` for a platform that writes only a skill, so
+      // the repair it printed could not repair anything. Where no declared
+      // platform writes the section, the door does not cite it and there is
+      // nothing to report.
+      const writes = sectionDoors(cfg, spec);
+      if (writes.length > 0 && !(await hasGrapherSection(s.dir, s.name))) {
+        msg += ` · ${CANONICAL_DOOR} has no \`## ${s.name}\` section, which the door cites → \`${spec.harness.run.replace('{key}', spec.harness.platforms[writes[0]!]!.key)}\``;
       }
     }
     out.push(label('grapher') + msg);

@@ -76,3 +76,28 @@ export function applyManagedBlock(existing: string | null, body: string, where?:
   const sep = existing === '' ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
   return existing + sep + block;
 }
+
+/**
+ * The file without multivac's block — what is left when a target is retired.
+ *
+ * MV-143. A target that stops being projected leaves its file behind, and a
+ * stale second door is worse than none: the agent reads two and nothing says
+ * which is current (MV-73). Only the block goes; every byte outside it is the
+ * operator's (MV-108). `null` means nothing of theirs remains, so the file is
+ * the block and the caller may delete it. A file with no markers, or with the
+ * broken pair `applyManagedBlock` refuses, is returned unchanged — this
+ * function removes what multivac wrote and never guesses at the rest.
+ */
+export function stripManagedBlock(existing: string): string | null {
+  const begins = findMarkers(existing, BEGIN);
+  const ends = findMarkers(existing, END);
+  if (begins.length !== 1 || ends.length !== 1) return existing;
+  const begin = begins[0]!;
+  const end = ends[0]!;
+  if (end < begin) return existing;
+  // The same seam `applyManagedBlock` keeps when it replaces a block: one
+  // newline after the end marker belonged to the block, not to the text around
+  // it, so removing the block must not leave a blank line behind it.
+  const rest = existing.slice(0, begin) + existing.slice(end + END.length).replace(/^\n/, '');
+  return rest.trim() === '' ? null : rest;
+}

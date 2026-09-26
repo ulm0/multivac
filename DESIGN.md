@@ -969,9 +969,16 @@ There are **two kinds of door**, and they are not the same file renamed:
 One canonical door, `AGENTS.md`, projected to the rest:
 
 - **Symlink** when the format is identical (`CLAUDE.md`).
-- **Three-line stub** when it isn't: Cursor wants `.cursor/rules/*.mdc` **with
-  frontmatter**, Copilot wants `.github/copilot-instructions.md`. A symlink
-  can't add frontmatter.
+- **Three-line stub** when it isn't: Copilot wants
+  `.github/copilot-instructions.md`, and a symlink can't add frontmatter.
+- **Nothing at all** for a harness that already reads `AGENTS.md`: opencode,
+  codex, windsurf and Cursor. Cursor had a stub until MV-143, which was a second
+  door able to disagree with the canonical one; retiring a target removes the
+  file it used to write.
+- **The link goes in before any vendor writes there** (MV-143). A grapher's own
+  project install writes the harness's own door file, so without the link it
+  leaves a regular `CLAUDE.md` that multivac may not replace, and the agent reads
+  the vendor instead of the door.
 - `--no-symlink` for Windows, which needs developer mode.
 
 Still a single source; only the projection varies.
@@ -1313,7 +1320,7 @@ do I fix it":
 
 ```
 $ multivac doctor
-doors      AGENTS.md (canonical) · CLAUDE.md (symlink) · .cursor/rules/multivac.mdc (stub)
+doors      AGENTS.md (canonical) · CLAUDE.md (symlink) · AGENTS.md (cursor, read natively)
 sdd        opsx        installed · binary ok
 grapher    graphify    installed (shared) · binary missing  → `graphify` found on neither PATH nor brain's node_modules/.bin — install graphify: uv tool install graphifyy (https://github.com/Graphify-Labs/graphify)
 repos      4/5 present · payments not cloned (22 anchors unevaluated)

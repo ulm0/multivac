@@ -261,22 +261,36 @@ agent to ask the graph. Once a repo's graph is built, the same commands run
 `graphify install --project --platform <p>` there for each declared door that
 does not have it yet:
 
-| door | platform | installed when this exists |
-| --- | --- | --- |
-| `agents` | `agents` | `.agents/skills/graphify/SKILL.md` |
-| `claude` | `claude` | `.claude/skills/graphify/SKILL.md` |
-| `cursor` | `cursor` | `.cursor/rules/graphify.mdc` |
-| `codex` | `codex` | `.codex/skills/graphify/SKILL.md` |
-| `opencode` | `opencode` | `.opencode/skills/graphify/SKILL.md` |
-| `gemini` | `gemini` | `.gemini/skills/graphify/SKILL.md` |
-| `copilot` | `copilot` | `.copilot/skills/graphify/SKILL.md` |
+| door | platform | installed when this exists | writes `## graphify` |
+| --- | --- | --- | --- |
+| `agents` | `agents` | `.agents/skills/graphify/SKILL.md` | nowhere |
+| `claude` | `claude` | `.claude/skills/graphify/SKILL.md` | its own `CLAUDE.md` |
+| `cursor` | `cursor` | `.cursor/rules/graphify.mdc` | nowhere |
+| `codex` | `codex` | `.codex/skills/graphify/SKILL.md` | `AGENTS.md` |
+| `opencode` | `opencode` | `.opencode/skills/graphify/SKILL.md` | `AGENTS.md` |
+| `gemini` | `gemini` | `.gemini/skills/graphify/SKILL.md` | its own `GEMINI.md` |
+| `copilot` | `copilot` | `.copilot/skills/graphify/SKILL.md` | nowhere |
+
+Where the section lands decides two things. The door cites
+`## graphify` as the manual for the verbs only where a declared platform writes
+it into `AGENTS.md` — outright, or through a symlink door, which is why
+**every symlink door is linked before the vendor runs**: measured on the
+graphify release the registry records, `claude` and `gemini` write their section
+through the link, and without it they leave a regular `CLAUDE.md` or `GEMINI.md`
+that multivac may not replace, so the harness reads the vendor and never the
+door. `doctor` offers an
+install from the same set, and `cursor`, whose rules file only repeats what the
+section says, is skipped where the section is already there — after the
+platforms that write it have run.
 
 graphify has no windsurf platform, and that door is named instead.
 
 The hooks graphify writes for claude, codex and gemini name the binary by the
 absolute path it has on the machine that ran the install. Those files are
 committed, so multivac rewrites that path to plain `graphify`, found on `PATH`
-on every machine, and says so. `*.graphify-bak`, the backup graphify leaves of
+on every machine, and says so — on **every** run that equips a root, not only
+the one that installs, because an install run by hand afterwards writes the
+absolute path again. `*.graphify-bak`, the backup graphify leaves of
 a settings file it edited, goes into `.gitignore` first. `doctor` names a door
 whose install is missing, with the command, and runs nothing.
 

@@ -37,6 +37,23 @@ test('a grapher whose own install covers a declared door is cited, not repeated 
   assert.match(listed, /ASK IT BEFORE READING THE TREE RAW\. It answers in one call/);
 });
 
+test('the door cites the vendor section only where a declared platform writes it — MV-143', async () => {
+  // graphify's `agents` platform writes a skill and no section anywhere
+  // (measured on 0.9.29), so the door carries the verbs itself. It used to cite
+  // a section no declared platform would ever write.
+  const alone = renderBrainDoor(await cfgWith('agents', 'graphify'), 1);
+  assert.match(alone, /ASK IT BEFORE READING THE TREE RAW\. It answers in one call/);
+  assert.doesNotMatch(alone, /section graphify's own install writes into this file/);
+  // codex writes it into AGENTS.md itself; claude through the CLAUDE.md link.
+  for (const doors of ['agents, codex', 'agents, claude']) {
+    assert.match(
+      renderBrainDoor(await cfgWith(doors, 'graphify'), 1),
+      /section graphify's own install writes into this file/,
+      doors,
+    );
+  }
+});
+
 test('the post-edit refresh runs in the repo of the edited file when it holds the graph — MV-140', () => {
   const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-nav-hook-')));
   const session = join(tmp, 'brain');
@@ -70,15 +87,33 @@ test('the post-edit refresh runs in the repo of the edited file when it holds th
   assert.equal(fire(''), session);
 });
 
-test('doctor names asking the graph as unchecked, and a door file missing the section it cites — MV-140', async () => {
+test('doctor names asking the graph as unchecked, and offers a platform that writes the section — MV-140, MV-143', async () => {
   const b = join(mkdtempSync(join(tmpdir(), 'mvac-nav-doc-')), 'brain');
   initRepo(b, {
     '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\nrepos:\n  brain: .\n',
     '.multivac/invariants.md': '# Invariants\n',
     'graphify-out/graph.json': '{}\n',
   });
-  const report = (await doctorReport(b)).lines.join('\n');
-  assert.match(report, /AGENTS\.md has no `## graphify` section, which the door cites → `graphify install --project --platform agents`/);
+  // graphify's `agents` platform writes a skill and no section, so the door does
+  // not cite one and there is nothing to repair. It used to offer
+  // `--platform agents`, a command that cannot write what the line asked for.
+  assert.doesNotMatch((await doctorReport(b)).lines.join('\n'), /has no `## graphify` section/);
+
+  // codex writes the section into AGENTS.md itself (measured, MV-143).
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents, codex]\ngrapher: graphify\nrepos:\n  brain: .\n');
+  assert.match(
+    (await doctorReport(b)).lines.join('\n'),
+    /AGENTS\.md has no `## graphify` section, which the door cites → `graphify install --project --platform codex`/,
+  );
+
+  // claude writes its own root door, which reaches AGENTS.md through the symlink
+  // `installHarness` creates before the vendor runs.
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n');
+  assert.match(
+    (await doctorReport(b)).lines.join('\n'),
+    /which the door cites → `graphify install --project --platform claude`/,
+  );
+
   writeFileSync(join(b, 'AGENTS.md'), '# door\n\n## graphify\n\nrules\n');
   assert.doesNotMatch((await doctorReport(b)).lines.join('\n'), /has no `## graphify` section/);
   assert.match((await doctorReport(b)).lines.join('\n'), /^grapher {4}navigation: ungateable — no committed file records that a graph was asked before the tree was read; a nudge, never a gate$/m);

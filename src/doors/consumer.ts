@@ -53,7 +53,9 @@ export function renderConsumerDoor(config: Config, repoKey: string): string {
   // The adapters that apply HERE, from the one resolver every surface asks
   // (MV-122) — a repo that resolves `none` gets no block.
   const graph = grapherLines(config, adapterFor(config, repoKey, 'grapher'));
-  const sdd = sddLines(config, adapterFor(config, repoKey, 'sdd'));
+  // MV-143: the law prefix this repo can open. `projectLawLines` names the law
+  // beside the project document, and in a consumer that path is under the mount.
+  const sdd = sddLines(config, adapterFor(config, repoKey, 'sdd'), `${mount}/`);
   return [
     '## multivac — consumer door',
     '',

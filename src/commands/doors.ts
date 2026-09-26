@@ -14,7 +14,7 @@ import {
   rmSync,
   symlinkSync,
 } from 'node:fs';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Command, CommandContext, Config } from '../types.js';
@@ -26,7 +26,8 @@ import { ConfigError, LAW_PATH, loadConfig,
   FLOW_PATH,
 } from '../lib/config.js';
 import { say, warn } from '../lib/out.js';
-import { applyManagedBlock } from '../doors/block.js';
+import { applyManagedBlock, stripManagedBlock } from '../doors/block.js';
+import { CANONICAL_DOOR, linkDoor } from '../doors/link.js';
 import { renderFlow } from '../doors/flow.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { writeEcosystem } from '../doors/ecosystem.js';
@@ -60,25 +61,6 @@ function packageRoot(): string | null {
     const up = dirname(dir);
     if (up === dir) return null;
     dir = up;
-  }
-}
-
-/** <door> -> AGENTS.md symlink. Returns a notice line, or null when done. */
-function linkDoor(dir: string, door: string): string | null {
-  const link = join(dir, door);
-  try {
-    const st = lstatSync(link, { throwIfNoEntry: false });
-    if (st?.isSymbolicLink()) {
-      if (readlinkSync(link) === 'AGENTS.md') return null; // already ours
-      return `${door} is a symlink elsewhere — repoint it at AGENTS.md or remove it`;
-    }
-    if (st) {
-      return `${door} exists as a regular file — merge it into AGENTS.md and remove it to get the symlink`;
-    }
-    symlinkSync('AGENTS.md', link);
-    return null;
-  } catch {
-    return `symlink not permitted on this platform — read AGENTS.md directly, or enable developer mode to get ${door}`;
   }
 }
 
@@ -185,6 +167,31 @@ async function installHookConfig(
 }
 
 /** Door block into AGENTS.md + per-target projections + hook shims. */
+/**
+ * MV-143. Remove multivac's block from a path a target no longer projects, and
+ * delete the file when nothing of the operator's is left — counting the
+ * frontmatter multivac itself wrote at creation as its own, not theirs. A file
+ * with no block, or with the broken marker pair `applyManagedBlock` refuses, is
+ * left exactly as it is: this run removes what multivac wrote and never guesses
+ * at the rest (MV-108).
+ */
+async function unproject(dir: string, t: DoorTarget, notices: string[]): Promise<void> {
+  const { path, head } = t.retired!;
+  const file = join(dir, path);
+  const existing = await readOrNull(file);
+  if (existing === null) return;
+  const rest = stripManagedBlock(existing);
+  if (rest === existing) return; // nothing of ours in there
+  const onlyOurs = rest === null || rest.trim() === (head ?? '').trim();
+  if (onlyOurs) {
+    await rm(file, { force: true });
+    notices.push(`${path} removed — this harness reads ${CANONICAL_DOOR}`);
+    return;
+  }
+  await writeFile(file, rest);
+  notices.push(`${path}: managed block removed; the rest is yours`);
+}
+
 async function projectInto(
   dir: string,
   body: string,
@@ -222,9 +229,13 @@ async function projectInto(
       continue;
     }
     // canonical and native both read AGENTS.md, already written above.
+    // MV-143: a target that stopped projecting a file takes it with it. One
+    // run removes multivac's block and deletes what is left when nothing of the
+    // operator's remains — a stale second door is one an agent reads as current.
+    if (t.retired) await unproject(dir, t, notices);
     if (t.kind === 'symlink') {
-      const linkNotice = linkDoor(dir, t.door);
-      if (linkNotice) notices.push(linkNotice);
+      const { notice } = linkDoor(dir, t.door);
+      if (notice) notices.push(notice);
     } else if (t.kind === 'stub') {
       // Tool-owned stub file — but the file is not multivac's, only the block
       // inside it is (MV-108). Writing it whole destroyed whatever the

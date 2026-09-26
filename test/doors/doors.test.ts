@@ -15,7 +15,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { gitInit, makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand, installSkill } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
@@ -154,25 +154,54 @@ test('claude target: symlink + settings merge preserving foreign keys', async ()
   assert.equal(merged.hooks.SessionStart[0].hooks[0].command, 'mvac verify 2>&1 || true');
 });
 
-test('cursor target: stub with frontmatter, no unknown-target notice', async () => {
+test('cursor reads AGENTS.md: nothing projected, and the old stub retired — MV-143', async () => {
   writeFileSync(
     join(eco.brain, '.multivac/config.yml'),
     'doors: [agents, cursor]\nrepos:\n  api: ../acme-api\n',
   );
+  // A rules file from the version that projected one: block only, plus the head
+  // multivac wrote itself.
+  const stubPath = join(eco.brain, '.cursor/rules/multivac.mdc');
+  mkdirSync(dirname(stubPath), { recursive: true });
+  writeFileSync(
+    stubPath,
+    '---\ndescription: multivac door — ecosystem law, brain location\nalwaysApply: true\n---\n\n<!-- multivac:begin -->\nRead `AGENTS.md`\n<!-- multivac:end -->\n',
+  );
   const { code, out } = await runDoors();
   assert.equal(code, 0);
   assert.ok(!out.some((l) => l.includes('unknown door target')), out.join('\n'));
-  for (const dir of [eco.brain, eco.repos.api]) {
-    const stub = read(dir, '.cursor/rules/multivac.mdc');
-    assert.match(stub, /^---\n/); // frontmatter first
-    assert.match(stub, /alwaysApply: true/);
-    assert.match(stub, /multivac:begin/); // managed block present (doctor checks it)
-    assert.match(stub, /AGENTS\.md/);
-  }
-  // idempotent
-  const once = read(eco.brain, '.cursor/rules/multivac.mdc');
-  await runDoors();
-  assert.equal(read(eco.brain, '.cursor/rules/multivac.mdc'), once);
+  assert.equal(existsSync(stubPath), false, 'the retired rules file is gone');
+  assert.ok(
+    out.some((l) => l.includes('.cursor/rules/multivac.mdc removed — this harness reads AGENTS.md')),
+    out.join('\n'),
+  );
+  // The canonical door is where cursor reads, and it carries the door.
+  assert.match(read(eco.brain, 'AGENTS.md'), /multivac:begin/);
+  // A second run has nothing left to remove and says nothing about it.
+  const again = await runDoors();
+  assert.ok(!again.out.some((l) => l.includes('.cursor/rules/multivac.mdc')), again.out.join('\n'));
+});
+
+test("a retired rules file keeps the operator's own lines — MV-108, MV-143", async () => {
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents, cursor]\nrepos:\n  api: ../acme-api\n',
+  );
+  const stubPath = join(eco.brain, '.cursor/rules/multivac.mdc');
+  mkdirSync(dirname(stubPath), { recursive: true });
+  writeFileSync(
+    stubPath,
+    '<!-- multivac:begin -->\nRead `AGENTS.md`\n<!-- multivac:end -->\n\nmy own rule: never touch main\n',
+  );
+  const { out } = await runDoors();
+  assert.equal(existsSync(stubPath), true, 'a file with the operator\'s text survives');
+  const left = read(eco.brain, '.cursor/rules/multivac.mdc');
+  assert.match(left, /my own rule: never touch main/);
+  assert.doesNotMatch(left, /multivac:begin/);
+  assert.ok(
+    out.some((l) => l.includes('.cursor/rules/multivac.mdc: managed block removed; the rest is yours')),
+    out.join('\n'),
+  );
 });
 
 test('missing repo is a notice, not a failure', async () => {
@@ -443,4 +472,23 @@ test('doors names the repos it gated with no mount to read — offline, never mo
 
   // The consumer door names multivac's command before git's.
   assert.match(read(eco.repos.api, 'AGENTS.md'), /ask the brain's owner to run `multivac repos sync`/);
+});
+
+test('a consumer door names the law at the path that repo can open — MV-143', async () => {
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents]\nsdd: speckit\nrepos:\n  api: ../acme-api\n',
+  );
+  const { code } = await runDoors();
+  assert.equal(code, 0);
+  const door = read(eco.repos.api, 'AGENTS.md');
+  // The project-document line used to print the brain's own relative path in a
+  // repo where the law is under the mount, so the agent opened nothing.
+  assert.match(door, /`\.brain\/\.multivac\/invariants\.md`/);
+  for (const line of door.split('\n')) {
+    if (!line.includes('invariants.md')) continue;
+    assert.doesNotMatch(line, /(^|[^.])`\.multivac\/invariants\.md`/, line);
+  }
+  // The brain's own door keeps the bare path: that is the path it can open.
+  assert.match(read(eco.brain, 'AGENTS.md'), /`\.multivac\/invariants\.md`/);
 });

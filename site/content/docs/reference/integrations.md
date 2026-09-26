@@ -27,9 +27,9 @@ Then `mvac doors`. That is the whole adoption step — never re-run `init`.
 | kind | what `doors` writes | entries |
 | --- | --- | --- |
 | `canonical` | `AGENTS.md` itself — the source every other kind projects from | `agents` |
-| `native` | **nothing.** The harness already reads `AGENTS.md`; a second file would be a paraphrase | `opencode`, `codex`, `windsurf` |
+| `native` | **nothing.** The harness already reads `AGENTS.md`; a second file would be a paraphrase | `opencode`, `codex`, `windsurf`, `cursor` |
 | `symlink` | a second name for the same bytes: `<door> → AGENTS.md` | `claude`, `gemini` |
-| `stub` | a small tool-owned file, optional frontmatter, then the managed block, pointing at `AGENTS.md` | `cursor`, `copilot` |
+| `stub` | a small tool-owned file, optional frontmatter, then the managed block, pointing at `AGENTS.md` | `copilot` |
 
 There is no kind for "cannot be owned". A harness whose door multivac cannot
 write gets **no entry**, because an entry is how this tool says *supported* —
@@ -38,6 +38,15 @@ of what multivac integrates with. `aider` had one for a while, carrying a note
 that explained at length why none of it applied; it read as support to anyone
 who did not open it. An unknown name already gets the list of what is
 supported, which is the answer that helps.
+
+Cursor was a `stub` until multivac stopped projecting one: it reads `AGENTS.md` at the project root, so
+the rules file was a second door that could disagree with the canonical one, and
+graphify's own `cursor` platform wrote a third copy of the graph instructions
+beside it. A target that retires a file it used to project takes it with it —
+one `doors` run removes multivac's block from `.cursor/rules/multivac.mdc` and
+deletes the file when nothing but the frontmatter multivac itself wrote is left,
+saying which of the two it did. Lines you added there survive, and the file with
+them stays.
 
 Everything multivac writes into a file it does not fully own lands between
 `<!-- multivac:begin -->` and `<!-- multivac:end -->`. Content outside that
@@ -55,7 +64,7 @@ brain: door + hooks updated
 
 ```txt
 $ mvac doctor
-doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: .cursor/rules/multivac.mdc ok · opencode: AGENTS.md ok (read natively) · codex: AGENTS.md ok (read natively) · windsurf: AGENTS.md ok (read natively) · gemini: GEMINI.md ok (symlink) · copilot: .github/copilot-instructions.md ok
+doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: AGENTS.md ok (read natively) · opencode: AGENTS.md ok (read natively) · codex: AGENTS.md ok (read natively) · windsurf: AGENTS.md ok (read natively) · gemini: GEMINI.md ok (symlink) · copilot: .github/copilot-instructions.md ok
 ```
 
 ---

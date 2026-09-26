@@ -10,7 +10,8 @@ import { promisify } from 'node:util';
 import { mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import type { Config, GrapherDecl } from '../types.js';
-import { binaryMissing, grapherSpec, unverifiedGrapher, type AdapterSpec } from './registry.js';
+import { binaryMissing, doorTargets, grapherSpec, unverifiedGrapher, type AdapterSpec } from './registry.js';
+import { CANONICAL_DOOR, hasGrapherSection, linkDoor } from '../doors/link.js';
 import { ignoredPaths } from '../lib/git.js';
 import { adapterFor, adaptersByRoot, localBin, missingRequired, pathExists, readOnly, type ReadOnly } from './detect.js';
 import { initState } from '../lib/init-state.js';
@@ -281,35 +282,25 @@ export async function installHarness(brain: string, cfg: Config, only?: string[]
     const spec = grapherSpec(s.name, cfg.graphers);
     const h = spec?.harness;
     if (!spec || !h) continue;
-    // Only over a graph that is there: the install points every agent at it,
-    // and a root whose graph is missing or unreadable is the build's to report.
-    if ((await initState(spec, s.dir)).state !== 'installed') continue;
     const label = `graph ${s.name} @ ${s.scope}`;
-    const todo: string[] = [];
+    // MV-143: the door before the vendor. A harness whose door is a link to
+    // AGENTS.md gets it created here, so the vendor writes its section THROUGH
+    // the link into the canonical door instead of leaving a regular file of its
+    // own that MV-108 then forbids replacing — which is how a code repo ended
+    // up with the vendor's section and no multivac door at all.
     for (const door of cfg.doors) {
-      const p = h.platforms[door];
-      if (!p) {
-        warn(`${label}: ${door} has no ${s.name} platform — its own install is not run for it`);
-        continue;
-      }
-      if (!(await pathExists(join(s.dir, p.probe)))) todo.push(p.key);
+      const t = doorTargets[door];
+      if (t?.kind !== 'symlink') continue;
+      const { created, notice } = linkDoor(s.dir, t.door);
+      if (created) say(`${label}: linked ${t.door} -> ${CANONICAL_DOOR} before ${s.name}'s own install`);
+      else if (notice) say(`${label}: ${notice}`);
     }
-    if (todo.length === 0) continue;
-    const missing = await missingRequired(spec, s.dir);
-    if (missing.length > 0) {
-      say(`${label}: harness install not run — ${binaryMissing(s.name, spec, missing, s.scope)}`);
-      continue;
-    }
-    await writeIgnores(s.name, { ...spec, graphignore: [], ignore: h.ignore }, s.dir, s.scope, 'its first project install');
-    for (const key of todo) {
-      const run = h.run.replace('{key}', key);
-      try {
-        await runDeclared(spec, run, s.dir);
-        say(`${label}: installed into ${key} (\`${run}\`)`);
-      } catch (e) {
-        warn(`${label}: \`${run}\` failed (${quoteFailure(e as { stderr?: string; stdout?: string; message: string })}) — run it there by hand`);
-      }
-    }
+    await runHarnessInstalls(spec, h, s, cfg, label);
+    // MV-131, and outside the installs on purpose: the rewrite used to sit
+    // after an early return that fired as soon as every probe was present, so a
+    // vendor install run by hand afterwards put the absolute path back and
+    // nothing normalized it again. It is pure text over declared files — no
+    // binary, no graph, no network — and silent when nothing changed.
     const bin = spec.required[0];
     for (const f of h.hookFiles) {
       const path = join(s.dir, f);
@@ -319,6 +310,58 @@ export async function installHarness(brain: string, cfg: Config, only?: string[]
       if (bare === text) continue;
       await writeFile(path, bare);
       say(`${label}: ${f} named ${bin} by an absolute path — rewritten to \`${bin}\`, found on PATH`);
+    }
+  }
+}
+
+/**
+ * The vendor's own install, per declared door whose probe is missing, in one
+ * root. Returns early where nothing is to be installed; the caller's rewrite
+ * runs either way.
+ *
+ * MV-143: a platform whose file only repeats the section the canonical door
+ * already carries is skipped, and the platforms that WRITE that section run
+ * first, so the skip is decided against the door as it will be, not as it was.
+ */
+async function runHarnessInstalls(
+  spec: AdapterSpec,
+  h: NonNullable<AdapterSpec['harness']>,
+  s: GraphScope,
+  cfg: Config,
+  label: string,
+): Promise<void> {
+  // Only over a graph that is there: the install points every agent at it,
+  // and a root whose graph is missing or unreadable is the build's to report.
+  if ((await initState(spec, s.dir)).state !== 'installed') return;
+  const todo: { key: string; redundant: boolean }[] = [];
+  for (const door of cfg.doors) {
+    const p = h.platforms[door];
+    if (!p) {
+      warn(`${label}: ${door} has no ${s.name} platform — its own install is not run for it`);
+      continue;
+    }
+    if (!(await pathExists(join(s.dir, p.probe)))) {
+      todo.push({ key: p.key, redundant: p.redundant === true });
+    }
+  }
+  if (todo.length === 0) return;
+  const missing = await missingRequired(spec, s.dir);
+  if (missing.length > 0) {
+    say(`${label}: harness install not run — ${binaryMissing(s.name!, spec, missing, s.scope)}`);
+    return;
+  }
+  await writeIgnores(s.name!, { ...spec, graphignore: [], ignore: h.ignore }, s.dir, s.scope, 'its first project install');
+  for (const { key, redundant } of [...todo].sort((a, b) => Number(a.redundant) - Number(b.redundant))) {
+    if (redundant && (await hasGrapherSection(s.dir, s.name!))) {
+      say(`${label}: ${key} skipped — ${CANONICAL_DOOR} already carries the \`## ${s.name}\` section`);
+      continue;
+    }
+    const run = h.run.replace('{key}', key);
+    try {
+      await runDeclared(spec, run, s.dir);
+      say(`${label}: installed into ${key} (\`${run}\`)`);
+    } catch (e) {
+      warn(`${label}: \`${run}\` failed (${quoteFailure(e as { stderr?: string; stdout?: string; message: string })}) — run it there by hand`);
     }
   }
 }

@@ -66,4 +66,27 @@ assumes the door is the file the agent actually loads. Moves M24, M23 and M27
 of the adapter-first design, plus the bare-binary pass that MV-131 already
 requires and that only runs on the installing pass.
 
-Spec, plan and tasks: `specs/<n>-doors-reach-every-harness/`.
+Spec, plan and tasks: `specs/070-doors-reach-every-harness/`.
+
+**Walked, not assumed** (2026-09-25, scratch ecosystem of a brain plus two code
+repos, real graphify 0.9.29, `HOME` and `GIT_CONFIG_GLOBAL` isolated):
+
+- `repos sync` linked `CLAUDE.md -> AGENTS.md` in the cloned code repo **before**
+  the vendor ran, and graphify's `## graphify` section landed in `AGENTS.md`,
+  once. After `doors`, that same file carries multivac's block and the section,
+  and `CLAUDE.md` is still the link: one file, read by the harness, with both.
+- An absolute path written by hand into `.claude/settings.json` was rewritten to
+  the bare name on the next `repos sync`, a run that installed nothing.
+- A repo whose `CLAUDE.md` a human had written was left byte-identical and named
+  in the report. graphify then appended its section into that regular file, which
+  is the ceiling this change states rather than papers over: an already-broken
+  repo stays broken until a human merges the file.
+- The consumer door prints the law at `.brain/.multivac/invariants.md`, and the
+  project-document law line takes the same prefix, covered by a test in
+  `test/doors/doors.test.ts` because it needs an SDD declared.
+- `node --test` is 781 green; `verify` reports 143 claims, 0 broken.
+
+One gap this change found on its way and fixed: making the Cursor target native
+took `.cursor/**` out of the non-code set, so the `doors` run that deletes the
+retired rules file would have been refused as code outside a change (MV-137). A
+target's `retired` path now counts as a door file, with its own leg and test.

@@ -266,3 +266,25 @@ test('a real git merge runs pre-merge-commit before MERGE_HEAD exists, and is ju
   assert.match(bad.stdout + bad.stderr, /on stray, which is no open change declaring brain/);
   git(b, 'merge', '--abort');
 });
+
+test('a door file and a retired door file are never code — MV-143', async () => {
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-noncode-')), 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [agents, claude, cursor, gemini]\ngrapher: graphify\nrepos:\n  brain: .\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  const cfg = await loadConfig(b);
+  const globs = nonCodeGlobs(cfg);
+  const nonCode = picomatch(globs, { dot: true });
+  for (const p of [
+    'AGENTS.md',
+    'CLAUDE.md',
+    'GEMINI.md',
+    '.claude/settings.json',
+    '.cursor/rules/multivac.mdc',
+    '.cursor/rules/graphify.mdc',
+  ]) {
+    assert.ok(nonCode(p), `${p} must not count as code — the operator commits door files`);
+  }
+  assert.ok(!nonCode('src/cli.ts'), 'code is still code');
+});

@@ -10,6 +10,45 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## Unreleased
+
+**Fixed**
+
+- **The door reaches the harness, because the link goes in before the vendor
+  does (MV-143).** A grapher's own project install writes the file a harness
+  reads — graphify writes a regular `CLAUDE.md` for claude and a `GEMINI.md` for
+  gemini — and `repos sync` equips a repo it just cloned without projecting doors
+  there. The vendor arrived first, multivac may not replace a file it did not
+  write (MV-108), and a Claude session in that repo read the vendor's section and
+  no door at all. Every declared door whose kind is a symlink is now linked in
+  each writable root before the vendor runs, so the section lands in `AGENTS.md`
+  through the link. A regular file is still never replaced: it is named, with the
+  merge left to a human.
+- **A hook file stops naming one machine's path after any install (MV-131).**
+  The rewrite that turns an absolute path to the vendor binary into its bare name
+  sat behind an early return that fired as soon as every platform was installed,
+  so an install run by hand afterwards put the path back and the commit carried
+  it. It now runs on every command that equips a root.
+- **The door claims the vendor's section only where a platform writes it
+  (MV-140).** It used to claim it as soon as any harness was declared, so a brain
+  with only the `agents` door cited a `## graphify` section that graphify's
+  `agents` platform never writes; `doctor` offered `--platform agents` to repair
+  it, a command that cannot. Both now ask which declared platforms write that
+  section into `AGENTS.md`, and say nothing when none do.
+- **A consumer door names the law at the path that repo can open (MV-140).** The
+  project-document line printed `.multivac/invariants.md` in repos where the law
+  lives under the mounted brain.
+
+**Changed**
+
+- **Cursor reads `AGENTS.md`, so multivac projects nothing else for it
+  (MV-143).** The `.cursor/rules/multivac.mdc` stub was a second door that could
+  disagree with the canonical one. One `doors` run removes multivac's block from
+  it and deletes the file when nothing but multivac's own frontmatter is left;
+  lines you added there survive, and the file with them stays. graphify's own
+  `cursor` platform, whose rules file repeats what the `## graphify` section
+  already says, is skipped in a root that carries that section.
+
 ## 0.14.1 — 2026-09-17
 
 **Fixed**
