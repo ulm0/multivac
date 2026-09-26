@@ -4,7 +4,7 @@ status: open
 horizon: now
 repos:
   brain:
-    status: branched
+    status: landed
 landing_order:
   - - brain
 invariants:
@@ -21,7 +21,7 @@ claims:
   - id: MV-130
     statement: "Each declared door maps to the tool's own integration name, and an integration entry records what it writes: its key, whether installing it over an existing project is safe, and the directories it creates outside the tool's own store, measured per version."
   - id: MV-139
-    statement: "The governance graph is rendered from the brain's declarations and lands in the archive commit, beside the law, the change file, the code graphs and the SDD artifacts the closing slug owns."
+    statement: The governance graph is rendered from the brain's declarations and lands in the archive commit, beside the law, the change file, the code graphs and the SDD artifacts the closing slug owns.
   - id: MV-142
     statement: "This repository's merge request pipeline judges the request's code against its change, and what multivac, the SDD, the grapher or a harness writes is never code: the harness directories come from the integrations the declared scaffold names, not from a fixed list."
 ---
