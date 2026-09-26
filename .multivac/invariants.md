@@ -1217,3 +1217,4 @@ checks them on every commit.
 <!-- @anchor MV-143 brain:src/lib/code-in-change.ts /if \(t\.retired\) harness\(t\.retired\.path\)/ unique -->
 <!-- @anchor MV-143 brain:test/doors/link.test.ts /a regular door file is never replaced/ unique -->
 <!-- @anchor MV-143 brain:test/change/harness-install.test.ts /the door is linked before the vendor writes there/ unique -->
+| MV-144 | RESERVED by change sdd-artifacts-land — state the rule here before close. | open | proposed | 2026-09-26 | [changes/sdd-artifacts-land.md](changes/sdd-artifacts-land.md) |

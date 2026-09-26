@@ -546,7 +546,7 @@
    "label": "sdd-artifacts-land",
    "file_type": "change",
    "source_file": ".multivac/changes/sdd-artifacts-land.md",
-   "status": "planned",
+   "status": "open",
    "horizon": "now",
    "issue": null
   },
@@ -3031,6 +3031,15 @@
    "authority": "open"
   },
   {
+   "id": "law:MV-144",
+   "label": "MV-144",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1220",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
    "id": "law:MV-15",
    "label": "MV-15",
    "file_type": "law",
@@ -5279,6 +5288,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
+   "target": "law:MV-144",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:sdd-shared-committed",
@@ -11484,6 +11499,12 @@
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1218"
+  },
+  {
+   "source": "law:MV-144",
+   "target": "change:sdd-artifacts-land",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-15",
