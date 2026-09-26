@@ -11,7 +11,7 @@ import { dirname, join } from 'node:path';
 import picomatch from 'picomatch';
 import type { Config } from '../types.js';
 import { adapterFor, artifactHit, readOnly } from '../adapters/detect.js';
-import { sddSpec } from '../adapters/registry.js';
+import { sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { withSlug } from '../adapters/sdd.js';
 import { run as git } from '../lib/git.js';
 
@@ -21,6 +21,34 @@ export interface CarryPlan {
   refusals: string[];
   /** The change's feature directory, for spec-kit's per-checkout pointer. */
   featureDir?: string;
+}
+
+/**
+ * MV-144. The artifact directories this slug owns in one root: the part of each
+ * step's artifact up to and including the segment that carries the slug,
+ * resolved on disk, in declaration order so the first is the feature directory.
+ *
+ * Two callers, one answer: the carry moves these directories onto the change's
+ * branch in a code repo, and `change close` stages what is inside them in the
+ * brain. Deriving it twice is how the two would come to disagree about which
+ * files a change owns.
+ */
+export async function slugArtifactDirs(
+  repoDir: string,
+  spec: AdapterSpec,
+  slug: string,
+): Promise<string[]> {
+  const dirs = new Set<string>();
+  for (const step of spec.steps ?? []) {
+    if (!step.artifact?.includes('<slug>')) continue;
+    const rel = withSlug(step.artifact, slug);
+    const at = rel.split('/').findIndex((p) => p.includes(slug));
+    if (at < 0) continue;
+    for (const hit of await artifactHit(repoDir, rel)) {
+      dirs.add(hit.split('/').slice(0, at + 1).join('/'));
+    }
+  }
+  return [...dirs];
 }
 
 /**
@@ -36,22 +64,9 @@ export async function planCarry(repoDir: string, cfg: Config, key: string, slug:
   const spec = name ? sddSpec(name) : null;
   if (!spec || (await readOnly(cfg, key, repoDir))) return { paths: [], refusals: [] };
 
-  // This change's artifact directories: the part of each step's artifact up to
-  // and including the segment that carries the slug, resolved on disk.
-  const dirs = new Set<string>();
-  let featureDir: string | undefined;
-  for (const step of spec.steps ?? []) {
-    if (!step.artifact?.includes('<slug>')) continue;
-    const rel = withSlug(step.artifact, slug);
-    for (const hit of await artifactHit(repoDir, rel)) {
-      const parts = hit.split('/');
-      const at = rel.split('/').findIndex((p) => p.includes(slug));
-      if (at < 0) continue;
-      const dir = parts.slice(0, at + 1).join('/');
-      dirs.add(dir);
-      featureDir ??= dir;
-    }
-  }
+  // MV-144: one derivation, asked here for the carry and at close for the brain.
+  const dirs = await slugArtifactDirs(repoDir, spec, slug);
+  const featureDir: string | undefined = dirs[0];
 
   const shared = picomatch(spec.shared, { dot: true });
   const local = spec.local.length > 0 ? picomatch(spec.local, { dot: true }) : () => false;

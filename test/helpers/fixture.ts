@@ -160,7 +160,16 @@ export function vendorPath(
       `printf '{"nodes":[],"links":[]}\\n' > graphify-out/graph.json\n` +
       `printf 'x\\n' > graphify-out/cache/entry\n`,
   );
-  stub('openspec', `mkdir -p openspec/specs\nprintf 'schema: spec-driven\\n' > openspec/config.yaml\n`);
+  // MV-144: openspec's own init installs each declared tool's commands and
+  // skills outside its store. Measured on 1.13.2, the `agents` integration
+  // writes `.agents/`, which is what makes a fresh opsx brain's step zero a
+  // code-in-change question.
+  stub(
+    'openspec',
+    `mkdir -p openspec/specs .agents/skills/openspec\n` +
+      `printf 'schema: spec-driven\\n' > openspec/config.yaml\n` +
+      `printf 'openspec skill\\n' > .agents/skills/openspec/SKILL.md\n`,
+  );
   // node only, never its directory: that is where a global `mvac` lives, and a
   // hook in the scratch repo would run the host's multivac instead of none.
   symlinkSync(process.execPath, join(bin, 'node'));

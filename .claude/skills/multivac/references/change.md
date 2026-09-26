@@ -180,7 +180,9 @@ On success the brain is updated (rows enacted by the human, journal entry,
 change file archived — never deleted), the change's worktrees are removed,
 and a reserved ID it never used goes back to the pool. If close fails, the change is not
 done: fix the code or fix the declaration, honestly. The commands close prints
-are scoped to the closing slug's paths — follow the branch+MR variant when it
+are scoped to the closing slug's paths — the archive, the law, the graphs and the
+SDD artifacts that slug owns in the brain, with anything dirty that the change
+did not write named rather than staged — follow the branch+MR variant when it
 is printed; nothing lands on a remote-backed trunk directly.
 
 Then close prints **the ritual** — `.multivac/ritual.md`, the half of the

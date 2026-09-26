@@ -288,3 +288,21 @@ test('a door file and a retired door file are never code — MV-143', async () =
   }
   assert.ok(!nonCode('src/cli.ts'), 'code is still code');
 });
+
+test('the directories a declared integration installs into are not code — MV-142, MV-144', async () => {
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-integ-')), 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [agents, claude]\nsdd: opsx\nrepos:\n  brain: .\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  const nonCode = picomatch(nonCodeGlobs(await loadConfig(b)), { dot: true });
+  // openspec's `agents` integration writes `.agents/`, its `claude` one
+  // `.claude/` — measured, and the reason a fresh opsx brain used to be refused
+  // its own first commit.
+  assert.ok(nonCode('.agents/skills/openspec/SKILL.md'), '.agents is the tool\'s');
+  assert.ok(nonCode('.claude/commands/opsx/propose.md'), '.claude is the tool\'s');
+  // A directory only an integration nobody declared would write stays code:
+  // openspec's `windsurf` writes `.devin/`, and no door here asks for it.
+  assert.ok(!nonCode('.devin/skills/openspec/SKILL.md'), 'not declared, so not exempt');
+  assert.ok(!nonCode('src/cli.ts'), 'code is still code');
+});

@@ -2012,6 +2012,13 @@
    "repo": "brain"
   },
   {
+   "id": "glob:brain:test/change/equip-lifecycle.test.ts",
+   "label": "brain:test/change/equip-lifecycle.test.ts",
+   "file_type": "anchor",
+   "source_file": "test/change/equip-lifecycle.test.ts",
+   "repo": "brain"
+  },
+  {
    "id": "glob:brain:test/change/file.test.ts",
    "label": "brain:test/change/file.test.ts",
    "file_type": "anchor",
@@ -3026,7 +3033,7 @@
    "label": "MV-143",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1208",
+   "source_location": "L1210",
    "state": "proposed",
    "authority": "open"
   },
@@ -3035,7 +3042,7 @@
    "label": "MV-144",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1220",
+   "source_location": "L1222",
    "state": "proposed",
    "authority": "open"
   },
@@ -5291,6 +5298,30 @@
   },
   {
    "source": "change:sdd-artifacts-land",
+   "target": "law:MV-130",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
+   "target": "law:MV-130",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
+   "target": "law:MV-139",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
+   "target": "law:MV-139",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
    "target": "law:MV-142",
    "relation": "claims",
    "confidence": "EXTRACTED"
@@ -7539,7 +7570,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 53
+   "legs": 54
   },
   {
    "source": "glob:brain:src/adapters/sdd.ts",
@@ -7614,7 +7645,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 3
+   "legs": 5
   },
   {
    "source": "glob:brain:src/change/file.ts",
@@ -7648,7 +7679,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 63
+   "legs": 67
   },
   {
    "source": "glob:brain:src/commands/count.ts",
@@ -7835,7 +7866,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 9
+   "legs": 10
   },
   {
    "source": "glob:brain:src/lib/config.ts",
@@ -8018,6 +8049,12 @@
    "confidence": "EXTRACTED"
   },
   {
+   "source": "glob:brain:test/change/equip-lifecycle.test.ts",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
+  },
+  {
    "source": "glob:brain:test/change/file.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
@@ -8062,7 +8099,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 7
+   "legs": 8
   },
   {
    "source": "glob:brain:test/change/piped-reservation.test.ts",
@@ -8258,7 +8295,8 @@
    "source": "glob:brain:test/init/equip.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
-   "confidence": "EXTRACTED"
+   "confidence": "EXTRACTED",
+   "legs": 2
   },
   {
    "source": "glob:brain:test/init/hook-shim.test.ts",
@@ -11425,7 +11463,7 @@
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1202",
-   "legs": 3
+   "legs": 4
   },
   {
    "source": "law:MV-142",
@@ -11434,7 +11472,8 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1207"
+   "source_location": "L1207",
+   "legs": 2
   },
   {
    "source": "law:MV-142",
@@ -11458,7 +11497,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1210",
+   "source_location": "L1212",
    "legs": 2
   },
   {
@@ -11468,7 +11507,7 @@
    "confidence": "EXTRACTED",
    "mode": "count",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1212",
+   "source_location": "L1214",
    "legs": 2
   },
   {
@@ -11478,7 +11517,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1214"
+   "source_location": "L1216"
   },
   {
    "source": "law:MV-143",
@@ -11487,7 +11526,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1211",
+   "source_location": "L1213",
    "legs": 2
   },
   {
@@ -11497,7 +11536,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1209"
+   "source_location": "L1211"
   },
   {
    "source": "law:MV-143",
@@ -11506,7 +11545,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1217"
+   "source_location": "L1219"
   },
   {
    "source": "law:MV-143",
@@ -11515,7 +11554,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1219"
+   "source_location": "L1221"
   },
   {
    "source": "law:MV-143",
@@ -11524,13 +11563,60 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1218"
+   "source_location": "L1220"
   },
   {
    "source": "law:MV-144",
    "target": "change:sdd-artifacts-land",
    "relation": "enacted_by",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "law:MV-144",
+   "target": "glob:brain:src/adapters/registry.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "count",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1229"
+  },
+  {
+   "source": "law:MV-144",
+   "target": "glob:brain:src/change/carry.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1226",
+   "legs": 2
+  },
+  {
+   "source": "law:MV-144",
+   "target": "glob:brain:src/commands/change.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1223",
+   "legs": 4
+  },
+  {
+   "source": "law:MV-144",
+   "target": "glob:brain:test/change/equip-lifecycle.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1231"
+  },
+  {
+   "source": "law:MV-144",
+   "target": "glob:brain:test/change/lifecycle-polish.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1230"
   },
   {
    "source": "law:MV-15",

@@ -39,6 +39,24 @@ keeping a second one (MV-78).
   project-document line printed `.multivac/invariants.md` in repos where the law
   lives under the mounted brain.
 
+- **What the SDD writes in the brain lands with the change (MV-144).** The commit
+  `change close` prints staged the change file, the law, the graphs and the
+  governance graph, and left the spec, the plan and the task list untracked — the
+  very artifacts every gate in the lifecycle had demanded. It now also stages what
+  the brain's own status reports under the directories the closing slug owns,
+  deletions included, so an archive that moves a directory lands in one commit. A
+  dirty file the change did not write is named, never staged.
+- **`change apply` equips a repo it just made before carrying its artifacts
+  (MV-144).** The vendor's init ran over a checkout whose files the carry had just
+  taken out of it, and wrote a second copy. Cloning or creating, equipping, then
+  branching and carrying are now three steps in that order.
+- **A fresh brain's first commit passes its own gate whatever it declares
+  (MV-142).** The directories that are not code came from the doors multivac
+  projects, so a brain declaring openspec and no grapher was refused over
+  `.agents/**`, a directory openspec's own init had just been told to create. They
+  now come from the declared scaffold's integrations, each recording what it
+  writes, measured per tool version.
+
 **Changed**
 
 - **Cursor reads `AGENTS.md`, so multivac projects nothing else for it

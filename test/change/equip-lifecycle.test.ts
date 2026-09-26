@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem, vendorPath } from '../helpers/fixture.js';
@@ -137,4 +137,43 @@ test('plan equips a repo it clones, and apply a repo it creates — MV-129', asy
   assert.equal(applied.code, 0, applied.out);
   assert.ok(existsSync(join(svc, '.git')), 'apply created svc');
   assert.ok(existsSync(join(svc, 'graphify-out/graph.json')), 'and equipped it in the same run');
+});
+
+test('apply makes a repo, equips it, and only then carries — MV-144', async () => {
+  const e = eco([]);
+  const b = e.brain;
+  // Only the brain and the repo this change makes: a declared sibling with the
+  // vendor's unfilled constitution would refuse `plan` on its own terms, which
+  // is a different rule (MV-76) and not what this test is about.
+  writeFileSync(
+    join(b, '.multivac/config.yml'),
+    ['doors: [agents]', 'sdd: speckit', 'grapher: graphify', 'repos:', '  brain: .', '  svc: ../acme-svc', ''].join('\n'),
+  );
+  execFileSync('git', ['-C', b, 'add', '-A'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', b, 'commit', '-qm', 'declare svc'], { stdio: 'ignore' });
+  assert.equal((await run(() => change.run(['new', 'order-check'], { cwd: b }), both.path)).code, 0);
+  const parsed = await loadChange(b, 'order-check');
+  parsed.change.repos = { svc: { status: 'planned' } };
+  parsed.change.landing_order = [['svc']];
+  parsed.change.invariants.adds = [];
+  await saveChange(b, parsed);
+  // What /speckit.specify would have written, so plan and apply have their proof.
+  mkdirSync(join(b, 'specs/001-order-check'), { recursive: true });
+  for (const f of ['spec.md', 'plan.md', 'tasks.md']) {
+    writeFileSync(join(b, 'specs/001-order-check', f), `# ${f}\n`);
+  }
+  writeFileSync(join(b, '.specify/memory/constitution.md'), '# Constitution\n\nCheck what you claim.\n');
+  const planned = await run(() => change.run(['plan', 'order-check'], { cwd: b }), both.path);
+  assert.equal(planned.code, 0, planned.out);
+  const { code, out } = await run(() => change.run(['apply', 'order-check'], { cwd: b }), both.path);
+  assert.equal(code, 0, out);
+  const lines = out.split('\n');
+  const at = (re: RegExp): number => lines.findIndex((l) => re.test(l));
+  const created = at(/svc: created/);
+  const equipped = at(/@ svc:/);
+  const carried = at(/svc: carried/);
+  assert.ok(created !== -1, `a greenfield repo is created:\n${out}`);
+  assert.ok(equipped !== -1, `and equipped:\n${out}`);
+  assert.ok(created < equipped, `created before equipped:\n${out}`);
+  if (carried !== -1) assert.ok(equipped < carried, `equipped before the carry:\n${out}`);
 });

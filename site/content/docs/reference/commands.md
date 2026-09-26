@@ -1587,9 +1587,14 @@ A change that *did* declare claims is refused — drop them first, or close it
 properly.
 
 The printed commit is **scoped to the closing change's paths** — the archived
-file, the old change path, and the law table when a reservation was released —
-never `add -A`, which in a shared checkout would sweep another change's files
-into this archive commit. Where the commit lands depends on where the brain is
+file, the old change path, the law table when a reservation was released, the
+graphs, and what the declared SDD wrote in the brain for this slug: the spec, the
+plan, the task list, an archived proposal, deletions included. Every gate in the
+lifecycle demanded one of those files, so leaving them untracked would be asking
+for proof and then dropping it. A dirty file of the tool's that this change did
+not write — a project document, the tool's own config — is named on its own line
+and never staged. It is never `add -A`, which in a shared checkout would sweep
+another change's files into this archive commit. Where the commit lands depends on where the brain is
 standing, and the wording says which case you are in:
 
 - on a working branch: `archived — commit this on <branch> (it lands through

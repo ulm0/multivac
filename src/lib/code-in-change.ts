@@ -67,6 +67,24 @@ export function nonCodeGlobs(cfg: Config): string[] {
     if (spec.graphignoreFile) out.add(spec.graphignoreFile);
     for (const f of spec.harness?.hookFiles ?? []) harness(f);
     for (const pl of Object.values(spec.harness?.platforms ?? {})) harness(pl.probe);
+    // MV-142 as amended by MV-144: where a declared scaffold's own integrations
+    // install their commands and skills. Derived from the integrations the
+    // DECLARED doors resolve to, plus the fallback when no declared door maps to
+    // one — the resolution the scaffold itself uses (MV-130) — because a fixed
+    // list was wrong twice: openspec's `codex` writes `.agents/` and its
+    // `windsurf` writes `.devin/`. Without this a brain declaring openspec and
+    // no grapher is refused its own first commit over a directory it was told to
+    // create.
+    const scaffold = spec.scaffold;
+    if (scaffold) {
+      const named = cfg.doors.filter((d) => scaffold.integrations[d]);
+      const chosen = named.length > 0 ? named.map((d) => scaffold.integrations[d]!) : [];
+      if (chosen.length === 0 && scaffold.fallback) {
+        const fb = Object.values(scaffold.integrations).find((i) => i.key === scaffold.fallback);
+        if (fb) chosen.push(fb);
+      }
+      for (const integration of chosen) for (const d of integration.dirs) out.add(`${d}/**`);
+    }
   }
   return [...out];
 }

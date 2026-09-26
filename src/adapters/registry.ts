@@ -233,7 +233,15 @@ export interface SddScaffold {
    * not safe is never installed beside another, and multivac never forces it.
    * A door missing here has no verified integration and is named as a gap.
    */
-  integrations: Record<string, { key: string; safe: boolean }>;
+  /**
+   * Per door target: the vendor's own integration key, whether installing it
+   * over an existing project is safe, and — MV-144 — the directories it writes
+   * OUTSIDE the tool's own store, measured per version. The code gate reads
+   * `dirs`: what a declared tool installs there is the tool's, not code, and the
+   * directory cannot be deduced from the key (openspec's `codex` writes
+   * `.agents/`, its `windsurf` writes `.devin/`).
+   */
+  integrations: Record<string, { key: string; safe: boolean; dirs: string[] }>;
   /** MV-130: the integration used when no declared door maps to one. */
   fallback?: string;
   /** What running it actually wrote, and how that was established. */
@@ -513,15 +521,18 @@ const sdd: Record<string, AdapterSpec> = {
       // commands and six skills under each of .claude/ and .cursor/. The tool
       // keys are the ones its `init --help` lists; it names `windsurf` as an
       // accepted alias ("now devin").
+      // MV-144, measured 2026-09-25 on openspec 1.13.2, one fresh git repo per
+      // integration with HOME isolated: each wrote its own store under
+      // `openspec/` plus the directories below, and nothing else.
       integrations: {
-        agents: { key: 'agents', safe: true },
-        claude: { key: 'claude', safe: true },
-        cursor: { key: 'cursor', safe: true },
-        codex: { key: 'codex', safe: true },
-        gemini: { key: 'gemini', safe: true },
-        opencode: { key: 'opencode', safe: true },
-        copilot: { key: 'github-copilot', safe: true },
-        windsurf: { key: 'windsurf', safe: true },
+        agents: { key: 'agents', safe: true, dirs: ['.agents'] },
+        claude: { key: 'claude', safe: true, dirs: ['.claude'] },
+        cursor: { key: 'cursor', safe: true, dirs: ['.cursor'] },
+        codex: { key: 'codex', safe: true, dirs: ['.agents'] },
+        gemini: { key: 'gemini', safe: true, dirs: ['.gemini'] },
+        opencode: { key: 'opencode', safe: true, dirs: ['.opencode'] },
+        copilot: { key: 'github-copilot', safe: true, dirs: ['.github/prompts', '.github/skills'] },
+        windsurf: { key: 'windsurf', safe: true, dirs: ['.devin'] },
       },
       note: 'One command installs every declared tool: `--tools` takes them comma-separated. It writes openspec/config.yaml, the gitkeeps and per-tool commands and skills, and nothing is written outside the repo.',
     },
@@ -612,13 +623,16 @@ const sdd: Record<string, AdapterSpec> = {
       // `--force`, and changed nothing. agents.md has no spec-kit key: its
       // `generic` integration exits 1 without a `--commands-dir` no harness
       // here is known to read, so a brain with no harness door keeps claude.
+      // MV-144, measured 2026-09-25 on spec-kit 1.0.11, one fresh git repo per
+      // integration with HOME isolated: each wrote `.specify/**` plus the
+      // directories below.
       integrations: {
-        claude: { key: 'claude', safe: true },
-        cursor: { key: 'cursor-agent', safe: true },
-        codex: { key: 'codex', safe: true },
-        gemini: { key: 'gemini', safe: true },
-        opencode: { key: 'opencode', safe: false },
-        copilot: { key: 'copilot', safe: false },
+        claude: { key: 'claude', safe: true, dirs: ['.claude'] },
+        cursor: { key: 'cursor-agent', safe: true, dirs: ['.cursor'] },
+        codex: { key: 'codex', safe: true, dirs: ['.agents'] },
+        gemini: { key: 'gemini', safe: true, dirs: ['.gemini'] },
+        opencode: { key: 'opencode', safe: false, dirs: ['.opencode'] },
+        copilot: { key: 'copilot', safe: false, dirs: ['.github/skills'] },
       },
       fallback: 'claude',
       // Verified by running it in a scratch repo, not read off a README: it

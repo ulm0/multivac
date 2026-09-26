@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
@@ -337,5 +337,88 @@ test('close on a trunk with a remote prints the branch+MR variant; on a branch, 
   assert.match(
     onBranch.out,
     /archived — commit this on some-working-branch \(it lands through that branch's MR\): git -C .* add -- \.multivac\/changes\/archive\/branch-close\.md/,
+  );
+});
+
+/** A brain with speckit declared, its constitution written, and the vendor stubbed. */
+function sddBrain(): string {
+  const b = brain();
+  writeFileSync(
+    join(b, '.multivac/config.yml'),
+    'doors: [agents]\nsdd: speckit\nrepos:\n  brain: .\n',
+  );
+  mkdirSync(join(b, '.specify/memory'), { recursive: true });
+  writeFileSync(join(b, '.specify/memory/constitution.md'), '# Constitution\n\nOne principle: ship what you can check.\n');
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'sdd declared');
+  return b;
+}
+
+/** What /speckit.specify and its siblings would have written for this slug. */
+function featureDir(b: string, n: string, slug: string): string {
+  const dir = join(b, 'specs', `${n}-${slug}`);
+  mkdirSync(dir, { recursive: true });
+  for (const f of ['spec.md', 'plan.md', 'tasks.md']) {
+    writeFileSync(join(dir, f), `# ${f} for ${slug}\n`);
+  }
+  return dir;
+}
+
+test('close stages what the SDD wrote in the brain for this slug — MV-144', async () => {
+  const b = sddBrain();
+  await declare(b, 'artifacts-land');
+  featureDir(b, '001', 'artifacts-land');
+  assert.equal(await change.run(['land', 'artifacts-land', '--landed', 'brain'], { cwd: b }), 0);
+  const { code, out } = await capture(() => change.run(['close', 'artifacts-land'], { cwd: b }));
+  assert.equal(code, 0, out);
+  const add = out.split('\n').find((l) => l.includes('add -- '))!;
+  assert.ok(add.includes('specs/001-artifacts-land'), add);
+  // Running the printed command leaves nothing of the change's own behind.
+  const pathspec = add.slice(add.indexOf('add --') + 7, add.indexOf('&& git commit')).trim();
+  git(b, 'add', '--', ...pathspec.split(/\s+/));
+  const left = git(b, 'status', '--porcelain', '-uall')
+    .split('\n')
+    .filter((l) => l.includes('specs/001-artifacts-land') && !l.startsWith('A '));
+  assert.deepEqual(left, [], 'every artifact path is staged');
+});
+
+test('a deletion inside the feature directory lands in the same commit — MV-144', async () => {
+  const b = sddBrain();
+  await declare(b, 'artifact-gone');
+  const dir = featureDir(b, '002', 'artifact-gone');
+  // A file that was committed and is now deleted: git reports it as ` D`.
+  git(b, 'add', '--', 'specs/002-artifact-gone');
+  git(b, 'commit', '-q', '-m', 'the artifacts, committed earlier');
+  rmSync(join(dir, 'plan.md'));
+  assert.equal(await change.run(['land', 'artifact-gone', '--landed', 'brain'], { cwd: b }), 0);
+  const { out } = await capture(() => change.run(['close', 'artifact-gone'], { cwd: b }));
+  const add = out.split('\n').find((l) => l.includes('add -- '))!;
+  assert.ok(add.includes('specs/002-artifact-gone'), add);
+  const pathspec = add.slice(add.indexOf('add --') + 7, add.indexOf('&& git commit')).trim();
+  git(b, 'add', '--', ...pathspec.split(/\s+/));
+  assert.match(git(b, 'status', '--porcelain'), /^D  specs\/002-artifact-gone\/plan\.md$/m);
+});
+
+test('a dirty file the change did not write is named, never staged — MV-46, MV-144', async () => {
+  const b = sddBrain();
+  await declare(b, 'not-mine');
+  featureDir(b, '003', 'not-mine');
+  writeFileSync(join(b, '.specify/memory/constitution.md'), '# Constitution\n\nEdited by a human, mid-change.\n');
+  assert.equal(await change.run(['land', 'not-mine', '--landed', 'brain'], { cwd: b }), 0);
+  const { out } = await capture(() => change.run(['close', 'not-mine'], { cwd: b }));
+  assert.match(out, /sdd speckit: \.specify\/memory\/constitution\.md is dirty and was not staged — it is not this change's to commit/);
+  const add = out.split('\n').find((l) => l.includes('add -- '))!;
+  assert.ok(!add.includes('constitution.md'), add);
+});
+
+test('with no SDD declared the archive pathspec is what it always was — MV-144', async () => {
+  const b = brain();
+  await declare(b, 'no-sdd-here');
+  assert.equal(await change.run(['land', 'no-sdd-here', '--landed', 'brain'], { cwd: b }), 0);
+  const { out } = await capture(() => change.run(['close', 'no-sdd-here'], { cwd: b }));
+  const add = out.split('\n').find((l) => l.includes('add -- '))!;
+  assert.match(
+    add,
+    /add -- \.multivac\/changes\/archive\/no-sdd-here\.md \.multivac\/changes\/no-sdd-here\.md \.multivac\/invariants\.md \.multivac\/ecosystem\.json &&/,
   );
 });

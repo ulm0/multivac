@@ -166,3 +166,25 @@ test('a rule that already ignores the shared graph is named, and left alone — 
   assert.match(out, /graphify-out\/graph\.json is ignored by a rule already in this repo, so it cannot be committed — `git check-ignore -v graphify-out\/graph\.json` names the rule/);
   assert.match(readFileSync(join(dir, '.gitignore'), 'utf8'), /^graphify-out\/\n/, 'their line stays first and unedited');
 });
+
+test("a fresh opsx brain's step zero passes its own gate — MV-142, MV-144", async () => {
+  const dir = tmp();
+  initRepo(dir, { 'src/app.py': 'print(1)\n' });
+  // openspec, no grapher: the shape that was refused. Its init writes
+  // `.agents/`, a directory no door of multivac's projects, so the gate called it
+  // code landing outside a change.
+  const { code, out } = await run(['--sdd', 'opsx'], dir);
+  assert.equal(code, 0, out);
+  const zero = out.split('\n').find((l) => /0\. commit what was just written/.test(l)) ?? '';
+  assert.match(zero, /\s\.agents(\s|$)/, 'the tool wrote it, so step zero commits it');
+  const cmd = zero.replace(/^.*?0\. commit what was just written: /, '');
+  const hookBin = mkdtempSync(join(tmpdir(), 'mvac-hookbin-opsx-'));
+  writeFileSync(join(hookBin, 'mvac'), `#!/bin/sh\nexec '${process.execPath}' '${join(process.cwd(), 'dist/cli.js')}' "$@"\n`, { mode: 0o755 });
+  execFileSync('sh', ['-c', `git -c user.email=t@acme.example -c user.name=t ${cmd.replace(/^git /, '').replace(/ && git commit/, ' && git -c user.email=t@acme.example -c user.name=t commit')}`], {
+    cwd: dir,
+    stdio: 'ignore',
+    env: { ...process.env, PATH: [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':') },
+  });
+  const status = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: dir, encoding: 'utf8' });
+  assert.doesNotMatch(status, /\.agents|openspec|\.multivac|AGENTS\.md/, 'all of it committed');
+});

@@ -26,13 +26,14 @@ import { ritualChecklist } from '../lib/ritual.js';
 import { writeEcosystem } from '../doors/ecosystem.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
-import { grapherSpec, type GatePoint, type LifecyclePoint } from '../adapters/registry.js';
+import { grapherSpec, sddSpec, type GatePoint, type LifecyclePoint } from '../adapters/registry.js';
 import { sddGate, sddInstructions } from '../adapters/sdd.js';
 import { graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
 import { equip, missingTools } from '../adapters/equip.js';
 import { projectDocLines } from '../adapters/project-doc.js';
 import { cloneFix, cloneState } from '../lib/repo-state.js';
-import { doCarry, planCarry, type CarryPlan } from '../change/carry.js';
+import { doCarry, planCarry, slugArtifactDirs, type CarryPlan } from '../change/carry.js';
+import picomatch from 'picomatch';
 import { graphTrackedGate } from '../adapters/tracked.js';
 import { adapterFor, adaptersByRoot, readOnly } from '../adapters/detect.js';
 import { evaluate, fmtAge, stalenessLines } from './verify.js';
@@ -634,6 +635,59 @@ const bump = (cur: RepoStatus, min: RepoStatus): RepoStatus =>
 // --- subcommands ---
 
 /**
+ * MV-144. The paths the declared SDD wrote in the BRAIN for this slug, as git
+ * reports them, plus what is dirty and is not this change's to commit.
+ *
+ * Read from `git status`, so the pathspec never names something git does not
+ * know about and a deletion — the archive moving a directory — lands in the same
+ * commit as the addition that replaced it. Only the brain: a code repo's
+ * artifacts ride its own branch through the carry (MV-133), and close prints the
+ * commit to make there rather than making it.
+ *
+ * Off entirely with no SDD, `sdd_auto: false` or `--no-sdd`: the pathspec is
+ * then exactly what it was before this rule.
+ */
+async function sddPathsToLand(
+  brain: string,
+  cfg: Config,
+  slug: string,
+  noSdd: boolean,
+): Promise<{ paths: string[]; notices: string[] }> {
+  const out: { paths: string[]; notices: string[] } = { paths: [], notices: [] };
+  if (!cfg.sddAuto || noSdd) return out;
+  const name = adapterFor(cfg, 'brain', 'sdd');
+  const spec = name ? sddSpec(name) : null;
+  if (!spec) return out;
+  const dirs = await slugArtifactDirs(brain, spec, slug);
+  const status = await gitRun(brain, ['status', '--porcelain=v1', '-z', '--untracked-files=all']).catch(
+    () => '',
+  );
+  const entries = status.split('\0');
+  const shared = picomatch(spec.shared, { dot: true });
+  const owned: string[] = [];
+  const dirty: string[] = [];
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    if (!entry || entry.length < 4) continue;
+    const path = entry.slice(3);
+    // A rename's second NUL field is its old path, not an entry of its own.
+    if (entry[0] === 'R' || entry[0] === 'C') i++;
+    if (dirs.some((d) => path === d || path.startsWith(`${d}/`))) owned.push(path);
+    else if (entry[0] !== '?' && shared(path)) dirty.push(path);
+  }
+  // Deduplicate to the directories themselves where every hit is inside one:
+  // `git add -- specs/070-slug` is the same commit and a readable command.
+  out.paths = dirs.filter((d) => owned.some((p) => p === d || p.startsWith(`${d}/`)));
+  for (const p of owned) if (!out.paths.some((d) => p === d || p.startsWith(`${d}/`))) out.paths.push(p);
+  // MV-46: a tracked file of the tool's that this change did not write is named,
+  // never staged on somebody's behalf.
+  for (const p of dirty) {
+    out.notices.push(`sdd ${name}: ${p} is dirty and was not staged — it is not this change's to commit`);
+  }
+  return out;
+}
+
+/**
  * MV-94: a pin behind its channel, said at the moment work starts.
  *
  * The tool already knew — `stalenessLines` computes it offline and `verify`
@@ -924,14 +978,25 @@ async function cmdApply(
     [changeRel(slug), LAW_PATH],
     `change apply: ${slug} — status branched`,
   );
+  // MV-144: three steps, in this order. A repo that does not exist yet is made
+  // first, then equipped, and only then branched and carried. Equipping last —
+  // which is where this used to run — pointed the vendor's own init at a checkout
+  // whose artifacts the carry had just taken out of it, so it wrote a second copy
+  // of what the change had already moved.
+  for (const key of keys) {
+    const entry = entries.get(key)!;
+    const abs = resolve(brain, entry.path);
+    if (existsSync(abs)) continue;
+    if (entry.url) await clone(entry.url, abs, key);
+    else await greenfield(abs, key, slug, cfg);
+  }
+  // MV-129: the gate above equipped what was on disk; a repo just cloned or
+  // created was not.
+  await equip(brain, cfg, noSdd, keys);
   const workspaces: string[] = [];
   for (const key of keys) {
     const entry = entries.get(key)!;
     const abs = resolve(brain, entry.path);
-    if (!existsSync(abs)) {
-      if (entry.url) await clone(entry.url, abs, key);
-      else await greenfield(abs, key, slug, cfg);
-    }
     const wt = await ensureWorkspace(brain, abs, slug, key);
     workspaces.push(`${key}: ${wt}`);
     const plan = carries.get(key);
@@ -941,9 +1006,6 @@ async function cmdApply(
       if (n > 0) say(`${key}: carried ${n} ${sddName} file${n === 1 ? '' : 's'} onto ${slug} and committed them there`);
     }
   }
-  // MV-129: the gate above equipped what was on disk; a repo just cloned or
-  // created was not.
-  await equip(brain, cfg, noSdd, keys);
   runSdd(cfg, 'apply', slug, noSdd);
   say(`work here — one checkout per repo, nobody else's tree moves:`);
   for (const w of workspaces) say(`  ${w}`);
@@ -1279,7 +1341,12 @@ async function cmdClose(
   }
   // MV-139: the governance graph after the archive, in the same commit.
   await writeEcosystem(brain, cfg);
-  const paths = [relative(brain, dest), changeRel(slug), LAW_PATH, ...graphs, ECOSYSTEM_PATH];
+  // MV-144: and what the SDD wrote in the brain for this slug. Every gate in the
+  // lifecycle demanded one of these files; a commit that leaves them untracked
+  // asks for proof and then drops it.
+  const sddPaths = await sddPathsToLand(brain, cfg, slug, noSdd);
+  for (const l of sddPaths.notices) say(l);
+  const paths = [relative(brain, dest), changeRel(slug), LAW_PATH, ...graphs, ECOSYSTEM_PATH, ...sddPaths.paths];
   const list = paths.join(' ');
   const commit = `git -C ${brain} add -- ${list} && git commit -m "Archive the ${slug} change"`;
   // Where that commit lands depends on where the brain is standing. On a
