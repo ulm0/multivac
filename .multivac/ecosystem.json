@@ -1767,6 +1767,13 @@
    "repo": "brain"
   },
   {
+   "id": "glob:brain:src/doors/link.ts",
+   "label": "brain:src/doors/link.ts",
+   "file_type": "anchor",
+   "source_file": "src/doors/link.ts",
+   "repo": "brain"
+  },
+  {
    "id": "glob:brain:src/doors/settings.ts",
    "label": "brain:src/doors/settings.ts",
    "file_type": "anchor",
@@ -2033,6 +2040,13 @@
    "repo": "brain"
   },
   {
+   "id": "glob:brain:test/change/harness-install.test.ts",
+   "label": "brain:test/change/harness-install.test.ts",
+   "file_type": "anchor",
+   "source_file": "test/change/harness-install.test.ts",
+   "repo": "brain"
+  },
+  {
    "id": "glob:brain:test/change/ledger.test.ts",
    "label": "brain:test/change/ledger.test.ts",
    "file_type": "anchor",
@@ -2198,6 +2212,13 @@
    "label": "brain:test/doors/identity.test.ts",
    "file_type": "anchor",
    "source_file": "test/doors/identity.test.ts",
+   "repo": "brain"
+  },
+  {
+   "id": "glob:brain:test/doors/link.test.ts",
+   "label": "brain:test/doors/link.test.ts",
+   "file_type": "anchor",
+   "source_file": "test/doors/link.test.ts",
    "repo": "brain"
   },
   {
@@ -2897,7 +2918,7 @@
    "label": "MV-132",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1083",
+   "source_location": "L1084",
    "state": "active",
    "authority": "specified"
   },
@@ -2906,7 +2927,7 @@
    "label": "MV-133",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1092",
+   "source_location": "L1093",
    "state": "active",
    "authority": "specified"
   },
@@ -2915,7 +2936,7 @@
    "label": "MV-134",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1100",
+   "source_location": "L1101",
    "state": "active",
    "authority": "specified"
   },
@@ -2924,7 +2945,7 @@
    "label": "MV-135",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1110",
+   "source_location": "L1111",
    "state": "active",
    "authority": "specified"
   },
@@ -2933,7 +2954,7 @@
    "label": "MV-136",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1122",
+   "source_location": "L1123",
    "state": "active",
    "authority": "specified"
   },
@@ -2942,7 +2963,7 @@
    "label": "MV-137",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1136",
+   "source_location": "L1137",
    "state": "active",
    "authority": "specified"
   },
@@ -2951,7 +2972,7 @@
    "label": "MV-138",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1152",
+   "source_location": "L1153",
    "state": "active",
    "authority": "specified"
   },
@@ -2960,7 +2981,7 @@
    "label": "MV-139",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1159",
+   "source_location": "L1160",
    "state": "active",
    "authority": "specified"
   },
@@ -2978,7 +2999,7 @@
    "label": "MV-140",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1170",
+   "source_location": "L1171",
    "state": "active",
    "authority": "specified"
   },
@@ -2987,7 +3008,7 @@
    "label": "MV-141",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1181",
+   "source_location": "L1184",
    "state": "active",
    "authority": "specified"
   },
@@ -2996,7 +3017,7 @@
    "label": "MV-142",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1195",
+   "source_location": "L1198",
    "state": "active",
    "authority": "specified"
   },
@@ -3005,7 +3026,7 @@
    "label": "MV-143",
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1205",
+   "source_location": "L1208",
    "state": "proposed",
    "authority": "open"
   },
@@ -7470,14 +7491,14 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 23
+   "legs": 26
   },
   {
    "source": "glob:brain:src/adapters/registry.ts",
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 51
+   "legs": 53
   },
   {
    "source": "glob:brain:src/adapters/sdd.ts",
@@ -7600,14 +7621,14 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 40
+   "legs": 41
   },
   {
    "source": "glob:brain:src/commands/doors.ts",
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 17
+   "legs": 18
   },
   {
    "source": "glob:brain:src/commands/help.ts",
@@ -7700,14 +7721,14 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 15
+   "legs": 17
   },
   {
    "source": "glob:brain:src/doors/consumer.ts",
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 5
+   "legs": 6
   },
   {
    "source": "glob:brain:src/doors/ecosystem.ts",
@@ -7722,6 +7743,12 @@
    "relation": "in_repo",
    "confidence": "EXTRACTED",
    "legs": 6
+  },
+  {
+   "source": "glob:brain:src/doors/link.ts",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "glob:brain:src/doors/settings.ts",
@@ -7767,7 +7794,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 8
+   "legs": 9
   },
   {
    "source": "glob:brain:src/lib/config.ts",
@@ -7977,6 +8004,12 @@
    "legs": 2
   },
   {
+   "source": "glob:brain:test/change/harness-install.test.ts",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
+  },
+  {
    "source": "glob:brain:test/change/ledger.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
@@ -8132,6 +8165,12 @@
    "relation": "in_repo",
    "confidence": "EXTRACTED",
    "legs": 4
+  },
+  {
+   "source": "glob:brain:test/doors/link.test.ts",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "glob:brain:test/doors/registry.test.ts",
@@ -10514,7 +10553,7 @@
    "confidence": "EXTRACTED",
    "mode": "count",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1082"
+   "source_location": "L1083"
   },
   {
    "source": "law:MV-131",
@@ -10523,7 +10562,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1081"
+   "source_location": "L1082"
   },
   {
    "source": "law:MV-131",
@@ -10551,7 +10590,7 @@
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1073",
-   "legs": 2
+   "legs": 3
   },
   {
    "source": "law:MV-131",
@@ -10585,7 +10624,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1091"
+   "source_location": "L1092"
   },
   {
    "source": "law:MV-132",
@@ -10594,7 +10633,7 @@
    "confidence": "EXTRACTED",
    "mode": "count",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1088"
+   "source_location": "L1089"
   },
   {
    "source": "law:MV-132",
@@ -10603,7 +10642,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1086",
+   "source_location": "L1087",
    "legs": 2
   },
   {
@@ -10613,7 +10652,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1084",
+   "source_location": "L1085",
    "legs": 3
   },
   {
@@ -10623,7 +10662,7 @@
    "confidence": "EXTRACTED",
    "mode": "each",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1089"
+   "source_location": "L1090"
   },
   {
    "source": "law:MV-133",
@@ -10638,7 +10677,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1099"
+   "source_location": "L1100"
   },
   {
    "source": "law:MV-133",
@@ -10647,7 +10686,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1097",
+   "source_location": "L1098",
    "legs": 2
   },
   {
@@ -10657,7 +10696,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1093",
+   "source_location": "L1094",
    "legs": 3
   },
   {
@@ -10667,7 +10706,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1096"
+   "source_location": "L1097"
   },
   {
    "source": "law:MV-134",
@@ -10682,7 +10721,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1107"
+   "source_location": "L1108"
   },
   {
    "source": "law:MV-134",
@@ -10691,7 +10730,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1109"
+   "source_location": "L1110"
   },
   {
    "source": "law:MV-134",
@@ -10700,7 +10739,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1101"
+   "source_location": "L1102"
   },
   {
    "source": "law:MV-134",
@@ -10709,7 +10748,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1102",
+   "source_location": "L1103",
    "legs": 4
   },
   {
@@ -10719,7 +10758,7 @@
    "confidence": "EXTRACTED",
    "mode": "each",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1106"
+   "source_location": "L1107"
   },
   {
    "source": "law:MV-134",
@@ -10728,7 +10767,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1108"
+   "source_location": "L1109"
   },
   {
    "source": "law:MV-135",
@@ -10743,7 +10782,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1121"
+   "source_location": "L1122"
   },
   {
    "source": "law:MV-135",
@@ -10752,7 +10791,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1115",
+   "source_location": "L1116",
    "legs": 2
   },
   {
@@ -10762,7 +10801,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1113"
+   "source_location": "L1114"
   },
   {
    "source": "law:MV-135",
@@ -10771,7 +10810,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1117"
+   "source_location": "L1118"
   },
   {
    "source": "law:MV-135",
@@ -10780,7 +10819,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1114"
+   "source_location": "L1115"
   },
   {
    "source": "law:MV-135",
@@ -10789,7 +10828,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1119"
+   "source_location": "L1120"
   },
   {
    "source": "law:MV-135",
@@ -10798,7 +10837,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1118"
+   "source_location": "L1119"
   },
   {
    "source": "law:MV-135",
@@ -10807,7 +10846,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1111",
+   "source_location": "L1112",
    "legs": 2
   },
   {
@@ -10817,7 +10856,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1120"
+   "source_location": "L1121"
   },
   {
    "source": "law:MV-136",
@@ -10832,7 +10871,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1135"
+   "source_location": "L1136"
   },
   {
    "source": "law:MV-136",
@@ -10841,7 +10880,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1129"
+   "source_location": "L1130"
   },
   {
    "source": "law:MV-136",
@@ -10850,7 +10889,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1130",
+   "source_location": "L1131",
    "legs": 2
   },
   {
@@ -10860,7 +10899,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1132"
+   "source_location": "L1133"
   },
   {
    "source": "law:MV-136",
@@ -10869,7 +10908,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1123",
+   "source_location": "L1124",
    "legs": 3
   },
   {
@@ -10879,7 +10918,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1126",
+   "source_location": "L1127",
    "legs": 3
   },
   {
@@ -10889,7 +10928,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1133"
+   "source_location": "L1134"
   },
   {
    "source": "law:MV-136",
@@ -10898,7 +10937,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1134"
+   "source_location": "L1135"
   },
   {
    "source": "law:MV-137",
@@ -10913,7 +10952,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1151"
+   "source_location": "L1152"
   },
   {
    "source": "law:MV-137",
@@ -10922,7 +10961,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1147"
+   "source_location": "L1148"
   },
   {
    "source": "law:MV-137",
@@ -10931,7 +10970,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1146"
+   "source_location": "L1147"
   },
   {
    "source": "law:MV-137",
@@ -10940,7 +10979,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1148"
+   "source_location": "L1149"
   },
   {
    "source": "law:MV-137",
@@ -10949,7 +10988,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1143",
+   "source_location": "L1144",
    "legs": 2
   },
   {
@@ -10959,7 +10998,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1145"
+   "source_location": "L1146"
   },
   {
    "source": "law:MV-137",
@@ -10968,7 +11007,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1137",
+   "source_location": "L1138",
    "legs": 5
   },
   {
@@ -10978,7 +11017,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1141",
+   "source_location": "L1142",
    "legs": 3
   },
   {
@@ -10994,7 +11033,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1158"
+   "source_location": "L1159"
   },
   {
    "source": "law:MV-138",
@@ -11003,7 +11042,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1153",
+   "source_location": "L1154",
    "legs": 3
   },
   {
@@ -11013,7 +11052,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1156",
+   "source_location": "L1157",
    "legs": 2
   },
   {
@@ -11029,7 +11068,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1169"
+   "source_location": "L1170"
   },
   {
    "source": "law:MV-139",
@@ -11038,7 +11077,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1168"
+   "source_location": "L1169"
   },
   {
    "source": "law:MV-139",
@@ -11047,7 +11086,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1162",
+   "source_location": "L1163",
    "legs": 2
   },
   {
@@ -11057,7 +11096,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1165"
+   "source_location": "L1166"
   },
   {
    "source": "law:MV-139",
@@ -11066,7 +11105,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1164"
+   "source_location": "L1165"
   },
   {
    "source": "law:MV-139",
@@ -11075,7 +11114,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1160",
+   "source_location": "L1161",
    "legs": 2
   },
   {
@@ -11085,7 +11124,7 @@
    "confidence": "EXTRACTED",
    "mode": "each",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1166"
+   "source_location": "L1167"
   },
   {
    "source": "law:MV-139",
@@ -11094,7 +11133,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1167"
+   "source_location": "L1168"
   },
   {
    "source": "law:MV-14",
@@ -11138,7 +11177,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1180"
+   "source_location": "L1183"
   },
   {
    "source": "law:MV-140",
@@ -11147,8 +11186,8 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1177",
-   "legs": 2
+   "source_location": "L1178",
+   "legs": 3
   },
   {
    "source": "law:MV-140",
@@ -11157,7 +11196,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1174"
+   "source_location": "L1175"
   },
   {
    "source": "law:MV-140",
@@ -11166,8 +11205,17 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1171",
+   "source_location": "L1172",
    "legs": 2
+  },
+  {
+   "source": "law:MV-140",
+   "target": "glob:brain:src/doors/consumer.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1181"
   },
   {
    "source": "law:MV-140",
@@ -11176,7 +11224,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1175",
+   "source_location": "L1176",
    "legs": 2
   },
   {
@@ -11186,7 +11234,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1173"
+   "source_location": "L1174"
   },
   {
    "source": "law:MV-140",
@@ -11195,7 +11243,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1179"
+   "source_location": "L1182"
   },
   {
    "source": "law:MV-141",
@@ -11210,7 +11258,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1192"
+   "source_location": "L1195"
   },
   {
    "source": "law:MV-141",
@@ -11219,7 +11267,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1186"
+   "source_location": "L1189"
   },
   {
    "source": "law:MV-141",
@@ -11228,7 +11276,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1188"
+   "source_location": "L1191"
   },
   {
    "source": "law:MV-141",
@@ -11237,7 +11285,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1187"
+   "source_location": "L1190"
   },
   {
    "source": "law:MV-141",
@@ -11246,7 +11294,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1191"
+   "source_location": "L1194"
   },
   {
    "source": "law:MV-141",
@@ -11255,7 +11303,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1189"
+   "source_location": "L1192"
   },
   {
    "source": "law:MV-141",
@@ -11264,7 +11312,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1190"
+   "source_location": "L1193"
   },
   {
    "source": "law:MV-141",
@@ -11273,7 +11321,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1194"
+   "source_location": "L1197"
   },
   {
    "source": "law:MV-141",
@@ -11282,7 +11330,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1193"
+   "source_location": "L1196"
   },
   {
    "source": "law:MV-141",
@@ -11291,7 +11339,7 @@
    "confidence": "EXTRACTED",
    "mode": "absent",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1182",
+   "source_location": "L1185",
    "legs": 3
   },
   {
@@ -11301,7 +11349,7 @@
    "confidence": "EXTRACTED",
    "mode": "absent",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1184"
+   "source_location": "L1187"
   },
   {
    "source": "law:MV-142",
@@ -11316,7 +11364,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1196",
+   "source_location": "L1199",
    "legs": 3
   },
   {
@@ -11326,7 +11374,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1201"
+   "source_location": "L1204"
   },
   {
    "source": "law:MV-142",
@@ -11335,7 +11383,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1199",
+   "source_location": "L1202",
    "legs": 3
   },
   {
@@ -11345,7 +11393,7 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1204"
+   "source_location": "L1207"
   },
   {
    "source": "law:MV-142",
@@ -11354,13 +11402,88 @@
    "confidence": "EXTRACTED",
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
-   "source_location": "L1200"
+   "source_location": "L1203"
   },
   {
    "source": "law:MV-143",
    "target": "change:doors-reach-every-harness",
    "relation": "enacted_by",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "law:MV-143",
+   "target": "glob:brain:src/adapters/refresh.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1210",
+   "legs": 2
+  },
+  {
+   "source": "law:MV-143",
+   "target": "glob:brain:src/adapters/registry.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "count",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1212",
+   "legs": 2
+  },
+  {
+   "source": "law:MV-143",
+   "target": "glob:brain:src/commands/doors.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1214"
+  },
+  {
+   "source": "law:MV-143",
+   "target": "glob:brain:src/doors/brain.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1211",
+   "legs": 2
+  },
+  {
+   "source": "law:MV-143",
+   "target": "glob:brain:src/doors/link.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1209"
+  },
+  {
+   "source": "law:MV-143",
+   "target": "glob:brain:src/lib/code-in-change.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1217"
+  },
+  {
+   "source": "law:MV-143",
+   "target": "glob:brain:test/change/harness-install.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1219"
+  },
+  {
+   "source": "law:MV-143",
+   "target": "glob:brain:test/doors/link.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1218"
   },
   {
    "source": "law:MV-15",
