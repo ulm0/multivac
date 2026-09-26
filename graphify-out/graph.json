@@ -1269,8 +1269,8 @@
       "source_location": "L151",
       "_origin": "ast",
       "id": "src_adapters_detect_artifacthit",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "artifacthit()"
     },
     {
@@ -1852,8 +1852,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_adapters_sdd",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "sdd.ts"
     },
     {
@@ -1863,8 +1863,8 @@
       "source_location": "L45",
       "_origin": "ast",
       "id": "src_adapters_sdd_execfilep",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "execfilep"
     },
     {
@@ -1874,8 +1874,8 @@
       "source_location": "L54",
       "_origin": "ast",
       "id": "src_adapters_sdd_openitems",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "openitems()"
     },
     {
@@ -1885,8 +1885,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "src_adapters_sdd_readtext",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "readtext()"
     },
     {
@@ -1896,8 +1896,8 @@
       "source_location": "L78",
       "_origin": "ast",
       "id": "src_adapters_sdd_copiedfrom",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "copiedfrom()"
     },
     {
@@ -1907,8 +1907,8 @@
       "source_location": "L101",
       "_origin": "ast",
       "id": "src_adapters_sdd_withslug",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "withslug()"
     },
     {
@@ -1918,8 +1918,8 @@
       "source_location": "L105",
       "_origin": "ast",
       "id": "src_adapters_sdd_stepsat",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "stepsat()"
     },
     {
@@ -1929,8 +1929,8 @@
       "source_location": "L109",
       "_origin": "ast",
       "id": "src_adapters_sdd_stepsgating",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "stepsgating()"
     },
     {
@@ -1940,8 +1940,8 @@
       "source_location": "L113",
       "_origin": "ast",
       "id": "src_adapters_sdd_stepsledgered",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "stepsledgered()"
     },
     {
@@ -1951,8 +1951,8 @@
       "source_location": "L117",
       "_origin": "ast",
       "id": "src_adapters_sdd_proofof",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "proofof()"
     },
     {
@@ -1962,8 +1962,8 @@
       "source_location": "L125",
       "_origin": "ast",
       "id": "src_adapters_sdd_flowlines",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "flowlines()"
     },
     {
@@ -1973,8 +1973,8 @@
       "source_location": "L130",
       "_origin": "ast",
       "id": "src_adapters_sdd_gateresult",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "gateresult"
     },
     {
@@ -1984,8 +1984,8 @@
       "source_location": "L135",
       "_origin": "ast",
       "id": "src_adapters_sdd_verdict",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "verdict"
     },
     {
@@ -2028,8 +2028,8 @@
       "source_location": "L358",
       "_origin": "ast",
       "id": "src_adapters_sdd_slughits",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "slughits()"
     },
     {
@@ -2039,8 +2039,8 @@
       "source_location": "L378",
       "_origin": "ast",
       "id": "src_adapters_sdd_sddgate",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "sddgate()"
     },
     {
@@ -2050,8 +2050,8 @@
       "source_location": "L423",
       "_origin": "ast",
       "id": "src_adapters_sdd_judgesdd",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "judgesdd()"
     },
     {
@@ -2061,8 +2061,8 @@
       "source_location": "L694",
       "_origin": "ast",
       "id": "src_adapters_sdd_sddinstructions",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "sddinstructions()"
     },
     {
@@ -2072,8 +2072,8 @@
       "source_location": "L710",
       "_origin": "ast",
       "id": "src_adapters_sdd_steplines",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "steplines()"
     },
     {
@@ -2633,8 +2633,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_change_carry",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "carry.ts"
     },
     {
@@ -2644,8 +2644,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "src_change_carry_carryplan",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "carryplan"
     },
     {
@@ -2655,8 +2655,8 @@
       "source_location": "L34",
       "_origin": "ast",
       "id": "src_change_carry_plancarry",
-      "community": 77,
-      "community_name": "doctor.ts",
+      "community": 462,
+      "community_name": "sdd.ts",
       "norm_label": "plancarry()"
     },
     {
@@ -4976,8 +4976,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_doors_block",
-      "community": 539,
-      "community_name": "doors.ts",
+      "community": 479,
+      "community_name": "applyManagedBlock",
       "norm_label": "block.ts"
     },
     {
@@ -4987,8 +4987,8 @@
       "source_location": "L9",
       "_origin": "ast",
       "id": "src_doors_block_renderblock",
-      "community": 539,
-      "community_name": "doors.ts",
+      "community": 479,
+      "community_name": "applyManagedBlock",
       "norm_label": "renderblock()"
     },
     {
@@ -4998,8 +4998,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "src_doors_block_findmarkers",
-      "community": 539,
-      "community_name": "doors.ts",
+      "community": 479,
+      "community_name": "applyManagedBlock",
       "norm_label": "findmarkers()"
     },
     {
@@ -5009,8 +5009,8 @@
       "source_location": "L48",
       "_origin": "ast",
       "id": "src_doors_block_applymanagedblock",
-      "community": 539,
-      "community_name": "doors.ts",
+      "community": 479,
+      "community_name": "applyManagedBlock",
       "norm_label": "applymanagedblock()"
     },
     {
@@ -5020,8 +5020,8 @@
       "source_location": "L91",
       "_origin": "ast",
       "id": "src_doors_block_stripmanagedblock",
-      "community": 539,
-      "community_name": "doors.ts",
+      "community": 479,
+      "community_name": "applyManagedBlock",
       "norm_label": "stripmanagedblock()"
     },
     {
@@ -6274,8 +6274,8 @@
       "source_location": "L267",
       "_origin": "ast",
       "id": "src_lib_git_currentbranch",
-      "community": 323,
-      "community_name": "verify.ts",
+      "community": 459,
+      "community_name": "run",
       "norm_label": "currentbranch()"
     },
     {
@@ -9442,8 +9442,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doors_block_test",
-      "community": 539,
-      "community_name": "doors.ts",
+      "community": 479,
+      "community_name": "applyManagedBlock",
       "norm_label": "block.test.ts"
     },
     {
@@ -9739,8 +9739,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_doors_link_test",
-      "community": 53,
-      "community_name": "refresh.ts",
+      "community": 479,
+      "community_name": "applyManagedBlock",
       "norm_label": "link.test.ts"
     },
     {
@@ -9750,8 +9750,8 @@
       "source_location": "L13",
       "_origin": "ast",
       "id": "test_doors_link_test_tmp",
-      "community": 53,
-      "community_name": "refresh.ts",
+      "community": 479,
+      "community_name": "applyManagedBlock",
       "norm_label": "tmp()"
     },
     {
@@ -15937,6 +15937,28 @@
       "norm_label": "found alongside, not fixed here"
     },
     {
+      "label": "doors-reach-every-harness.md",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/doors-reach-every-harness.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_doors_reach_every_harness",
+      "community": 487,
+      "community_name": "doors-reach-every-harness.md",
+      "norm_label": "doors-reach-every-harness.md"
+    },
+    {
+      "label": "Doors reach every harness and say the truth",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/doors-reach-every-harness.md",
+      "source_location": "L26",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_doors_reach_every_harness_doors_reach_every_harness_and_say_the_truth",
+      "community": 487,
+      "community_name": "doors-reach-every-harness.md",
+      "norm_label": "doors reach every harness and say the truth"
+    },
+    {
       "label": "each-file-answers.md",
       "file_type": "document",
       "source_file": ".multivac/changes/archive/each-file-answers.md",
@@ -16009,8 +16031,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_each_scope_verifies_its_own",
-      "community": 462,
-      "community_name": "each-scope-verifies-its-own.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "each-scope-verifies-its-own.md"
     },
     {
@@ -16020,8 +16042,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_each_scope_verifies_its_own_each_scope_verifies_what_it_is_responsible_for",
-      "community": 462,
-      "community_name": "each-scope-verifies-its-own.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "each scope verifies what it is responsible for"
     },
     {
@@ -16031,8 +16053,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_ecosystem_graph",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 494,
+      "community_name": "ecosystem-graph.md",
       "norm_label": "ecosystem-graph.md"
     },
     {
@@ -16042,8 +16064,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_ecosystem_graph_the_brain_keeps_its_ecosystem_s_governance_graph",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 494,
+      "community_name": "ecosystem-graph.md",
       "norm_label": "the brain keeps its ecosystem's governance graph"
     },
     {
@@ -16130,8 +16152,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_equip_brain_at_init",
-      "community": 479,
-      "community_name": "equip-brain-at-init.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "equip-brain-at-init.md"
     },
     {
@@ -16141,8 +16163,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "multivac_changes_archive_equip_brain_at_init_init_equips_the_brain_it_scaffolds",
-      "community": 479,
-      "community_name": "equip-brain-at-init.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "init equips the brain it scaffolds"
     },
     {
@@ -16317,8 +16339,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_graph_owned_and_committed",
-      "community": 495,
-      "community_name": "graph-owned-and-committed.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "graph-owned-and-committed.md"
     },
     {
@@ -16328,8 +16350,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_graph_owned_and_committed_the_graph_is_committed_on_the_change_branch_for_the_repos_the_change_names",
-      "community": 495,
-      "community_name": "graph-owned-and-committed.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the graph is committed on the change branch, for the repos the change names"
     },
     {
@@ -16339,8 +16361,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_grapher_harness_install",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 495,
+      "community_name": "grapher-harness-install.md",
       "norm_label": "grapher-harness-install.md"
     },
     {
@@ -16350,8 +16372,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_grapher_harness_install_the_grapher_s_own_project_install_runs_for_each_declared_door",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 495,
+      "community_name": "grapher-harness-install.md",
       "norm_label": "the grapher's own project install runs for each declared door"
     },
     {
@@ -16526,8 +16548,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_mount_before_gate",
-      "community": 498,
-      "community_name": "mount-before-gate.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "mount-before-gate.md"
     },
     {
@@ -16537,8 +16559,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_mount_before_gate_a_consumer_is_mounted_before_it_is_gated",
-      "community": 498,
-      "community_name": "mount-before-gate.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "a consumer is mounted before it is gated"
     },
     {
@@ -16548,8 +16570,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_no_mention_what_is_not_supported",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 498,
+      "community_name": "no-mention-what-is-not-supported.md",
       "norm_label": "no-mention-what-is-not-supported.md"
     },
     {
@@ -16559,8 +16581,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_no_mention_what_is_not_supported_do_not_name_what_you_do_not_support",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 498,
+      "community_name": "no-mention-what-is-not-supported.md",
       "norm_label": "do not name what you do not support"
     },
     {
@@ -16592,8 +16614,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_one_resolver_per_root",
-      "community": 480,
-      "community_name": "one-resolver-per-root.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "one-resolver-per-root.md"
     },
     {
@@ -16603,8 +16625,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "multivac_changes_archive_one_resolver_per_root_one_resolver_per_root",
-      "community": 480,
-      "community_name": "one-resolver-per-root.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "one resolver per root"
     },
     {
@@ -16614,8 +16636,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_presence_is_not_identity",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 501,
+      "community_name": "presence-is-not-identity.md",
       "norm_label": "presence-is-not-identity.md"
     },
     {
@@ -16625,8 +16647,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_presence_is_not_identity_presence_is_not_identity",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 501,
+      "community_name": "presence-is-not-identity.md",
       "norm_label": "presence is not identity"
     },
     {
@@ -16669,8 +16691,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_publish_carries_no_provenance_from_a_self_hosted_runner",
-      "community": 494,
-      "community_name": "publish-carries-no-provenance-from-a-self-hosted-runner.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "publish-carries-no-provenance-from-a-self-hosted-runner.md"
     },
     {
@@ -16680,8 +16702,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_publish_carries_no_provenance_from_a_self_hosted_runner_publish_carries_no_provenance_from_a_self_hosted_runner",
-      "community": 494,
-      "community_name": "publish-carries-no-provenance-from-a-self-hosted-runner.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "publish carries no provenance from a self-hosted runner"
     },
     {
@@ -17010,8 +17032,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_brain_door_has_one_rendering",
-      "community": 513,
-      "community_name": "the-brain-door-has-one-rendering.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-brain-door-has-one-rendering.md"
     },
     {
@@ -17021,8 +17043,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_brain_door_has_one_rendering_the_brain_door_has_one_rendering",
-      "community": 513,
-      "community_name": "the-brain-door-has-one-rendering.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the brain door has one rendering"
     },
     {
@@ -17076,8 +17098,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ceremony_loses_nothing",
-      "community": 514,
-      "community_name": "the-ceremony-loses-nothing.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-ceremony-loses-nothing.md"
     },
     {
@@ -17087,8 +17109,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ceremony_loses_nothing_the_ceremony_loses_nothing",
-      "community": 514,
-      "community_name": "the-ceremony-loses-nothing.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the ceremony loses nothing"
     },
     {
@@ -17120,8 +17142,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_cli_is_parsed_by_citty",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 502,
+      "community_name": "the-cli-is-parsed-by-citty.md",
       "norm_label": "the-cli-is-parsed-by-citty.md"
     },
     {
@@ -17131,8 +17153,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_cli_is_parsed_by_citty_the_cli_is_parsed_by_citty_and_still_refuses_what_it_does_not_declare",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 502,
+      "community_name": "the-cli-is-parsed-by-citty.md",
       "norm_label": "the cli is parsed by citty, and still refuses what it does not declare"
     },
     {
@@ -17263,8 +17285,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_door_says_only_what_the_config_declares",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 508,
+      "community_name": "the-door-says-only-what-the-config-declares.md",
       "norm_label": "the-door-says-only-what-the-config-declares.md"
     },
     {
@@ -17274,8 +17296,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_door_says_only_what_the_config_declares_the_door_says_only_what_the_config_declares",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 508,
+      "community_name": "the-door-says-only-what-the-config-declares.md",
       "norm_label": "the door says only what the config declares"
     },
     {
@@ -17285,8 +17307,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_engine_reads_one_way_round_two",
-      "community": 515,
-      "community_name": "the-engine-reads-one-way-round-two.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-engine-reads-one-way-round-two.md"
     },
     {
@@ -17296,8 +17318,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_engine_reads_one_way_round_two_the_engine_reads_one_way_round_two",
-      "community": 515,
-      "community_name": "the-engine-reads-one-way-round-two.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the engine reads one way, round two"
     },
     {
@@ -17307,8 +17329,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_engine_reads_one_way",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 513,
+      "community_name": "the-engine-reads-one-way.md",
       "norm_label": "the-engine-reads-one-way.md"
     },
     {
@@ -17318,8 +17340,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_engine_reads_one_way_the_engine_reads_one_way",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 513,
+      "community_name": "the-engine-reads-one-way.md",
       "norm_label": "the engine reads one way"
     },
     {
@@ -17329,8 +17351,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_first_release",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 514,
+      "community_name": "the-first-release.md",
       "norm_label": "the-first-release.md"
     },
     {
@@ -17340,8 +17362,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_first_release_the_first_release",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 514,
+      "community_name": "the-first-release.md",
       "norm_label": "the first release"
     },
     {
@@ -17505,8 +17527,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_reads_the_commit_it_gates",
-      "community": 508,
-      "community_name": "the-gate-reads-the-commit-it-gates.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-gate-reads-the-commit-it-gates.md"
     },
     {
@@ -17516,8 +17538,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_reads_the_commit_it_gates_the_gate_reads_the_commit_it_gates",
-      "community": 508,
-      "community_name": "the-gate-reads-the-commit-it-gates.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the gate reads the commit it gates"
     },
     {
@@ -17527,8 +17549,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_runs_what_you_built",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 515,
+      "community_name": "the-gate-runs-what-you-built.md",
       "norm_label": "the-gate-runs-what-you-built.md"
     },
     {
@@ -17538,8 +17560,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_runs_what_you_built_the_gate_runs_the_code_in_this_tree_not_a_copy_of_it",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 515,
+      "community_name": "the-gate-runs-what-you-built.md",
       "norm_label": "the gate runs the code in this tree, not a copy of it"
     },
     {
@@ -17549,8 +17571,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_speaks_the_channel_the_harness_reads",
-      "community": 519,
-      "community_name": "the-gate-speaks-the-channel-the-harness-reads.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-gate-speaks-the-channel-the-harness-reads.md"
     },
     {
@@ -17560,8 +17582,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_speaks_the_channel_the_harness_reads_the_gate_speaks_the_channel_the_harness_reads",
-      "community": 519,
-      "community_name": "the-gate-speaks-the-channel-the-harness-reads.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the gate speaks the channel the harness reads"
     },
     {
@@ -17571,8 +17593,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_follows_the_agent",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 519,
+      "community_name": "the-graph-follows-the-agent.md",
       "norm_label": "the-graph-follows-the-agent.md"
     },
     {
@@ -17582,8 +17604,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_follows_the_agent_the_graph_follows_the_agent",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 519,
+      "community_name": "the-graph-follows-the-agent.md",
       "norm_label": "the graph follows the agent"
     },
     {
@@ -17593,8 +17615,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_is_a_gate_not_a_suggestion",
-      "community": 520,
-      "community_name": "the-graph-is-a-gate-not-a-suggestion.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-graph-is-a-gate-not-a-suggestion.md"
     },
     {
@@ -17604,8 +17626,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_is_a_gate_not_a_suggestion_a_declared_grapher_leaves_a_graph_or_close_refuses",
-      "community": 520,
-      "community_name": "the-graph-is-a-gate-not-a-suggestion.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "a declared grapher leaves a graph, or close refuses"
     },
     {
@@ -17615,8 +17637,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_is_part_of_the_repository",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 520,
+      "community_name": "the-graph-is-part-of-the-repository.md",
       "norm_label": "the-graph-is-part-of-the-repository.md"
     },
     {
@@ -17626,8 +17648,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_is_part_of_the_repository_the_graph_a_declared_grapher_leaves_is_part_of_the_repository",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 520,
+      "community_name": "the-graph-is-part-of-the-repository.md",
       "norm_label": "the graph a declared grapher leaves is part of the repository"
     },
     {
@@ -17714,8 +17736,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ledger_keeps_itself",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 524,
+      "community_name": "the-ledger-keeps-itself.md",
       "norm_label": "the-ledger-keeps-itself.md"
     },
     {
@@ -17725,8 +17747,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ledger_keeps_itself_the_ledger_keeps_itself",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 524,
+      "community_name": "the-ledger-keeps-itself.md",
       "norm_label": "the ledger keeps itself"
     },
     {
@@ -17868,8 +17890,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_projection_survives_its_environment",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 525,
+      "community_name": "the-projection-survives-its-environment.md",
       "norm_label": "the-projection-survives-its-environment.md"
     },
     {
@@ -17879,8 +17901,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_projection_survives_its_environment_the_projection_survives_its_environment",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 525,
+      "community_name": "the-projection-survives-its-environment.md",
       "norm_label": "the projection survives its environment"
     },
     {
@@ -17890,8 +17912,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ramp_is_part_of_the_road",
-      "community": 524,
-      "community_name": "the-ramp-is-part-of-the-road.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-ramp-is-part-of-the-road.md"
     },
     {
@@ -17901,8 +17923,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_ramp_is_part_of_the_road_the_on_ramp_help_anchor_count_dry_run_safe_help_readable_verify",
-      "community": 524,
-      "community_name": "the-ramp-is-part-of-the-road.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the on-ramp: help anchor, count dry-run, safe --help, readable verify"
     },
     {
@@ -17934,8 +17956,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_record_matches_the_release",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 526,
+      "community_name": "the-record-matches-the-release.md",
       "norm_label": "the-record-matches-the-release.md"
     },
     {
@@ -17945,8 +17967,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_record_matches_the_release_the_record_matches_the_release",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 526,
+      "community_name": "the-record-matches-the-release.md",
       "norm_label": "the record matches the release"
     },
     {
@@ -17956,8 +17978,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_refusal_reads_the_whole_token",
-      "community": 525,
-      "community_name": "the-refusal-reads-the-whole-token.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-refusal-reads-the-whole-token.md"
     },
     {
@@ -17967,8 +17989,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_refusal_reads_the_whole_token_the_refusal_reads_the_whole_token",
-      "community": 525,
-      "community_name": "the-refusal-reads-the-whole-token.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the refusal reads the whole token"
     },
     {
@@ -18275,8 +18297,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sdd_gates_its_own_flow",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 527,
+      "community_name": "the-sdd-gates-its-own-flow.md",
       "norm_label": "the-sdd-gates-its-own-flow.md"
     },
     {
@@ -18286,8 +18308,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sdd_gates_its_own_flow_the_sdd_gates_its_own_flow",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 527,
+      "community_name": "the-sdd-gates-its-own-flow.md",
       "norm_label": "the sdd gates its own flow"
     },
     {
@@ -18297,8 +18319,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sdd_tells_the_agent",
-      "community": 526,
-      "community_name": "the-sdd-tells-the-agent.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-sdd-tells-the-agent.md"
     },
     {
@@ -18308,8 +18330,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sdd_tells_the_agent_the_sdd_tells_the_agent",
-      "community": 526,
-      "community_name": "the-sdd-tells-the-agent.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the sdd tells the agent"
     },
     {
@@ -18319,8 +18341,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sentences_are_true",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 530,
+      "community_name": "the-sentences-are-true.md",
       "norm_label": "the-sentences-are-true.md"
     },
     {
@@ -18330,8 +18352,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sentences_are_true_the_sentences_are_true",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 530,
+      "community_name": "the-sentences-are-true.md",
       "norm_label": "the sentences are true"
     },
     {
@@ -18341,8 +18363,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_can_be_shared",
-      "community": 527,
-      "community_name": "the-site-can-be-shared.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-site-can-be-shared.md"
     },
     {
@@ -18352,8 +18374,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_can_be_shared_the_site_can_be_shared",
-      "community": 527,
-      "community_name": "the-site-can-be-shared.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the site can be shared"
     },
     {
@@ -18528,8 +18550,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_small_lies_and_the_shared_lock",
-      "community": 547,
-      "community_name": "the-small-lies-and-the-shared-lock.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-small-lies-and-the-shared-lock.md"
     },
     {
@@ -18539,8 +18561,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_small_lies_and_the_shared_lock_the_small_lies_and_the_shared_lock",
-      "community": 547,
-      "community_name": "the-small-lies-and-the-shared-lock.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the small lies and the shared lock"
     },
     {
@@ -18594,8 +18616,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_vendor_facts_true",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 531,
+      "community_name": "vendor-facts-true.md",
       "norm_label": "vendor-facts-true.md"
     },
     {
@@ -18605,8 +18627,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "multivac_changes_archive_vendor_facts_true_vendor_facts_are_true",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 531,
+      "community_name": "vendor-facts-true.md",
       "norm_label": "vendor facts are true"
     },
     {
@@ -18616,8 +18638,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_vendor_state_probes",
-      "community": 530,
-      "community_name": "vendor-state-probes.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "vendor-state-probes.md"
     },
     {
@@ -18627,8 +18649,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "multivac_changes_archive_vendor_state_probes_vendor_state_probes",
-      "community": 530,
-      "community_name": "vendor-state-probes.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "vendor state probes"
     },
     {
@@ -18696,28 +18718,6 @@
       "community": 549,
       "community_name": "codegraph-worktrees-and-verbs.md",
       "norm_label": "codegraph: an index per worktree and the verbs that replace grep plus read"
-    },
-    {
-      "label": "doors-reach-every-harness.md",
-      "file_type": "document",
-      "source_file": ".multivac/changes/doors-reach-every-harness.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "multivac_changes_doors_reach_every_harness",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
-      "norm_label": "doors-reach-every-harness.md"
-    },
-    {
-      "label": "Doors reach every harness and say the truth",
-      "file_type": "document",
-      "source_file": ".multivac/changes/doors-reach-every-harness.md",
-      "source_location": "L26",
-      "_origin": "ast",
-      "id": "multivac_changes_doors_reach_every_harness_doors_reach_every_harness_and_say_the_truth",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
-      "norm_label": "doors reach every harness and say the truth"
     },
     {
       "label": "graph-answers-where-asked.md",
@@ -20956,7 +20956,7 @@
       "label": "The four jobs",
       "file_type": "document",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L17",
+      "source_location": "L15",
       "_origin": "ast",
       "id": "site_content_docs_index_the_four_jobs",
       "community": 72,
@@ -20967,7 +20967,7 @@
       "label": "Three sections, and the changelog",
       "file_type": "document",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L27",
+      "source_location": "L25",
       "_origin": "ast",
       "id": "site_content_docs_index_three_sections_and_the_changelog",
       "community": 72,
@@ -20978,7 +20978,7 @@
       "label": "Where to start",
       "file_type": "document",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L36",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "site_content_docs_index_where_to_start",
       "community": 72,
@@ -30430,7 +30430,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_plan",
-      "community": 179,
+      "community": 480,
       "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "010-the-brain-knows-what-projected-it/plan.md"
     },
@@ -30507,8 +30507,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_quickstart",
-      "community": 179,
-      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
+      "community": 178,
+      "community_name": "Quickstart: get the notice on purpose",
       "norm_label": "010-the-brain-knows-what-projected-it/quickstart.md"
     },
     {
@@ -30585,7 +30585,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_research",
       "community": 179,
-      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
+      "community_name": "Research: A brain knows what projected it",
       "norm_label": "010-the-brain-knows-what-projected-it/research.md"
     },
     {
@@ -30596,7 +30596,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_research_research_a_brain_knows_what_projected_it",
       "community": 179,
-      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
+      "community_name": "Research: A brain knows what projected it",
       "norm_label": "research: a brain knows what projected it"
     },
     {
@@ -30607,7 +30607,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_research_d1_two_files_because_doors_does_not_write_config_yml",
       "community": 179,
-      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
+      "community_name": "Research: A brain knows what projected it",
       "norm_label": "d1 \u2014 two files, because `doors` does not write `config.yml`"
     },
     {
@@ -30618,7 +30618,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_research_d2_the_record_moves_only_under_an_explicit_act_and_this_reversed_the_design",
       "community": 179,
-      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
+      "community_name": "Research: A brain knows what projected it",
       "norm_label": "d2 \u2014 the record moves only under an explicit act, and this reversed the design"
     },
     {
@@ -30629,7 +30629,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_research_d3_warn_always_refuse_never_and_the_reason_the_first_instinct_was_wrong",
       "community": 179,
-      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
+      "community_name": "Research: A brain knows what projected it",
       "norm_label": "d3 \u2014 warn always, refuse never \u2014 and the reason the first instinct was wrong"
     },
     {
@@ -30640,7 +30640,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_research_d4_x_y_z_and_nothing_else",
       "community": 179,
-      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
+      "community_name": "Research: A brain knows what projected it",
       "norm_label": "d4 \u2014 `>=x.y.z` and nothing else"
     },
     {
@@ -30651,7 +30651,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_research_d5_the_notice_is_emitted_once_from_the_dispatcher",
       "community": 179,
-      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
+      "community_name": "Research: A brain knows what projected it",
       "norm_label": "d5 \u2014 the notice is emitted once, from the dispatcher"
     },
     {
@@ -30661,7 +30661,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_spec",
-      "community": 179,
+      "community": 480,
       "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "010-the-brain-knows-what-projected-it/spec.md"
     },
@@ -30804,7 +30804,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_tasks",
-      "community": 179,
+      "community": 480,
       "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "010-the-brain-knows-what-projected-it/tasks.md"
     },
@@ -105002,6 +105002,28 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/doors-reach-every-harness.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_doors_reach_every_harness",
+      "target": "multivac_changes_archive_doors_reach_every_harness_doors_reach_every_harness_and_say_the_truth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/invariants.md",
+      "source_location": "L1208",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_invariants",
+      "target": "multivac_changes_archive_doors_reach_every_harness",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/archive/each-file-answers.md",
       "source_location": "L19",
       "weight": 1.0,
@@ -107499,28 +107521,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/doors-reach-every-harness.md",
-      "source_location": "L26",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_doors_reach_every_harness",
-      "target": "multivac_changes_doors_reach_every_harness_doors_reach_every_harness_and_say_the_truth",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/invariants.md",
-      "source_location": "L1208",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_invariants",
-      "target": "multivac_changes_doors_reach_every_harness",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/graph-answers-where-asked.md",
       "source_location": "L14",
       "weight": 1.0,
@@ -109546,7 +109546,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L58",
+      "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109557,7 +109557,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L51",
+      "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109568,7 +109568,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L53",
+      "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109579,7 +109579,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L60",
+      "source_location": "L58",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109590,7 +109590,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L57",
+      "source_location": "L55",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109601,7 +109601,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L56",
+      "source_location": "L54",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109612,7 +109612,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L8",
+      "source_location": "L6",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109623,7 +109623,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L55",
+      "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109634,7 +109634,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L41",
+      "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109645,7 +109645,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L40",
+      "source_location": "L38",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109656,7 +109656,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L17",
+      "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109667,7 +109667,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L27",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109678,7 +109678,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L36",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109689,7 +109689,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L42",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109700,7 +109700,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L43",
+      "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109711,7 +109711,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L45",
+      "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -109722,7 +109722,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L44",
+      "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -148407,5 +148407,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "415142be40aaa8d66b80d910a806cb7ecd9025d2"
+  "built_at_commit": "518dc9e48a05dd6e8c9d2e06a4c890a6e304ccb1"
 }

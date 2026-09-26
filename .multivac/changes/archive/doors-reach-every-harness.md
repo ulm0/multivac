@@ -1,6 +1,6 @@
 ---
 slug: doors-reach-every-harness
-status: open
+status: archived
 horizon: now
 repos:
   brain:

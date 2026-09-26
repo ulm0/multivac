@@ -248,8 +248,8 @@
    "id": "change:doors-reach-every-harness",
    "label": "doors-reach-every-harness",
    "file_type": "change",
-   "source_file": ".multivac/changes/doors-reach-every-harness.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/doors-reach-every-harness.md",
+   "status": "archived",
    "horizon": "now",
    "issue": null
   },
