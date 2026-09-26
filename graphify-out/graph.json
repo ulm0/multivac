@@ -11246,8 +11246,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_verify_each_test",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "each.test.ts"
     },
     {
@@ -11257,8 +11257,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "test_verify_each_test_eco",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "eco()"
     },
     {
@@ -11268,8 +11268,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "test_verify_each_test_git",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "git()"
     },
     {
@@ -11279,8 +11279,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "test_verify_each_test_commitfile",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "commitfile()"
     },
     {
@@ -11290,8 +11290,8 @@
       "source_location": "L29",
       "_origin": "ast",
       "id": "test_verify_each_test_header",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "header"
     },
     {
@@ -11301,8 +11301,8 @@
       "source_location": "L36",
       "_origin": "ast",
       "id": "test_verify_each_test_setlaw",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "setlaw()"
     },
     {
@@ -11312,8 +11312,8 @@
       "source_location": "L40",
       "_origin": "ast",
       "id": "test_verify_each_test_captured",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "captured()"
     },
     {
@@ -11323,8 +11323,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "test_verify_each_test_manifest",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "manifest()"
     },
     {
@@ -11334,8 +11334,8 @@
       "source_location": "L70",
       "_origin": "ast",
       "id": "test_verify_each_test_manifests",
-      "community": 452,
-      "community_name": "makeScratchEcosystem",
+      "community": 427,
+      "community_name": "each.test.ts",
       "norm_label": "manifests()"
     },
     {
@@ -12637,7 +12637,7 @@
       "norm_label": "for --cluster-only"
     },
     {
-      "label": ".claude/CLAUDE.md",
+      "label": "CLAUDE.md",
       "file_type": "document",
       "source_file": ".claude/CLAUDE.md",
       "source_location": "L1",
@@ -12645,7 +12645,7 @@
       "id": "claude_claude",
       "community": 474,
       "community_name": ".claude/CLAUDE.md",
-      "norm_label": ".claude/claude.md"
+      "norm_label": "claude.md"
     },
     {
       "label": "graphify",
@@ -16883,6 +16883,28 @@
       "norm_label": "the second entry: the sdd chain runs unattended"
     },
     {
+      "label": "sdd-artifacts-land.md",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/sdd-artifacts-land.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_sdd_artifacts_land",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
+      "norm_label": "sdd-artifacts-land.md"
+    },
+    {
+      "label": "What the SDD writes in the brain lands with the change",
+      "file_type": "document",
+      "source_file": ".multivac/changes/archive/sdd-artifacts-land.md",
+      "source_location": "L29",
+      "_origin": "ast",
+      "id": "multivac_changes_archive_sdd_artifacts_land_what_the_sdd_writes_in_the_brain_lands_with_the_change",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
+      "norm_label": "what the sdd writes in the brain lands with the change"
+    },
+    {
       "label": "sdd-shared-committed.md",
       "file_type": "document",
       "source_file": ".multivac/changes/archive/sdd-shared-committed.md",
@@ -16933,8 +16955,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_session_zero_equips",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 502,
+      "community_name": "session-zero-equips.md",
       "norm_label": "session-zero-equips.md"
     },
     {
@@ -16944,8 +16966,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_session_zero_equips_session_zero_equips_every_repo_before_it_drafts_law",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 502,
+      "community_name": "session-zero-equips.md",
       "norm_label": "session zero equips every repo before it drafts law"
     },
     {
@@ -17076,8 +17098,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_brain_door_has_one_rendering",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 508,
+      "community_name": "the-brain-door-has-one-rendering.md",
       "norm_label": "the-brain-door-has-one-rendering.md"
     },
     {
@@ -17087,8 +17109,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_brain_door_has_one_rendering_the_brain_door_has_one_rendering",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 508,
+      "community_name": "the-brain-door-has-one-rendering.md",
       "norm_label": "the brain door has one rendering"
     },
     {
@@ -17164,8 +17186,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_chain_arms_either_way",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 515,
+      "community_name": "the-chain-arms-either-way.md",
       "norm_label": "the-chain-arms-either-way.md"
     },
     {
@@ -17175,8 +17197,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_chain_arms_either_way_the_chain_arms_in_every_order",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 515,
+      "community_name": "the-chain-arms-either-way.md",
       "norm_label": "the chain arms in every order"
     },
     {
@@ -17186,8 +17208,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_cli_is_parsed_by_citty",
-      "community": 502,
-      "community_name": "the-cli-is-parsed-by-citty.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-cli-is-parsed-by-citty.md"
     },
     {
@@ -17197,8 +17219,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_cli_is_parsed_by_citty_the_cli_is_parsed_by_citty_and_still_refuses_what_it_does_not_declare",
-      "community": 502,
-      "community_name": "the-cli-is-parsed-by-citty.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the cli is parsed by citty, and still refuses what it does not declare"
     },
     {
@@ -17329,8 +17351,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_door_says_only_what_the_config_declares",
-      "community": 508,
-      "community_name": "the-door-says-only-what-the-config-declares.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-door-says-only-what-the-config-declares.md"
     },
     {
@@ -17340,8 +17362,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_door_says_only_what_the_config_declares_the_door_says_only_what_the_config_declares",
-      "community": 508,
-      "community_name": "the-door-says-only-what-the-config-declares.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the door says only what the config declares"
     },
     {
@@ -17373,8 +17395,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_engine_reads_one_way",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 518,
+      "community_name": "the-engine-reads-one-way.md",
       "norm_label": "the-engine-reads-one-way.md"
     },
     {
@@ -17384,8 +17406,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_engine_reads_one_way_the_engine_reads_one_way",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 518,
+      "community_name": "the-engine-reads-one-way.md",
       "norm_label": "the engine reads one way"
     },
     {
@@ -17417,8 +17439,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_flow_is_derived_from_what_was_declared",
-      "community": 518,
-      "community_name": "the-flow-is-derived-from-what-was-declared.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-flow-is-derived-from-what-was-declared.md"
     },
     {
@@ -17428,8 +17450,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_flow_is_derived_from_what_was_declared_one_page_saying_what_is_automatic_what_is_a_gate_and_what_is_yours",
-      "community": 518,
-      "community_name": "the-flow-is-derived-from-what-was-declared.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "one page saying what is automatic, what is a gate, and what is yours"
     },
     {
@@ -17439,8 +17461,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gaps_that_were_not_gaps",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 521,
+      "community_name": "the-gaps-that-were-not-gaps.md",
       "norm_label": "the-gaps-that-were-not-gaps.md"
     },
     {
@@ -17450,8 +17472,8 @@
       "source_location": "L22",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gaps_that_were_not_gaps_the_gaps_that_were_not_gaps",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 521,
+      "community_name": "the-gaps-that-were-not-gaps.md",
       "norm_label": "the gaps that were not gaps"
     },
     {
@@ -17593,8 +17615,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_runs_what_you_built",
-      "community": 515,
-      "community_name": "the-gate-runs-what-you-built.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-gate-runs-what-you-built.md"
     },
     {
@@ -17604,8 +17626,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_runs_what_you_built_the_gate_runs_the_code_in_this_tree_not_a_copy_of_it",
-      "community": 515,
-      "community_name": "the-gate-runs-what-you-built.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the gate runs the code in this tree, not a copy of it"
     },
     {
@@ -17615,8 +17637,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_speaks_the_channel_the_harness_reads",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 525,
+      "community_name": "the-gate-speaks-the-channel-the-harness-reads.md",
       "norm_label": "the-gate-speaks-the-channel-the-harness-reads.md"
     },
     {
@@ -17626,8 +17648,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_gate_speaks_the_channel_the_harness_reads_the_gate_speaks_the_channel_the_harness_reads",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 525,
+      "community_name": "the-gate-speaks-the-channel-the-harness-reads.md",
       "norm_label": "the gate speaks the channel the harness reads"
     },
     {
@@ -17703,8 +17725,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_refreshes_itself",
-      "community": 521,
-      "community_name": "the-graph-refreshes-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-graph-refreshes-itself.md"
     },
     {
@@ -17714,8 +17736,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_graph_refreshes_itself_the_graph_refreshes_itself",
-      "community": 521,
-      "community_name": "the-graph-refreshes-itself.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the graph refreshes itself"
     },
     {
@@ -17934,8 +17956,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_projection_survives_its_environment",
-      "community": 525,
-      "community_name": "the-projection-survives-its-environment.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-projection-survives-its-environment.md"
     },
     {
@@ -17945,8 +17967,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_projection_survives_its_environment_the_projection_survives_its_environment",
-      "community": 525,
-      "community_name": "the-projection-survives-its-environment.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the projection survives its environment"
     },
     {
@@ -18000,8 +18022,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_record_matches_the_release",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 530,
+      "community_name": "the-record-matches-the-release.md",
       "norm_label": "the-record-matches-the-release.md"
     },
     {
@@ -18011,8 +18033,8 @@
       "source_location": "L21",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_record_matches_the_release_the_record_matches_the_release",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 530,
+      "community_name": "the-record-matches-the-release.md",
       "norm_label": "the record matches the release"
     },
     {
@@ -18022,8 +18044,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_refusal_reads_the_whole_token",
-      "community": 556,
-      "community_name": "the-refusal-reads-the-whole-token.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-refusal-reads-the-whole-token.md"
     },
     {
@@ -18033,8 +18055,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_refusal_reads_the_whole_token_the_refusal_reads_the_whole_token",
-      "community": 556,
-      "community_name": "the-refusal-reads-the-whole-token.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the refusal reads the whole token"
     },
     {
@@ -18341,8 +18363,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sdd_gates_its_own_flow",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 546,
+      "community_name": "the-sdd-gates-its-own-flow.md",
       "norm_label": "the-sdd-gates-its-own-flow.md"
     },
     {
@@ -18352,8 +18374,8 @@
       "source_location": "L26",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sdd_gates_its_own_flow_the_sdd_gates_its_own_flow",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 546,
+      "community_name": "the-sdd-gates-its-own-flow.md",
       "norm_label": "the sdd gates its own flow"
     },
     {
@@ -18385,8 +18407,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sentences_are_true",
-      "community": 530,
-      "community_name": "the-sentences-are-true.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-sentences-are-true.md"
     },
     {
@@ -18396,8 +18418,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_sentences_are_true_the_sentences_are_true",
-      "community": 530,
-      "community_name": "the-sentences-are-true.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the sentences are true"
     },
     {
@@ -18407,8 +18429,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_can_be_shared",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 556,
+      "community_name": "the-site-can-be-shared.md",
       "norm_label": "the-site-can-be-shared.md"
     },
     {
@@ -18418,8 +18440,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_can_be_shared_the_site_can_be_shared",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 556,
+      "community_name": "the-site-can-be-shared.md",
       "norm_label": "the site can be shared"
     },
     {
@@ -18429,8 +18451,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_has_a_voice",
-      "community": 427,
-      "community_name": "the-site-has-a-voice.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-site-has-a-voice.md"
     },
     {
@@ -18440,8 +18462,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_has_a_voice_the_site_sets_its_own_type_one_human_face_one_machine_face",
-      "community": 427,
-      "community_name": "the-site-has-a-voice.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the site sets its own type: one human face, one machine face"
     },
     {
@@ -18451,8 +18473,8 @@
       "source_location": "L39",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_has_a_voice_why_the_fonts_are_ours",
-      "community": 427,
-      "community_name": "the-site-has-a-voice.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "why the fonts are ours"
     },
     {
@@ -18462,8 +18484,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 480,
+      "community_name": "the-site-quotes-the-version-the-package-declares.md",
       "norm_label": "the-site-quotes-the-version-the-package-declares.md"
     },
     {
@@ -18473,8 +18495,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_the_site_quotes_the_version_the_package_declares",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 480,
+      "community_name": "the-site-quotes-the-version-the-package-declares.md",
       "norm_label": "the site quotes the version the package declares"
     },
     {
@@ -18484,8 +18506,8 @@
       "source_location": "L30",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_quotes_the_version_the_package_declares_why_this_is_a_test_not_an_anchor",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 480,
+      "community_name": "the-site-quotes-the-version-the-package-declares.md",
       "norm_label": "why this is a test, not an anchor"
     },
     {
@@ -18550,8 +18572,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_speaks_to_users",
-      "community": 546,
-      "community_name": "the-site-speaks-to-users.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-site-speaks-to-users.md"
     },
     {
@@ -18561,8 +18583,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_site_speaks_to_users_the_site_speaks_to_users",
-      "community": 546,
-      "community_name": "the-site-speaks-to-users.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the site speaks to users"
     },
     {
@@ -18594,8 +18616,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_small_lies_and_the_shared_lock",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 559,
+      "community_name": "the-small-lies-and-the-shared-lock.md",
       "norm_label": "the-small-lies-and-the-shared-lock.md"
     },
     {
@@ -18605,8 +18627,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_small_lies_and_the_shared_lock_the_small_lies_and_the_shared_lock",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 559,
+      "community_name": "the-small-lies-and-the-shared-lock.md",
       "norm_label": "the small lies and the shared lock"
     },
     {
@@ -18616,8 +18638,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_tool_urges_the_parallelism_it_already_knows_about",
-      "community": 559,
-      "community_name": "the-tool-urges-the-parallelism-it-already-knows-about.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "the-tool-urges-the-parallelism-it-already-knows-about.md"
     },
     {
@@ -18627,8 +18649,8 @@
       "source_location": "L20",
       "_origin": "ast",
       "id": "multivac_changes_archive_the_tool_urges_the_parallelism_it_already_knows_about_urge_the_fan_out_the_tool_already_computes_and_run_the_sdd_chain_unattended",
-      "community": 559,
-      "community_name": "the-tool-urges-the-parallelism-it-already-knows-about.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "urge the fan-out the tool already computes, and run the sdd chain unattended"
     },
     {
@@ -18638,8 +18660,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_two_graphers_and_what_each_one_answers",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 560,
+      "community_name": "two-graphers-and-what-each-one-answers.md",
       "norm_label": "two-graphers-and-what-each-one-answers.md"
     },
     {
@@ -18649,8 +18671,8 @@
       "source_location": "L23",
       "_origin": "ast",
       "id": "multivac_changes_archive_two_graphers_and_what_each_one_answers_two_graphers_and_what_each_one_answers",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
+      "community": 560,
+      "community_name": "two-graphers-and-what-each-one-answers.md",
       "norm_label": "two graphers, and what each one answers"
     },
     {
@@ -18682,8 +18704,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "multivac_changes_archive_vendor_state_probes",
-      "community": 560,
-      "community_name": "vendor-state-probes.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "vendor-state-probes.md"
     },
     {
@@ -18693,8 +18715,8 @@
       "source_location": "L27",
       "_origin": "ast",
       "id": "multivac_changes_archive_vendor_state_probes_vendor_state_probes",
-      "community": 560,
-      "community_name": "vendor-state-probes.md",
+      "community": 14,
+      "community_name": ".multivac/invariants.md",
       "norm_label": "vendor state probes"
     },
     {
@@ -18806,28 +18828,6 @@
       "community": 551,
       "community_name": "opsx-through-its-cli.md",
       "norm_label": "opsx: the agent runs openspec's own cli, not the command bodies"
-    },
-    {
-      "label": "sdd-artifacts-land.md",
-      "file_type": "document",
-      "source_file": ".multivac/changes/sdd-artifacts-land.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "id": "multivac_changes_sdd_artifacts_land",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
-      "norm_label": "sdd-artifacts-land.md"
-    },
-    {
-      "label": "What the SDD writes in the brain lands with the change",
-      "file_type": "document",
-      "source_file": ".multivac/changes/sdd-artifacts-land.md",
-      "source_location": "L29",
-      "_origin": "ast",
-      "id": "multivac_changes_sdd_artifacts_land_what_the_sdd_writes_in_the_brain_lands_with_the_change",
-      "community": 14,
-      "community_name": ".multivac/invariants.md",
-      "norm_label": "what the sdd writes in the brain lands with the change"
     },
     {
       "label": "skill-cites-references.md",
@@ -19831,20 +19831,20 @@
       "norm_label": "notes"
     },
     {
-      "label": "CLAUDE.md",
+      "label": "AGENTS.md",
       "file_type": "document",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L1",
       "_origin": "ast",
       "id": "claude",
       "community": 303,
       "community_name": "CLAUDE.md",
-      "norm_label": "claude.md"
+      "norm_label": "agents.md"
     },
     {
       "label": "multivac \u2014 brain door",
       "file_type": "document",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L2",
       "_origin": "ast",
       "id": "claude_multivac_brain_door",
@@ -19855,7 +19855,7 @@
     {
       "label": "graphify",
       "file_type": "document",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L27",
       "_origin": "ast",
       "id": "claude_graphify",
@@ -21000,7 +21000,7 @@
       "label": "The four jobs",
       "file_type": "document",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L17",
+      "source_location": "L15",
       "_origin": "ast",
       "id": "site_content_docs_index_the_four_jobs",
       "community": 72,
@@ -21011,7 +21011,7 @@
       "label": "Three sections, and the changelog",
       "file_type": "document",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L27",
+      "source_location": "L25",
       "_origin": "ast",
       "id": "site_content_docs_index_three_sections_and_the_changelog",
       "community": 72,
@@ -21022,7 +21022,7 @@
       "label": "Where to start",
       "file_type": "document",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L36",
+      "source_location": "L34",
       "_origin": "ast",
       "id": "site_content_docs_index_where_to_start",
       "community": 72,
@@ -30332,7 +30332,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_contracts_notice",
       "community": 177,
-      "community_name": "Contract: the notice and the two fields",
+      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "notice.md"
     },
     {
@@ -30343,7 +30343,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_contracts_notice_contract_the_notice_and_the_two_fields",
       "community": 177,
-      "community_name": "Contract: the notice and the two fields",
+      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "contract: the notice and the two fields"
     },
     {
@@ -30354,7 +30354,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_contracts_notice_multivac_projected_yml",
       "community": 177,
-      "community_name": "Contract: the notice and the two fields",
+      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "`.multivac/projected.yml`"
     },
     {
@@ -30365,7 +30365,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_contracts_notice_multivac_config_yml",
       "community": 177,
-      "community_name": "Contract: the notice and the two fields",
+      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "`.multivac/config.yml`"
     },
     {
@@ -30376,7 +30376,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_contracts_notice_the_three_lines",
       "community": 177,
-      "community_name": "Contract: the notice and the two fields",
+      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "the three lines"
     },
     {
@@ -30387,7 +30387,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_contracts_notice_invariants_of_the_notice",
       "community": 177,
-      "community_name": "Contract: the notice and the two fields",
+      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "invariants of the notice"
     },
     {
@@ -30398,7 +30398,7 @@
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_contracts_notice_what_is_deliberately_not_here",
       "community": 177,
-      "community_name": "Contract: the notice and the two fields",
+      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "what is deliberately not here"
     },
     {
@@ -30474,7 +30474,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_plan",
-      "community": 480,
+      "community": 177,
       "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "010-the-brain-knows-what-projected-it/plan.md"
     },
@@ -30551,8 +30551,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_quickstart",
-      "community": 178,
-      "community_name": "Quickstart: get the notice on purpose",
+      "community": 177,
+      "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "010-the-brain-knows-what-projected-it/quickstart.md"
     },
     {
@@ -30705,7 +30705,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_spec",
-      "community": 480,
+      "community": 177,
       "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "010-the-brain-knows-what-projected-it/spec.md"
     },
@@ -30848,7 +30848,7 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "specs_010_the_brain_knows_what_projected_it_tasks",
-      "community": 480,
+      "community": 177,
       "community_name": "010-the-brain-knows-what-projected-it/tasks.md",
       "norm_label": "010-the-brain-knows-what-projected-it/tasks.md"
     },
@@ -106751,6 +106751,28 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
+      "source_file": ".multivac/changes/archive/sdd-artifacts-land.md",
+      "source_location": "L29",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_changes_archive_sdd_artifacts_land",
+      "target": "multivac_changes_archive_sdd_artifacts_land_what_the_sdd_writes_in_the_brain_lands_with_the_change",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": ".multivac/invariants.md",
+      "source_location": "L1222",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "multivac_invariants",
+      "target": "multivac_changes_archive_sdd_artifacts_land",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/archive/sdd-shared-committed.md",
       "source_location": "L19",
       "weight": 1.0,
@@ -108489,28 +108511,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": ".multivac/changes/sdd-artifacts-land.md",
-      "source_location": "L29",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_changes_sdd_artifacts_land",
-      "target": "multivac_changes_sdd_artifacts_land_what_the_sdd_writes_in_the_brain_lands_with_the_change",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": ".multivac/invariants.md",
-      "source_location": "L1222",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "multivac_invariants",
-      "target": "multivac_changes_sdd_artifacts_land",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": ".multivac/changes/skill-cites-references.md",
       "source_location": "L14",
       "weight": 1.0,
@@ -109402,7 +109402,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L27",
       "weight": 1.0,
       "_origin": "ast",
@@ -109413,7 +109413,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
@@ -110503,7 +110503,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L58",
+      "source_location": "L56",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110514,7 +110514,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L51",
+      "source_location": "L49",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110525,7 +110525,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L53",
+      "source_location": "L51",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110536,7 +110536,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L60",
+      "source_location": "L58",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110547,7 +110547,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L57",
+      "source_location": "L55",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110558,7 +110558,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L56",
+      "source_location": "L54",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110569,7 +110569,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L8",
+      "source_location": "L6",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110580,7 +110580,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L55",
+      "source_location": "L53",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110591,7 +110591,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L41",
+      "source_location": "L39",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110602,7 +110602,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L40",
+      "source_location": "L38",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110613,7 +110613,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L17",
+      "source_location": "L15",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110624,7 +110624,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L27",
+      "source_location": "L25",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110635,7 +110635,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L36",
+      "source_location": "L34",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110646,7 +110646,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L42",
+      "source_location": "L40",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110657,7 +110657,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L43",
+      "source_location": "L41",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110668,7 +110668,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L45",
+      "source_location": "L43",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -110679,7 +110679,7 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "site/content/docs/_index.md",
-      "source_location": "L44",
+      "source_location": "L42",
       "weight": 1.0,
       "_origin": "ast",
       "source": "site_content_docs_index",
@@ -150024,5 +150024,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "b3ba08814a55170811acb8840415bb512a60faf4"
+  "built_at_commit": "6b6273335b36f003f0fe5a3612bc42ac5408f37b"
 }

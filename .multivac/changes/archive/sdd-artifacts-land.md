@@ -1,6 +1,6 @@
 ---
 slug: sdd-artifacts-land
-status: open
+status: archived
 horizon: now
 repos:
   brain:
@@ -77,9 +77,14 @@ Spec, plan and tasks: `specs/071-sdd-artifacts-land/`.
   `test/change/lifecycle-polish.test.ts`; the apply order is one in
   `test/change/equip-lifecycle.test.ts`. 788 green, `verify` at 144 claims and 0
   broken.
-- This change's own close is the live proof of the first rule: it stages
-  `specs/071-sdd-artifacts-land/`, which the previous change had to have added by
-  hand.
+- This change's own close did NOT stage `specs/071-sdd-artifacts-land/`, and that
+  is the rule working rather than failing: `apply` had already carried those files
+  onto the branch and they were committed there, so the brain's status reported
+  nothing under that directory. The rule stages what is UNCOMMITTED at close,
+  which is the state the previous change was in — its spec was written into the
+  checkout after the carry, and a human had to notice. The four tests in
+  `test/change/lifecycle-polish.test.ts` are the proof, each building exactly that
+  state.
 
 **Seen on the way, not fixed here**: `test/change/managed-repos.test.ts`'s
 read-only sibling test fails intermittently under the full parallel suite and

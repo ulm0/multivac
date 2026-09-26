@@ -545,8 +545,8 @@
    "id": "change:sdd-artifacts-land",
    "label": "sdd-artifacts-land",
    "file_type": "change",
-   "source_file": ".multivac/changes/sdd-artifacts-land.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/sdd-artifacts-land.md",
+   "status": "archived",
    "horizon": "now",
    "issue": null
   },
