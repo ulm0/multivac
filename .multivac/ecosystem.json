@@ -5291,9 +5291,35 @@
   },
   {
    "source": "change:sdd-artifacts-land",
+   "target": "law:MV-142",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
+   "target": "law:MV-142",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
    "target": "law:MV-144",
    "relation": "adds",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
+   "target": "law:MV-144",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:sdd-artifacts-land",
+   "target": "repo:brain",
+   "relation": "lands_in",
+   "confidence": "EXTRACTED",
+   "stage": 1,
+   "status": "branched"
   },
   {
    "source": "change:sdd-shared-committed",
