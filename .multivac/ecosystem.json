@@ -5740,7 +5740,7 @@
    "relation": "lands_in",
    "confidence": "EXTRACTED",
    "stage": 1,
-   "status": "branched"
+   "status": "landed"
   },
   {
    "source": "change:sql-statement-scanner",
