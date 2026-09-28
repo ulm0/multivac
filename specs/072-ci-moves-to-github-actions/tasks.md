@@ -17,13 +17,13 @@ US3 P2, US4 P3).
 
 ## Phase 1: Setup
 
-- [ ] T001 Create `.github/workflows/` and `.github/ISSUE_TEMPLATE/` directories in the repo root
+- [x] T001 Create `.github/workflows/` and `.github/ISSUE_TEMPLATE/` directories in the repo root
 
 ## Phase 2: Foundational (blocks all user stories)
 
 **Purpose**: the one workflow file every job lives in, with its shared triggers and permissions declared before any job is written.
 
-- [ ] T002 Create `.github/workflows/ci.yml` with `name:`, top-level `on: [push, pull_request]` (push covers branches and tags — jobs filter tags with `if:`), and top-level `permissions: { contents: read, id-token: write, pages: write }`
+- [x] T002 Create `.github/workflows/ci.yml` with `name:`, top-level `on: [push, pull_request]` (push covers branches and tags — jobs filter tags with `if:`), and top-level `permissions: { contents: read, id-token: write, pages: write }`
 
 **Checkpoint**: `ci.yml` exists and parses; individual jobs added by each user story below.
 
@@ -37,11 +37,11 @@ US3 P2, US4 P3).
 
 ### Implementation for User Story 1
 
-- [ ] T003 [US1] Add `test` job to `.github/workflows/ci.yml`: `if: github.ref_type != 'tag'`, `actions/checkout@v7.0.1`, `corepack enable && corepack prepare --activate`, `pnpm install --frozen-lockfile`, `pnpm test`, with pnpm store caching (`actions/cache@v6.1.0` keyed on `pnpm-lock.yaml`, path from `pnpm store path`)
-- [ ] T004 [US1] Add `selfverify` job to `.github/workflows/ci.yml`: same `if`/checkout/corepack/install as T003, then `pnpm run build` and `node dist/cli.js verify --strict`
-- [ ] T005 [US1] Add `change-gate` job to `.github/workflows/ci.yml`: `if: github.event_name == 'pull_request'`, `actions/checkout@v7.0.1` with `fetch-depth: 0`, corepack/install/build as above, then `node dist/cli.js verify --strict --range "${{ github.event.pull_request.base.sha }}..${{ github.sha }}" --branch "${{ github.head_ref }}"`
-- [ ] T006 [US1] Amend MV-142's row in `.multivac/invariants.md` to describe the GitHub Actions `change-gate` job and rewrite its three anchors (job name, `if:` condition, verify command) to target `brain:.github/workflows/ci.yml` instead of `brain:.gitlab-ci.yml`, dated today
-- [ ] T007 [US1] Amend the parts of MV-68 and MV-111's rows that describe `test`/`selfverify` skipping on tags to name `.github/workflows/ci.yml`, and rewrite their `A tag SKIPS this job` / `when: never` anchors (`count=2`) to the GitHub Actions `if:` equivalent on both jobs
+- [x] T003 [US1] Add `test` job to `.github/workflows/ci.yml`: `if: github.ref_type != 'tag'`, `actions/checkout@v7.0.1`, `corepack enable && corepack prepare --activate`, `pnpm install --frozen-lockfile`, `pnpm test`, with pnpm store caching (`actions/cache@v6.1.0` keyed on `pnpm-lock.yaml`, path from `pnpm store path`)
+- [x] T004 [US1] Add `selfverify` job to `.github/workflows/ci.yml`: same `if`/checkout/corepack/install as T003, then `pnpm run build` and `node dist/cli.js verify --strict`
+- [x] T005 [US1] Add `change-gate` job to `.github/workflows/ci.yml`: `if: github.event_name == 'pull_request'`, `actions/checkout@v7.0.1` with `fetch-depth: 0`, corepack/install/build as above, then `verify --strict --range "$BASE_SHA..$HEAD_SHA" --branch "$SOURCE_BRANCH"` with those three set via the step's `env:` from `github.event.pull_request.base.sha`/`github.sha`/`github.head_ref` — never interpolated inline, since `head_ref` is a fork PR's own (attacker-controlled) branch name; caught by `actionlint`'s script-injection check during implementation
+- [x] T006 [US1] Amend MV-142's row in `.multivac/invariants.md` to describe the GitHub Actions `change-gate` job and rewrite its three anchors (job name, `if:` condition, verify command) to target `brain:.github/workflows/ci.yml` instead of `brain:.gitlab-ci.yml`, dated today
+- [x] T007 [US1] Amend MV-68's row (its `A tag SKIPS this job` / `when: never` anchors, `count=2`, rewritten to the GitHub Actions `if:` equivalent on both jobs) and MV-111's row (its single withdrawn-phrase tombstone, retargeted to the new file) to name `.github/workflows/ci.yml` instead of `.gitlab-ci.yml`
 
 **Checkpoint**: MVP — pushes and PRs are judged on GitHub Actions with no GitLab dependency for the everyday path.
 
@@ -55,11 +55,11 @@ US3 P2, US4 P3).
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Add `pages` job to `.github/workflows/ci.yml`: `if: github.ref_type == 'tag' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)`, `needs: [publish]` with `if: always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped')` so it still runs on a plain default-branch push where `publish` never ran
-- [ ] T009 [US2] In the `pages` job: `actions/checkout@v7.0.1` with `fetch-depth: 0`, `peaceiris/actions-hugo@v3.2.1` with `hugo-version: '0.165.0'` and `extended: false` (matches the old `hugomods/hugo:std-go-git-0.165.0` image exactly — see research.md), set `HUGO_PARAMS_RELEASE` from `git describe --tags --abbrev=0 || echo dev`, build with `hugo --minify --baseURL https://multivac.ulm0.com/` in `site/`
-- [ ] T010 [US2] In the `pages` job: `actions/configure-pages@v6.0.0`, `actions/upload-pages-artifact@v5.0.0` pointed at `site/public`, `actions/deploy-pages@v5.0.1`
-- [ ] T011 [US2] Amend MV-77's row in `.multivac/invariants.md`: rewrite its anchors (`HUGO_PARAMS_RELEASE=...`, `GIT_DEPTH: 0`) to target `brain:.github/workflows/ci.yml`, and update `test/invariants/site-deploy.test.ts` in `test/invariants/site-deploy.test.ts` to read the `needs:` dependency between `pages` and `publish` instead of the GitLab stage list
-- [ ] T012 [US2] Run `node --test dist-test/invariants/site-deploy.test.js` (after `pnpm run build`) to confirm the updated test passes against the new workflow file
+- [x] T008 [US2] Add `pages` job to `.github/workflows/ci.yml`: `if: github.ref_type == 'tag' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch)`, `needs: [publish]` with `if: always() && (needs.publish.result == 'success' || needs.publish.result == 'skipped')` so it still runs on a plain default-branch push where `publish` never ran
+- [x] T009 [US2] In the `pages` job: `actions/checkout@v7.0.1` with `fetch-depth: 0`, `peaceiris/actions-hugo@v3.2.1` with `hugo-version: '0.165.0'` and `extended: false` (matches the old `hugomods/hugo:std-go-git-0.165.0` image exactly — see research.md), set `HUGO_PARAMS_RELEASE` from `git describe --tags --abbrev=0 || echo dev`, build with `hugo --minify --baseURL https://multivac.ulm0.com/` in `site/`
+- [x] T010 [US2] In the `pages` job: `actions/configure-pages@v6.0.0`, `actions/upload-pages-artifact@v5.0.0` pointed at `site/public`, `actions/deploy-pages@v5.0.1`
+- [x] T011 [US2] Amend MV-77's row in `.multivac/invariants.md`: rewrite its anchors (`HUGO_PARAMS_RELEASE=...`, `GIT_DEPTH: 0`) to target `brain:.github/workflows/ci.yml`, and update `test/invariants/site-deploy.test.ts` in `test/invariants/site-deploy.test.ts` to read the `needs:` dependency between `pages` and `publish` instead of the GitLab stage list
+- [x] T012 [US2] Run `node --test dist-test/invariants/site-deploy.test.js` (after `pnpm run build`) to confirm the updated test passes against the new workflow file
 
 **Checkpoint**: US1 + US2 both work; the site deploys and orders itself correctly around a release.
 
@@ -73,11 +73,11 @@ US3 P2, US4 P3).
 
 ### Implementation for User Story 3
 
-- [ ] T013 [US3] Add `publish` job to `.github/workflows/ci.yml`: `if: startsWith(github.ref, 'refs/tags/v')`, `actions/checkout@v7.0.1`, corepack enable/prepare, `npm install -g npm@latest` (OIDC publish support), `pnpm install --frozen-lockfile`, `pnpm run build`
-- [ ] T014 [US3] In the `publish` job: assert `"v$(node -p 'require(\"./package.json\").version')" == "${{ github.ref_name }}"` before publishing, then `npm publish --access public` with **no** `NPM_CONFIG_PROVENANCE` override (provenance defaults on for OIDC trusted publishing on a GitHub-hosted runner)
-- [ ] T015 [US3] Retire MV-88 per `references/change.md`'s retirement procedure: flip its row to `retired` in `.multivac/invariants.md`, keep its ID and body, and add a new `absent` leg — `<!-- @anchor MV-88 brain:.github/workflows/ci.yml /NPM_CONFIG_PROVENANCE/ absent -->` — so the dead override can never resurface
-- [ ] T016 [US3] Amend MV-68's row: rewrite its anchors (`aud: "npm:registry.npmjs.org"`, `CI_COMMIT_TAG =~`, `NPM_TOKEN absent`) to their GitHub Actions equivalents on `brain:.github/workflows/ci.yml` (OIDC via `permissions: id-token: write`, `github.ref_name` tag match, no `NPM_TOKEN`/`secrets.NPM_TOKEN` anywhere)
-- [ ] T017 [US3] Add a code comment in the `publish` job (mirroring the old file's own style) noting the npmjs.com trusted-publisher setting must be repointed at this GitHub repo before the first tag after this change lands (out-of-band, per spec.md Assumptions) — not machine-checkable, so it is prose, not an anchor
+- [x] T013 [US3] Add `publish` job to `.github/workflows/ci.yml`: `if: startsWith(github.ref, 'refs/tags/v')`, `actions/checkout@v7.0.1`, corepack enable/prepare, `npm install -g npm@latest` (OIDC publish support), `pnpm install --frozen-lockfile`, `pnpm run build`
+- [x] T014 [US3] In the `publish` job: assert `"v$(node -p 'require(\"./package.json\").version')" == "${{ github.ref_name }}"` before publishing, then `npm publish --access public` with **no** `NPM_CONFIG_PROVENANCE` override (provenance defaults on for OIDC trusted publishing on a GitHub-hosted runner)
+- [x] T015 [US3] Retire MV-88 per `references/change.md`'s retirement procedure: flip its row to `retired` in `.multivac/invariants.md`, keep its ID and body, and add a new `absent` leg — `<!-- @anchor MV-88 brain:.github/workflows/ci.yml /NPM_CONFIG_PROVENANCE/ absent -->` — so the dead override can never resurface
+- [x] T016 [US3] Amend MV-68's row: rewrite its anchors (`aud: "npm:registry.npmjs.org"`, `CI_COMMIT_TAG =~`, `NPM_TOKEN absent`) to their GitHub Actions equivalents on `brain:.github/workflows/ci.yml` (OIDC via `permissions: id-token: write`, `github.ref_name` tag match, no `NPM_TOKEN`/`secrets.NPM_TOKEN` anywhere)
+- [x] T017 [US3] Add a code comment in the `publish` job (mirroring the old file's own style) noting the npmjs.com trusted-publisher setting must be repointed at this GitHub repo before the first tag after this change lands (out-of-band, per spec.md Assumptions) — not machine-checkable, so it is prose, not an anchor
 
 **Checkpoint**: US1-US3 all work; a release publishes with provenance and no stored token.
 
@@ -91,10 +91,10 @@ US3 P2, US4 P3).
 
 ### Implementation for User Story 4
 
-- [ ] T018 [P] [US4] Create `.github/PULL_REQUEST_TEMPLATE.md` with the same section content as `.gitlab/merge_request_templates/Default.md` (What landed / Claims made true / Landing order / Verification / Friction)
-- [ ] T019 [P] [US4] Create `.github/ISSUE_TEMPLATE/bug.md` with YAML front matter (`name: Bug`, `about:`, `title:`, `labels:`) followed by the same body as `.gitlab/issue_templates/Bug.md`
-- [ ] T020 [P] [US4] Create `.github/ISSUE_TEMPLATE/integration.md` with YAML front matter (`name: Integration`, `about:`) followed by the same body as `.gitlab/issue_templates/Integration.md`
-- [ ] T021 [US4] Amend MV-34's row in `.multivac/invariants.md`: rewrite its prose (GitLab merge request/issue templates → GitHub) and its three anchors to target `brain:.github/PULL_REQUEST_TEMPLATE.md` and `brain:.github/ISSUE_TEMPLATE/*.md`
+- [x] T018 [P] [US4] Create `.github/PULL_REQUEST_TEMPLATE.md` with the same section content as `.gitlab/merge_request_templates/Default.md` (What landed / Claims made true / Landing order / Verification / Friction)
+- [x] T019 [P] [US4] Create `.github/ISSUE_TEMPLATE/bug.md` with YAML front matter (`name: Bug`, `about:`, `title:`, `labels:`) followed by the same body as `.gitlab/issue_templates/Bug.md`
+- [x] T020 [P] [US4] Create `.github/ISSUE_TEMPLATE/integration.md` with YAML front matter (`name: Integration`, `about:`) followed by the same body as `.gitlab/issue_templates/Integration.md`
+- [x] T021 [US4] Amend MV-34's row in `.multivac/invariants.md`: rewrite its prose (GitLab merge request/issue templates → GitHub) and its three anchors to target `brain:.github/PULL_REQUEST_TEMPLATE.md` and `brain:.github/ISSUE_TEMPLATE/*.md`
 
 **Checkpoint**: all four user stories work independently; every invariant this change touches now anchors to `.github/`.
 
@@ -104,13 +104,13 @@ US3 P2, US4 P3).
 
 **Purpose**: retire the GitLab files only once nothing in the brain still points at them, and prove the whole change closes clean.
 
-- [ ] T022 Grep `.multivac/invariants.md` for any remaining `brain:.gitlab` anchor and confirm none survive outside the rows already amended in T006, T007, T011, T016, T021
-- [ ] T023 Delete `.gitlab-ci.yml` and the `.gitlab/` directory
-- [ ] T024 Write MV-145's row body in `.multivac/invariants.md` (replacing the `RESERVED by change...` placeholder) stating the claim from the change file's `claims:` field, and add its anchors: `<!-- @anchor MV-145 brain:.github/workflows/ci.yml /name:/ present -->`, `<!-- @anchor MV-145 brain:.gitlab-ci.yml // absent -->` (glob absent — file itself gone), and confirm `git ls-files .gitlab` returns nothing
-- [ ] T025 Run `pnpm run build && pnpm test` and fix any break
-- [ ] T026 Run `node dist/cli.js verify --strict` and fix any broken blocking leg
-- [ ] T027 Run quickstart.md §1-§7 end to end against the pushed branch/PR (§4's provenance check waits for a real tag and may be validated after this change lands and the first post-migration release ships)
-- [ ] T028 Update `package.json`'s `repository.url`, `homepage`, and `bugs.url` from `gitlab.com/ulm0/multivac` to the GitHub equivalents, since they now describe a repo the code no longer lives in
+- [x] T022 Grep `.multivac/invariants.md` for any remaining `brain:.gitlab` anchor and confirm none survive outside the rows already amended in T006, T007, T011, T016, T021
+- [x] T023 Delete `.gitlab-ci.yml` and the `.gitlab/` directory
+- [x] T024 Write MV-145's row body in `.multivac/invariants.md` (replacing the `RESERVED by change...` placeholder) stating the claim from the change file's `claims:` field, with `unique`/`present` anchors on each pinned action-version literal in `.github/workflows/ci.yml` (a glob over a file that no longer exists is vacuous and blocking per `references/anchors.md`, so the "old file is gone" half of the claim is confirmed by `git ls-files .gitlab .gitlab-ci.yml` returning nothing, not by an anchor); state left `proposed` per MV-81/rule 5 — an agent does not self-enact, a human flips it to `active` in its own commit
+- [x] T025 Run `pnpm run build && pnpm test` and fix any break
+- [x] T026 Run `node dist/cli.js verify --strict` and fix any broken blocking leg
+- [x] T027 Run quickstart.md §1-§7 end to end against the pushed branch/PR (§4's provenance check waits for a real tag and may be validated after this change lands and the first post-migration release ships)
+- [x] T028 Update `package.json`'s `repository.url` and `bugs.url` from `gitlab.com/ulm0/multivac` to the GitHub equivalents (`homepage` stays — it names the doc site, not the git host); also fix the dead `git clone git@gitlab.com:...` lines in README.md and CONTRIBUTING.md, broken by the same host move
 
 ## Dependencies & Execution Order
 
