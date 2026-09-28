@@ -5257,9 +5257,89 @@
   },
   {
    "source": "change:opsx-through-its-cli",
+   "target": "law:MV-121",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-124",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-130",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-133",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-144",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-146",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
    "target": "law:MV-147",
    "relation": "adds",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-147",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-51",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-56",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-63",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-75",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-95",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "repo:brain",
+   "relation": "lands_in",
+   "confidence": "EXTRACTED",
+   "stage": 1,
+   "status": "branched"
   },
   {
    "source": "change:presence-is-not-identity",
