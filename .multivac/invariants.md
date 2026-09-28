@@ -1229,3 +1229,4 @@ checks them on every commit.
 <!-- @anchor MV-144 brain:src/adapters/registry.ts /dirs: \['\.agents'\]/ count=3 -->
 <!-- @anchor MV-144 brain:test/change/lifecycle-polish.test.ts /close stages what the SDD wrote in the brain for this slug/ unique -->
 <!-- @anchor MV-144 brain:test/change/equip-lifecycle.test.ts /apply makes a repo, equips it, and only then carries/ unique -->
+| MV-145 | RESERVED by change ci-moves-to-github-actions — state the rule here before close. | open | proposed | 2026-09-28 | [changes/ci-moves-to-github-actions.md](changes/ci-moves-to-github-actions.md) |

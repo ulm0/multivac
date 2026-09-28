@@ -137,6 +137,15 @@
    "issue": null
   },
   {
+   "id": "change:ci-moves-to-github-actions",
+   "label": "ci-moves-to-github-actions",
+   "file_type": "change",
+   "source_file": ".multivac/changes/ci-moves-to-github-actions.md",
+   "status": "open",
+   "horizon": null,
+   "issue": null
+  },
+  {
    "id": "change:close-keeps-used-reservations",
    "label": "close-keeps-used-reservations",
    "file_type": "change",
@@ -3047,6 +3056,15 @@
    "authority": "open"
   },
   {
+   "id": "law:MV-145",
+   "label": "MV-145",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1232",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
    "id": "law:MV-15",
    "label": "MV-15",
    "file_type": "law",
@@ -4157,6 +4175,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:ci-moves-to-github-actions",
+   "target": "law:MV-145",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:close-keeps-used-reservations",
@@ -11617,6 +11641,12 @@
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1230"
+  },
+  {
+   "source": "law:MV-145",
+   "target": "change:ci-moves-to-github-actions",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-15",
