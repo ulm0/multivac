@@ -1,3 +1,10 @@
+---
+name: Bug
+about: Something multivac did wrong, or a message that did not say what to do
+title: ""
+labels: bug
+---
+
 ## What happened
 
 <!-- The command you ran and what it printed. Paste the output — multivac's

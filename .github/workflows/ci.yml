@@ -1,0 +1,186 @@
+name: CI
+
+# ORDER IS LOAD-BEARING, and it looks like formatting. `pages` must not run
+# before `publish` succeeds on a tag: on a release both run, and a site
+# deployed first would announce a package the registry has not accepted —
+# the same falsehood this ordering was introduced to remove, one minute long
+# instead of forever (MV-77). A failed publish leaves the deploy unrun; the
+# `needs:`/`if:` combination on `pages` below is what enforces that, since
+# GitHub Actions has no separate stage list to read this claim off of.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write
+  pages: write
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    # A tag SKIPS this job. The commit a tag names has
+    # already been through this job on its way to main, so re-running it here is
+    # duplication that only delays the release and adds a second way for it to
+    # fail.
+    if: github.ref_type != 'tag'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Enable corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  # The tool gates its own repo: this repo is its own brain (.multivac/invariants.md),
+  # and every push re-verifies the law against the source.
+  selfverify:
+    name: selfverify
+    runs-on: ubuntu-latest
+    # A tag SKIPS this job. The commit a tag names has
+    # already been through the test job and this one on its way to main, so re-running it here is
+    # duplication that only delays the release and adds a second way for it to
+    # fail.
+    if: github.ref_type != 'tag'
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Enable corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: node dist/cli.js verify --strict
+
+  # Code lands in a change (MV-137, MV-142). The git hooks ask it at commit and at
+  # merge, and a hook can be skipped; this job asks it again over every commit of
+  # the pull request, against the branch the request comes from. It binds only
+  # because this project requires the pipeline to pass before a merge. The whole
+  # history, so the base of the range is in the checkout.
+  change-gate:
+    name: change-gate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Enable corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+      - uses: actions/cache@v6.1.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      # github.head_ref is attacker-controlled on a fork PR (it is the fork's
+      # branch name); pass it through the environment rather than interpolating
+      # it into the script, so a branch named e.g. `$(rm -rf /)` cannot inject.
+      - name: verify --strict --range
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+          SOURCE_BRANCH: ${{ github.head_ref }}
+        run: node dist/cli.js verify --strict --range "$BASE_SHA..$HEAD_SHA" --branch "$SOURCE_BRANCH"
+
+  # Releasing multivac, which is not the same thing as using it: multivac itself
+  # runs in the agent session and the docs say so. What a workflow is for here is
+  # putting a tarball on a registry, and doing it without a long-lived token.
+  #
+  # Trusted publishing (OIDC): npm mints a short-lived credential from the token
+  # GitHub issues for this exact repo + ref (the top-level `permissions`
+  # block above grants it), so no long-lived publish token exists to leak, rotate,
+  # or paste into a chat. Configure the other half at npmjs.com -> multivac ->
+  # Settings -> Trusted publisher: this repo, workflow file
+  # .github/workflows/ci.yml.
+  #
+  # Tag-driven, and the tag must match the version in package.json — a release is
+  # a decision somebody makes on purpose, never a side effect of a merge.
+  #
+  # PROVENANCE IS ON, deliberately, unlike the GitLab-era pipeline this
+  # replaces: npm's registry only verifies a provenance attestation from a
+  # GitHub- or GitLab.com-hosted (shared) runner, and the old pipeline ran on
+  # a self-hosted GitLab runner after exhausting its shared-runner minutes
+  # (MV-88). `ubuntu-latest` here is GitHub-hosted, so that limitation is
+  # gone — MV-88 is retired by this same change.
+  publish:
+    name: publish
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Enable corepack
+        run: |
+          corepack enable
+          corepack prepare --activate
+          npm install -g npm@latest
+      - run: pnpm install --frozen-lockfile
+      # Build, because the tarball ships dist/ and nothing else produces it here.
+      - run: pnpm run build
+      - name: reject a tag that is not vMAJOR.MINOR.PATCH
+        run: |
+          if [[ ! "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "not a plain vX.Y.Z tag: ${{ github.ref_name }}" >&2
+            exit 1
+          fi
+      # The tag is the authority on what is being released, and this is the one
+      # check that cannot have been made earlier: it is about the tag itself.
+      - name: tag must equal package.json's version
+        run: test "v$(node -p 'require("./package.json").version')" = "${{ github.ref_name }}"
+      - run: npm publish --access public
+
+  # The badge shows what is PUBLISHED, never what package.json declares: the
+  # manifest is bumped in a merge that precedes the tag, so advertising it
+  # would name a version nobody can install — and an abandoned release would
+  # advertise it forever. The last tag is the published version by MV-68,
+  # which refuses to publish under a tag that disagrees with the manifest.
+  #
+  # A release moves the badge at once rather than at the next unrelated
+  # merge, and site-only corrections reach readers without a release being
+  # cut — hence the two-branch `if:` below. `needs: [publish]` plus the
+  # `result` check is what stands in for the old pipeline's `publish` stage
+  # running before `deploy`: on a plain default-branch push `publish` never
+  # ran at all ("skipped" counts as clear to proceed), and on a tag `pages`
+  # proceeds only once `publish` has actually succeeded.
+  pages:
+    name: pages
+    runs-on: ubuntu-latest
+    needs: [publish]
+    if: |
+      always() &&
+      (needs.publish.result == 'success' || needs.publish.result == 'skipped') &&
+      (github.ref_type == 'tag' || github.ref == format('refs/heads/{0}', github.event.repository.default_branch))
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: peaceiris/actions-hugo@v3.2.1
+        with:
+          hugo-version: '0.165.0'
+          extended: false
+      - name: Build site
+        working-directory: site
+        run: |
+          HUGO_PARAMS_RELEASE=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo dev)
+          export HUGO_PARAMS_RELEASE
+          hugo --minify --baseURL https://multivac.ulm0.com/
+      - uses: actions/configure-pages@v6.0.0
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: site/public
+      - uses: actions/deploy-pages@v5.0.1

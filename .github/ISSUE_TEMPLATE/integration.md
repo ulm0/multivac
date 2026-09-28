@@ -1,3 +1,10 @@
+---
+name: Integration
+about: Register a coding agent, grapher or SDD tool multivac does not know yet
+title: ""
+labels: integration
+---
+
 ## The tool
 
 <!-- Which coding agent, grapher or SDD tool. -->

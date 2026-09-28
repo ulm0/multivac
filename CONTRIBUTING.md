@@ -24,7 +24,7 @@ network renders the card. Those are yours and theirs respectively.
 ## Getting set up
 
 ```sh
-git clone git@gitlab.com:ulm0/multivac.git && cd multivac
+git clone git@github.com:ulm0/multivac.git && cd multivac
 pnpm install          # pnpm only — a preinstall guard refuses npm and yarn
 pnpm run build
 pnpm test

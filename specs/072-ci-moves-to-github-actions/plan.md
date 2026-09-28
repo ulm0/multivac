@@ -24,12 +24,13 @@ project's `engines.node`).
 
 **Primary Dependencies** (pinned to latest release tag, checked via `gh api
 repos/<owner>/<repo>/releases/latest` on 2026-09-27):
-`actions/checkout@v7.0.1`, `pnpm/action-setup@v6.1.0`,
+`actions/checkout@v7.0.1`, `actions/cache@v6.1.0`,
 `actions/configure-pages@v6.0.0`, `actions/upload-pages-artifact@v5.0.0`,
-`actions/deploy-pages@v5.0.1`, `peaceiris/actions-hugo@v3.2.1`. No
-`actions/setup-node` needed — the project pins its toolchain with
-`corepack`/`packageManager`, matching the old `.gitlab-ci.yml`'s own
-`before_script`.
+`actions/deploy-pages@v5.0.1`, `peaceiris/actions-hugo@v3.2.1`. Neither
+`actions/setup-node` nor `pnpm/action-setup` is needed — the project pins its
+toolchain with `corepack`/`packageManager`, matching the old
+`.gitlab-ci.yml`'s own `before_script`; `actions/cache` caches the pnpm store
+directly.
 
 **Storage**: N/A (CI configuration only).
 

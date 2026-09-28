@@ -24,18 +24,24 @@ costs nothing.
 
 ## Node / pnpm toolchain on GitHub-hosted runners
 
-**Decision**: `ubuntu-latest` runners ship Node preinstalled but not
-necessarily `>=24` or the exact `pnpm@11.21.0` this project's
-`packageManager` field declares. Keep using `corepack enable && corepack
-prepare --activate` exactly as `.gitlab-ci.yml` did — it already reads the
-pin from `package.json` and needs no action at all. Use
-`actions/setup-node@v7.0.0` only for its dependency-cache integration
-(`cache: pnpm`), pointed at Node 24 to satisfy `engines.node`.
+**Decision**: `ubuntu-latest` runners ship a recent Node already satisfying
+`engines.node: ">=24"`. Keep using `corepack enable && corepack prepare
+--activate` exactly as `.gitlab-ci.yml` did — it already reads the pnpm pin
+from `package.json`'s `packageManager` field and needs no action at all.
+Cache the pnpm store directly with `actions/cache@v6.1.0` keyed on
+`pnpm-lock.yaml`, at pnpm's default Linux store path
+(`~/.local/share/pnpm/store`).
 
-**Alternatives considered**: `pnpm/action-setup` installs pnpm from its own
-version input, duplicating the pin `packageManager` already states — a
-second place the pnpm version could drift from the manifest. Rejected in
-favor of corepack, which reads the one declared pin.
+**Alternatives considered**: `actions/setup-node@v7.0.0`'s built-in `cache:
+pnpm` option does the same caching with one fewer explicit `actions/cache`
+step, but pulls in a whole Node-installation action whose own Node version
+input would be a second, redundant place to state the version `engines.node`
+already states — rejected per the same "don't add a variable nothing asked
+for" reasoning as the Hugo version decision below. `pnpm/action-setup`
+installs pnpm from its own version input, duplicating the pin
+`packageManager` already states — a second place the pnpm version could
+drift from the manifest. Rejected in favor of corepack, which reads the one
+declared pin.
 
 ## Hugo version parity
 

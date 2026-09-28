@@ -17,11 +17,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://gitlab.com/ulm0/multivac.git"
+    "url": "git+https://github.com/ulm0/multivac.git"
   },
   "homepage": "https://multivac.ulm0.com",
   "bugs": {
-    "url": "https://gitlab.com/ulm0/multivac/-/issues"
+    "url": "https://github.com/ulm0/multivac/issues"
   },
   "keywords": [
     "agents",

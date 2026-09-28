@@ -39,7 +39,7 @@ npx multivac@latest init
 Or from source, to work on it:
 
 ```sh
-git clone git@gitlab.com:ulm0/multivac.git && cd multivac
+git clone git@github.com:ulm0/multivac.git && cd multivac
 pnpm install && pnpm run build && pnpm link --global   # bins: multivac, mvac
 ```
 
