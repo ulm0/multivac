@@ -1,6 +1,6 @@
 ---
 slug: speckit-writes-once
-status: open
+status: archived
 horizon: now
 repos:
   brain:
@@ -83,3 +83,5 @@ GIT_CONFIG_GLOBAL isolated; the base twin is the build at `70fe703`.
 - Walk D (this repository's configuration, at `70fe703`). `doctor` differed
   from the twin's only in the revisit wording, `verify` not at all, and the
   brain door only in the step endings (SC-008).
+
+Specified in `specs/073-speckit-writes-once/` (speckit).

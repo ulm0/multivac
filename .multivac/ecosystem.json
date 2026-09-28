@@ -608,8 +608,8 @@
    "id": "change:speckit-writes-once",
    "label": "speckit-writes-once",
    "file_type": "change",
-   "source_file": ".multivac/changes/speckit-writes-once.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/speckit-writes-once.md",
+   "status": "archived",
    "horizon": "now",
    "issue": null
   },
