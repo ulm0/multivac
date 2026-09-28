@@ -1,12 +1,13 @@
 ---
 slug: opsx-through-its-cli
-status: planned
+status: open
 horizon: now
 repos: {}
 landing_order: []
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-147
   retires: []
 claims: []
 ---

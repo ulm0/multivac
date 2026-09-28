@@ -1286,3 +1286,4 @@ checks them on every commit.
 <!-- @anchor MV-146 brain:test/change/file.test.ts /citeSpec appends one line after the untrimmed body/ unique -->
 <!-- @anchor MV-146 brain:site/content/docs/reference/graphers-and-sdd.md /^### The SDD lives in the brain$/ unique -->
 <!-- @anchor MV-146 brain:.multivac/invariants.md /Amended 2026-09-28 by MV-146/ count=22 -->
+| MV-147 | RESERVED by change opsx-through-its-cli — state the rule here before close. | open | proposed | 2026-09-28 | [changes/opsx-through-its-cli.md](changes/opsx-through-its-cli.md) |

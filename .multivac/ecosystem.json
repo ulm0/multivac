@@ -474,7 +474,7 @@
    "label": "opsx-through-its-cli",
    "file_type": "change",
    "source_file": ".multivac/changes/opsx-through-its-cli.md",
-   "status": "planned",
+   "status": "open",
    "horizon": "now",
    "issue": null
   },
@@ -3137,6 +3137,15 @@
    "authority": "open"
   },
   {
+   "id": "law:MV-147",
+   "label": "MV-147",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1289",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
    "id": "law:MV-15",
    "label": "MV-15",
    "file_type": "law",
@@ -5245,6 +5254,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
+   "target": "law:MV-147",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:presence-is-not-identity",
@@ -12278,6 +12293,12 @@
    "mode": "absent",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1267"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "change:opsx-through-its-cli",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-15",
