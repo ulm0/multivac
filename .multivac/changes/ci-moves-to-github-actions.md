@@ -1,14 +1,25 @@
 ---
 slug: ci-moves-to-github-actions
 status: open
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: branched
+landing_order:
+  - - brain
 invariants:
-  touches: []
+  touches:
+    - MV-34
+    - MV-68
+    - MV-77
+    - MV-111
+    - MV-142
   adds:
     - MV-145
-  retires: []
-claims: []
+  retires:
+    - MV-88
+claims:
+  - id: MV-145
+    statement: CI runs on GitHub Actions under .github/workflows/, pinned to each action's latest released tag, and .gitlab-ci.yml plus .gitlab/ are gone
 ---
 
 # ci moves to github actions
