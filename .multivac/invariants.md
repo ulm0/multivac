@@ -1238,3 +1238,4 @@ checks them on every commit.
 <!-- @anchor MV-145 brain:.github/workflows/ci.yml /actions\/upload-pages-artifact@v5\.0\.0/ unique -->
 <!-- @anchor MV-145 brain:.github/workflows/ci.yml /actions\/deploy-pages@v5\.0\.1/ unique -->
 <!-- @anchor MV-145 brain:.github/workflows/ci.yml /peaceiris\/actions-hugo@v3\.2\.1/ unique -->
+| MV-146 | RESERVED by change speckit-writes-once — state the rule here before close. | open | proposed | 2026-09-28 | [changes/speckit-writes-once.md](changes/speckit-writes-once.md) |

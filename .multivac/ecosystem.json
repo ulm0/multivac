@@ -609,7 +609,7 @@
    "label": "speckit-writes-once",
    "file_type": "change",
    "source_file": ".multivac/changes/speckit-writes-once.md",
-   "status": "planned",
+   "status": "open",
    "horizon": "now",
    "issue": null
   },
@@ -3072,6 +3072,15 @@
    "authority": "specified"
   },
   {
+   "id": "law:MV-146",
+   "label": "MV-146",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1241",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
    "id": "law:MV-15",
    "label": "MV-15",
    "file_type": "law",
@@ -5524,6 +5533,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-146",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:sql-statement-scanner",
@@ -11721,6 +11736,12 @@
    "source_file": ".multivac/invariants.md",
    "source_location": "L1234",
    "legs": 7
+  },
+  {
+   "source": "law:MV-146",
+   "target": "change:speckit-writes-once",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-15",

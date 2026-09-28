@@ -1,12 +1,13 @@
 ---
 slug: speckit-writes-once
-status: planned
+status: open
 horizon: now
 repos: {}
 landing_order: []
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-146
   retires: []
 claims: []
 ---
