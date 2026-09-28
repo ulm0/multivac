@@ -15,8 +15,8 @@ mkdir -p $HOME && git config --global user.name t && git config --global user.em
 
 1. Two bare remotes `api.git`, `web.git`, each seeded with `src/index.ts`.
 2. `cd $SCR/A && mkdir acme-brain && cd acme-brain && git init -q && $MV init --sdd speckit --grapher graphify` — the scaffold line names the skeleton; `wc -c .specify/templates/overrides/*` shows three files; `specify preset resolve plan-template` says the top layer is the project override.
-3. Declare `repos:` for api and web before step 0; run the printed step-0 commit.
-4. `$MV repos sync` — no `sdd` line for api or web; `find ../acme-api ../acme-web \( -path '*/.specify*' -o -name 'speckit-*' \) | wc -l` is 0 (SC-001).
+3. Declare `repos:` for api and web, and `brain_url:` (the consumers mount the brain at `.brain`, which step 6 needs), before step 0; run the printed step-0 commit — once it is committed the config changes only inside a change.
+4. `$MV repos sync` — no `sdd` line for api or web; `find ../acme-api ../acme-web -path '*/.brain' -prune -o \( -path '*/.specify*' -o -name 'speckit-*' \) -print | wc -l` is 0 (SC-001) — the prune skips the mounted brain, which is the brain's own checkout.
 5. `$MV doors` — api's door names speckit on one line and is ≥ 2,500 B smaller than the `$BASE` twin (SC-002); the brain door's step lines end `[proof: …]` or `[ungateable]`; `grep -c 'commit no Sync Impact Report' AGENTS.md` is 1.
 6. Refusals: `repos.web.sdd: opsx` → `$MV verify` exits 2 naming the key; restore. The same edit in `acme-api/.brain/.multivac/config.yml` → in acme-api `$MV verify` exits 0 with the mounted-config line, `--strict` exits 1; restore (SC-004).
 7. Write the brain's constitution (replace the template tokens); commit.
@@ -36,7 +36,7 @@ mkdir -p $HOME && git config --global user.name t && git config --global user.em
 2. `$MV change new bill-weekly`; write `openspec/changes/bill-weekly/{proposal.md,tasks.md,specs/billing/spec.md,specs/refunds/spec.md}`; `openspec validate bill-weekly --strict` is valid.
 3. `plan`, `apply`, commit in api's worktree, `land --landed api`.
 4. `openspec archive bill-weekly --yes`.
-5. `$MV change close bill-weekly` — the pathspec holds the archive entry, `openspec/changes/bill-weekly`, `openspec/specs/billing`, `openspec/specs/refunds`; no "dirty" line; after the printed commit, `git status --porcelain -uall` is empty (SC-005).
+5. `$MV change close bill-weekly` — the pathspec holds the archive entry and the main spec files the archive merged (`openspec/specs/billing/spec.md`, `openspec/specs/refunds/spec.md`), plus the moved-from `openspec/changes/bill-weekly` when git tracked it; no "dirty" line; after the printed commit, `git status --porcelain -uall` is empty (SC-005).
 
 ## Walk C — brain==code keyed `core`
 

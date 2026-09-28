@@ -17,10 +17,10 @@ anything else:
 > Does this ecosystem already exist as code, or are we starting from scratch?
 
 - **Existing code** → discovery flow, `references/discovery.md`: `mvac repos
-  sync` to clone and equip every declared repo, `mvac seed`, the open
-  questions to the human, each repo's project document written from the
-  human's principles, the proposed law validated in blast-radius batches, then
-  `mvac doors`.
+  sync` to clone and equip every declared repo (the SDD in the brain), `mvac
+  seed`, the open questions to the human, the brain's project document written
+  from the human's principles, the proposed law validated in blast-radius
+  batches, then `mvac doors`.
 - **From scratch** → interview flow, `references/interview.md`: draw the law
   out of the person's head, write the project document from their
   non-negotiables, decide the first slice only, land it as the first change.

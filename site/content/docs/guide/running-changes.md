@@ -167,6 +167,12 @@ to run in your agent, and names the artifact that will prove it ran — it invok
 nothing itself. See [Graphers and SDD](../../reference/graphers-and-sdd).
 `--no-sdd` skips the printing and the later gate, once.
 
+The SDD lives in the brain, so its steps run in the brain checkout and write
+the change's specs there, whichever repos the change names. The why, the design
+and the tasks go into those files, not into the change file's body: the body
+keeps what it held while planned, or one sentence, and `close` adds the line
+that points at the spec directory.
+
 ## plan — resolve the declaration against reality
 
 ```txt
@@ -225,10 +231,11 @@ loss.
 ### The SDD files ride onto the branch
 
 Your SDD writes a change's artifacts, such as spec-kit's `specs/<n>-<slug>/`,
-into the checkout, before any branch exists. `apply` moves them onto the
-change's branch: it copies them into the worktree, commits them there, and
-removes them from the checkout. The SDD's own shared files that are not yet
-committed, such as a freshly installed `.specify/`, go the same way.
+into the brain checkout, before any branch exists. When the brain is also a code
+repo and the change names it, `apply` moves them onto the change's branch: it
+copies them into the worktree, commits them there, and removes them from the
+checkout. The SDD's own shared files that are not yet committed, such as a
+freshly installed `.specify/`, go the same way.
 
 ```txt
 brain: carried 3 speckit files onto points-expire and committed them there
@@ -244,6 +251,13 @@ brain: specs/004-points-expire/tasks.md is tracked and modified here — commit 
 
 For spec-kit, the worktree also gets its own `.specify/feature.json`, so
 `/speckit.implement` run there finds the feature.
+
+A brain with no code of its own has no branch to carry them to: the spec
+directory stays in the brain checkout, and `close` commits it. The steps still
+run from there, and the code goes only into the code repos' worktrees — `plan`
+says so, naming where. With two changes open in one brain, `plan` and `apply`
+also point spec-kit's `.specify/feature.json` at the right change's directory
+before its steps run, and say when it named the other.
 
 ## land — the order is law
 
@@ -315,7 +329,15 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
 
 The printed commit is scoped to the closing change's paths — never `add -A`,
 which in a shared checkout would sweep another change's files into the archive
-commit. The wording tracks where the brain stands: on a working branch the
+commit. With an SDD declared, those paths include the change's spec directories
+in the brain, whatever `--no-sdd` or `sdd_auto: false` said, and the archived
+change file ends with one line pointing at them:
+
+```txt
+Specified in `specs/004-points-expire/` (speckit).
+```
+
+The printed commit's wording tracks where the brain stands: on a working branch the
 commit lands through that branch's MR; on the trunk of a brain with a remote
 the recipe is branch + MR (`nothing lands on main directly`); only a solo
 brain with no origin is told the direct commit IS the landing.

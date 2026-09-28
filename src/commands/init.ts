@@ -778,7 +778,8 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     ? false
     : [...adaptersByRoot(equipCfg, 'sdd').keys()].some((n) => (sddSpec(n)?.projectSteps ?? []).some((p) => !p.reportOnly));
   const last = gated ? 5 : 4;
-  if (gated) emit('init:   4. write each repo\'s project document from the human\'s principles — `multivac repos check` names every one not written');
+  // MV-146: one project document, the brain's — the SDD runs there alone.
+  if (gated) emit('init:   4. write the brain\'s project document from the human\'s principles — `multivac repos check` names it while it is not written');
   emit(`init:   ${last}. a human enacts each row in .multivac/invariants.md, then \`multivac doors\` and \`multivac verify\``);
   return 0;
 }

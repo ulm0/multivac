@@ -4,7 +4,7 @@ import { access, lstat, readdir, readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
-import { NO_ADAPTER } from '../adapters/detect.js';
+import { NO_ADAPTER, sddDeclarationRefusal } from '../adapters/detect.js';
 import type { Config, GrapherDecl, Mode, RepoEntry } from '../types.js';
 
 export class ConfigError extends Error {}
@@ -247,7 +247,8 @@ function repoEntry(key: string, v: unknown): RepoEntry {
     grapher: optString(o.grapher, `repos.${key}.grapher`),
     // Same validator as `grapher`, on purpose: one shape for both overrides.
     // `none` is a value, not a parse case — `adapterFor` resolves it, for
-    // both keys (MV-122).
+    // both keys (MV-122). A tool here is refused once the brain entry is
+    // known, by `sddDeclarationRefusal` (MV-146), not by this parse.
     sdd: optString(o.sdd, `repos.${key}.sdd`),
     channel: optString(o.channel, `repos.${key}.channel`),
     // MV-93: the list is a list, so a role written across several lines is
@@ -294,11 +295,31 @@ function grapherDecl(name: string, v: unknown): GrapherDecl {
   };
 }
 
+/** How `loadConfig` answers an SDD declaration that resolves in no root (MV-146). */
+export interface LoadOpts {
+  /**
+   * `refuse`, the default, throws. `report` records the refusal on
+   * `sddRefusal` instead: for a consumer reading its MOUNTED brain, which can
+   * lag the brain and whose config its owner fixes — a hook there must not
+   * exit 2 over it.
+   */
+  sddDeclaration?: 'refuse' | 'report';
+}
+
 /** Load config from `<brainDir>/.multivac/config.yml`, defaults applied. */
-export async function loadConfig(brainDir: string): Promise<Config> {
+export async function loadConfig(brainDir: string, opts: LoadOpts = {}): Promise<Config> {
   const stale = await layoutError(brainDir);
   if (stale) throw new ConfigError(stale);
-  return readConfig(brainDir);
+  const cfg = await readConfig(brainDir);
+  // MV-146, once `isBrain` is derived: which entry is the brain decides where
+  // the SDD runs. The rule lives in detect.ts beside the resolver; this only
+  // decides what a refusal does to the load.
+  const refusal = sddDeclarationRefusal(cfg);
+  if (refusal !== null) {
+    if (opts.sddDeclaration !== 'report') throw new ConfigError(refusal);
+    cfg.sddRefusal = refusal;
+  }
+  return cfg;
 }
 
 /**
@@ -367,9 +388,10 @@ export async function readConfig(brainDir: string): Promise<Config> {
 
   // MV-90. Named after sdd_auto and parsed the same way: two adapters with two
   // vocabularies for one idea is a tax on every reader.
-  // MV-99: root-level only. Unlike sdd: and grapher:, which act on each repo's
-  // files, the tracker projects the CHANGE — and changes live only in the brain,
-  // so a per-repo override would answer a question nobody can ask.
+  // MV-99: root-level only. Unlike grapher:, which acts on each repo's files,
+  // the tracker projects the CHANGE — and changes live only in the brain, so a
+  // per-repo override would answer a question nobody can ask. (sdd: runs in the
+  // brain alone too since MV-146; a repo's own takes only `none`.)
   const tracker = optString(o.tracker, 'tracker');
 
   const grapherAuto = o.grapher_auto ?? true;

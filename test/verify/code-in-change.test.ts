@@ -11,6 +11,7 @@ import { delimiter, dirname, join } from 'node:path';
 import { initRepo } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { verify } from '../../src/commands/verify.js';
+import { count } from '../../src/commands/count.js';
 import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
@@ -305,4 +306,136 @@ test('the directories a declared integration installs into are not code — MV-1
   // openspec's `windsurf` writes `.devin/`, and no door here asks for it.
   assert.ok(!nonCode('.devin/skills/openspec/SKILL.md'), 'not declared, so not exempt');
   assert.ok(!nonCode('src/cli.ts'), 'code is still code');
+});
+
+// --- MV-146: the SDD runs in the brain alone, and governs every code repo's code ---
+
+const LAW = '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n';
+
+/** A code repo `api` with the brain mounted at `.brain`, declaring it under this config. */
+function consumer(config: string): string {
+  const api = join(mkdtempSync(join(tmpdir(), 'mvac-consumer-')), 'api');
+  initRepo(api, { 'src/index.ts': 'export const app = 1;\n' });
+  initRepo(join(api, '.brain'), { '.multivac/config.yml': config, '.multivac/invariants.md': LAW });
+  return api;
+}
+
+const stageIn = (repo: string, rel: string): void => {
+  put(repo, rel, `x ${Math.random()}\n`);
+  git(repo, 'add', rel);
+};
+
+test("a code repo's code is governed by the brain's SDD: refused on main under --strict, exempt under sdd: none — MV-146", async () => {
+  // The code repo declares no SDD of its own: it runs none, and the brain's governs it.
+  const api = consumer('doors: [agents]\nsdd: speckit\nrepos:\n  api: ../api\n');
+  stageIn(api, 'src/index.ts');
+  const strict = await verifyIn(api, '--strict');
+  assert.equal(strict.code, 1, strict.out);
+  assert.match(strict.out, /code {6}1 code path \(src\/index\.ts\) on main, which is no open change declaring api — start a change .* · blocking/);
+  // Without --strict the mount can lag: reported, not gated (MV-137).
+  const lagging = await verifyIn(api);
+  assert.equal(lagging.code, 0, lagging.out);
+  assert.match(lagging.out, /which is no open change in the mounted brain/);
+
+  const exempt = consumer('doors: [agents]\nsdd: speckit\nrepos:\n  api:\n    path: ../api\n    sdd: none\n');
+  stageIn(exempt, 'src/index.ts');
+  const r = await verifyIn(exempt, '--strict');
+  assert.equal(r.code, 0, r.out);
+  assert.doesNotMatch(r.out, /^ {2}code /m);
+});
+
+test("with no SDD in the brain, or sdd_auto off, a code repo's code is not judged — MV-146", async () => {
+  for (const config of [
+    'doors: [agents]\nrepos:\n  api: ../api\n',
+    'doors: [agents]\nsdd: none\nrepos:\n  api: ../api\n',
+    'doors: [agents]\nsdd: speckit\nsdd_auto: false\nrepos:\n  api: ../api\n',
+  ]) {
+    const api = consumer(config);
+    stageIn(api, 'src/index.ts');
+    const r = await verifyIn(api, '--strict');
+    assert.equal(r.code, 0, `${config}\n${r.out}`);
+    assert.doesNotMatch(r.out, /^ {2}code /m, config);
+  }
+});
+
+test("a code repo's specs/ is code; the brain's is not, and every known SDD's install is nobody's code — MV-146", async () => {
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-specs-')), 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [agents, claude]\nsdd: speckit\nrepos:\n  brain: .\n  api: ../api\n',
+    '.multivac/invariants.md': LAW,
+  });
+  const cfg = await loadConfig(b);
+  const inBrain = picomatch(nonCodeGlobs(cfg, 'brain'), { dot: true });
+  const inApi = picomatch(nonCodeGlobs(cfg, 'api'), { dot: true });
+  // The SDD's step artifacts and project document are the brain's.
+  for (const p of ['specs/001-x/spec.md', '.specify/memory/constitution.md']) assert.ok(inBrain(p), p);
+  // In a code repo `specs/` is no SDD's directory — a test tree is code.
+  assert.ok(!inApi('specs/001-x/spec.md'), 'specs/ is code in a code repo');
+  assert.ok(!inApi('src/index.ts'));
+  // A leftover install of ANY known SDD is vendor state, not code, in every repo —
+  // opsx's artifact paths match no file below them, so its directory is taken whole.
+  for (const p of [
+    '.specify/x',
+    '.specify/integration.json',
+    'openspec/config.yaml',
+    'openspec/specs/.gitkeep',
+    'openspec/changes/archive/.gitkeep',
+    '.claude/skills/speckit-plan/SKILL.md',
+  ]) {
+    assert.ok(inApi(p), `${p} in a code repo`);
+    assert.ok(inBrain(p), `${p} in the brain`);
+  }
+
+  // The same verdicts through verify, in a consumer on main.
+  const api = consumer('doors: [agents]\nsdd: speckit\nrepos:\n  api: ../api\n');
+  stageIn(api, 'specs/x.ts');
+  assert.equal((await verifyIn(api, '--strict')).code, 1, 'a staged specs/ file in a code repo is code');
+  git(api, 'reset', '-q');
+  for (const rel of ['.specify/x', 'openspec/config.yaml']) {
+    stageIn(api, rel);
+    const r = await verifyIn(api, '--strict');
+    assert.equal(r.code, 0, `${rel}\n${r.out}`);
+    assert.doesNotMatch(r.out, /^ {2}code /m, rel);
+    git(api, 'reset', '-q');
+  }
+});
+
+test("a consumer whose mounted config is refused prints the line, exits 0, and 1 under --strict — MV-146", async () => {
+  // The mount lags its brain, and its owner fixes the config: a hook here must
+  // not exit 2 over it — neither load on verify's path, nor count's. Each of
+  // the three refusals, the same way.
+  for (const [config, refusal] of [
+    [
+      'doors: [agents]\nsdd: speckit\nrepos:\n  api:\n    path: ../api\n    sdd: opsx\n',
+      /repos\.api\.sdd: opsx — REFUSED: the SDD lives in the brain alone/,
+    ],
+    [
+      'doors: [agents]\nsdd: speckit\nrepos:\n  brain:\n    path: .\n    sdd: none\n  api: ../api\n',
+      /sdd: speckit — REFUSED: the brain's own entry repos\.brain\.sdd says none, so speckit resolves in no root/,
+    ],
+    ['doors: [agents]\nsdd: acme\nrepos:\n  api: ../api\n', /sdd: acme — REFUSED: no SDD adapter is named acme/],
+  ] as const) {
+    const api = consumer(config);
+    const line = new RegExp(
+      `^ {2}sdd {7}${refusal.source}.*\`multivac change new <slug>\` — in the mounted brain's config; its owner fixes it`,
+      'm',
+    );
+    const r = await verifyIn(api);
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, line);
+    assert.doesNotMatch(r.out, /blocking under --strict/);
+
+    const strict = await verifyIn(api, '--strict');
+    assert.equal(strict.code, 1, strict.out);
+    assert.match(strict.out, line);
+    assert.match(strict.out, /its owner fixes it · blocking under --strict$/m);
+    assert.match(strict.out, /^1 blocking broken · exit 1$/m);
+
+    const counted = await run(() => count.run(['brain:.multivac/config.yml /sdd/'], { cwd: api }));
+    assert.equal(counted.code, 0, counted.out);
+    assert.match(counted.out, line);
+
+    // In the brain itself the same config is refused at load.
+    assert.equal((await verifyIn(join(api, '.brain'))).code, 2, refusal.source);
+  }
 });

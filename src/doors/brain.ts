@@ -3,7 +3,6 @@
 import { ecosystemGraphLines } from './ecosystem.js';
 import type { Config } from '../types.js';
 import { doorTargets, grapherSpec, sddSpec, type AdapterSpec } from '../adapters/registry.js';
-import { proofOf } from '../adapters/sdd.js';
 import { parseClaimRows } from '../anchor/parse.js';
 import { adapterFor } from '../adapters/detect.js';
 
@@ -26,8 +25,13 @@ export function countActiveInvariants(md: string): number {
  * empty-brain door long before the first `doors` run — a constitution the
  * agent is only told about on the SECOND command is a constitution nobody
  * writes.
+ *
+ * MV-146: the brain's door alone prints these, so the law is named at the
+ * brain's own path. Under `sdd_auto: false` nothing refuses over the
+ * document, and the door no longer says anything does: the imperative stays,
+ * because the document is the project's law whether or not a gate asks for it.
  */
-export function projectLawLines(sdd: string, lawPrefix = ''): string[] {
+export function projectLawLines(sdd: string, sddAuto = true): string[] {
   const spec = sddSpec(sdd);
   if (!spec) return [];
   const lines: string[] = [];
@@ -41,17 +45,18 @@ export function projectLawLines(sdd: string, lawPrefix = ''): string[] {
     // line said CREATE IT IF ABSENT in capitals and nothing checked it, which
     // is the gap MV-76 closes. Now it names what refuses.
     lines.push(
-      `  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT — \`change plan\` refuses while it is missing, empty or still the template.`,
+      sddAuto
+        ? `  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT — \`change plan\` refuses while it is missing, empty or still the template.`
+        : `  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT.`,
     );
     lines.push(`    revisit: ${p.revisit}`);
   }
   if ((spec.projectSteps ?? []).length === 0) {
     lines.push('  - this tool has no project-level document — nothing to write once and amend');
   } else {
-    // MV-135: which one wins, said where the document is named. MV-143: at the
-    // path THIS root can open — a consumer reads the law under its mount, and
-    // the brain's own relative path resolves to nothing there.
-    lines.push(`  - where a project document and an active row of \`${lawPrefix}.multivac/invariants.md\` disagree, the row wins: amend the document, or change the row through a change`);
+    // MV-135: which one wins, said where the document is named — and only the
+    // brain's door names it now (MV-146), at the path the brain opens.
+    lines.push('  - where a project document and an active row of `.multivac/invariants.md` disagree, the row wins: amend the document, or change the row through a change');
   }
   return lines;
 }
@@ -142,16 +147,16 @@ export function grapherLines(config: Config, name: string | undefined): string[]
 /**
  * The declared SDD tool, its project-level document and its per-change flow.
  *
- * MV-93: one rendering, used by the brain's door and by every consumer's — the
- * shape `grapherLines` established under MV-90, and for the same reason. Two
- * renderings of one block is how the two come to disagree, and a door is the
- * surface where disagreement is least visible: nobody diffs two AGENTS.md.
+ * MV-93 made this one rendering for the brain's door and every consumer's, the
+ * shape `grapherLines` established under MV-90. MV-146: the SDD runs in the
+ * brain alone, so only the brain's door carries the block; a consumer door
+ * says in one line where it runs (`renderConsumerDoor`).
  *
- * Every caller passes what `adapterFor` resolved for THAT root (MV-122), so a
- * root that resolves `none` gets no block rather than one about a tool of
+ * The caller passes what `adapterFor` resolved for the brain (MV-122), so a
+ * brain that resolves `none` gets no block rather than one about a tool of
  * that name.
  */
-export function sddLines(config: Config, name: string | undefined, lawPrefix = ''): string[] {
+export function sddLines(config: Config, name: string | undefined): string[] {
   if (!name) return [];
   const spec = sddSpec(name);
   const lines = [
@@ -163,11 +168,14 @@ export function sddLines(config: Config, name: string | undefined, lawPrefix = '
   // The project-level document: the law of the project, not of one change.
   // Written once, then amended as the product moves — so the door tells the
   // agent to create it when it is not there.
-  lines.push(...projectLawLines(name, lawPrefix));
+  lines.push(...projectLawLines(name, config.sddAuto));
   // The per-change flow, in the tool's own order and length. Each line ends
-  // with what proves it ran, or with why nothing ever can.
+  // with the artifact that proves it ran, or `[ungateable]`. MV-146: the
+  // reason nothing can prove a step is printed whole where the step comes up —
+  // the lifecycle, `doctor` and flow.md — and no longer in every session's
+  // door; nor is the refusing command, which the lifecycle names when it refuses.
   for (const s of spec?.steps ?? []) {
-    lines.push(`  - \`change ${s.at}\` → ${s.run} [${proofOf(s)}]`);
+    lines.push(`  - \`change ${s.at}\` → ${s.run}${s.artifact ? ` [proof: ${s.artifact}]` : ' [ungateable]'}`);
   }
   // MV-93, and stated exactly this weakly on purpose. The scaffold runs from
   // FOUR lifecycle points, not one, and on three paths it reports instead of
@@ -175,9 +183,12 @@ export function sddLines(config: Config, name: string | undefined, lawPrefix = '
   // MV-123's lookup does not find (PATH, then that root's node_modules/.bin),
   // and the init exiting without writing the artifact. A door that says
   // "`change plan` scaffolds it" is Principle II broken in the file an agent
-  // reads first.
+  // reads first. And under `sdd_auto: false` the scaffold does not run at all
+  // (MV-146), so the door does not say it does.
   lines.push(
-    '  the change lifecycle runs the tool\'s own init where it is missing, or says why it could not',
+    config.sddAuto
+      ? '  the change lifecycle runs the tool\'s own init where it is missing, or says why it could not'
+      : '  under `sdd_auto: false` no command runs the tool\'s own init where it is missing — run it in the brain yourself',
   );
   return lines;
 }

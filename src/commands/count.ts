@@ -12,7 +12,7 @@ import { RepoScanner, scanLeg } from '../anchor/match.js';
 import { loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
 import { realPath } from '../lib/paths.js';
 import { say, warn } from '../lib/out.js';
-import { findMount } from './verify.js';
+import { findMount, mountedRefusalLine } from './verify.js';
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import type { Command, CommandContext } from '../types.js';
@@ -70,7 +70,9 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     : (findMount(startDir) ?? startDir);
   let cfg;
   try {
-    cfg = await loadConfig(brainDir);
+    // MV-146: a consumer counts against its mounted brain, whose SDD refusal is
+    // its owner's to fix — reported on stderr, as verify reports it, and counted.
+    cfg = await loadConfig(brainDir, brainDir === startDir ? {} : { sddDeclaration: 'report' });
   } catch (e) {
     if (e instanceof ConfigError) {
       warn(e.message);
@@ -78,6 +80,7 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     }
     throw e;
   }
+  if (cfg.sddRefusal !== undefined) warn(mountedRefusalLine(cfg.sddRefusal, false).text);
 
   const declared = Object.keys(cfg.repos);
   if (a.repoKey !== '*' && a.repoKey !== 'brain' && !cfg.repos[a.repoKey]) {

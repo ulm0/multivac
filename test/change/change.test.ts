@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
+import { main } from '../../src/cli.js';
 
 // CI containers have no git identity; apply's greenfield commit inherits the
 // environment (deliberately — multivac never fabricates identity), so the test
@@ -22,28 +23,39 @@ const ctx = { cwd: eco.brain };
 const svc = join(tmp, 'acme-svc');
 
 // svc: declared but nonexistent (greenfield); mirror: cloneable from a local url;
-// sdd declared with an unknown adapter (must degrade to a notice, exit 0).
-writeFileSync(
-  join(eco.brain, '.multivac/config.yml'),
-  [
-    'doors: [agents]',
-    'sdd: acme-sdd-not-installed',
-    'grapher: acme-graph',
-    'repos:',
-    '  api: ../acme-api',
-    '  web: ../acme-web',
-    '  svc: ../acme-svc',
-    '  mirror:',
-    '    path: ../acme-mirror',
-    `    url: ${eco.repos.api}`,
-    '',
-  ].join('\n'),
-);
+// grapher declared with an unknown adapter (must degrade to a notice, exit 0).
+// An unknown SDD is refused at load instead (MV-146): no scaffold, gate or step
+// could honour it, and the first test says so.
+const CONFIG = [
+  'doors: [agents]',
+  'grapher: acme-graph',
+  'repos:',
+  '  api: ../acme-api',
+  '  web: ../acme-web',
+  '  svc: ../acme-svc',
+  '  mirror:',
+  '    path: ../acme-mirror',
+  `    url: ${eco.repos.api}`,
+  '',
+].join('\n');
+writeFileSync(join(eco.brain, '.multivac/config.yml'), CONFIG);
 
 const gitOut = (cwd: string, ...args: string[]): string =>
   execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).trim();
 
-test('new scaffolds the change file (unknown SDD adapter = notice, still 0)', async () => {
+test('new scaffolds the change file (unknown grapher = notice, still 0; unknown SDD = refused, 2)', async () => {
+  writeFileSync(join(eco.brain, '.multivac/config.yml'), CONFIG.replace('doors: [agents]\n', 'doors: [agents]\nsdd: acme-sdd-not-installed\n'));
+  const errs: string[] = [];
+  const origErr = console.error;
+  console.error = (...a: unknown[]) => { errs.push(a.map(String).join(' ')); };
+  try {
+    assert.equal(await main(['change', 'new', 'points-expire', 'Points expire'], eco.brain), 2);
+  } finally {
+    console.error = origErr;
+  }
+  assert.match(errs.join('\n'), /^sdd: acme-sdd-not-installed — REFUSED: no SDD adapter is named acme-sdd-not-installed/m);
+  writeFileSync(join(eco.brain, '.multivac/config.yml'), CONFIG);
+
   assert.equal(await change.run(['new', 'points-expire', 'Points expire'], ctx), 0);
   const { change: c } = await loadChange(eco.brain, 'points-expire');
   assert.equal(c.status, 'open');

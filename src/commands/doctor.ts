@@ -25,7 +25,6 @@ import {
   doorTargets,
   grapherSpec,
   unverifiedGrapher,
-  sddNames,
   sddSpec,
   type AdapterSpec,
 } from '../adapters/registry.js';
@@ -36,10 +35,11 @@ import {
   missingRequired,
   pathExists,
   readOnly,
+  sddGoverning,
   sddRoots,
 } from '../adapters/detect.js';
-import { flowLines, scaffoldCommands, stepsGating } from '../adapters/sdd.js';
-import { cloneFix, cloneState, projectDocVerdict } from '../lib/repo-state.js';
+import { flowLines, proofOf, scaffoldCommands, stepsGating } from '../adapters/sdd.js';
+import { cloneFix, cloneState, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
 import { graphScopes } from '../adapters/refresh.js';
 import { readLaw } from '../change/reserve.js';
 import {
@@ -65,9 +65,10 @@ const label = (s: string): string => s.padEnd(11);
  * A root no adapter of this kind resolves for, while another root does — or a
  * read-only root, where `why` says why multivac may not write (MV-125). An
  * exclusion is an ordinary configuration, so it reads as a fact about scope and
- * never as a deficiency — for `sdd:` and `grapher:` alike (MV-87, MV-122). No
- * install state, no command to run: either would read as a gap to fix by
- * writing where nothing may be written.
+ * never as a deficiency (MV-87, MV-122). No install state, no command to run:
+ * either would read as a gap to fix by writing where nothing may be written.
+ * The grapher's per root; the SDD's is the governs line since MV-146, which
+ * runs it in the brain alone.
  */
 const outOfScope = (kind: 'sdd' | 'grapher', scope: string, name?: string, why?: ReadOnly): string =>
   label(kind) +
@@ -156,10 +157,10 @@ async function projectDocLines(
     // Per root (MV-87). It used to take the first root that could answer, so
     // in an ecosystem of six one repo's constitution was reported as the
     // product's and five repos without one read as satisfied. Reported for
-    // every root the tool APPLIES to, installed or not — the gate is the one
-    // that asks only about installed roots, because a report that hid a
-    // missing document until somebody scaffolded the repo would hide it
-    // exactly when it is most worth saying.
+    // every root the tool APPLIES to, installed or not — since MV-146 the
+    // brain alone — because a report that hid a missing document until
+    // somebody scaffolded the root would hide it exactly when it is most worth
+    // saying.
     for (const root of roots) {
       const path = join(root.dir, p.artifact);
       const st = await stat(path).catch(() => null);
@@ -197,6 +198,46 @@ async function projectDocLines(
 }
 
 /**
+ * MV-146. An enabled preset whose template a skeleton override outranks. The
+ * vendor's resolver reads the override directory before any preset, so a
+ * preset added after the scaffold is shadowed and says nothing about it; this
+ * is where it is said, with the file to delete to let the preset win.
+ *
+ * Every path and id comes from the skeleton's `presets`, measured per version
+ * (Principle V: the entry is data, the dispatch is never on a name). A preset
+ * in `propagates` ships no template of its own and writes into the core ones
+ * the skeleton shadows, so every override outranks it. Absent or unreadable
+ * is silence — a report, never a guess.
+ */
+async function presetLines(rootDir: string, spec: AdapterSpec): Promise<string[]> {
+  const sk = spec.scaffold?.skeleton;
+  const layout = sk?.presets;
+  if (!sk || !layout) return [];
+  let presets: Record<string, { enabled?: unknown }>;
+  try {
+    const reg = JSON.parse(await readFile(join(rootDir, layout.registry), 'utf8')) as {
+      presets?: Record<string, { enabled?: unknown }>;
+    };
+    presets = reg?.presets ?? {};
+  } catch {
+    return [];
+  }
+  const out: string[] = [];
+  for (const [id, p] of Object.entries(presets)) {
+    if (p?.enabled !== true) continue;
+    for (const file of Object.keys(sk.files)) {
+      if (!(await pathExists(join(rootDir, sk.dir, file)))) continue;
+      const ships = await pathExists(join(rootDir, layout.templates.replace('<id>', id), file));
+      if (!ships && !layout.propagates.includes(id)) continue;
+      out.push(
+        label('sdd') + `preset ${id} is outranked for ${file} by ${sk.dir}/${file} — delete that override to let the preset win`,
+      );
+    }
+  }
+  return out;
+}
+
+/**
  * The SDD, per root (MV-87) — the shape `grapherLines` below has always had.
  *
  * It used to collapse every root into one boolean and stop at the first hit,
@@ -204,82 +245,104 @@ async function projectDocLines(
  * ecosystem read `artifact ok` while the brain and four repos had nothing. The
  * state is the vendor's own files' now (MV-124), so a directory made by hand
  * reads partial rather than installed.
- * What is per ROOT (is it installed here, is the project document here) is
- * reported per root; what is per TOOL (its flow, which lifecycle commands
- * gate, whether the automation is on) is said once, because repeating it six
- * times would bury the six lines that differ.
+ *
+ * MV-146: the one root the SDD runs in is the brain, so its install, flow,
+ * gates and project document are the brain's alone. A code repo gets no
+ * verdict of its own: one line names the repos whose code the brain's SDD
+ * governs and those exempt by `sdd: none`, and a writable one still holding
+ * an install from an earlier release gets a leftover line — a report, with the
+ * removal, never a failure. A read-only repo is never named (MV-125). With no
+ * SDD in the brain there is no line at all, as before.
  */
 async function sddLines(brain: string, cfg: Config): Promise<string[]> {
   const roots = await sddRoots(brain, cfg);
-  // No present root resolves an sdd: silence.
-  if (!roots.some((r) => r.sdd)) return [];
+  const root = roots.find((r) => r.scope === 'brain')!;
+  const name = root.sdd;
+  const spec = name ? sddSpec(name) : undefined;
+  // No SDD in the brain: silence, as it always was. `loadConfig` refuses a
+  // name the registry does not know (MV-146), so a resolved name has a spec.
+  // A code repo's own install of a tool this ecosystem declares nowhere is
+  // that team's, not a leftover of an earlier release, so it is not named.
+  if (!name || !spec) return [];
+  const out: string[] = [];
   const auto = !cfg.sddAuto
     ? 'sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself'
     : "sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts";
-  const out: string[] = [];
-  for (const root of roots) {
-    if (!root.sdd || root.readOnly) {
-      out.push(outOfScope('sdd', root.scope, root.sdd, root.readOnly));
-      continue;
+  // The lookup reads the brain's own node_modules/.bin (MV-123).
+  const missing = await missingRequired(spec, root.dir);
+  // A declared tool that has never run here is a state worth reporting, and
+  // reporting is all doctor may do: the init writes the vendor's files into
+  // the tree, and doctor is a report. It names the command; the lifecycle
+  // runs it — unless `sdd_auto: false`, under which nothing runs it (MV-146).
+  const sc = spec.scaffold;
+  const st = await initState(spec, root.dir);
+  let state: string = st.state;
+  if (st.state === 'missing') {
+    state = `missing (no ${stateLabel(spec)})`;
+    if (sc) {
+      const init = scaffoldCommands(sc, cfg.doors).commands.join(' && ');
+      const who = cfg.sddAuto
+        ? `\`change new\` runs the tool's own \`${init}\``
+        : `under \`sdd_auto: false\` no command runs the tool's own \`${init}\`: run it there yourself`;
+      state += ` — declared but never run here; ${who}, doctor never does (it writes the vendor's files into the tree)`;
     }
-    const spec = sddSpec(root.sdd);
-    if (!spec) {
-      out.push(
-        label('sdd') +
-          `${root.sdd} @ ${root.scope}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`,
-      );
-      continue;
-    }
-    // Per root, never cached per tool: the lookup reads this root's own
-    // node_modules/.bin (MV-123), so two roots can answer differently.
-    const missing = await missingRequired(spec, root.dir);
-    // A declared tool that has never run here is a state worth reporting, and
-    // reporting is all doctor may do: the init writes the vendor's files into
-    // the tree, and doctor is a report. It names the command; the lifecycle
-    // runs it.
-    const sc = spec.scaffold;
-    const st = await initState(spec, root.dir);
-    let state: string = st.state;
-    if (st.state === 'missing') {
-      state = `missing (no ${stateLabel(spec)})`;
-      if (sc) state += ` — declared but never run here; \`change new\` runs the tool's own \`${scaffoldCommands(sc, cfg.doors).commands.join(' && ')}\`, doctor never does (it writes the vendor's files into the tree)`;
-    } else if (st.state === 'unevaluable') {
-      // Unreadable is not uninstalled: the fix is the file's permissions, never an init.
-      state = `unevaluable (${st.reason}) — make it readable; no init is run over it`;
-    } else if (st.state === 'partial') {
-      state = `partial (${st.reason})`;
-      if (sc) state += ` — the lifecycle will not run the init over it, since a re-run can revert edited files; run \`${scaffoldCommands(sc, cfg.doors).commands.join(' && ')}\` there yourself`;
-    }
-    const bin = missing.length === 0 ? 'binary ok' : `binary missing → ${binaryMissing(root.sdd, spec, missing, root.scope)}`;
-    out.push(label('sdd') + `${root.sdd} @ ${root.scope}: ${state} · ${bin} · ${auto}`);
+    // MV-146: the same run is the only one that writes the skeleton, so the
+    // report names it where it names the run, and not where no run will come.
+    if (sc?.skeleton && cfg.sddAuto) state += `; that run then writes multivac's skeleton templates to ${sc.skeleton.dir} if it is absent`;
+  } else if (st.state === 'unevaluable') {
+    // Unreadable is not uninstalled: the fix is the file's permissions, never an init.
+    state = `unevaluable (${st.reason}) — make it readable; no init is run over it`;
+  } else if (st.state === 'partial') {
+    state = `partial (${st.reason})`;
+    if (sc) state += ` — the lifecycle will not run the init over it, since a re-run can revert edited files; run \`${scaffoldCommands(sc, cfg.doors).commands.join(' && ')}\` there yourself`;
   }
-  // Once per distinct tool, in the order the roots multivac may write in named
-  // them: a read-only root owes no project document (MV-125).
-  const owned = roots.filter((r) => !r.readOnly);
-  const tools = [...new Set(owned.map((r) => r.sdd).filter((n): n is string => Boolean(n)))];
-  for (const name of tools) {
-    const spec = sddSpec(name);
-    if (!spec) continue;
-    // The tool's whole flow, in its own order and length, each step with the
-    // artifact that proves it ran — or the reason nothing ever could.
-    for (const l of flowLines(spec)) out.push(label('sdd') + `${name} flow — ${l}`);
-    // Which lifecycle commands actually refuse, and which cannot for this tool.
-    const gates = (['plan', 'apply', 'close'] as const).map((g) => {
-      const on = stepsGating(spec, g);
-      return on.length > 0
-        ? `change ${g}: refuses without ${on.map((s) => s.artifact).join(', ')}`
-        : `change ${g}: not gated — this tool declares no step to prove there`;
-    });
-    out.push(label('sdd') + `${name} gates — ${gates.join(' · ')}`);
+  const bin = missing.length === 0 ? 'binary ok' : `binary missing → ${binaryMissing(name, spec, missing, root.scope)}`;
+  out.push(label('sdd') + `${name} @ ${root.scope}: ${state} · ${bin} · ${auto}`);
+  // Whose code it governs, only where there is a code repo to name — a brain
+  // that is its own only repo has nothing to add here — and only with the
+  // automation on: under `sdd_auto: false` the code gate is off (MV-137), so
+  // nothing governs anything, and the consumer door says nothing either.
+  const code = Object.keys(cfg.repos).filter((k) => !cfg.repos[k].isBrain);
+  if (cfg.sddAuto && code.length > 0) {
+    const governed = code.filter((k) => sddGoverning(cfg, k) !== undefined);
+    const exempt = code.filter((k) => sddGoverning(cfg, k) === undefined);
     out.push(
-      ...(await projectDocLines(
-        brain,
-        name,
-        spec,
-        owned.filter((r) => r.sdd === name),
-      )),
+      label('sdd') +
+        `${name} governs the code of ${governed.join(', ') || 'no code repo'} — its steps run in the brain` +
+        (exempt.length > 0 ? `; exempt (sdd: none): ${exempt.join(', ')}` : ''),
     );
   }
+  out.push(...(await presetLines(root.dir, spec)));
+  // An install an earlier release left in a writable code repo: the same
+  // leftover whichever SDD the brain now declares, and naming it is how it
+  // goes away. A read-only repo is never named (MV-125).
+  for (const r of roots) {
+    if (r.scope === 'brain' || r.readOnly) continue;
+    for (const l of await leftoverSdds(r.dir)) {
+      const left = sddSpec(l.sdd)!;
+      const fix = left.leftover ?? `delete ${stateLabel(left)} there`;
+      out.push(label('sdd') + `leftover ${l.sdd} install @ ${r.scope}: ${l.file} (${l.tracked ? 'tracked' : 'untracked'}) — ${fix}`);
+    }
+  }
+  // The tool's whole flow, in its own order and length, each step with the
+  // artifact that proves it ran — or the reason nothing ever could. Under
+  // `sdd_auto: false` no command refuses, and the lines do not say one does
+  // (MV-146): the proof is still what the step leaves.
+  const off = ' — not gated (`sdd_auto: false`)';
+  const flow = cfg.sddAuto
+    ? flowLines(spec)
+    : (spec.steps ?? []).map((s) => `${s.at}: ${s.run} [${s.artifact ? `proof: ${s.artifact}${off}` : proofOf(s)}]`);
+  for (const l of flow) out.push(label('sdd') + `${name} flow — ${l}`);
+  // Which lifecycle commands actually refuse, and which cannot for this tool.
+  const gates = (['plan', 'apply', 'close'] as const).map((g) => {
+    if (!cfg.sddAuto) return `change ${g}: not gated (\`sdd_auto: false\`)`;
+    const on = stepsGating(spec, g);
+    return on.length > 0
+      ? `change ${g}: refuses without ${on.map((s) => s.artifact).join(', ')}`
+      : `change ${g}: not gated — this tool declares no step to prove there`;
+  });
+  out.push(label('sdd') + `${name} gates — ${gates.join(' · ')}`);
+  out.push(...(await projectDocLines(brain, name, spec, [root])));
   return out;
 }
 

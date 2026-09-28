@@ -1,100 +1,3 @@
-<!--
-Sync Impact Report
-Version change: 2.0.2 → 3.0.0 (MAJOR — a principle is redefined: Principle
-I's citation duty stops at the pages under site/content/, which now name no
-law ID)
-Modified principles:
-  - I. A Claim Nobody Checks Decays: IDs are cited in the law table and in
-    every record the brain keeps outside the site's own pages. A new
-    paragraph says those pages, everything under site/content/, explain
-    behaviour in plain words, name no ID and bind nothing, and still move
-    with the rule they explain; the changelog the site mounts keeps its IDs.
-    The rationale gains why an ID is noise to the site's reader. MV-126
-    states the rule; MV-111 carries the amendment.
-Modified sections: Governance footer, now 3.0.0, last amended 2026-09-14.
-Templates requiring update: none — no template says where IDs are cited
-Follow-up TODOs: none
--->
-
-<!--
-Sync Impact Report
-Version change: 2.0.1 → 2.0.2 (PATCH — a statement of fact corrected; no
-principle added, removed or redefined)
-Modified principles: none
-Modified sections:
-  - Governance footer: it still read 2.0.0, last amended 2026-08-18, while
-    the report below records 2.0.0 → 2.0.1 — the report moved and the
-    version it records did not, so one document answered "which version is
-    this?" two ways, the failure MV-111 names. 2.0.1 never reached the
-    footer, and its own wording became true only on 2026-08-19, in a
-    Principle IV correction that carried no report. The footer now states
-    the version the newest report records, and MV-120 forbids the stale
-    values coming back: a pin on this file's own number, never on whether a
-    principle still fits.
-Templates requiring update: none
-Follow-up TODOs: none
--->
-
-<!--
-Sync Impact Report
-Version change: 2.0.0 → 2.0.1 (PATCH — a statement of fact corrected; no
-principle added, removed or redefined)
-Modified principles: none in force. Principle IV's TEXT still said "the runtime
-dependency count is two" after 2.0.0 moved it to three in Engineering
-Constraints — one document answering the same question two ways, which is the
-failure this project calls "a paraphrase ages silently". IV now cites MV-02
-rather than restating the number, so the next amendment cannot leave it behind.
-Modified sections: Core Principles / IV. Deterministic, Offline, Small
-Templates requiring update: none
-Follow-up TODOs: none
--->
-
-<!--
-Sync Impact Report
-Version change: 1.0.1 → 2.0.0 (MAJOR — a constraint is redefined: the runtime
-dependency count moves from two to three, with the third named)
-Modified principles: none — I to V are unchanged in wording and in force
-Modified sections:
-  - Engineering Constraints: "Two runtime dependencies, yaml and picomatch"
-    becomes three, adding citty. The clause that matters is unchanged: an
-    invariant still pins the NUMBER, so the fourth faces the same amendment
-    this one did. MV-02 carries the same move, dated, and MV-104 states why
-    the parser is a dependency while the refusal is not.
-Templates requiring update: none — no template states the count
-Follow-up TODOs: none
--->
-
-<!--
-Sync Impact Report
-Version change: 1.0.0 → 1.0.1 (PATCH — a statement of fact corrected, no
-principle added, removed or redefined)
-Modified principles: none
-Modified sections:
-  - Governance / Compliance: this document's presence is no longer only
-    reported. MV-76 gates `change plan` on it, and MV-57 was amended in the
-    same change so its surviving claim is that the CONTENT is never
-    machine-judged. Freshness is still a report and still not a gate.
-Templates requiring update: none — no template states this
-Follow-up TODOs: none
-
-Sync Impact Report
-Version change: none → 1.0.0 (initial ratification)
-Modified principles: none — first constitution for this project
-Added sections:
-  - Core Principles I–V
-  - Engineering Constraints
-  - Development Workflow
-  - Governance
-Removed sections: none
-Principle sources (derived, not invented):
-  I   → philosophy.md "A paraphrase ages silently"; MV-42; skill rule 3
-  II  → MV-16, MV-20, MV-51, MV-54, MV-56, MV-63, MV-65, MV-66
-  III → CONTRIBUTING.md "What we ask"; MV-26, MV-45, MV-64; retirement procedure
-  IV  → MV-01, MV-02, MV-03, MV-04, MV-13, MV-24; CONTRIBUTING.md "Sub-second verify"
-  V   → MV-28, MV-59, MV-61, MV-62; CONTRIBUTING.md "Adding a harness, a grapher or an SDD tool"
-Follow-up TODOs: none — no placeholder was deferred
--->
-
 # multivac Constitution
 
 ## Core Principles
@@ -220,9 +123,10 @@ disagree, the constitution wins until it is amended.
 
 **Amendment procedure.** Amend this file in place, bump the version below by
 semantic versioning — MAJOR removes or redefines a principle, MINOR adds one or
-materially expands guidance, PATCH clarifies wording — and prepend a Sync Impact
-Report recording the change. An amendment that reflects a change in how the
-project actually works MUST land in the same change as that work.
+materially expands guidance, PATCH clarifies wording. The report
+`/speckit.constitution` writes for review is removed before commit; git keeps
+the amendment record. An amendment that reflects a change in how the project
+actually works MUST land in the same change as that work.
 
 **Compliance.** Principles I–V are enforced by the law table in
 `.multivac/invariants.md` and checked by `multivac verify` on every commit; a
@@ -234,4 +138,4 @@ unreadable, empty, or still carrying the fill-in tokens spec-kit's template
 ships. Its freshness stays a report, per MV-57: a version that never moves
 while the law does is a signal to revisit rather than a failing grade.
 
-**Version**: 3.0.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-14
+**Version**: 3.0.1 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-28

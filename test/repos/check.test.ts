@@ -86,10 +86,41 @@ test('a cloned root whose tools are not set up or not committed fails, naming ea
   const { lines, exit } = await reposCheck(b);
   const out = lines.join('\n');
   assert.equal(exit, 1);
-  assert.match(out, /^api\s+FAIL .*speckit missing → `multivac repos sync`/m);
   assert.match(out, /^api\s+FAIL .*graphify missing → `multivac repos sync`/m);
-  assert.match(out, /^web\s+FAIL .*\.specify\/memory\/constitution\.md template \(placeholders remain: \[PROJECT_NAME\]\) → run \/speckit\.constitution/m);
   assert.match(out, /^web\s+FAIL .*graphify built but graphify-out\/graph\.json is not committed → commit it/m);
+  // MV-146: the SDD runs in the brain alone, so no code repo is asked for its
+  // install or its project document — web's template constitution is a
+  // leftover's, stated on its line, and api owes no install at all.
+  assert.doesNotMatch(out, /^(api|web)\s+.*(speckit missing|constitution\.md template)/m);
+  assert.match(out, /^web\s+FAIL .*; leftover speckit install \(tracked\)$/m);
+  assert.doesNotMatch(out, /^api\s+.*leftover/m);
+});
+
+test('a leftover install is a fact on a code repo\'s line, never a failure — MV-146', async () => {
+  const { root, brain: b } = brain('  api: ../api\n');
+  initRepo(join(root, 'api'), { 'graphify-out/graph.json': '{}\n' });
+  mkdirSync(join(root, 'api/openspec'), { recursive: true });
+  writeFileSync(join(root, 'api/openspec/config.yaml'), 'schema: spec-driven\n');
+  const { lines, exit } = await reposCheck(b);
+  assert.equal(exit, 0, lines.join('\n'));
+  assert.match(lines.join('\n'), /^api\s+ok\s+cloned · graphify built and committed; leftover opsx install \(untracked\)$/m);
+  // The brain's own install is its SDD, never a leftover.
+  assert.doesNotMatch(lines.join('\n'), /^brain\s+.*leftover/m);
+});
+
+test('with no SDD in the brain, a code repo\'s own install is not a leftover — MV-146', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'mvac-check-'));
+  const b = join(root, 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [agents]\nrepos:\n  brain: .\n  api: ../api\n',
+    '.multivac/invariants.md': '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
+  });
+  initRepo(join(root, 'api'), { '.specify/integration.json': SPECKIT_INTEGRATION_JSON });
+  const { lines, exit } = await reposCheck(b);
+  assert.equal(exit, 0, lines.join('\n'));
+  // The line it always was: the team's own use of spec-kit is theirs.
+  assert.match(lines.join('\n'), /^api\s+ok\s+cloned$/m);
+  assert.doesNotMatch(lines.join('\n'), /leftover/);
 });
 
 test('an empty project document is empty, in repos check and in doctor — MV-132', async () => {

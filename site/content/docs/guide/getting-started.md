@@ -108,7 +108,14 @@ brain empty — load the multivac skill to fill it.
 ```
 
 With `--sdd` or `--grapher`, the door also carries that tool's flow and the
-graph's verbs, and `init` installs the tool in the brain.
+graph's verbs, and `init` installs the tool in the brain. The SDD stays there:
+it is where every change's specs are written, and no code repo installs it. For
+spec-kit, the install also writes three skeleton templates where spec-kit looks
+first, and says so:
+
+```txt
+sdd speckit: scaffolded — brain:.specify is there now; its steps are runnable; skeleton: .specify/templates/overrides/{spec,plan,tasks}-template.md
+```
 
 `.multivac/invariants.md` is the law table with its format and zero rows:
 
@@ -154,7 +161,7 @@ The key (`api`) is the registry name anchors use — never the directory name.
 Then bring every repo in line, and give each one its door:
 
 ```bash
-mvac repos sync   # clone what is missing, mount the brain, install each repo's declared tools
+mvac repos sync   # clone what is missing, mount the brain, install the brain's SDD and each repo's grapher
 mvac repos check  # offline: is each repo the declared clone, with its tools and documents set up
 mvac doors        # write each repo's door and hooks
 ```

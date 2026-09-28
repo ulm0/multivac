@@ -114,11 +114,29 @@ doors      nope: unknown target — known: agents, claude, cursor, opencode, cod
 
 Selects the spec-driven-development adapter whose `propose` / `apply` /
 `archive` steps run inside the change lifecycle. See
-[Graphers and SDD](../graphers-and-sdd). It applies to every root that does
-not declare its own: a repo's `sdd:` wins in that repo, and the brain's own
-entry in the brain. `none` declares no SDD.
+[Graphers and SDD](../graphers-and-sdd). It runs in the brain alone — it is
+installed there and its steps print there — and it governs the code of every
+declared repo that does not say `sdd: none` (see
+[`sdd:` per repo](#repos)). In a brain that is its own code repo, the brain's
+own entry may declare it instead. `none` declares no SDD.
 
-**Without it, and with no repo declaring one:** silence. No SDD step runs,
+A declaration that would resolve in no root is refused when the config loads,
+naming the key and the fix: a tool in a repo's own `sdd:`, a top-level tool the
+brain's own entry contradicts with another tool or `none`, or a name multivac
+does not know. Every command in the brain exits 2 on it, except `doctor`,
+`doors` and `init`, which report it and exit 1, as they do for any config they
+cannot load — `doctor` on its `config invalid` line:
+
+```txt
+repos.landing.sdd: opsx — REFUSED: the SDD lives in the brain alone, so a code repo's sdd: takes only none, which exempts its code from the change gate. Fix: remove repos.landing.sdd or set it to none in .multivac/config.yml, then open a change for the config edit: `multivac change new <slug>`
+```
+
+A repo that mounts the brain is not refused over its brain's config: `verify`
+there prints the same text as one `sdd` line ending *in the mounted brain's
+config; its owner fixes it*, which blocks only under `--strict`, and `count`
+prints it and counts.
+
+**Without it, and with the brain's own entry declaring none:** silence. No SDD step runs,
 `doctor` prints no `sdd` line at all. Not declaring is different from
 declaring something absent — the first is "we do not use one", the second is
 "we use one, it is not on this machine".
@@ -143,7 +161,9 @@ sdd        opsx @ brain: installed · binary ok · sdd_auto: false — the lifec
 ```
 
 `--no-sdd` on a single `change` invocation does the same thing once, without
-editing the config.
+editing the config. Neither stops `change close` from committing the brain's
+spec directories for the change and citing them in its body: the switch skips
+the steps and their gates, never what was already written.
 
 ### `grapher`
 
@@ -180,8 +200,8 @@ Which issue tracker the roadmap projects to: `gitlab`, `github`, or absent.
 tracker: gitlab
 ```
 
-Root level only. Unlike `sdd:` and `grapher:`, which act on each repo's files,
-the tracker projects the **change** — and changes live only in the brain, so a
+Root level only. Unlike `grapher:`, which acts on each repo's files, the
+tracker projects the **change** — and changes live only in the brain, so a
 per-repo override would answer a question nobody can ask.
 
 Projection is one way and runs only from `multivac roadmap sync`. It reaches the
@@ -280,13 +300,12 @@ repos:
 A read-only repo is read, verified, cloned and fetched, and never written: no
 SDD init, no graph build or refresh, and `doors` projects no door, skill,
 harness hook config, git hook shim or `core.hooksPath` there. No gate demands a
-file there — the SDD gates never search it or name it among the repos they
-looked in, and the graph and tracked gates never judge it. `doctor` and `repos`
-report it, `doctor`'s pins line expects no mount there, and `doctor`'s exit
-code does not change:
+file there — the SDD runs in the brain alone, and the graph and tracked gates
+never judge it. `doctor` and `repos` report it, `doctor`'s pins line expects no
+mount there, and `doctor`'s exit code does not change:
 
 ```txt
-sdd        speckit @ payments: not managed, read-only — out of scope, not a gap
+grapher    graphify @ payments: not managed, read-only — out of scope, not a gap
 ```
 
 A change that names it is refused by `change plan` and `change apply` before
@@ -536,18 +555,21 @@ repos:
     url: git@example.com:acme/payments.git
     path: ../payments                  # optional; defaults to ../<key>
     grapher: codegraph                 # overrides the global grapher; `none` = no graph here
-    sdd: opsx                          # overrides the global sdd; `none` = no SDD here
+    sdd: none                          # the one value a repo's sdd: takes — its code is not gated
     channel: origin/release            # overrides the global channel
   ledger:
     path: ../ledger
     managed: false                     # another team's: read and verified, never written
 ```
 
-**`sdd:` per repo.** Declared adapters reach every declared repo on disk that
-multivac may write in — not one declared `managed: false`, nor a shallow clone:
-the change lifecycle runs the tool's own init in each one that lacks it, and
-`doctor` reports each one by name. A repo that should have no spec-driven flow
-says so in its own entry:
+**`sdd:` per repo.** The SDD lives in the brain alone: it is installed there,
+its steps print there, and its gates read the brain and the change's worktrees.
+No code repo is scaffolded, gated on a project document, or given the SDD's
+steps in its door. What the brain's SDD does reach is every declared repo's
+CODE: it lands only on the branch of an open change (see
+[Code lands in a change](../commands#code-lands-in-a-change)). A repo whose code
+should not be held to that says so in its own entry, with the one value a
+repo's `sdd:` takes:
 
 ```yaml
 repos:
@@ -556,14 +578,19 @@ repos:
     sdd: none
 ```
 
-`none` is out of scope, not a gap: that repo is never scaffolded, never gated
-on the SDD's project-level document, and never reported as lacking anything.
-An absent `sdd:` inherits the ecosystem's — it does not mean none. `grapher:`
-works the same way, `grapher: none` included.
+`none` is out of scope, not a gap: that repo's code is not gated, `doctor`
+names it as exempt, and it is never reported as lacking anything. An absent
+`sdd:` means the brain's SDD governs the repo's code — it does not mean none. A
+tool name there is refused when the config loads.
+
+`grapher:` is per repo in full: a repo's own grapher wins in that repo, and
+`grapher: none` means no graph there.
 
 **The brain's own entry.** In a brain that is its own code repo, the `brain`
-entry decides the brain's adapters exactly as any repo's entry decides its own,
-and a top-level `none` never overrides a repo's own adapter:
+entry decides the brain's grapher exactly as any repo's entry decides its own,
+and a top-level `none` never overrides it. For the SDD, the brain's entry may
+repeat the top-level tool or declare one where the top level has none; a
+different tool, or `none` under a top-level tool, is refused:
 
 ```yaml
 grapher: graphify
@@ -574,10 +601,15 @@ repos:
   api: ../acme-api                     # api with graphify
 ```
 
+With `sdd: speckit` at the top level and `landing` declaring `sdd: none`,
+`doctor` reports the SDD for the brain and names whose code it governs. A repo
+an earlier release equipped with the SDD keeps that install until someone
+removes it; `doctor` names it with the removal and never fails over it:
+
 ```txt
 sdd        speckit @ brain: installed · binary ok · sdd_auto on
-sdd        speckit @ api: missing (no .specify) — declared but never run here; `change new` runs the tool's own `specify init …`, doctor never does (it writes the vendor's files into the tree)
-sdd        none @ landing: no sdd declared for this repo — out of scope, not a gap
+sdd        speckit governs the code of api — its steps run in the brain; exempt (sdd: none): landing
+sdd        leftover speckit install @ api: .specify/integration.json (tracked) — delete .specify/ there; `specify integration uninstall <key>` removes its skills and leaves .specify/
 ```
 
 Paths are resolved relative to the brain directory. An entry with only a

@@ -25,7 +25,8 @@ raises: an unresolved clarification marker, an ambiguity the artifacts do not
 settle. "May I continue" is not that question.
 
 `--no-sdd` skips the steps and their gates for one run; `sdd_auto: false` stops
-printing them for good. Both are named on the line beside each step.
+printing them for good. Both are named on the line after each lifecycle point's
+steps.
 
 When `change apply` says two repos are one stage, they have no ordering
 dependency and you have one checkout each: work them at the same time. Never
@@ -128,9 +129,11 @@ The file also carries per-repo status
   a worktree, apply branches in place and refuses outright if the tree holds
   someone else's uncommitted work — commit or stash it, then re-run.
   The SDD files you wrote before `apply` (spec-kit's `specs/<n>-<slug>/`, an
-  uncommitted `.specify/`) are **carried onto the branch**: copied into the
-  worktree, committed there, removed from the checkout (MV-133). Write the code
-  in the worktree; a commit of code anywhere else is refused (MV-137).
+  uncommitted `.specify/`) are **carried onto the branch** when the change names
+  the brain's own entry: copied into the worktree, committed there, removed
+  from the checkout (MV-133). In a brain with no code they stay in the checkout
+  until `close` commits them (MV-146). Write the code in the worktree; a commit
+  of code anywhere else is refused (MV-137).
 - **land** prints the landing plan in graph order — roots first, an edge's
   target only after its source lands, parallel where no edge says otherwise —
   and for each ready repo hands you the push and the MR to open. It opens
@@ -228,6 +231,12 @@ fixed propose/apply/archive triple. The steps are **chat commands you run in
 the agent**, not terminal subcommands multivac could shell out, so the
 lifecycle prints each one at its own moment and running it is your job.
 
+The SDD lives in the brain alone (MV-146): run its steps from the brain
+checkout, whichever repos the change names — code goes only into the change's
+worktrees. The why, the design and the tasks go into the SDD's files; the
+change body keeps what it held while planned, or one sentence, and `change
+close` appends the one line citing the spec directory. Do not cite it yourself.
+
 The half that makes the printing mean something: **each step names the artifact
 that proves it ran, and the next lifecycle command refuses without it.**
 
@@ -253,8 +262,9 @@ Run those anyway. "Ungateable" means the check is missing, not the obligation.
 
 **The project-level document.** spec-kit carries a constitution
 (`.specify/memory/constitution.md`) — written once with `/speckit.constitution`
-and **amended** as the product moves, version bumped, Sync Impact Report
-prepended. Create it if it is absent — and "absent" includes the file spec-kit
+and **amended** as the product moves, version bumped, no Sync Impact Report
+committed. It is the brain's: no code repo is asked for one (MV-146). Create it
+if it is absent — and "absent" includes the file spec-kit
 scaffolds for you: `specify init` writes the template unfilled, so a repo can
 carry a `constitution.md` full of the template's own tokens, such as
 `[PROJECT_NAME]`, and have no constitution at all. Write it with the human's

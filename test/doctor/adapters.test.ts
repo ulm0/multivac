@@ -22,6 +22,8 @@ import {
   findBinary,
   localBin,
   missingRequired,
+  sddDeclarationRefusal,
+  sddGoverning,
   sddRoots,
 } from '../../src/adapters/detect.js';
 import { loadConfig } from '../../src/lib/config.js';
@@ -298,16 +300,17 @@ test('registry door targets: canonical agents, symlink claude', () => {
 });
 
 // --- MV-87: which adapter applies is a per-root fact, resolved in one place ---
+// --- MV-146: for the SDD, per root is the brain alone ---
 
-test('repos.<key>.sdd overrides the ecosystem, and `none` opts the repo out', async () => {
-  // The same shape and the same fallback `grapher` already had, so the config
-  // teaches one mechanism rather than two.
+test('repos.<key>.sdd takes only none, which opts the repo out of the change gate; a tool there is refused at load', async () => {
+  // The same shape `grapher` has, so the config teaches one mechanism; but the
+  // SDD runs in the brain alone, so the only value a code repo's key takes is
+  // `none`, and what it opts out of is the brain's SDD governing its code.
   const eco = mkdtempSync(join(tmpdir(), 'mvac-rootsdd-'));
   const brain = join(eco, 'brain');
   for (const d of ['brain', 'api', 'legacy', 'landing']) mkdirSync(join(eco, d), { recursive: true });
   mkdirSync(join(brain, '.multivac'), { recursive: true });
-  writeFileSync(
-    join(brain, '.multivac/config.yml'),
+  const config = (legacy: string[]): string =>
     [
       'doors: [agents]',
       'sdd: speckit',
@@ -316,56 +319,95 @@ test('repos.<key>.sdd overrides the ecosystem, and `none` opts the repo out', as
       '  api: ../api',
       '  legacy:',
       '    path: ../legacy',
-      '    sdd: opsx',
+      ...legacy,
       '  landing:',
       '    path: ../landing',
       '    sdd: none',
       '  gone: ../gone',
       '',
-    ].join('\n'),
-  );
-  const cfg = await loadConfig(brain);
-  assert.equal(cfg.repos.legacy.sdd, 'opsx', 'the key parses like every other repo key');
-  assert.equal(cfg.repos.landing.sdd, NO_ADAPTER);
-  assert.equal(cfg.repos.api.sdd, undefined, 'absent inherits, it does not mean none');
+    ].join('\n');
+  writeFileSync(join(brain, '.multivac/config.yml'), config(['    sdd: opsx']));
+  await assert.rejects(() => loadConfig(brain), /repos\.legacy\.sdd: opsx — REFUSED: the SDD lives in the brain alone/);
 
-  assert.equal(adapterFor(cfg, 'api', 'sdd'), 'speckit');
-  assert.equal(adapterFor(cfg, 'legacy', 'sdd'), 'opsx');
-  assert.equal(adapterFor(cfg, 'landing', 'sdd'), undefined, '`none` is out of scope');
+  writeFileSync(join(brain, '.multivac/config.yml'), config([]));
+  const cfg = await loadConfig(brain);
+  assert.equal(cfg.repos.landing.sdd, NO_ADAPTER, 'the key parses like every other repo key');
+  assert.equal(cfg.repos.api.sdd, undefined, 'absent is governed, it does not mean none');
+
+  // Where the SDD runs: the brain, and no code repo.
   assert.equal(adapterFor(cfg, 'brain', 'sdd'), 'speckit');
+  for (const k of ['api', 'legacy', 'landing']) assert.equal(adapterFor(cfg, k, 'sdd'), undefined, k);
+  // Whose rules govern the code: the brain's, except where the repo says none.
+  assert.equal(sddGoverning(cfg, 'api'), 'speckit');
+  assert.equal(sddGoverning(cfg, 'legacy'), 'speckit');
+  assert.equal(sddGoverning(cfg, 'landing'), undefined, '`none` is out of scope');
+  assert.equal(sddGoverning(cfg, 'brain'), 'speckit');
 
   const roots = await sddRoots(brain, cfg);
   // The brain first, then declared repos in config order — and only the ones
   // that are on disk: `gone` is declared and never cloned.
   assert.deepEqual(
-    roots.map((r) => [r.scope, r.sdd]),
+    roots.map((r) => [r.scope, r.key, r.sdd]),
     [
-      ['brain', 'speckit'],
-      ['api', 'speckit'],
-      ['legacy', 'opsx'],
-      ['landing', undefined],
+      ['brain', 'brain', 'speckit'],
+      ['api', 'api', undefined],
+      ['legacy', 'legacy', undefined],
+      ['landing', 'landing', undefined],
     ],
   );
   assert.ok(!roots.some((r) => r.scope === 'gone'), 'an absent repo is not a root');
 });
 
+test('the SDD runs in the brain alone — the handle, or the entry that is the brain under any key — MV-146', async () => {
+  const cfg = {
+    sdd: 'speckit',
+    grapher: 'graphify',
+    repos: {
+      core: { isBrain: true },
+      api: {},
+      web: { sdd: NO_ADAPTER },
+    },
+  };
+  assert.equal(adapterFor(cfg, 'brain', 'sdd'), 'speckit');
+  assert.equal(adapterFor(cfg, 'core', 'sdd'), 'speckit', 'the brain entry, by its own key');
+  assert.equal(adapterFor(cfg, 'api', 'sdd'), undefined, 'a code repo runs no SDD');
+  assert.equal(adapterFor(cfg, 'undeclared', 'sdd'), undefined);
+  // Graphers are unchanged: every root resolves its own.
+  assert.equal(adapterFor(cfg, 'api', 'grapher'), 'graphify');
+
+  // Governing: the brain's for every root but the one that says none.
+  for (const root of ['brain', 'core', 'api', 'undeclared']) assert.equal(sddGoverning(cfg, root), 'speckit', root);
+  assert.equal(sddGoverning(cfg, 'web'), undefined);
+  // The brain's own `none` is not an exemption of the brain: it is no SDD at all.
+  const off = { sdd: NO_ADAPTER, repos: { api: {} } };
+  assert.equal(sddGoverning(off, 'api'), undefined, 'nothing governs when the brain resolves none');
+  assert.equal(sddGoverning({ repos: { api: {} } }, 'api'), undefined, 'nor when nothing is declared');
+
+  // The brain entry's key names the worktree its proofs are looked for in.
+  const eco = mkdtempSync(join(tmpdir(), 'mvac-corekey-'));
+  mkdirSync(join(eco, 'brain/.multivac'), { recursive: true });
+  writeFileSync(join(eco, 'brain/.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nrepos:\n  core: .\n');
+  const loaded = await loadConfig(join(eco, 'brain'));
+  assert.deepEqual((await sddRoots(join(eco, 'brain'), loaded)).map((r) => [r.scope, r.key, r.sdd]), [['brain', 'core', 'speckit']]);
+});
+
 // --- MV-122: one resolver, both kinds, every root ---
 
-test('one resolver answers for both kinds: the repo first, the ecosystem otherwise', () => {
+test('one resolver answers for both kinds: a grapher per root, the SDD for the brain alone', () => {
   const cfg = {
     sdd: 'speckit',
     grapher: 'graphify',
     repos: {
       api: {},
-      web: { sdd: 'opsx', grapher: 'codegraph' },
+      web: { grapher: 'codegraph' },
     },
   };
-  for (const [kind, eco, own] of [['sdd', 'speckit', 'opsx'], ['grapher', 'graphify', 'codegraph']] as const) {
-    assert.equal(adapterFor(cfg, 'api', kind), eco, `${kind}: api inherits`);
-    assert.equal(adapterFor(cfg, 'web', kind), own, `${kind}: web declares its own`);
-    assert.equal(adapterFor(cfg, 'brain', kind), eco, `${kind}: a brain with no entry takes the ecosystem's`);
-    assert.equal(adapterFor(cfg, 'undeclared', kind), eco, `${kind}: an unknown key has no entry to read`);
-  }
+  assert.equal(adapterFor(cfg, 'api', 'grapher'), 'graphify', 'grapher: api inherits');
+  assert.equal(adapterFor(cfg, 'web', 'grapher'), 'codegraph', 'grapher: web declares its own');
+  assert.equal(adapterFor(cfg, 'brain', 'grapher'), 'graphify', "grapher: a brain with no entry takes the ecosystem's");
+  assert.equal(adapterFor(cfg, 'undeclared', 'grapher'), 'graphify', 'grapher: an unknown key has no entry to read');
+  assert.equal(adapterFor(cfg, 'brain', 'sdd'), 'speckit', "sdd: a brain with no entry takes the ecosystem's");
+  for (const root of ['api', 'web', 'undeclared']) assert.equal(adapterFor(cfg, root, 'sdd'), undefined, `sdd: ${root}`);
 });
 
 test("the brain root reads the declared entry whose path is the brain, for both kinds", () => {
@@ -391,32 +433,55 @@ test('`none` is no adapter for both kinds, at repo and at top level', () => {
     const topNone = { [kind]: NO_ADAPTER, repos: { api: {} } };
     assert.equal(adapterFor(topNone, 'api', kind), undefined, `${kind}: top-level none`);
     assert.equal(adapterFor(topNone, 'brain', kind), undefined);
-
-    // A top-level `none` is the ecosystem's answer, never the repo's.
-    const own = { [kind]: NO_ADAPTER, repos: { web: { [kind]: 'y' } } };
-    assert.equal(adapterFor(own, 'web', kind), 'y', `${kind}: the repo's own adapter under a top-level none`);
   }
+  // A top-level `none` is the ecosystem's answer, never the root's own: a
+  // grapher's in any repo, the SDD's in the brain entry alone.
+  const own = { grapher: NO_ADAPTER, repos: { web: { grapher: 'y' } } };
+  assert.equal(adapterFor(own, 'web', 'grapher'), 'y', "grapher: the repo's own adapter under a top-level none");
+  const brainOwn = { sdd: NO_ADAPTER, repos: { self: { isBrain: true, sdd: 'y' } } };
+  assert.equal(adapterFor(brainOwn, 'brain', 'sdd'), 'y', "sdd: the brain entry's own adapter under a top-level none");
+});
+
+/**
+ * An empty value. A grapher's names nothing at that root and stops the top
+ * level there, as it always did. An empty `sdd:` reads as unset (MV-146): a
+ * code repo's is not refused and its code stays governed, and the brain
+ * entry's defers to the top level.
+ */
+test('an empty grapher still names nothing at its root; an empty sdd reads as unset', () => {
+  const graph = { grapher: 'graphify', repos: { api: { grapher: '' }, self: { isBrain: true, grapher: '' } } };
+  assert.equal(adapterFor(graph, 'api', 'grapher'), undefined);
+  assert.equal(adapterFor(graph, 'brain', 'grapher'), undefined);
+  assert.equal(adapterFor({ grapher: '', repos: { api: {} } }, 'api', 'grapher'), undefined);
+
+  const sdd = { sdd: 'speckit', repos: { api: { sdd: '' }, self: { isBrain: true, sdd: '' } } };
+  assert.equal(adapterFor(sdd, 'brain', 'sdd'), 'speckit');
+  assert.equal(sddGoverning(sdd, 'api'), 'speckit');
+  assert.equal(sddDeclarationRefusal(sdd), null);
 });
 
 test('adapters by root: the brain first, absent repos included, `none` in no group', () => {
   const cfg = {
     sdd: 'speckit',
+    grapher: 'graphify',
     repos: {
       self: { isBrain: true },
       api: {},
-      web: { sdd: 'opsx' },
-      landing: { sdd: NO_ADAPTER },
+      web: { grapher: 'codegraph' },
+      landing: { grapher: NO_ADAPTER, sdd: NO_ADAPTER },
       gone: {},
     },
   };
   assert.deepEqual(
-    [...adaptersByRoot(cfg, 'sdd')],
+    [...adaptersByRoot(cfg, 'grapher')],
     [
-      ['speckit', ['brain', 'api', 'gone']],
-      ['opsx', ['web']],
+      ['graphify', ['brain', 'api', 'gone']],
+      ['codegraph', ['web']],
     ],
   );
-  assert.equal(adaptersByRoot(cfg, 'grapher').size, 0, 'nothing resolves a grapher');
+  // MV-146: the SDD's one group is the brain.
+  assert.deepEqual([...adaptersByRoot(cfg, 'sdd')], [['speckit', ['brain']]]);
+  assert.equal(adaptersByRoot({ ...cfg, grapher: undefined, repos: {} }, 'grapher').size, 0, 'nothing resolves a grapher');
   assert.equal(adaptersByRoot({ grapher: NO_ADAPTER, repos: {} }, 'grapher').size, 0);
 });
 

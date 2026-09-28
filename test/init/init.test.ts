@@ -348,7 +348,9 @@ test('init closes on session zero whole: repos first, sync, both flows with the 
   mkdirSync(join(withSdd, '.multivac'), { recursive: true });
   writeFileSync(join(withSdd, '.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nsdd_auto: false\nrepos: {}\n');
   const gated = await capture(() => init.run([], { cwd: withSdd }));
-  assert.match(gated.out, /^init: {3}4\. write each repo's project document from the human's principles — `multivac repos check` names every one not written$/m);
+  // MV-146: one document, the brain's — the SDD runs there alone.
+  assert.match(gated.out, /^init: {3}4\. write the brain's project document from the human's principles — `multivac repos check` names it while it is not written$/m);
+  assert.doesNotMatch(gated.out, /each repo's project document/);
   assert.match(gated.out, /^init: {3}5\. a human enacts each row/m);
 });
 

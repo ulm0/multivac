@@ -56,11 +56,13 @@ function eco(extra: string[] = []) {
 
 const head = (dir: string): string => execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 
-test('repos sync installs the SDD and builds the graph in a declared sibling — MV-129', async () => {
+test('repos sync installs the SDD in the brain and builds the graph in a declared sibling — MV-129', async () => {
   const e = eco(['  web:', '    path: ../acme-web', '    managed: false']);
   const { code, out } = await run(() => reposCommand.run(['sync'], { cwd: e.brain }), both.path);
   assert.equal(code, 0, out);
-  assert.ok(existsSync(join(e.repos.api, '.specify/integration.json')), 'spec-kit installed in api');
+  // MV-146: the SDD lives in the brain alone; the sibling gets its graph and no SDD.
+  assert.ok(existsSync(join(e.brain, '.specify/integration.json')), 'spec-kit installed in the brain');
+  assert.equal(existsSync(join(e.repos.api, '.specify')), false, 'and not in api');
   assert.ok(existsSync(join(e.repos.api, 'graphify-out/graph.json')), 'graph built in api');
   // read-only: nothing runs there
   assert.equal(existsSync(join(e.repos.web, '.specify')), false);
@@ -77,7 +79,8 @@ test('repos sync exits 1 over a missing tool and still equips the rest — MV-12
   const { code, out } = await run(() => reposCommand.run(['sync'], { cwd: e.brain }), onlySpecify.path);
   assert.equal(code, 1, out);
   assert.match(out, /graph graphify @ api: build skipped — `graphify` found on neither PATH nor api's node_modules\/\.bin/);
-  assert.ok(existsSync(join(e.repos.api, '.specify/integration.json')), 'the SDD still went in');
+  assert.ok(existsSync(join(e.brain, '.specify/integration.json')), 'the SDD still went in, in the brain');
+  assert.equal(existsSync(join(e.repos.api, '.specify')), false);
 });
 
 test('change new refuses the SDD its steps need, before writing anything — MV-129', async () => {
@@ -101,7 +104,8 @@ test('change new with the tools installed refuses nothing — MV-129', async () 
   const e = eco();
   const { code, out } = await run(() => change.run(['new', 'yes', 'Yes'], { cwd: e.brain }), both.path);
   assert.equal(code, 0, out);
-  assert.ok(existsSync(join(e.repos.api, '.specify/integration.json')));
+  assert.ok(existsSync(join(e.brain, '.specify/integration.json')));
+  assert.equal(existsSync(join(e.repos.api, '.specify')), false, 'the SDD reaches no code repo (MV-146)');
 });
 
 test('plan equips a repo it clones, and apply a repo it creates — MV-129', async () => {

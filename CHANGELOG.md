@@ -12,8 +12,79 @@ keeping a second one (MV-78).
 
 ## Unreleased
 
+One behaviour changed in a way that can newly refuse a brain that was loading.
+Read the first item before upgrading.
+
+**Changed — read before upgrading**
+
+- **The SDD lives in the brain alone (MV-146).** A top-level `sdd:` used to
+  reach every declared repo: `repos sync` installed the vendor into each code
+  repo (spec-kit: 30 files, about 240 KB), each code repo's door carried the
+  SDD's step block into every session, `change plan` refused until every code
+  repo had written its own constitution, and the first `apply` committed the
+  vendor's files onto each code repo's branch — while the specs of every change
+  were written in the brain. The SDD is now installed, gated and printed in the
+  brain only. A code repo's door carries one line saying where the brain's SDD
+  runs and where that repo's code belongs.
+  - **A config can now refuse to load.** A tool named in `repos.<key>.sdd`, a
+    top-level `sdd:` the brain's own entry contradicts, and an SDD name multivac
+    does not know make every command in the brain exit 2, naming the key and the
+    fix — except `doctor`, `doors` and `init`, which report it and exit 1, as they do
+    for any config they cannot load. `repos.<key>.sdd` takes only `none`, which exempts that repo's code from
+    the change gate. The config edit itself needs an open change (MV-97). A
+    consumer whose mounted brain carries such a config is not refused: `verify`
+    and `count` print the refusal as one line, which gates only under
+    `verify --strict`.
+  - **An SDD declared only on the brain==code entry now governs its siblings'
+    code.** The code gate asks which SDD governs a repo's code — the brain's,
+    unless the repo says `sdd: none` — so a sibling that resolved no SDD of its
+    own, and so was never gated, is gated now (MV-137).
+  - **Code repos equipped by an earlier release keep their install**, and the
+    carry committed `.specify/**` on their change branches. Nothing removes it
+    for you: while the brain declares an SDD, `doctor` names it as a leftover
+    with its removal, `repos check` appends it to that repo's line, and neither
+    fails over it. For spec-kit, `git rm -r .specify` and `specify integration
+    uninstall <key>` for its skills; for OpenSpec, delete `openspec/` and the
+    `openspec-*` skills and `opsx` commands its init wrote. Every known SDD's
+    install paths are not code in any repo, so the removal commits on any
+    branch.
+  - **A change open across the upgrade whose specs sit in a code repo** is
+    gated in the brain alone: `plan` and `apply` name the file they found in
+    the code repo and do not read it, and `close` refuses rather than pass over
+    a task list it cannot read. Move the slug's directory into the brain, or
+    pass `--no-sdd`.
+  - An older multivac keeps cascading the SDD against this config. Set
+    `requires:` to the release carrying this change to have it say so (MV-86).
+
 **Fixed**
 
+- **`change close` lands the brain's specs whatever the flags say (MV-146,
+  amending MV-144).** Under `--no-sdd` or `sdd_auto: false` the spec directory
+  was left untracked; after `openspec archive` the moved-from
+  `openspec/changes/<slug>/` and the merged `openspec/specs/<cap>/` were left out
+  of the commit and named dirty; `--abandon` dropped the specs entirely. Close
+  and abandon now stage the slug's directories, deletions included, and the main
+  specs an archive merged into.
+- **A slug inside a parent directory's name no longer owns the parent (MV-146,
+  amending MV-144).** Slug `spec` took `specs/` and slug `change` took
+  `openspec/changes/`, so the carry and `close` staged every change's
+  directory. Close stages the file an archive merged into, never its
+  capability's whole directory, so an unrelated edit there stays named dirty.
+- **Two open changes no longer share spec-kit's feature pointer (MV-146).**
+  `/speckit.plan` run for one change wrote into the other's directory, whose
+  gate then passed. `change plan` and `change apply` point
+  `.specify/feature.json` at the slug's directory and say so when it named
+  another.
+- **A brain==code entry keyed other than `brain` gates its close (MV-146).** Its
+  proofs were looked for in a worktree named after the root's scope, never its
+  key, so a task list carried onto the branch was never found and `close` passed
+  over an open task.
+- **A code repo's `specs/` is code (MV-146).** The SDD's artifact directories
+  were not code in every repo that resolved it; they are not code in the brain
+  alone now. Every known SDD's vendor state stays not code everywhere.
+- **Under `sdd_auto: false`, nothing claims a gate (MV-146).** The door, flow.md
+  and `doctor` said the lifecycle refuses without the step artifacts, which it
+  does not do with the automation off.
 - **The door reaches the harness, because the link goes in before the vendor
   does (MV-143).** A grapher's own project install writes the file a harness
   reads — graphify writes a regular `CLAUDE.md` for claude and a `GEMINI.md` for
@@ -35,9 +106,9 @@ keeping a second one (MV-78).
   `agents` platform never writes; `doctor` offered `--platform agents` to repair
   it, a command that cannot. Both now ask which declared platforms write that
   section into `AGENTS.md`, and say nothing when none do.
-- **A consumer door names the law at the path that repo can open (MV-140).** The
-  project-document line printed `.multivac/invariants.md` in repos where the law
-  lives under the mounted brain.
+- **A consumer door names the law at the path that repo can open (MV-140).** It
+  printed `.multivac/invariants.md` in repos where the law lives under the
+  mounted brain.
 
 - **What the SDD writes in the brain lands with the change (MV-144).** The commit
   `change close` prints staged the change file, the law, the graphs and the
@@ -66,6 +137,32 @@ keeping a second one (MV-78).
   lines you added there survive, and the file with them stays. graphify's own
   `cursor` platform, whose rules file repeats what the `## graphify` section
   already says, is skipped in a root that carries that section.
+- **Fresh spec-kit installs get skeleton templates (MV-146).** When the
+  lifecycle's scaffold installs spec-kit in the brain, multivac writes three
+  short skeletons to `.specify/templates/overrides/`, which every spec-kit
+  template resolver reads first, so the specify, plan and tasks steps read about
+  4 KB of template per change instead of about 18 KB. Only into an absent
+  directory, only from spec-kit 0.9.4 on, only where the installed core template
+  still carries every heading the skeleton keeps, and never again after that
+  run. `doctor` names an enabled preset those files outrank, with the override to
+  delete. An existing install gets none.
+- **The constitution's revisit says to commit no Sync Impact Report (MV-146).**
+  It said to prepend one, which spec-kit itself stopped saying at 1.0.6: from
+  there the report is review scratch, removed before the amended constitution is
+  committed. The amendment record is git and the change that amended it.
+- **The instruction to run the chain through is printed once per lifecycle point
+  (MV-146, amending MV-95)**, after the last step, instead of after every step.
+  The brain door ends each step with its proof path or `[ungateable]` and leaves
+  the reason to the lifecycle, `doctor` and flow.md.
+- **The change body cites its spec (MV-146).** `change new` says the why, the
+  design and the tasks go into the SDD's files. `change close` appends one line,
+  ``Specified in `<dir>/` (<sdd>).``, unless the body already names the
+  directory; nothing else in a body is written.
+- **`change plan` says where code goes (MV-146).** For a change naming a code
+  repo, it says the steps run from the brain checkout and code is written only
+  in the change's worktrees.
+- **`ecosystem.json`'s `sdd` on a repo node is the SDD that governs its code
+  (MV-146)** — the brain's, or null for a repo that says `sdd: none`.
 
 ## 0.14.1 — 2026-09-17
 

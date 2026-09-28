@@ -13,8 +13,8 @@
 // A step is never faked by shelling out something that looks like it.
 
 import { execFile } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname, join, relative } from 'node:path';
 import { promisify } from 'node:util';
 import type { Config } from '../types.js';
 import { CONFIG_PATH } from '../lib/config.js';
@@ -34,7 +34,6 @@ import {
   findBinary,
   missingRequired,
   pathExists,
-  readOnly,
   sddRoots,
   type SddRoot,
 } from './detect.js';
@@ -228,7 +227,8 @@ async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise
  * became the vendor's own state file (MV-124). A root that opted out
  * (`sdd: none`) is skipped as out of scope, never as deficient, and each root
  * is asked about the adapter that applies THERE — `sddRoots` resolves that per
- * root.
+ * root. Since MV-146 that is the brain alone: a code repo resolves no SDD, so
+ * the loop never scaffolds one.
  *
  * Never throws: a foreign tool's failure is never the lifecycle's failure, and
  * one root's broken checkout never decides the fate of the rest — the loop
@@ -271,6 +271,100 @@ export function scaffoldCommands(
   return { commands, gaps };
 }
 
+/**
+ * The version a vendor recorded in its own state file (spec-kit writes
+ * `version` into `.specify/integration.json`), or null. Read, never asked of
+ * the binary: the probe that just said "installed" read the same file.
+ */
+async function recordedVersion(rootDir: string, spec: AdapterSpec): Promise<string | null> {
+  if (spec.state.check !== 'json') return null;
+  for (const f of spec.state.files) {
+    try {
+      const v = (JSON.parse((await readText(join(rootDir, f))) ?? 'null') as { version?: unknown } | null)?.version;
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    } catch {
+      // Unparseable is no record, never a guess.
+    }
+  }
+  return null;
+}
+
+/**
+ * `a` at or above `b`, both read as their leading three numbers. The same
+ * grammar as `requires:` (version.ts): no range parser, and a pre-release
+ * suffix is ignored, never guessed at. Unparseable is below.
+ */
+function atLeast(a: string, b: string): boolean {
+  const n = (v: string): number[] | null => /^(\d+)\.(\d+)\.(\d+)/.exec(v)?.slice(1).map(Number) ?? null;
+  const x = n(a);
+  const y = n(b);
+  if (!x || !y) return false;
+  for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] > y[i];
+  return true;
+}
+
+/** `dir/{spec,plan}-template.md` for files sharing a suffix, `dir/name` for one. */
+function braced(dir: string, names: string[]): string {
+  if (names.length === 1) return `${dir}/${names[0]}`;
+  let suffix = names[0];
+  for (const n of names) while (!n.endsWith(suffix)) suffix = suffix.slice(1);
+  // Cut at a separator, so a shared letter is never pulled out of a name.
+  const cut = suffix.search(/[-.]/);
+  suffix = cut < 0 ? '' : suffix.slice(cut);
+  return `${dir}/{${names.map((n) => n.slice(0, n.length - suffix.length)).join(',')}}${suffix}`;
+}
+
+/**
+ * MV-146. The entry's skeleton, written where the tool resolves templates
+ * first — called by the scaffold alone, on the run whose probe turned the root
+ * from missing to installed, so a root installed before, by hand or by an
+ * older multivac, never gets one: writing there would shadow a core template
+ * the team may have edited, and re-create overrides a human deleted.
+ *
+ * Nothing is written when the directory is already there (a human's
+ * overrides), or when the vendor recorded no version or one below the floor
+ * that was measured to read the directory first — there an override would be
+ * a file nothing reads. Per body, a core template that lost a heading the body
+ * keeps is named and skipped: the step bodies fill those headings, and a body
+ * kept past the vendor's own would serve a structure it dropped. `wx`, so a
+ * file that appears meanwhile is never overwritten (MV-108: a path that
+ * exists is not ours).
+ */
+export async function writeSkeleton(rootDir: string, spec: AdapterSpec): Promise<{ written: string[]; skipped: string[] }> {
+  const sk = spec.scaffold?.skeleton;
+  if (!sk) return { written: [], skipped: [] };
+  if (await pathExists(join(rootDir, sk.dir))) return { written: [], skipped: [`${sk.dir} exists`] };
+  // `measured` names the tool and the version it was measured on.
+  const tool = sk.measured.replace(/ \S+$/, '');
+  const v = await recordedVersion(rootDir, spec);
+  if (v === null) return { written: [], skipped: ['no recorded version'] };
+  if (!atLeast(v, sk.floor)) return { written: [], skipped: [`${tool} ${v} is below ${sk.floor}`] };
+  const written: string[] = [];
+  const skipped: string[] = [];
+  for (const [file, body] of Object.entries(sk.files)) {
+    // The core template sits one level above the directory that shadows it.
+    const core = await readText(join(rootDir, dirname(sk.dir), file));
+    if (core === null) {
+      skipped.push(`${file}: the installed template is missing`);
+      continue;
+    }
+    const lines = new Set(core.split('\n').map((l) => l.trimEnd()));
+    const lost = (sk.keeps[file] ?? []).find((h) => !lines.has(`## ${h}`));
+    if (lost !== undefined) {
+      skipped.push(`${file}: the installed template has no "## ${lost}"`);
+      continue;
+    }
+    try {
+      await mkdir(join(rootDir, sk.dir), { recursive: true });
+      await writeFile(join(rootDir, sk.dir, file), body, { flag: 'wx' });
+      written.push(file);
+    } catch (e) {
+      skipped.push(`${file}: ${(e as NodeJS.ErrnoException).code ?? String(e)}`);
+    }
+  }
+  return { written, skipped };
+}
+
 export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): Promise<void> {
   if (!cfg.sddAuto || noSdd) return;
   const roots = await sddRoots(brain, cfg);
@@ -310,10 +404,13 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
     const { commands, gaps } = scaffoldCommands(sc, cfg.doors);
     for (const g of gaps) warn(`sdd ${root.sdd}: ${root.scope}: ${g} — install it there yourself if you need it`);
     if (commands.length === 0) continue;
-    // Printed BEFORE it runs: it writes the vendor's files into the tree.
+    // Printed BEFORE it runs: it writes the vendor's files into the tree, and
+    // then multivac writes the skeleton the entry records (MV-146).
+    const sk = sc.skeleton;
     say(
       `sdd ${root.sdd}: ${dir} is missing in ${root.scope} — running the tool's own init ` +
-        `there: \`${commands.join(' && ')}\``,
+        `there: \`${commands.join(' && ')}\`` +
+        (sk ? `, then multivac writes its skeleton templates to ${sk.dir}` : ''),
     );
     let verdict: Verdict = { kind: 'ok' };
     for (const cmd of commands) {
@@ -331,7 +428,15 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
     // the quiet lie this whole module is built to avoid.
     const after = await initState(spec, root.dir);
     if (after.state === 'installed') {
-      say(`sdd ${root.sdd}: scaffolded — ${root.scope}:${dir} is there now; its steps are runnable`);
+      // Only here: missing before, installed now. Never over a root that was
+      // already installed, and never after a partial or failed run.
+      let skel = '';
+      if (sk) {
+        const { written, skipped } = await writeSkeleton(root.dir, spec);
+        if (written.length > 0) skel += `; skeleton: ${braced(sk.dir, written)}`;
+        if (skipped.length > 0) skel += `; skeleton skipped: ${skipped.join('; ')}`;
+      }
+      say(`sdd ${root.sdd}: scaffolded — ${root.scope}:${dir} is there now; its steps are runnable${skel}`);
       continue;
     }
     warn(
@@ -354,13 +459,45 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
  * looked for in the checkout first and, when none is there, in the change's own
  * worktree for that root — the root handed back names where it was found, so
  * whatever reads the file reads it there.
+ *
+ * MV-146: the worktree is named by the root's KEY, not its scope. A brain==code
+ * entry keyed `core` has scope `brain` and its worktree at `…/<slug>/core`, so
+ * joining the scope looked in a directory that never exists, found no task
+ * list, and let `close` pass over an open task.
  */
 async function slugHits(brain: string, root: SddRoot, slug: string, want: string): Promise<{ root: SddRoot; hits: string[] }> {
   const hits = await artifactHit(root.dir, want);
   if (hits.length > 0) return { root, hits };
-  const wt = join(brain, '.multivac', 'worktrees', slug, root.scope);
+  const wt = join(brain, '.multivac', 'worktrees', slug, root.key);
   if (!(await pathExists(wt))) return { root, hits };
   return { root: { ...root, dir: wt }, hits: await artifactHit(wt, want) };
+}
+
+/**
+ * MV-146. A proof written where the SDD does not run, named and never read.
+ * The SDD lives in the brain, so a spec an agent wrote into a code repo by
+ * habit proves nothing — but a refusal that only says "missing" sends it
+ * looking in the wrong checkout again. Asked only once a proof or a task
+ * ledger is missing from the brain, over each code repo on disk and its change
+ * worktree.
+ *
+ * Its own loop, not another `slugHits`: that read hands back a root whose file
+ * the gate then reads and judges, and nothing here is judged. No read-only
+ * guard either: listing a directory is no write, and the line only says where
+ * a file is — MV-125 carries that as a note.
+ */
+async function strayLines(brain: string, name: string, others: SddRoot[], slug: string, want: string): Promise<string[]> {
+  const lines: string[] = [];
+  for (const r of others) {
+    const wt = join(brain, '.multivac', 'worktrees', slug, r.key);
+    for (const hit of await artifactHit(r.dir, want)) {
+      lines.push(`sdd ${name}:   ${r.scope}: ${hit} — not read; the SDD runs only in the brain`);
+    }
+    for (const hit of await artifactHit(wt, want)) {
+      lines.push(`sdd ${name}:   ${r.scope}: ${relative(brain, join(wt, hit))} — not read; the SDD runs only in the brain`);
+    }
+  }
+  return lines;
 }
 
 /**
@@ -374,6 +511,12 @@ async function slugHits(brain: string, root: SddRoot, slug: string, want: string
  * another tool's artifacts, or by nothing when the ecosystem declared none,
  * and a root that opted out still proved a step. A point passes only when
  * every adapter passes; with one adapter this is the single pass it always was.
+ *
+ * MV-146: the brain is the one root that resolves an SDD, so there is one
+ * adapter and one root to judge, and the brain is never read-only (MV-125):
+ * the branch that said every root resolving the adapter was read-only is gone
+ * with the roots it named. A code repo is never judged — a proof found there
+ * is only named.
  */
 export async function sddGate(
   brain: string,
@@ -389,25 +532,11 @@ export async function sddGate(
   const present = await sddRoots(brain, cfg);
   const lines: string[] = [];
   let ok = true;
-  for (const [name, all] of adaptersByRoot(cfg, 'sdd')) {
-    // MV-125: a read-only root is neither searched nor named, on disk or not —
-    // every fix a refusal there could print is a write multivac may not make.
-    const ro: string[] = [];
-    const declared: string[] = [];
-    for (const key of all) {
-      const on = present.find((r) => r.scope === key);
-      const why = on ? on.readOnly : await readOnly(cfg, key, resolve(brain, cfg.repos[key].path));
-      if (why) ro.push(`${key} (${why})`);
-      else declared.push(key);
-    }
-    if (declared.length === 0) {
-      lines.push(
-        `sdd ${name}: \`change ${gate} ${slug}\` is not gated — every root that resolves ${name} is read-only: ${ro.join(', ')}`,
-      );
-      continue;
-    }
+  for (const [name, declared] of adaptersByRoot(cfg, 'sdd')) {
     const roots = present.filter((r) => declared.includes(r.scope));
-    const one = await judgeSdd(brain, name, roots, declared, gate, slug);
+    // MV-146: every other root on disk is a code repo, where this SDD never runs.
+    const others = present.filter((r) => r.scope !== 'brain');
+    const one = await judgeSdd(brain, name, roots, declared, gate, slug, others);
     ok = ok && one.ok;
     lines.push(...one.lines);
   }
@@ -419,7 +548,10 @@ export async function sddGate(
   return { ok, lines };
 }
 
-/** One adapter's verdict at `gate`, judged only in the roots that resolve to it. */
+/**
+ * One adapter's verdict at `gate`, judged only in the roots that resolve to it.
+ * `others` are never judged: a missing proof lists what they hold (MV-146).
+ */
 async function judgeSdd(
   brain: string,
   name: string,
@@ -427,6 +559,7 @@ async function judgeSdd(
   declared: string[],
   gate: GatePoint,
   slug: string,
+  others: SddRoot[],
 ): Promise<GateResult> {
   const spec = sddSpec(name);
   if (!spec) {
@@ -506,6 +639,7 @@ async function judgeSdd(
       lines.push(
         `sdd ${name}: \`change ${gate} ${slug}\` refused — ${want} is missing — looked in ${where}`,
       );
+      lines.push(...(await strayLines(brain, name, others, slug, want)));
       lines.push(`  ${withSlug(step.run, slug)}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
@@ -600,15 +734,36 @@ async function judgeSdd(
     // No ledger: the artifact gate above already refuses if this step was
     // supposed to leave one. Absence here is not evidence of completion, so
     // it is neither pass nor fail — it is simply nothing to read.
-    if (!hit) continue;
+    //
+    // MV-146, unless the ledger sits in a code repo: a change open across the
+    // upgrade wrote it there, as the earlier release said to. It is named and
+    // never read, and the gate refuses rather than pass over tasks it cannot
+    // see (MV-90) — spec-kit's ledger is its whole close gate. Said once: when
+    // the artifact loop already refused, it named the strays of that step.
+    if (!hit) {
+      const strays = ok ? await strayLines(brain, name, others, slug, want) : [];
+      if (strays.length === 0) continue;
+      ok = false;
+      lines.push(
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${want}, the task ledger it reads, is not in ${where}; the one found outside the brain is not read`,
+      );
+      lines.push(...strays);
+      lines.push(`  move the slug's directory into the brain and finish its tasks there, then re-run: multivac change ${gate} ${slug}`);
+      continue;
+    }
     const open = await openItems(join(hit.root.dir, hit.rel), led.pattern);
+    // Principle II: name the file the ledger was READ from. After a carry it is
+    // the change's worktree, not the checkout the root's name suggests.
+    const read = hit.root.dir.startsWith(join(brain, '.multivac', 'worktrees'))
+      ? relative(brain, join(hit.root.dir, hit.rel))
+      : hit.rel;
     if (open.length === 0) {
-      lines.push(`sdd ${name}: ${hit.root.scope}: ${hit.rel} — nothing left open`);
+      lines.push(`sdd ${name}: ${hit.root.scope}: ${read} — nothing left open`);
       continue;
     }
     ok = false;
     lines.push(
-      `sdd ${name}: \`change ${gate} ${slug}\` refused — ${hit.root.scope}:${hit.rel} has ${open.length} open item(s) — ${led.why}`,
+      `sdd ${name}: \`change ${gate} ${slug}\` refused — ${hit.root.scope}:${read} has ${open.length} open item(s) — ${led.why}`,
     );
     for (const l of open.slice(0, 3)) lines.push(`    ${l.trim()}`);
     if (open.length > 3) lines.push(`    …and ${open.length - 3} more`);
@@ -701,22 +856,17 @@ export function sddInstructions(
   // MV-122: every adapter a DECLARED root resolves, not the ecosystem's alone.
   // With more than one, each line names the roots it is for, doctor's `@` form.
   const groups = adaptersByRoot(cfg, 'sdd');
-  return [...groups].flatMap(([name, roots]) =>
-    stepLines(groups.size > 1 ? `sdd ${name} @ ${roots.join(', ')}` : `sdd ${name}`, name, at, slug),
-  );
-}
-
-/** One adapter's lines for this lifecycle point, each under `tag`. */
-function stepLines(tag: string, name: string, at: LifecyclePoint, slug: string): string[] {
-  const spec = sddSpec(name);
-  if (!spec) {
-    return [
-      `${tag}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`,
-    ];
-  }
-  const steps = stepsAt(spec, at);
-  if (steps.length === 0) {
-    return [`${tag}: ${at} — this tool has no agent-run ${at} step; nothing to run`];
+  const lines: string[] = [];
+  let after = -1;
+  let tag = '';
+  for (const [name, roots] of groups) {
+    const t = groups.size > 1 ? `sdd ${name} @ ${roots.join(', ')}` : `sdd ${name}`;
+    const one = stepLines(t, name, at, slug);
+    lines.push(...one.lines);
+    if (one.ran) {
+      after = lines.length;
+      tag = t;
+    }
   }
   // MV-95: the chain runs unattended. The lifecycle already REFUSES to advance
   // without each step's artifact, so the sequence was never a choice — asking
@@ -727,9 +877,36 @@ function stepLines(tag: string, name: string, at: LifecyclePoint, slug: string):
   // "A question the tool itself raises" is not "may I continue". An agent that
   // cannot tell them apart will either never stop or always stop, so the line
   // names the distinction rather than leaving it to be inferred.
-  return steps.flatMap((s) => [
-    `${tag}: ${withSlug(s.run, slug)} [${proofOf(s, slug)}]`,
-    `${tag}:   run the chain through without asking to continue — stop only for a ` +
-      `question the tool itself raises (\`--no-sdd\` for one run, \`sdd_auto: false\` to stop printing these)`,
-  ]);
+  //
+  // MV-146: once per point, after its last step — the chain is the point's
+  // steps together, and the same line after every step was seven copies per
+  // spec-kit change. None when no step printed: there is no chain to run.
+  if (after >= 0) {
+    lines.splice(
+      after,
+      0,
+      `${tag}: run the chain through without asking to continue — stop only for a ` +
+        `question the tool itself raises (\`--no-sdd\` for one run, \`sdd_auto: false\` to stop printing these)`,
+    );
+  }
+  return lines;
+}
+
+/**
+ * One adapter's lines for this lifecycle point, each under `tag`, and whether
+ * any of them is a step to run — the instruction after them is the caller's.
+ */
+function stepLines(tag: string, name: string, at: LifecyclePoint, slug: string): { lines: string[]; ran: boolean } {
+  const spec = sddSpec(name);
+  if (!spec) {
+    return {
+      lines: [`${tag}: unknown adapter — known: ${sddNames.join(', ')}; fix sdd: in ${CONFIG_PATH}`],
+      ran: false,
+    };
+  }
+  const steps = stepsAt(spec, at);
+  if (steps.length === 0) {
+    return { lines: [`${tag}: ${at} — this tool has no agent-run ${at} step; nothing to run`], ran: false };
+  }
+  return { lines: steps.map((s) => `${tag}: ${withSlug(s.run, slug)} [${proofOf(s, slug)}]`), ran: true };
 }

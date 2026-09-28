@@ -20,7 +20,7 @@ import { gitFailure, gitlinkInIndex, inHead, lsTreeGitlink, submoduleAdd } from 
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
-import { cloneFix, cloneState, projectDocVerdict } from '../lib/repo-state.js';
+import { cloneFix, cloneState, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
 import { adapterFor } from '../adapters/detect.js';
 import { grapherSpec, sddSpec } from '../adapters/registry.js';
 import { initState } from '../lib/init-state.js';
@@ -279,6 +279,8 @@ export async function reposCheck(brainDir: string): Promise<{ lines: string[]; e
     }
     const facts: string[] = [];
     const fails: string[] = [];
+    // MV-146: the SDD runs in the brain alone, so its install and its project
+    // document are asked of the brain's entry and of no code repo.
     const sdd = adapterFor(cfg, key, 'sdd');
     const sddS = sdd ? sddSpec(sdd) : null;
     if (sdd && sddS) {
@@ -310,11 +312,19 @@ export async function reposCheck(brainDir: string): Promise<{ lines: string[]; e
     } else if (grapher) {
       facts.push(`${grapher} unverified, not checked`);
     }
+    // MV-146: a code repo still holding an install from an earlier release,
+    // said on its line and never counted: nothing reads it, and `doctor`
+    // names the removal. Only where the brain resolves an SDD — with none, a
+    // code repo's own install is that team's, and the line is what it was.
+    const left =
+      e.isBrain || adapterFor(cfg, 'brain', 'sdd') === undefined
+        ? ''
+        : (await leftoverSdds(dir)).map((l) => `; leftover ${l.sdd} install (${l.tracked ? 'tracked' : 'untracked'})`).join('');
     if (fails.length > 0) {
       exit = 1;
-      lines.push(`${head}FAIL ${[...fails, ...facts].join(' · ')}`);
+      lines.push(`${head}FAIL ${[...fails, ...facts].join(' · ')}${left}`);
     } else {
-      lines.push(`${head}ok   cloned${facts.length ? ` · ${facts.join(' · ')}` : ''}`);
+      lines.push(`${head}ok   cloned${facts.length ? ` · ${facts.join(' · ')}` : ''}${left}`);
     }
   }
   return { lines, exit };

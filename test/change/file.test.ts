@@ -10,6 +10,7 @@ import {
   serializeChange,
 } from '../../src/change/file.js';
 import { repointLawLinks } from '../../src/change/file.js';
+import { citeLine, citeSpec } from '../../src/change/cite.js';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -201,4 +202,44 @@ test('repointing a brain with no law file is a no-op, never a crash', async () =
   const brain = mkdtempSync(join(tmpdir(), 'mvac-repoint-none-'));
   assert.equal(await repointLawLinks(brain, 'whatever'), 0);
   rmSync(brain, { recursive: true, force: true });
+});
+
+// --- MV-146: the body cites its spec, and nothing else in it is written ---
+
+test('citeSpec appends one line after the untrimmed body, and the body is a byte prefix of what is archived', () => {
+  for (const body of ['# Points expire\n\nWhy, in a sentence.\n', '# No newline at the end', '# Trailing blank lines\n\n\n', '']) {
+    const cited = citeSpec(body, 'specs/001-points-expire', 'speckit');
+    assert.ok(cited.startsWith(body), JSON.stringify(body));
+    assert.equal(cited.slice(body.length), '\nSpecified in `specs/001-points-expire/` (speckit).\n');
+    // It survives the file: serialized, parsed, the same bytes.
+    assert.equal(parseChange(serializeChange(sample, cited), 'test').body, cited);
+    // And a second close writes it once.
+    assert.equal(citeSpec(cited, 'specs/001-points-expire', 'speckit'), cited);
+  }
+});
+
+test('citeSpec leaves a body that already names the directory untouched', () => {
+  for (const body of [
+    '# Points expire\n\nSpec, plan and tasks: specs/001-points-expire/.\n',
+    '# Points expire\n\nSee `specs/001-points-expire/spec.md`.\n',
+  ]) {
+    assert.equal(citeSpec(body, 'specs/001-points-expire', 'speckit'), body);
+  }
+  // A name that only starts the same is not the directory.
+  const other = '# Points\n\nSee specs/001-points-expire-later/.\n';
+  assert.notEqual(citeSpec(other, 'specs/001-points-expire', 'speckit'), other);
+  // opsx cites where its archive put the change.
+  assert.match(
+    citeSpec('# Bill weekly\n', 'openspec/changes/archive/2026-09-28-bill-weekly', 'opsx'),
+    /\nSpecified in `openspec\/changes\/archive\/2026-09-28-bill-weekly\/` \(opsx\)\.\n$/,
+  );
+});
+
+test('the scaffold says close appends only the line citing the directory', () => {
+  const { body } = scaffoldChange('foo', 'Foo title');
+  assert.match(body, /below the closing ---, is yours: with an SDD declared, `change close` only\nappends the line citing its directory\.\n$/);
+  // What `change new` prints about the body carries no instruction to continue:
+  // that belongs to the steps, once (MV-95).
+  assert.match(citeLine('speckit'), /^sdd speckit: the why, the design and the tasks go into its files — .*`change close` cites the directory; do not cite it yourself$/);
+  assert.doesNotMatch(citeLine('speckit'), /continue|without asking/);
 });

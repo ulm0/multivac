@@ -6,22 +6,32 @@
 // behind stopped `git merge` until it was deleted by hand. An SDD that `equip`
 // installed was left the same way, on no branch at all.
 
-import { copyFile, mkdir, rm, rmdir, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { copyFile, mkdir, readdir, readFile, rm, rmdir, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, sep } from 'node:path';
 import picomatch from 'picomatch';
 import type { Config } from '../types.js';
 import { adapterFor, artifactHit, readOnly } from '../adapters/detect.js';
 import { sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { withSlug } from '../adapters/sdd.js';
 import { run as git } from '../lib/git.js';
+import { initState } from '../lib/init-state.js';
 
 /** What `change apply` will carry from one repo, or why it cannot. */
 export interface CarryPlan {
   paths: string[];
   refusals: string[];
-  /** The change's feature directory, for spec-kit's per-checkout pointer. */
+  /** The change's feature directory, for the tool's per-checkout pointer (MV-146). */
   featureDir?: string;
 }
+
+/**
+ * The index of the path segment that carries the slug, read off the TEMPLATE.
+ * Read off the substituted path it was the first segment CONTAINING the slug,
+ * so slug `spec` found `specs`, `change` found `changes`, and `open` found
+ * `openspec`: the pointer then named the root of every feature directory, and
+ * close cited it and staged other changes' work in progress (MV-146).
+ */
+const slugSegment = (artifact: string): number => artifact.split('/').findIndex((p) => p.includes('<slug>'));
 
 /**
  * MV-144. The artifact directories this slug owns in one root: the part of each
@@ -42,8 +52,7 @@ export async function slugArtifactDirs(
   for (const step of spec.steps ?? []) {
     if (!step.artifact?.includes('<slug>')) continue;
     const rel = withSlug(step.artifact, slug);
-    const at = rel.split('/').findIndex((p) => p.includes(slug));
-    if (at < 0) continue;
+    const at = slugSegment(step.artifact);
     for (const hit of await artifactHit(repoDir, rel)) {
       dirs.add(hit.split('/').slice(0, at + 1).join('/'));
     }
@@ -106,8 +115,9 @@ export async function planCarry(repoDir: string, cfg: Config, key: string, slug:
  * Copy `plan.paths` from `repoDir` into `wt`, commit them on the branch there,
  * and remove the originals — so the files land by merge and the checkout no
  * longer holds an untracked copy that stops it. In place (`wt === repoDir`)
- * they are committed where they are. Then spec-kit's per-checkout feature
- * pointer, which `.specify/scripts/bash/common.sh` reads, is written in `wt`.
+ * they are committed where they are. Then the tool's per-checkout feature
+ * pointer — spec-kit's, which `.specify/scripts/bash/common.sh` reads — names
+ * the change's directory in `wt`.
  */
 export async function doCarry(repoDir: string, wt: string, slug: string, plan: CarryPlan, sdd: string): Promise<number> {
   if (plan.paths.length > 0) {
@@ -127,9 +137,109 @@ export async function doCarry(repoDir: string, wt: string, slug: string, plan: C
       for (const d of parents.sort((a, b) => b.length - a.length)) await rmdir(join(repoDir, d)).catch(() => {});
     }
   }
-  if (plan.featureDir && sdd === 'speckit') {
-    await mkdir(join(wt, '.specify'), { recursive: true });
-    await writeFile(join(wt, '.specify/feature.json'), `${JSON.stringify({ feature_directory: plan.featureDir }, null, 2)}\n`);
-  }
+  const spec = sddSpec(sdd);
+  if (plan.featureDir && spec) await pointFeature(wt, spec, plan.featureDir);
   return plan.paths.length;
+}
+
+/**
+ * MV-146. Point the tool's per-checkout feature pointer in `dir` at
+ * `featureDir`, and return what it named before, or null. spec-kit's steps
+ * resolve the directory they write into from `.specify/feature.json`, and two
+ * changes open in one checkout share that file: `/speckit.plan` run for one
+ * wrote into the other's directory, whose gate then passed.
+ *
+ * Read off the registry, never a tool name: a spec with no pointer is a no-op.
+ * Nothing is written where the tool's state probe does not say installed
+ * (MV-124): no script there reads the pointer, and the file alone keeps a
+ * directory the probe then reads as a partial install, which the scaffold
+ * never runs over — as happened when the carry moved every other file of an
+ * untracked install onto a change's branch. The file's other keys are kept.
+ */
+export async function pointFeature(dir: string, spec: AdapterSpec, featureDir: string): Promise<string | null> {
+  if (!spec.pointer) return null;
+  if ((await initState(spec, dir)).state !== 'installed') return null;
+  const file = join(dir, spec.pointer.path);
+  let held: Record<string, unknown> = {};
+  try {
+    const parsed: unknown = JSON.parse(await readFile(file, 'utf8'));
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) held = parsed as Record<string, unknown>;
+  } catch {
+    /* absent or unreadable: the pointer is written fresh */
+  }
+  const was = held[spec.pointer.key];
+  const prev = typeof was === 'string' ? was : null;
+  if (prev === featureDir) return prev;
+  await writeFile(file, `${JSON.stringify({ ...held, [spec.pointer.key]: featureDir }, null, 2)}\n`);
+  return prev;
+}
+
+/** The key of the entry that is the brain, `brain` when the brain is no declared entry. */
+const brainKey = (cfg: Config): string => Object.entries(cfg.repos).find(([, e]) => e.isBrain)?.[0] ?? 'brain';
+
+/**
+ * MV-146. The slug's feature directory and the root holding it: the brain
+ * checkout first, then the change's worktree named by the brain entry's key —
+ * where the carry moved it in brain==code, until the landed branch reaches the
+ * checkout. Null when neither holds one.
+ */
+export async function featureHome(
+  brain: string,
+  cfg: Config,
+  spec: AdapterSpec,
+  slug: string,
+): Promise<{ root: string; dir: string } | null> {
+  for (const root of [brain, join(brain, '.multivac', 'worktrees', slug, brainKey(cfg))]) {
+    const [dir] = await slugArtifactDirs(root, spec, slug);
+    if (dir !== undefined) return { root, dir };
+  }
+  return null;
+}
+
+/**
+ * MV-146. Every directory `change close` stages for this slug in the brain,
+ * whatever `sdd_auto` or `--no-sdd` say: the slug's artifact directories on
+ * disk (MV-144's one derivation), each slug-literal one git reports a
+ * deletion under — an archive moved it, and the deletion lands with the
+ * addition that replaced it — and, for a step that records a merge, each main
+ * spec file it merged into. Measured on openspec 1.13.2: after `openspec
+ * archive`, close left the moved-from `openspec/changes/<slug>/` and the merged
+ * `openspec/specs/<cap>/spec.md` out of its commit and named them dirty.
+ */
+export async function closeOwnedDirs(brainDir: string, spec: AdapterSpec, slug: string): Promise<string[]> {
+  const dirs = new Set(await slugArtifactDirs(brainDir, spec, slug));
+  const literal = new Set<string>();
+  for (const step of spec.steps ?? []) {
+    if (!step.artifact?.includes('<slug>')) continue;
+    const parts = withSlug(step.artifact, slug).split('/');
+    const top = parts.slice(0, slugSegment(step.artifact) + 1);
+    if (!top.some((p) => p.includes('<n>'))) literal.add(top.join('/'));
+    if (!step.merges) continue;
+    // Where the step archived to, then each file it holds under `from`, at the
+    // same place under `into`: the main spec it merged into. The file, never
+    // its capability's directory — the archive merges `<cap>/spec.md`, and a
+    // human's edit beside it in `<into>/<cap>/` is named dirty, never staged
+    // (MV-46).
+    for (const hit of await artifactHit(brainDir, top.join('/'))) {
+      const from = join(brainDir, hit, step.merges.from);
+      const held = await readdir(from, { recursive: true, withFileTypes: true }).catch(() => []);
+      for (const f of held) {
+        if (f.isFile()) dirs.add(`${step.merges.into}/${relative(from, join(f.parentPath, f.name)).split(sep).join('/')}`);
+      }
+    }
+  }
+  const gone = [...literal].filter((d) => !dirs.has(d));
+  if (gone.length > 0) {
+    const raw = await git(brainDir, ['status', '--porcelain=v1', '-z', '--', ...gone]).catch(() => '');
+    const entries = raw.split('\0');
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      if (entry.length < 4) continue;
+      // A rename's second NUL field is its old path, not an entry of its own.
+      if (entry[0] === 'R' || entry[0] === 'C') i++;
+      if (!entry.slice(0, 2).includes('D')) continue;
+      for (const d of gone) if (entry.slice(3).startsWith(`${d}/`)) dirs.add(d);
+    }
+  }
+  return [...dirs];
 }

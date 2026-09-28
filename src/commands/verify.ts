@@ -16,6 +16,7 @@ import {
   ECOSYSTEM_PATH,
   DEFAULT_CHANNEL,
   LAW_PATH,
+  type LoadOpts,
 } from '../lib/config.js';
 import { currentBranch, lastFetchAge, lsTreeGitlink, normUrl, revParse, run as git, unmergedFiles } from '../lib/git.js';
 import { samePath } from '../lib/paths.js';
@@ -528,6 +529,27 @@ export interface EvaluateOpts {
    * only caller; no CLI flag exposes it.
    */
   atChannel?: boolean;
+  /**
+   * MV-146. How the config load answers an SDD declaration that resolves in no
+   * root: `report` for a consumer reading its MOUNTED brain, the same answer
+   * `runVerify` gave its own load of that config. Both loads take it, or the
+   * refusal reported at the first still exits 2 through this one.
+   */
+  sddDeclaration?: LoadOpts['sddDeclaration'];
+}
+
+/**
+ * MV-146. The line a consumer prints when its mounted brain's config declares
+ * an SDD that resolves in no root. The mount can lag the brain and the config
+ * is its owner's to fix, so it gates only under --strict, as the code line does
+ * (MV-137); `count` prints it too.
+ */
+export function mountedRefusalLine(refusal: string, strict: boolean): { text: string; gates: boolean } {
+  const label = 'sdd'.padEnd(9);
+  return {
+    text: `  ${strict ? red(label) : dim(label)} ${refusal} — in the mounted brain's config; its owner fixes it${strict ? ' · blocking under --strict' : ''}`,
+    gates: strict,
+  };
 }
 
 /** Which bytes one repo contributed to this run, and how to say it out loud. */
@@ -844,7 +866,7 @@ interface Evaluated {
 
 /** Config load + anchor collection + evaluation + exit matrix, no printing. */
 async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evaluated> {
-  const cfg = await loadConfig(brainDir);
+  const cfg = await loadConfig(brainDir, { sddDeclaration: opts.sddDeclaration });
   const collected = await collectBrainAnchors(brainDir);
   const diagnostics = collected.diagnostics;
   let anchors = collected.anchors;
@@ -1035,7 +1057,9 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
       const mount = findMount(startDir);
       if (mount) {
         lagging = true;
-        const cfg = await loadConfig(mount);
+        // MV-146: a mounted brain's SDD refusal is reported, not thrown — here
+        // and in `evaluateCore`'s own load below.
+        const cfg = await loadConfig(mount, { sddDeclaration: 'report' });
         scope = { repoKey: await resolveRepoKey(cfg, mount, startDir, repoFlag), dir: startDir };
         brainDir = mount;
       } else {
@@ -1078,7 +1102,13 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
     }
     // Consumer mode never rewrites moved globs: the mount is usually a pinned
     // submodule — the heal belongs in the brain checkout.
-    ev = await evaluateCore(brainDir, { strict, write: !check && !scope, scope, worktree });
+    ev = await evaluateCore(brainDir, {
+      strict,
+      write: !check && !scope,
+      scope,
+      worktree,
+      ...(lagging ? { sddDeclaration: 'report' as const } : {}),
+    });
   } catch (e) {
     if (e instanceof ConfigError) {
       warn(e.message);
@@ -1208,11 +1238,13 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
     range,
   });
   if (code) say(code.text);
+  const sddRefused = lagging && cfg.sddRefusal !== undefined ? mountedRefusalLine(cfg.sddRefusal, strict) : null;
+  if (sddRefused) say(sddRefused.text);
   // MV-107, answered by the same index-vs-HEAD read the enactment check just
   // made, so the law is compared once and reported twice rather than read twice.
   if (lawGone) say(lawGone.text);
   const finalExit: 0 | 1 =
-    staleBlocking > 0 || enact.gates || conf?.gates === true || lawGone?.gates === true || code?.gates === true
+    staleBlocking > 0 || enact.gates || conf?.gates === true || lawGone?.gates === true || code?.gates === true || sddRefused?.gates === true
       ? 1
       : exitCode;
   // The summary counts THE predicate — the same `gating` set the per-leg lines
@@ -1220,7 +1252,7 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   // different arguments. `blockingBroken` answers a different question (blocking
   // modes alone, --strict ignored) and printing it here made `--strict` runs say
   // "0 blocking broken · exit 1" under a line marked blocking.
-  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0) + (conf?.gates ? 1 : 0) + (lawGone?.gates ? 1 : 0) + (code?.gates ? 1 : 0);
+  const blocking = gating.size + staleBlocking + finishedBlocking + (enact.gates ? 1 : 0) + (conf?.gates ? 1 : 0) + (lawGone?.gates ? 1 : 0) + (code?.gates ? 1 : 0) + (sddRefused?.gates ? 1 : 0);
   // A pending claim is a real failure a change file is holding back: exit 0 is
   // the grace, silence is not. Name what is masked and who masks it.
   const masking = [

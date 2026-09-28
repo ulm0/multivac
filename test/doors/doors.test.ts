@@ -20,6 +20,7 @@ import { gitInit, makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand, installSkill } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
 import { countActiveInvariants, renderBrainDoor } from '../../src/doors/brain.js';
+import { renderConsumerDoor } from '../../src/doors/consumer.js';
 import type { Config } from '../../src/types.js';
 
 const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-')));
@@ -232,14 +233,15 @@ test('brain door carries the SDD flow when one is declared', () => {
   };
   const door = renderBrainDoor(cfg, 1);
   assert.match(door, /Features gate through the `opsx` SDD, in that tool's OWN flow/);
-  // Every step: what to run, and what will PROVE it ran.
-  assert.match(door, /`change new` → run \/opsx:propose <slug> in your agent/);
-  assert.match(door, /proof: openspec\/changes\/<slug>\/proposal\.md — `change plan` refuses/);
-  assert.match(door, /`change apply` → run \/opsx:apply <slug> in your agent/);
-  assert.match(door, /ungateable: apply leaves no artifact of its own/);
+  // Every step: what to run, and what will PROVE it ran — the path alone, or
+  // `[ungateable]` (MV-146): the reason is the lifecycle's, doctor's and
+  // flow.md's to print whole, where the step comes up.
+  assert.match(door, /^ {2}- `change new` → run \/opsx:propose <slug> in your agent .*\[proof: openspec\/changes\/<slug>\/proposal\.md\]$/m);
+  assert.match(door, /^ {2}- `change apply` → run \/opsx:apply <slug> in your agent to implement the tasks \[ungateable\]$/m);
+  assert.doesNotMatch(door, /ungateable: apply leaves no artifact of its own/);
   // The archive-equivalent is printed a step BEFORE the gate that needs it.
-  assert.match(door, /`change land` → run \/opsx:archive <slug> in your agent/);
-  assert.match(door, /`change close` refuses without it/);
+  assert.match(door, /^ {2}- `change land` → run \/opsx:archive <slug> in your agent .*\[proof: openspec\/changes\/archive\/<n>-<n>-<n>-<slug>\]$/m);
+  assert.doesNotMatch(door, /refuses without it/);
   // OpenSpec has no project-level document; that gap is stated, not invented.
   assert.match(door, /project context `openspec\/config\.yaml` `context:` — .*Optional: reported, never gated\./);
   // sdd_auto off: the flow still binds, the door says to run it unprompted
@@ -258,11 +260,76 @@ test('brain door carries the SDD flow when one is declared', () => {
     /CREATE IT IF ABSENT — `change plan` refuses while it is missing, empty or still the template\./,
   );
   assert.match(speckit, /revisit: once at start, then on every principle change/);
-  assert.match(speckit, /`change plan` → run \/speckit\.tasks in your agent/);
+  assert.match(speckit, /`change plan` → run \/speckit\.tasks in your agent to break <slug> into phased tasks \[proof: specs\/<n>-<slug>\/tasks\.md\]$/m);
+  assert.match(speckit, /`change apply` → run \/speckit\.analyze in your agent .* \[ungateable\]$/m);
   // no close step at all: spec-kit has no archive equivalent to print
   assert.doesNotMatch(speckit, /`change close` →/);
   // no sdd declared: no flow lines at all
   assert.doesNotMatch(renderBrainDoor({ ...cfg, sdd: undefined }, 1), /SDD/);
+});
+
+/**
+ * MV-146: under `sdd_auto: false` nothing refuses, so the door says nothing
+ * does. The document is still the project's law, so the imperative stays.
+ */
+test('under sdd_auto: false the brain door claims no refusal, and still says to create the project law', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sdd: 'speckit',
+    sddAuto: false,
+    grapherAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    graphers: {},
+    repos: {},
+  };
+  const door = renderBrainDoor(cfg, 1);
+  assert.match(door, /project law `\.specify\/memory\/constitution\.md` — .*\. CREATE IT IF ABSENT\.$/m);
+  assert.doesNotMatch(door, /refuses/);
+  // The step endings are the same either way: a proof path is what the step
+  // leaves, whether or not a gate asks for it.
+  assert.match(door, /\[proof: specs\/<n>-<slug>\/spec\.md\]$/m);
+  assert.match(door, /\[ungateable\]$/m);
+  // Nor does it say the lifecycle runs the init: under `sdd_auto: false` nothing does.
+  assert.doesNotMatch(door, /lifecycle runs the tool's own init/);
+  assert.match(door, /no command runs the tool's own init where it is missing — run it in the brain yourself/);
+  assert.match(renderBrainDoor({ ...cfg, sddAuto: true }, 1), /the change lifecycle runs the tool's own init where it is missing/);
+  // Automation on: the refusal is said, where the document is named.
+  assert.match(renderBrainDoor({ ...cfg, sddAuto: true }, 1), /CREATE IT IF ABSENT — `change plan` refuses while it is missing, empty or still the template\./);
+});
+
+/**
+ * MV-146's budgets, so they cannot regress silently: the brain door's step
+ * lines were 1,654 bytes for spec-kit and 951 for openspec, each restating an
+ * ungateable reason the lifecycle prints where the step comes up; a code
+ * repo's door carried a 2,796-byte SDD block where one line now stands.
+ */
+test('the doors keep the SDD within its measured byte budgets', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sddAuto: true,
+    grapherAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    graphers: {},
+    repos: { api: { path: '../acme-api' }, web: { path: '../acme-web', sdd: 'none' } },
+  };
+  const bytes = (lines: string[]): number => lines.reduce((n, l) => n + Buffer.byteLength(`${l}\n`), 0);
+  for (const [sdd, budget] of [['speckit', 910], ['opsx', 650]] as const) {
+    const steps = renderBrainDoor({ ...cfg, sdd }, 1).split('\n').filter((l) => /^ {2}- `change \w+` → /.test(l));
+    assert.ok(steps.length > 0, sdd);
+    assert.ok(bytes(steps) <= budget, `${sdd}: ${bytes(steps)} bytes of step lines, budget ${budget}`);
+    // The consumer door: what the SDD adds over an exempt repo's door, at
+    // least 2,500 bytes under the block it replaced.
+    const extra = Buffer.byteLength(renderConsumerDoor({ ...cfg, sdd }, 'api')) - Buffer.byteLength(renderConsumerDoor({ ...cfg, sdd }, 'web'));
+    assert.ok(extra <= 2796 - 2500, `${sdd}: the consumer door carries ${extra} bytes of SDD`);
+  }
 });
 
 // The graph refresh follows the AGENT: it rides the harness's post-edit hook,
@@ -491,4 +558,40 @@ test('a consumer door names the law at the path that repo can open — MV-143', 
   }
   // The brain's own door keeps the bare path: that is the path it can open.
   assert.match(read(eco.brain, 'AGENTS.md'), /`\.multivac\/invariants\.md`/);
+});
+
+/**
+ * MV-146: the SDD runs in the brain alone, so a code repo's door carries no
+ * step block, no project document and no ungateable reason — one line saying
+ * where the steps run and where this repo's code belongs. A repo that opts out
+ * with `sdd: none`, or an ecosystem with `sdd_auto: false`, gets none.
+ */
+test('a consumer door names the brain\'s SDD in one line, and none where nothing governs it', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sdd: 'speckit',
+    sddAuto: true,
+    grapherAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    graphers: {},
+    repos: {
+      api: { path: '../acme-api' },
+      web: { path: '../acme-web', sdd: 'none' },
+    },
+  };
+  const api = renderConsumerDoor(cfg, 'api');
+  const lines = api.split('\n').filter((l) => l.includes('speckit'));
+  assert.deepEqual(lines, [
+    "- The brain's `speckit` SDD runs in the brain checkout, never in this mount: specs, plans and tasks are written there. Code here lands only on the branch of an open change declaring this repo; `verify --strict` refuses it anywhere else.",
+  ]);
+  for (const gone of ['[ungateable', '[proof:', 'Features gate', 'project law', 'CREATE IT IF ABSENT', 'the row wins']) {
+    assert.equal(api.includes(gone), false, gone);
+  }
+  // Opted out, or nothing gated: no line at all.
+  assert.equal(renderConsumerDoor(cfg, 'web').includes('SDD'), false);
+  assert.equal(renderConsumerDoor({ ...cfg, sddAuto: false }, 'api').includes('SDD'), false);
 });

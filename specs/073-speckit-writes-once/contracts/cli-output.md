@@ -5,10 +5,13 @@ tests pin the load-bearing substrings.
 
 ## Config refusals (exit 2 from `loadConfig`)
 
+`doctor`, `doors` and `init` keep their exit 1 over a config they cannot load; `doctor` prints the
+text on its `config` line: `config     invalid — <refusal>`.
+
 ```
 (i)   repos.<k>.sdd: <value> — REFUSED: the SDD lives in the brain alone, so a code repo's sdd: takes only none, which exempts its code from the change gate. Fix: remove repos.<k>.sdd or set it to none in .multivac/config.yml, then open a change for the config edit: `multivac change new <slug>`
 (ii)  sdd: <tool> — REFUSED: the brain's own entry repos.<k>.sdd says <value>, so <tool> resolves in no root. Fix: make them agree in .multivac/config.yml, then open a change for the config edit: `multivac change new <slug>`
-(iii) sdd: <name> — REFUSED: no SDD adapter is named <name> (known: speckit, opsx). Fix: correct sdd: in .multivac/config.yml, then open a change for the config edit: `multivac change new <slug>`
+(iii) sdd: <name> — REFUSED: no SDD adapter is named <name> (known: opsx, speckit). Fix: correct sdd: in .multivac/config.yml, then open a change for the config edit: `multivac change new <slug>`
 ```
 
 ## Consumer `verify` / `count` over a refused mounted config
@@ -26,7 +29,8 @@ sdd speckit: scaffolded — brain:.specify is there now; its steps are runnable;
 sdd speckit: scaffolded — …; skeleton skipped: <reason>
 ```
 Reasons: `.specify/templates/overrides exists`, `spec-kit <v> is below 0.9.4`,
-`no recorded version`, `<file>: the installed template has no "## <heading>"`.
+`no recorded version`, `<file>: the installed template has no "## <heading>"`,
+`<file>: the installed template is missing`, `<file>: <error code>` (a write that failed).
 
 ## Lifecycle
 
@@ -38,7 +42,7 @@ sdd <tool>: the why, the design and the tasks go into its files — the change b
 
 Each point's steps, then once:
 ```
-sdd <tool>: <step> [proof: <artifact>]
+sdd <tool>: <step> [proof: <artifact> — `change <gate>` refuses without it]
 sdd <tool>: <step> [ungateable: <reason>]
 sdd <tool>: run the chain through without asking to continue — stop only for a question the tool itself raises (`--no-sdd` for one run, `sdd_auto: false` to stop printing these)
 ```
@@ -48,14 +52,23 @@ sdd <tool>: run the chain through without asking to continue — stop only for a
 sdd speckit: .specify/feature.json named <old>; it names <new> now
 ```
 
-`change plan`, when the change names a repo other than the brain's entry:
+`change plan`, with the steps (automation on, no `--no-sdd`) and when the change names a
+repo other than the brain's entry; `<repos>` is the one key the change names, or
+`{<k>,<k>}` for several, the brain's own entry among them:
 ```
-sdd <tool>: its steps run from the brain checkout, which holds no code of this change — tasks name code paths under .multivac/worktrees/<slug>/<repo>/, and code is written only there
+sdd <tool>: its steps run from the brain checkout, which holds no code of this change — tasks name code paths under .multivac/worktrees/<slug>/<repos>/, and code is written only there
 ```
 
-A missing-proof refusal, per stray match found in a code repo or its worktree:
+A missing-proof refusal, per stray match found in a code repo or its worktree, read-only or not:
 ```
 sdd <tool>:   <repo>: <path> — not read; the SDD runs only in the brain
+```
+
+A task ledger found only outside the brain, when the artifact loop has not already refused:
+```
+sdd <tool>: `change <gate> <slug>` refused — <ledger>, the task ledger it reads, is not in brain; the one found outside the brain is not read
+sdd <tool>:   <repo>: <path> — not read; the SDD runs only in the brain
+  move the slug's directory into the brain and finish its tasks there, then re-run: multivac change <gate> <slug>
 ```
 
 `change close`, automation on, no `--no-sdd`, no directory found:
@@ -86,12 +99,30 @@ project-document line:
 
 ## doctor / repos check
 
+The label is padded to 11 columns (`sdd` and eight spaces).
 ```
-sdd       <tool> governs the code of <k>, <k> — its steps run in the brain[; exempt (sdd: none): <k>]
-sdd       leftover speckit install @ <k>: .specify/integration.json (tracked|untracked) — delete .specify/ there; `specify integration uninstall <key>` removes its skills and leaves .specify/
-sdd       leftover opsx install @ <k>: openspec/config.yaml (tracked|untracked) — delete openspec/ and the openspec-* skills and opsx commands its init wrote under each harness directory
-sdd       preset <id> is outranked for <file> by .specify/templates/overrides/<file> — delete that override to let the preset win
+sdd        <tool> governs the code of <k>, <k> — its steps run in the brain[; exempt (sdd: none): <k>]
+sdd        <tool> governs the code of no code repo — its steps run in the brain; exempt (sdd: none): <k>
+sdd        leftover speckit install @ <k>: <state> (tracked|untracked) — delete .specify/ there; `specify integration uninstall <key>` removes its skills and leaves .specify/
+sdd        leftover opsx install @ <k>: <state> (tracked|untracked) — delete openspec/ and the openspec-* skills and opsx commands its init wrote under each harness directory
+sdd        preset <id> is outranked for <file> by .specify/templates/overrides/<file> — delete that override to let the preset win
 ```
-The governs line prints only when a non-brain repo is declared. `repos check` appends
-`; leftover <tool> install (<tracked|untracked>)` to the code repo's line; its exit code
-is unchanged.
+`<state>` is the vendor's state file found there (`.specify/integration.json`,
+`openspec/config.yaml`), else its directory (`.specify`, `openspec`). The governs line
+prints only when a non-brain repo is declared and `sdd_auto` is on; the second form when
+every code repo is exempt. Leftover lines print only when the brain resolves an SDD, and
+never for a read-only repo; with no SDD in the brain `doctor` prints no `sdd` line.
+`repos check` appends `; leftover <tool> install (<tracked|untracked>)` to the code repo's
+line under the same condition; its exit code is unchanged.
+
+The brain's state line, when the tool has never run there:
+```
+sdd        <tool> @ brain: missing (no <state>) — declared but never run here; `change new` runs the tool's own `<init>`, doctor never does (it writes the vendor's files into the tree); that run then writes multivac's skeleton templates to <dir> if it is absent · …
+sdd        <tool> @ brain: missing (no <state>) — declared but never run here; under `sdd_auto: false` no command runs the tool's own `<init>`: run it there yourself, doctor never does (it writes the vendor's files into the tree) · …
+```
+The skeleton clause is for a tool that records a skeleton, with automation on.
+
+flow.md under `sdd_auto: false`, in what is yours:
+```
+- the `<tool>` init, in the brain when its `<state>` is missing — not run (`sdd_auto: false`)
+```

@@ -70,6 +70,28 @@ test('a gating row leads with the command that refuses and names the artifact', 
   assert.match(page, /- `change apply` refuses without `specs\/<n>-<slug>\/tasks\.md`/);
 });
 
+// MV-146: the SDD runs in the brain alone, so its rows say so and name no
+// other root; with `sdd_auto: false` the lifecycle gates nothing, and no row
+// says it refuses.
+test('the SDD rows are the brain\'s, and under sdd_auto: false none says the lifecycle refuses', async () => {
+  const { cfg } = await eco(DECLARED);
+  const page = renderFlow(cfg);
+  assert.match(page, /^- the `speckit` init is run in the brain when its `\.specify` is missing, or the lifecycle says why it could not$/m);
+  assert.match(page, /^- `change plan` refuses while `\.specify\/memory\/constitution\.md` is missing, empty or still the template, in the brain$/m);
+  assert.doesNotMatch(page, /refuses without `specs\/[^`]+`.* — in /);
+
+  const off = renderFlow({ ...cfg, sddAuto: false });
+  const gate = off.slice(off.indexOf('## Gate'), off.indexOf('## Yours'));
+  assert.doesNotMatch(gate, /specs\/|constitution/);
+  assert.doesNotMatch(off, /refuses without `specs|refuses while `\.specify/);
+  assert.match(off, /^- `specs\/<n>-<slug>\/spec\.md` before `change plan` — not gated \(`sdd_auto: false`\)$/m);
+  assert.match(off, /^- `\.specify\/memory\/constitution\.md` in the brain, before `change plan` — not gated \(`sdd_auto: false`\)$/m);
+  // Nor that the lifecycle runs the init: under `sdd_auto: false` nothing does.
+  assert.doesNotMatch(off, /init is run/);
+  const yours = off.slice(off.indexOf('## Yours'));
+  assert.match(yours, /^- the `speckit` init, in the brain when its `\.specify` is missing — not run \(`sdd_auto: false`\)$/m);
+});
+
 test("an unprovable step carries the adapter's own reason, verbatim", async () => {
   const { cfg } = await eco(DECLARED);
   const page = renderFlow(cfg);
@@ -91,13 +113,18 @@ test('a brain with nothing declared still gets a useful page', async () => {
 
 test('an unverified adapter is named as declared-but-unknown, never guessed', async () => {
   const { cfg } = await eco([
-    'doors: [agents]', 'sdd: acme-not-real', 'grapher: acme-graph', 'repos:', '  api: ../acme-api',
+    'doors: [agents]', 'grapher: acme-graph', 'repos:', '  api: ../acme-api',
   ]);
   const page = renderFlow(cfg);
-  assert.match(page, /`acme-not-real` is declared as the SDD tool but is unknown to multivac/);
   assert.match(page, /`acme-graph` is declared as the grapher but/);
-  // Nothing invented for either.
+  // Nothing invented.
   assert.equal(page.includes('refuses without `specs/'), false);
+  // MV-146: an SDD name the registry does not know never reaches the page — no
+  // scaffold, gate or step could honour it, so the config is refused at load.
+  await assert.rejects(
+    () => eco(['doors: [agents]', 'sdd: acme-not-real', 'grapher: acme-graph', 'repos:', '  api: ../acme-api']),
+    /sdd: acme-not-real — REFUSED: no SDD adapter is named acme-not-real/,
+  );
 });
 
 // --- US2: derived, and saying so ---

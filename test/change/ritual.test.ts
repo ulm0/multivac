@@ -137,6 +137,11 @@ test('the spec candidate follows the resolved sdd, not the ecosystem key alone â
   const SPEC = 'The spec is still true of the code';
   // `none` is no SDD, so there is no spec to keep true.
   assert.equal(ritualSeed({ sdd: 'none' }).includes(SPEC), false);
-  // A repo's own sdd is an SDD, with nothing declared at the top.
-  assert.equal(ritualSeed({ repos: { web: { path: '../web', sdd: 'speckit' } } }).includes(SPEC), true);
+  // The brain's own entry is an SDD, with nothing declared at the top â€” under
+  // whatever key names it.
+  assert.equal(ritualSeed({ repos: { core: { path: '.', isBrain: true, sdd: 'speckit' } } }).includes(SPEC), true);
+  // MV-146: a code repo's own tool runs nowhere (it is refused at load), so it
+  // seeds no spec to keep true; the ecosystem's does.
+  assert.equal(ritualSeed({ repos: { web: { path: '../web', sdd: 'speckit' } } }).includes(SPEC), false);
+  assert.equal(ritualSeed({ sdd: 'speckit', repos: { web: { path: '../web' } } }).includes(SPEC), true);
 });

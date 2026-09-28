@@ -15,8 +15,8 @@ import { join } from 'node:path';
 import picomatch from 'picomatch';
 import type { Config } from '../types.js';
 import { changesDir, parseChange, type ChangeFile } from '../change/file.js';
-import { adapterFor } from '../adapters/detect.js';
-import { doorTargets, grapherSpec, sddSpec } from '../adapters/registry.js';
+import { adapterFor, sddGoverning } from '../adapters/detect.js';
+import { doorTargets, grapherSpec, sddNames, sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { CHANGES_DIR } from './config.js';
 import { dim, red } from './out.js';
 import { currentBranch, run as git } from './git.js';
@@ -26,8 +26,21 @@ export interface CodeLine {
   gates: boolean;
 }
 
-/** Paths multivac, a door, the SDD or the grapher own: never "code" (MV-137). */
-export function nonCodeGlobs(cfg: Config): string[] {
+/**
+ * Paths multivac, a door, the SDD or the grapher own: never "code" (MV-137),
+ * in the repo `repoKey` names — the brain's entry when it names none.
+ *
+ * MV-146: the SDD runs in the brain alone, so its step-artifact directories
+ * and project documents are not code in the brain only; in a code repo a
+ * `specs/` tree is no SDD's and is judged as code. Every KNOWN SDD's vendor
+ * state — its install directory, shared and local paths, and the harness
+ * directories its init writes for the declared doors — stays not code in
+ * every repo, whichever SDD the brain declares, so removing an install an
+ * earlier release left in a code repo is free. opsx's artifact paths are
+ * exact strings that match no file below them, which is why the install
+ * directory itself is taken.
+ */
+export function nonCodeGlobs(cfg: Config, repoKey?: string): string[] {
   // MV-142: `.gitignore` too. `init`, the SDD and the grapher write their
   // ignore lines there, and a fresh brain's step 0 commit carries it.
   const out = new Set<string>(['.multivac/**', '.gitmodules', `${cfg.mount}/**`, `${cfg.mount}`, '.husky/**', '.gitignore']);
@@ -50,20 +63,10 @@ export function nonCodeGlobs(cfg: Config): string[] {
     if (t.retired) harness(t.retired.path);
   }
   out.add('AGENTS.md');
-  const names = new Set<string>();
-  for (const key of ['brain', ...Object.keys(cfg.repos)]) {
-    const s = adapterFor(cfg, key, 'sdd');
-    const g = adapterFor(cfg, key, 'grapher');
-    if (s) names.add(`sdd:${s}`);
-    if (g) names.add(`grapher:${g}`);
-  }
-  for (const n of names) {
-    const [kind, name] = n.split(':');
-    const spec = kind === 'sdd' ? sddSpec(name) : grapherSpec(name, cfg.graphers);
-    if (!spec) continue;
+  const vendor = (spec: AdapterSpec): void => {
     for (const p of [...spec.shared, ...spec.local, ...spec.artifacts]) out.add(p);
-    for (const step of spec.steps ?? []) if (step.artifact) out.add(`${step.artifact.split('/')[0]}/**`);
-    for (const p of spec.projectSteps ?? []) out.add(p.artifact);
+    // An SDD's install directory whole: what its init wrote there is the vendor's.
+    if (spec.kind === 'sdd' && spec.state.dir) out.add(`${spec.state.dir}/**`);
     if (spec.graphignoreFile) out.add(spec.graphignoreFile);
     for (const f of spec.harness?.hookFiles ?? []) harness(f);
     for (const pl of Object.values(spec.harness?.platforms ?? {})) harness(pl.probe);
@@ -85,6 +88,23 @@ export function nonCodeGlobs(cfg: Config): string[] {
       }
       for (const integration of chosen) for (const d of integration.dirs) out.add(`${d}/**`);
     }
+  };
+  for (const name of sddNames) vendor(sddSpec(name)!);
+  const inBrain = repoKey === undefined || repoKey === 'brain' || cfg.repos[repoKey]?.isBrain === true;
+  const sdd = inBrain ? adapterFor(cfg, 'brain', 'sdd') : undefined;
+  const spec = sdd === undefined ? undefined : sddSpec(sdd);
+  if (spec) {
+    for (const step of spec.steps ?? []) if (step.artifact) out.add(`${step.artifact.split('/')[0]}/**`);
+    for (const p of spec.projectSteps ?? []) out.add(p.artifact);
+  }
+  const graphers = new Set<string>();
+  for (const key of ['brain', ...Object.keys(cfg.repos)]) {
+    const g = adapterFor(cfg, key, 'grapher');
+    if (g) graphers.add(g);
+  }
+  for (const name of graphers) {
+    const g = grapherSpec(name, cfg.graphers);
+    if (g) vendor(g);
   }
   return [...out];
 }
@@ -129,7 +149,9 @@ export interface CodeInChangeOpts {
 /** The code-in-change verdict, or null when the check does not apply. */
 export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | null> {
   const { cfg, repoKey } = o;
-  if (repoKey === undefined || !cfg.sddAuto || adapterFor(cfg, repoKey, 'sdd') === undefined) return null;
+  // MV-146: the SDD governing this repo's code, the brain's unless the repo
+  // says `none` — never where the SDD runs, which is the brain alone.
+  if (repoKey === undefined || !cfg.sddAuto || sddGoverning(cfg, repoKey) === undefined) return null;
   const label = 'code'.padEnd(9);
   const unanswered = (why: string): CodeLine => ({
     text: `  ${o.strict ? red(label) : dim(label)} not answered — ${why}${o.strict ? ' · blocking under --strict' : ''}`,
@@ -142,7 +164,7 @@ export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | 
   if (paths === null) {
     return unanswered(o.range ? `base ${o.range.base} is not in this clone — fetch the whole history (GIT_DEPTH: 0)` : 'the index could not be read here');
   }
-  const nonCode = picomatch(nonCodeGlobs(cfg), { dot: true });
+  const nonCode = picomatch(nonCodeGlobs(cfg, repoKey), { dot: true });
   const code = paths.filter((p) => !nonCode(p));
   if (code.length === 0) return null;
 

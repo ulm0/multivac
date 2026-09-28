@@ -212,6 +212,14 @@ hand-edited file does break, the error is the teaching kind — the file line,
 the offending source line, and the quoted rewrite to type — never the parser's
 raw complaint about compact mappings.
 
+The body below the closing `---` is the human's. With an SDD declared, the
+lifecycle writes exactly one line there: `change close` appends
+``Specified in `<dir>/` (<sdd>).``, naming the change's spec directory, unless
+the body already names it. The line rides close's own commit — the one that
+stages that directory — so the archive's link to its why lands with the why it
+points at, and a body keeps what it held while planned, or one sentence, instead
+of restating the spec. A planned body is still kept byte for byte (MV-89).
+
 ### The tool already ran by hand, twice
 
 On 2026-08-12 and 08-13, from a session opened **only** in the reference
@@ -1251,12 +1259,67 @@ Nothing here moves a subprocess out of the change lifecycle, and nothing
 derives a command from a tool's name: a tool that declares no init still gets
 none, stated once per root where the tool is missing.
 
+Since 2026-09-28 the SDD half of this answers for one root, the brain; the
+grapher half is unchanged. The next section says why.
+
+### The SDD lives in the brain (2026-09-28)
+
+**With an SDD declared, the SDD lives in the brain alone, and what it costs is
+paid once.** A top-level `sdd:` used to reach every declared repo — one install,
+one door block and one constitution per code repo — while the specs of every
+change were written in the brain. Measured with spec-kit: `repos sync` wrote 30
+files, about 240 KB, into each code repo; each code repo's door carried a 2.8 KB
+step block into every session; `change plan` refused until every code repo had
+written a constitution no step of any change would read; and the first `apply`
+committed the vendor's files onto each code repo's branch (MV-146).
+
+- **Where it runs, and what it governs, are two questions.** `adapterFor`
+  resolves the SDD for the brain root only — the `brain` handle, or the entry
+  that is the brain under any key. `sddGoverning` answers which SDD governs a
+  repo's CODE: the brain's, unless that repo says `sdd: none`, the one value a
+  code repo's `sdd:` takes. The code gate (MV-137) reads the second. Answering
+  both with the first switched the gate off in every code repo, measured:
+  `verify --strict` exit 1 became 0.
+- **A declaration that resolves nowhere is refused at load.** A tool in a code
+  repo's `sdd:`, a top-level tool the brain's own entry contradicts, and a name
+  the registry does not know would each be a silent no-op, so loading the
+  config fails naming the key and the fix. A consumer reading its mounted brain
+  prints the refusal instead, gating only under `--strict`: a mount can lag its
+  brain, and the config is its owner's to fix.
+- **Where the proofs are.** A step's artifact is looked for in the brain and in
+  the change's worktree the brain's own entry names. A match left in a code repo
+  by habit is named in the refusal, never read. spec-kit keeps one feature
+  pointer per checkout, so `change plan` and `change apply` point it at the
+  slug's directory and say when it named another: two changes in one checkout
+  otherwise planned into each other's directory.
+- **Where the code goes.** The steps run from the brain checkout, which holds no
+  code of a change naming a code repo; `change plan` says so, and code is
+  written only in the change's worktrees, where the code gate reads it.
+- **Written once.** A fresh spec-kit scaffold writes skeleton templates to
+  `.specify/templates/overrides/`, the directory every spec-kit resolver reads
+  first — only when it is absent, only from the version measured on, and never
+  again — so the specify, plan and tasks steps read about 4 KB of template per
+  change instead of 18. The constitution commits no amendment report: spec-kit
+  itself calls the report review scratch, and git keeps the record.
+- **Printed once, cited once.** Each lifecycle point prints its steps and then,
+  once, the instruction to run them through. `change close`, whatever
+  `sdd_auto` and `--no-sdd` say, stages the brain's slug directories — deletions
+  and an archive's merged main specs included — and appends the one line citing
+  the directory (see *The tool owns the frontmatter*).
+
+An install an earlier release left in a code repo is reported by `doctor` and
+`repos check`, with its removal, and never fails either. Every known SDD's
+install paths are not code in any repo, so removing one commits on any branch.
+Two things stay ungateable and are said so: whether an agent commits an
+amendment report, and whether a change body restates its spec.
+
 ### Automation by default (owner decision, 2026-08-13)
 
 Three normative rules, applying to the brain and to every declared repo
 multivac may write in (not `managed: false`, not a shallow clone, MV-125):
 
-- **SDD runs inside the change lifecycle, in the SDD's own shape.** When an
+- **SDD runs inside the change lifecycle, in the SDD's own shape**, and in the
+  brain alone (see *The SDD lives in the brain*). When an
   adapter is declared, the lifecycle drives **that tool's flow** — not a fixed
   propose/apply/archive triple, which was OpenSpec's shape imposed on every
   other tool. The registry carries, per tool, an **ordered `steps` array of
@@ -1276,10 +1339,10 @@ multivac may write in (not `managed: false`, not a shallow clone, MV-125):
   `*` segment allowed for tools that number their own feature directory.
   `change plan` refuses without the propose-equivalent, `change apply` without
   the plan/tasks artifact, `change close` without the archive-equivalent, each
-  refusal naming the exact agent command, the path it looked for and the repos
-  it looked in — the brain and each declared repo on disk that resolves to
-  that tool (MV-122) and is not read-only (MV-125), since a change's specs often live in the code
-  repo — while a pass names the repo the artifact was found in. Three
+  refusal naming the exact agent command, the path it looked for and where
+  it looked — the brain and the change's worktree its own entry names, since
+  the SDD lives in the brain alone (MV-146), with a match left in a code repo
+  named and never read — while a pass names where the artifact was found. Three
   rules keep it honest: a step whose tool leaves nothing behind
   (`/speckit.analyze` writes zero bytes by design; a clean `/speckit.converge`
   is forbidden to touch `tasks.md`) is declared **ungateable** with its reason

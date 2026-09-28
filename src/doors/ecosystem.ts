@@ -20,7 +20,7 @@ import type { Config } from '../types.js';
 import { CHANGES_DIR, CONFIG_PATH, DEFAULT_CHANNEL, ECOSYSTEM_PATH, LAW_PATH } from '../lib/config.js';
 import { collectBrainAnchors, parseClaimRows } from '../anchor/parse.js';
 import { parseChange } from '../change/file.js';
-import { adapterFor } from '../adapters/detect.js';
+import { adapterFor, sddGoverning } from '../adapters/detect.js';
 import { grapherSpec } from '../adapters/registry.js';
 
 type Attrs = Record<string, string | number | boolean | null>;
@@ -47,12 +47,15 @@ export async function renderEcosystem(brain: string, cfg: Config): Promise<strin
   const brainKey = Object.entries(cfg.repos).find(([, e]) => e.isBrain)?.[0];
   const repoId = (k: string): string => (k === brainKey ? 'repo:brain' : `repo:${k}`);
   const others = Object.keys(cfg.repos).filter((k) => !cfg.repos[k].isBrain).sort(cmp);
-  node('repo:brain', { label: 'brain', file_type: 'repo', source_file: CONFIG_PATH, sdd: adapterFor(cfg, 'brain', 'sdd') ?? null, ...graphOf('brain') });
+  // MV-146: a repo node's `sdd` is the SDD whose rules govern its code, which
+  // runs in the brain — not one installed there — and null where the repo
+  // opts out with `none`.
+  node('repo:brain', { label: 'brain', file_type: 'repo', source_file: CONFIG_PATH, sdd: sddGoverning(cfg, 'brain') ?? null, ...graphOf('brain') });
   for (const k of others) {
     const e = cfg.repos[k];
     node(`repo:${k}`, {
       label: k, file_type: 'repo', source_file: CONFIG_PATH, path: e.path, url: e.url ?? null, role: e.role ?? null,
-      channel: e.channel ?? cfg.channel ?? DEFAULT_CHANNEL, sdd: adapterFor(cfg, k, 'sdd') ?? null, ...graphOf(k),
+      channel: e.channel ?? cfg.channel ?? DEFAULT_CHANNEL, sdd: sddGoverning(cfg, k) ?? null, ...graphOf(k),
     });
     link('repo:brain', `repo:${k}`, 'declares');
     link(`repo:${k}`, 'repo:brain', 'mounts', { at: cfg.mount });

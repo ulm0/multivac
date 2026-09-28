@@ -53,46 +53,59 @@ export function renderFlow(config: Config): string {
   yours.push(`- the ritual in \`${RITUAL_PATH}\`, printed by \`change close\` and checked by nothing`);
 
   // MV-122: a row per adapter a declared root resolves, not the ecosystem's
-  // alone. A row names its roots only when some declared root resolves
+  // alone. A grapher row names its roots only when some declared root resolves
   // otherwise, so a config naming only top-level adapters renders what it did.
   const declared = 1 + Object.values(config.repos).filter((r) => !r.isBrain).length;
   const every = (roots: string[]): boolean => roots.length === declared;
   const inRoots = (roots: string[]): string => (every(roots) ? '' : ` — in ${roots.join(', ')}`);
   const forRoots = (roots: string[]): string => (every(roots) ? '' : ` for ${roots.join(', ')}`);
 
+  // MV-146: the SDD resolves in the brain alone, so its rows name no roots —
+  // every one is the brain's — and under `sdd_auto: false` no row says the
+  // lifecycle refuses or runs the init: it does neither then, and a row saying
+  // it does is the lie this page exists to prevent. Those rows move to what is
+  // yours.
   const sdds = adaptersByRoot(config, 'sdd');
-  for (const [name, roots] of sdds) {
+  const off = ' — not gated (`sdd_auto: false`)';
+  for (const [name] of sdds) {
     const spec = sddSpec(name);
     if (!spec) {
       yours.push(
-        `- \`${name}\` is declared as the SDD tool${forRoots(roots)} but is unknown to multivac — nothing of its flow is run or gated`,
+        `- \`${name}\` is declared as the SDD tool but is unknown to multivac — nothing of its flow is run or gated`,
       );
       continue;
     }
-    if (spec.scaffold) {
+    // Under `sdd_auto: false` no command runs the init either: the row is
+    // the operator's, like the steps below.
+    if (spec.scaffold && config.sddAuto) {
       auto.push(
-        `- the \`${name}\` init is run in a declared repo whose \`${stateLabel(spec)}\` is missing, or the lifecycle says why it could not${inRoots(roots)}`,
+        `- the \`${name}\` init is run in the brain when its \`${stateLabel(spec)}\` is missing, or the lifecycle says why it could not`,
       );
+    } else if (spec.scaffold) {
+      yours.push(`- the \`${name}\` init, in the brain when its \`${stateLabel(spec)}\` is missing — not run (\`sdd_auto: false\`)`);
     }
     for (const s of spec.steps ?? []) {
       // The COMMAND leads: a reader scanning this column is asking "what will
       // stop me", not "which file". Both halves come from the step itself —
       // the same two fields the gate reads — so neither can drift from it.
       if (s.artifact && s.gate) {
-        gate.push(`- \`change ${s.gate}\` refuses without \`${s.artifact}\`${inRoots(roots)}`);
+        if (config.sddAuto) gate.push(`- \`change ${s.gate}\` refuses without \`${s.artifact}\``);
+        else yours.push(`- \`${s.artifact}\` before \`change ${s.gate}\`${off}`);
         continue;
       }
       // Ungateable: the adapter's own reason, carried whole. A paraphrase
       // would age beside its source.
       const verb = /\/[\w.:-]+/.exec(s.run)?.[0] ?? s.at;
-      yours.push(`- \`${verb}\` — ${proofOf(s).slice('ungateable: '.length)}${inRoots(roots)}`);
+      yours.push(`- \`${verb}\` — ${proofOf(s).slice('ungateable: '.length)}`);
     }
     // MV-135: the project document, from the same step the gate reads.
     for (const p of spec.projectSteps ?? []) {
       if (p.reportOnly) {
-        yours.push(`- \`${p.artifact}\` \`${p.reportOnly.key}:\` — ${p.run}; optional, reported and never gated${inRoots(roots)}`);
+        yours.push(`- \`${p.artifact}\` \`${p.reportOnly.key}:\` — ${p.run}; optional, reported and never gated`);
+      } else if (config.sddAuto) {
+        gate.push(`- \`change plan\` refuses while \`${p.artifact}\` is missing, empty or still the template, in the brain`);
       } else {
-        gate.push(`- \`change plan\` refuses while \`${p.artifact}\` is missing, empty or still the template, in every repo where \`${name}\` is installed${inRoots(roots)}`);
+        yours.push(`- \`${p.artifact}\` in the brain, before \`change plan\`${off}`);
       }
     }
   }

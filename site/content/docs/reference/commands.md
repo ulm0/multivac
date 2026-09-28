@@ -85,7 +85,8 @@ first commit, because a config modified after it needs an open change. Both
 flows are printed, and the one that fits this directory is marked: tracked
 source means discovery, an empty repo means the interview. A new brain for code
 that lives in other repos is empty, so the mark is a hint, not a choice. The
-project-document step appears when the declared SDD gates one. Both protocols
+step that writes the brain's project document appears when the declared SDD
+gates one; no code repo is asked for its own. Both protocols
 live in the skill; `init` points at them and restates neither.
 
 | flag | takes | effect |
@@ -98,7 +99,10 @@ live in the skill; `init` points at them and restates neither.
 **Declared at init, installed at init.** With `--sdd` or `--grapher`, or with a
 config that already declares them, `init` finishes by running the tool's own
 init and the graph's first build in the brain, the same way `change` does.
-A tool that is already installed there is not run again.
+A tool that is already installed there is not run again. For spec-kit, the run
+that installs it also writes multivac's skeleton templates, as
+[the scaffold](../graphers-and-sdd#the-scaffold-declaring-a-tool-that-has-never-run-here)
+describes.
 
 A tool `init` is about to run and cannot find is refused **before anything is
 written**, `git init` included, with exit 1 and where to get it:
@@ -297,9 +301,11 @@ files plus a count. No LLM, no interpretation. Repos not on disk are listed
 under a `skipped` section with the sync command; `seed` never clones.
 
 Each present repo also gets a `### setup` section: whether its declared graph
-is built, and whether its project document is written, each with the command
-that fixes it. `seed` reads the vendor's files for this and never runs a
-vendor.
+is built, with the command that fixes it. The SDD's project document is the
+brain's, so it is reported once — in the brain's own entry when the brain is
+also a code repo, or in a `## brain` section of its own when it holds no code —
+and never for a code repo. `seed` reads the vendor's files for this and never
+runs a vendor.
 
 The report ends with three **open questions** — debt or intent, law or
 taste, which authority wins — instantiated against the gates, prose, deploy
@@ -617,6 +623,16 @@ scoped to repo "api" · brain at /home/you/api/.brain
 0 blocking broken · exit 0
 ```
 
+A mounted brain whose config the brain itself would refuse — an SDD declaration
+that resolves in no root, see [`sdd`](../configuration#sdd) — does not stop
+this run. The mount can lag its brain, and the config is its owner's to fix, so
+`verify` prints the refusal as one line and blocks on it only under `--strict`;
+`count` prints the same line and counts:
+
+```txt
+  sdd       repos.web.sdd: opsx — REFUSED: the SDD lives in the brain alone, … — in the mounted brain's config; its owner fixes it
+```
+
 The repo key is resolved by matching the entry's path, its `url` against
 `origin`, or the directory basename. Ambiguity is an error that says what to
 pass; `--repo <key>` overrides it. Consumer mode never rewrites a moved
@@ -801,8 +817,9 @@ has not read the table.
 
 `doors` also writes a graph of the brain's own declarations. The nodes are:
 
-- each repo, with its path, url, role, channel, SDD and grapher, and the path
-  of its own code graph;
+- each repo, with its path, url, role, channel, grapher and the path of its own
+  code graph, and the SDD that governs its code — the brain's, or none for a
+  repo that says `sdd: none`;
 - each law row, with its state, authority and line, but never its statement;
 - each anchor's glob, one per repo it reaches;
 - each change, open, planned or archived.
@@ -854,9 +871,9 @@ untracked  nothing build-critical untracked
 | line | reports |
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
-| `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything, and so does a read-only one: `@ <key>: not managed, read-only` or `shallow, read-only`, with no state and no command to run. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no root resolves an `sdd`** |
+| `sdd` | the brain's SDD, which runs nowhere else: the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on. When a code repo is declared and `sdd_auto` is on, one line names the repos whose code it governs and those exempt by `sdd: none`. A writable code repo still holding an install of any known SDD from an earlier release gets a `leftover` line — its state file, whether `HEAD` tracks it, and the removal — and never fails `doctor`. An enabled spec-kit preset that multivac's skeleton templates outrank is named, with the override to delete. Then: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what — or `not gated` under `sdd_auto: false` — and `project law @ brain:` for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when the brain resolves no `sdd`**: a code repo's own install of a tool the brain declares nowhere is that team's, not a leftover |
 | `grapher` | one line per scope (brain + each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** |
-| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `sdd` and `grapher` lines say `out of scope, not a gap` in place of a state |
+| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `grapher` line says `out of scope, not a gap` in place of a state |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is. A mount that is staged and not yet committed says so, instead of calling itself missing. A read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
@@ -984,18 +1001,23 @@ is it set up?
 ```txt
 $ mvac repos check
 brain     ok   cloned · speckit installed and committed · .specify/memory/constitution.md written · graphify built and committed
-api       FAIL graphify built but graphify-out/graph.json is not committed → commit it · speckit installed and committed
+api       FAIL graphify built but graphify-out/graph.json is not committed → commit it; leftover speckit install (tracked)
 payments  FAIL absent at ../payments → `multivac repos sync`
 ledger    ok   cloned — not managed, read-only: its tools are not checked
 ```
 
 A repo passes when its path exists, is a git repository of its own (not a
 folder inside another one), has a commit, and has a remote matching its `url:`
-if it declares one. Where multivac may write, it also needs:
+if it declares one. Where multivac may write, it also needs the declared graph
+built and, when it is shared, committed. The brain also needs:
 
 - the declared SDD installed and its state file committed,
-- its project document written (not missing, empty or still the template),
-- the declared graph built and, when it is shared, committed.
+- its project document written (not missing, empty or still the template).
+
+The SDD is the brain's alone, so a code repo is never asked for it. Where the
+brain declares one, a code repo that still holds an install from an earlier
+release gets `; leftover <tool> install` on its line, tracked or not, and
+passes or fails exactly as it would without it; `doctor` names the removal.
 
 A repo you do not own is checked for its clone alone. Exit 0 when every repo
 passes, 1 when one does not, 2 for an invalid config.
@@ -1008,10 +1030,11 @@ there but is not that clone, before anything is cloned, branched or bumped.
 
 ### Tools in every repo
 
-`repos sync` also installs the declared SDD and grapher in every repo it finds
+`repos sync` also installs the declared SDD in the brain and the grapher in every repo it finds
 on disk and may write in: the tool's own init where it has never run, and the
-graph's first build where there is no graph. A repo where both are installed
-runs neither. A read-only repo, declared `managed: false` or a shallow clone,
+graph's first build where there is no graph. The SDD reaches no code repo: its
+specs are written in the brain. A repo where its tools are installed runs
+none. A read-only repo, declared `managed: false` or a shallow clone,
 gets nothing, which is why `repos sync --shallow` on a CI machine needs no
 vendor tool.
 
@@ -1219,14 +1242,22 @@ free invariant ID out of the law table and writes it straight back as a
 `proposed` row naming this change — never pick an ID by hand. A `proposed` row
 never gates `verify`, and `close` releases the reservation if the change never
 used it — used meaning the rule was stated in place of the scaffolded RESERVED
-text, or an anchor names the ID. Then prints the SDD steps bound to the `new`
-point — with the artifact each will be checked for — if an `sdd` is declared
-and `sdd_auto` is on.
+text, or an anchor names the ID. Then, if the brain declares an `sdd` and
+`sdd_auto` is on, it says where the change's reasoning goes, prints the SDD
+steps bound to the `new` point — each with the artifact it will be checked for
+— and, once after the last, the instruction to run them through:
+
+```txt
+sdd speckit: the why, the design and the tasks go into its files — the change body keeps what it held while planned, or one sentence, and `change close` cites the directory; do not cite it yourself
+sdd speckit: run /speckit.specify in your agent to write the spec for points-expire — … [proof: specs/<n>-points-expire/spec.md — `change plan` refuses without it]
+sdd speckit: run /speckit.clarify if the spec still carries [NEEDS CLARIFICATION] markers [ungateable: …]
+sdd speckit: run the chain through without asking to continue — stop only for a question the tool itself raises (`--no-sdd` for one run, `sdd_auto: false` to stop printing these)
+```
 
 Before it writes anything, `new` refuses, with exit 1, when that SDD's own
-init would have to run somewhere and the tool cannot be found: every step it
-prints needs that tool. It names the repo and where to get the tool, and
-`--no-sdd` skips it for one run. A missing grapher is only a notice here;
+init would have to run in the brain and the tool cannot be found: every step it
+prints needs that tool. It names where to get the tool, and `--no-sdd` skips it
+for one run. A missing grapher is only a notice here;
 `close` is where a missing graph refuses.
 
 `plan`, `apply` and `close` **refuse** while those
@@ -1290,6 +1321,18 @@ A change declaring no repos exits 1. A repo not declared in the config is
 named and exits 1. `plan` **does** clone a declared-with-url repo that is
 missing.
 
+With an SDD declared in the brain, `plan` also gates on the `new` point's
+artifacts, then prints the `plan` point's steps. For spec-kit it first points
+`.specify/feature.json` at this slug's directory — the tool keeps one pointer
+per checkout, and two open changes would otherwise plan into each other's — and
+says so when it named another. For a change that names a code repo it says
+where the code goes:
+
+```txt
+sdd speckit: .specify/feature.json named specs/002-beta; it names specs/001-points-expire now
+sdd speckit: its steps run from the brain checkout, which holds no code of this change — tasks name code paths under .multivac/worktrees/<slug>/<repo>/, and code is written only there
+```
+
 ### `apply`
 
 ```txt
@@ -1348,19 +1391,24 @@ api: cannot branch points-expire — uncommitted work would be overwritten: note
   then re-run: multivac change apply points-expire
 ```
 
-The change's SDD files are carried onto its branch. Before the bump, `apply`
-selects the uncommitted files under the SDD's shared paths and under this
-change's artifact directories. It refuses a tracked, modified one or an ignored
-one by name. After the worktree exists, it copies the rest in, commits them
-there, and removes them from the checkout:
+The change's SDD files are carried onto its branch when it has one to carry
+them to. Only the brain holds SDD files, so that is a change naming the brain's
+own entry — a brain that is its own code repo. Before the bump, `apply` selects
+the uncommitted files under the SDD's shared paths and under this change's
+artifact directories. It refuses a tracked, modified one or an ignored one by
+name. After the worktree exists, it copies the rest in, commits them there, and
+removes them from the checkout:
 
 ```txt
-api: carried 3 speckit files onto points-expire and committed them there
+brain: carried 3 speckit files onto points-expire and committed them there
 ```
 
-For spec-kit it writes the worktree's own `.specify/feature.json`. The gates of
-`plan`, `apply` and `close` look for the SDD's artifacts in the checkout, then
-in the change's worktree.
+For spec-kit it writes the worktree's own `.specify/feature.json`; where the
+directory stayed in the checkout — a brain with no code — it points the
+checkout's instead, and says so when it named another. The gates of `plan`,
+`apply` and `close` look for the SDD's artifacts in the brain checkout, then in
+the change's worktree named after the brain's own entry. In a brain with no
+code, the spec directory stays in the checkout until `close` commits it.
 
 An existing branch is reused, not a failure:
 
@@ -1586,16 +1634,33 @@ Nothing is verified, on purpose: an abandoned change made no claims to verify.
 A change that *did* declare claims is refused — drop them first, or close it
 properly.
 
-The printed commit is **scoped to the closing change's paths** — the archived
-file, the old change path, the law table when a reservation was released, the
-graphs, and what the declared SDD wrote in the brain for this slug: the spec, the
-plan, the task list, an archived proposal, deletions included. Every gate in the
-lifecycle demanded one of those files, so leaving them untracked would be asking
-for proof and then dropping it. A dirty file of the tool's that this change did
-not write — a project document, the tool's own config — is named on its own line
-and never staged. It is never `add -A`, which in a shared checkout would sweep
-another change's files into this archive commit. Where the commit lands depends on where the brain is
-standing, and the wording says which case you are in:
+The printed commit — closing or abandoning — is **scoped to the closing
+change's paths**: the archived file, the old change path, the law table when a
+reservation was released, the graphs, and what the declared SDD wrote in the
+brain for this slug, whatever `sdd_auto` and `--no-sdd` say: the spec, the
+plan, the task list, an archived proposal, deletions included, and the main
+specs an archive merged into. Every gate in the lifecycle demanded one of those
+files, so leaving them untracked would be asking for proof and then dropping
+it; the switches skip steps and gates, never what was already written. A dirty
+file of the tool's that this change did not write — a project document, the
+tool's own config — is named on its own line and never staged. The printed
+commit is never `add -A`, which in a shared checkout would sweep another
+change's files into this archive commit.
+
+Before the archive is written, the change body gains one line citing the
+slug's directory — the first one found in the brain checkout, then in the
+change's worktree — unless the body already names it. Nothing else in the body
+is written:
+
+```txt
+Specified in `specs/001-points-expire/` (speckit).
+```
+
+With the automation on and no `--no-sdd`, a close that finds no directory says
+it cited nothing.
+
+Where the printed commit lands depends on where the brain is standing, and the
+wording says which case you are in:
 
 - on a working branch: `archived — commit this on <branch> (it lands through
   that branch's MR): git -C <brain> add -- <paths> && git commit -m "..."`

@@ -13,9 +13,9 @@ skip the human.
 mvac repos sync
 ```
 
-Clones every declared repo that is not on disk, and installs each repo's
-declared SDD and grapher. Draft no law over a repo that is not cloned, or that
-has no graph to ask. `mvac repos check` says, per repo, what is still missing.
+Clones every declared repo that is not on disk, installs the declared SDD in
+the brain, and each repo's grapher in that repo. Draft no law over a repo that
+is not cloned, or that has no graph to ask. `mvac repos check` says, per repo, what is still missing.
 
 ## 1. Run the seeder
 
@@ -134,11 +134,12 @@ Whatever the session doesn't reach stays `proposed`: visible, counted,
 non-blocking. Never bulk-accept to finish faster — an enacted lie is worse
 than an unvalidated truth.
 
-## 7. Write each repo's project document
+## 7. Write the brain's project document
 
-After the first batch is validated, write the project document of every repo
-whose SDD declares one (spec-kit: `/speckit.constitution`, in a session opened
-in that repo). Write it from the human's answers and cite the rows it restates
+After the first batch is validated, write the brain's project document if its
+SDD declares one (spec-kit: `/speckit.constitution`, in the brain). The SDD
+lives in the brain alone, so no code repo is asked for its own. Write it from
+the human's answers and cite the rows it restates
 by ID. Never invent principles to fill it. Where it and an active row
 disagree, the row wins. `change plan` refuses while it is missing, empty or
 still the template.

@@ -188,3 +188,63 @@ test('every SDD step proves itself or says why it cannot', () => {
     assert.match(spec.source ?? '', /^https:\/\//, `${name}: no primary source`);
   }
 });
+
+/**
+ * MV-146: a skeleton is served verbatim, so it keeps every heading the step
+ * bodies fill by name and carries none of the tokens the init substitutes per
+ * integration. Read off the registry, so a skeleton added to another SDD is
+ * held to the same on the day it is added.
+ */
+test('every skeleton body keeps each heading it names and none of its tokens', () => {
+  let seen = 0;
+  for (const name of sddNames) {
+    const sk = sddSpec(name)!.scaffold?.skeleton;
+    if (!sk) continue;
+    seen++;
+    assert.deepEqual(
+      Object.keys(sk.keeps).sort(),
+      Object.keys(sk.files).sort(),
+      `${name}: a body with no kept headings, or headings with no body`,
+    );
+    assert.match(sk.floor, /^\d+\.\d+\.\d+$/, `${name}: the floor is a version`);
+    assert.match(sk.measured, / \d+\.\d+\.\d+$/, `${name}: the version measured is named`);
+    assert.ok(sk.tokens.length > 0, `${name}: the substituted tokens are named`);
+    for (const [file, body] of Object.entries(sk.files)) {
+      const lines = body.split('\n');
+      for (const h of sk.keeps[file]) assert.ok(lines.includes(`## ${h}`), `${name}/${file}: lost "## ${h}"`);
+      for (const t of sk.tokens) assert.ok(!body.includes(t), `${name}/${file}: carries ${t}`);
+    }
+  }
+  assert.ok(seen > 0, 'speckit records a skeleton');
+});
+
+/**
+ * MV-146's budget: `/speckit.specify`, `/speckit.plan` and `/speckit.tasks`
+ * read 18,004 bytes of template per change; with the skeletons in place the
+ * three bodies they resolve first stay within 4,300.
+ */
+test('the skeleton bodies stay within the template budget they were measured at', () => {
+  const sk = sddSpec('speckit')!.scaffold!.skeleton!;
+  const total = Object.values(sk.files).reduce((n, b) => n + Buffer.byteLength(b), 0);
+  assert.equal(Object.keys(sk.files).length, 3);
+  assert.ok(total <= 4300, `${total} bytes of skeleton`);
+});
+
+test('this brain carries the skeleton byte for byte where spec-kit resolves first', () => {
+  const sk = sddSpec('speckit')!.scaffold!.skeleton!;
+  const repoRoot = join(import.meta.dirname, '../../..');
+  for (const [file, body] of Object.entries(sk.files)) {
+    assert.equal(readFileSync(join(repoRoot, sk.dir, file), 'utf8'), body, `${sk.dir}/${file}`);
+  }
+});
+
+/**
+ * MV-146: spec-kit calls the report scratch to remove before commit from
+ * 1.0.6 on, and git keeps the amendment record, so the revisit says to commit
+ * none. No retired wording is spelled here; `prepend` is simply absent.
+ */
+test('the speckit revisit says to commit no Sync Impact Report', () => {
+  const revisit = sddSpec('speckit')!.projectSteps![0].revisit;
+  assert.match(revisit, /; commit no Sync Impact Report\./);
+  assert.doesNotMatch(revisit, /prepend/i);
+});

@@ -5,13 +5,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { initRepo } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
+import { closeOwnedDirs, pointFeature, slugArtifactDirs } from '../../src/change/carry.js';
+import { sddSpec } from '../../src/adapters/registry.js';
 
 process.env.PATH = [dirname(process.execPath), '/usr/bin', '/bin'].join(delimiter);
 for (const [k, v] of Object.entries({
@@ -134,4 +136,100 @@ test('an ignored shared file is refused, naming how to find the rule — MV-133'
   const a = await quiet(() => change.run(['apply', slug], { cwd: b }));
   assert.equal(a.code, 1, a.out);
   assert.match(a.out, /\.specify\/extras\/hidden\.md is ignored, so it cannot be committed — `git -C .* check-ignore -v \.specify\/extras\/hidden\.md` names the rule/);
+});
+
+// --- MV-146: the feature pointer, and what close owns ---
+
+test('pointFeature names the change\'s directory, returns what it named before, and keeps the file\'s other keys', async () => {
+  const speckit = sddSpec('speckit')!;
+  const d = mkdtempSync(join(tmpdir(), 'mvac-pointer-'));
+  // Not installed: no script there reads the pointer, so nothing is written.
+  mkdirSync(join(d, '.specify'), { recursive: true });
+  assert.equal(await pointFeature(d, speckit, 'specs/001-alpha'), null);
+  assert.equal(existsSync(join(d, '.specify/feature.json')), false);
+
+  write(d, '.specify/integration.json', SPECKIT_INTEGRATION_JSON);
+  assert.equal(await pointFeature(d, speckit, 'specs/001-alpha'), null, 'no pointer before');
+  const read = (): Record<string, unknown> => JSON.parse(readFileSync(join(d, '.specify/feature.json'), 'utf8'));
+  assert.deepEqual(read(), { feature_directory: 'specs/001-alpha' });
+
+  write(d, '.specify/feature.json', JSON.stringify({ feature_directory: 'specs/002-beta', note: 'kept' }));
+  assert.equal(await pointFeature(d, speckit, 'specs/001-alpha'), 'specs/002-beta');
+  assert.deepEqual(read(), { feature_directory: 'specs/001-alpha', note: 'kept' });
+  // Already there: said as what it was, and the file is not rewritten.
+  const before = readFileSync(join(d, '.specify/feature.json'), 'utf8');
+  assert.equal(await pointFeature(d, speckit, 'specs/001-alpha'), 'specs/001-alpha');
+  assert.equal(readFileSync(join(d, '.specify/feature.json'), 'utf8'), before);
+
+  // A tool that keeps no pointer: nothing to point.
+  const opsx = sddSpec('opsx')!;
+  assert.equal(opsx.pointer, undefined);
+  assert.equal(await pointFeature(d, opsx, 'openspec/changes/alpha'), null);
+});
+
+test('closeOwnedDirs adds a moved-from directory git reports deleted, and each main spec an archive merged into', async () => {
+  const opsx = sddSpec('opsx')!;
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-owned-')), 'brain');
+  initRepo(b, {
+    'openspec/changes/bill-weekly/proposal.md': '# proposal\n',
+    'openspec/changes/bill-weekly/tasks.md': '- [x] 1.1 done\n',
+    'openspec/changes/other/proposal.md': '# another change\n',
+    'openspec/specs/billing/spec.md': '# billing\n',
+    'openspec/specs/billing/design.md': '# billing design\n',
+  });
+  // Before the archive: the change's own directory, and nothing else.
+  assert.deepEqual(await closeOwnedDirs(b, opsx, 'bill-weekly'), ['openspec/changes/bill-weekly']);
+
+  // What `openspec archive bill-weekly --yes` does (1.13.2): move the directory
+  // under a dated archive and merge each capability delta into the main specs.
+  const arch = 'openspec/changes/archive/2026-09-28-bill-weekly';
+  write(b, `${arch}/proposal.md`, '# proposal\n');
+  write(b, `${arch}/tasks.md`, '- [x] 1.1 done\n');
+  write(b, `${arch}/specs/billing/spec.md`, '# delta\n');
+  write(b, `${arch}/specs/refunds/spec.md`, '# delta\n');
+  rmSync(join(b, 'openspec/changes/bill-weekly'), { recursive: true });
+  write(b, 'openspec/specs/billing/spec.md', '# billing, merged\n');
+  write(b, 'openspec/specs/refunds/spec.md', '# refunds, new\n');
+  // A human's edit beside the merged spec, in the same capability: not the archive's.
+  write(b, 'openspec/specs/billing/design.md', '# billing design, v2 by a human\n');
+
+  const owned = await closeOwnedDirs(b, opsx, 'bill-weekly');
+  // Each merged main spec is the FILE the delta names, never its capability's
+  // directory, which would sweep the human's edit into the archive commit.
+  assert.deepEqual(owned.sort(), [
+    arch,
+    'openspec/changes/bill-weekly',
+    'openspec/specs/billing/spec.md',
+    'openspec/specs/refunds/spec.md',
+  ]);
+  assert.ok(!owned.some((p) => p.includes('other')), 'another change is never this close\'s');
+  assert.ok(!owned.some((p) => p === 'openspec/specs/billing' || p.endsWith('design.md')), owned.join(', '));
+  // The one derivation MV-144 pins is unchanged: only what is on disk.
+  assert.deepEqual(await slugArtifactDirs(b, opsx, 'bill-weekly'), [arch]);
+});
+
+/**
+ * MV-146. The slug's segment is found in the TEMPLATE. Found in the
+ * substituted path, a slug inside a parent segment's name took the parent:
+ * slug `spec` took `specs`, slug `change` took `openspec/changes`, and every
+ * other change's directory came with it — the pointer named `specs`, close
+ * cited it and staged another change's work in progress.
+ */
+test('a slug inside a parent directory\'s name owns its own directory, never the parent', async () => {
+  const speckit = sddSpec('speckit')!;
+  const opsx = sddSpec('opsx')!;
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-owned-substr-')), 'brain');
+  initRepo(b, { 'README.md': '# brain\n' });
+  write(b, 'specs/001-other/spec.md', '# another change, work in progress\n');
+  write(b, 'specs/002-spec/spec.md', '# the change called spec\n');
+  assert.deepEqual(await slugArtifactDirs(b, speckit, 'spec'), ['specs/002-spec']);
+  assert.deepEqual(await closeOwnedDirs(b, speckit, 'spec'), ['specs/002-spec']);
+
+  write(b, 'openspec/changes/other/proposal.md', '# another change\n');
+  write(b, 'openspec/changes/change/proposal.md', '# the change called change\n');
+  assert.deepEqual(await slugArtifactDirs(b, opsx, 'change'), ['openspec/changes/change']);
+  assert.deepEqual(await closeOwnedDirs(b, opsx, 'change'), ['openspec/changes/change']);
+  // `open` is inside `openspec`: the same rule.
+  write(b, 'openspec/changes/open/proposal.md', '# the change called open\n');
+  assert.deepEqual(await closeOwnedDirs(b, opsx, 'open'), ['openspec/changes/open']);
 });

@@ -26,13 +26,22 @@ import { ritualChecklist } from '../lib/ritual.js';
 import { writeEcosystem } from '../doors/ecosystem.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
-import { grapherSpec, sddSpec, type GatePoint, type LifecyclePoint } from '../adapters/registry.js';
+import { grapherSpec, sddSpec, type AdapterSpec, type GatePoint, type LifecyclePoint } from '../adapters/registry.js';
 import { sddGate, sddInstructions } from '../adapters/sdd.js';
 import { graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
 import { equip, missingTools } from '../adapters/equip.js';
 import { projectDocLines } from '../adapters/project-doc.js';
 import { cloneFix, cloneState } from '../lib/repo-state.js';
-import { doCarry, planCarry, slugArtifactDirs, type CarryPlan } from '../change/carry.js';
+import {
+  closeOwnedDirs,
+  doCarry,
+  featureHome,
+  planCarry,
+  pointFeature,
+  slugArtifactDirs,
+  type CarryPlan,
+} from '../change/carry.js';
+import { citeLine, citeSpec } from '../change/cite.js';
 import picomatch from 'picomatch';
 import { graphTrackedGate } from '../adapters/tracked.js';
 import { adapterFor, adaptersByRoot, readOnly } from '../adapters/detect.js';
@@ -640,25 +649,27 @@ const bump = (cur: RepoStatus, min: RepoStatus): RepoStatus =>
  *
  * Read from `git status`, so the pathspec never names something git does not
  * know about and a deletion — the archive moving a directory — lands in the same
- * commit as the addition that replaced it. Only the brain: a code repo's
- * artifacts ride its own branch through the carry (MV-133), and close prints the
- * commit to make there rather than making it.
+ * commit as the addition that replaced it. Only the brain: the SDD runs nowhere
+ * else (MV-146).
  *
- * Off entirely with no SDD, `sdd_auto: false` or `--no-sdd`: the pathspec is
- * then exactly what it was before this rule.
+ * MV-146: keyed on the brain resolving an SDD, and on nothing else. It used to
+ * be off under `sdd_auto: false` or `--no-sdd`, so `close --no-sdd` left the
+ * brain's `specs/<n>-<slug>/` untracked: the flags skip the steps and their
+ * gates, they never meant "leave what was written uncommitted". What it stages
+ * is `closeOwnedDirs` — deletions and an archive's merged main specs included —
+ * and nothing under those is ever named dirty. With no SDD the pathspec is
+ * exactly what it was before this rule.
  */
 async function sddPathsToLand(
   brain: string,
   cfg: Config,
   slug: string,
-  noSdd: boolean,
 ): Promise<{ paths: string[]; notices: string[] }> {
   const out: { paths: string[]; notices: string[] } = { paths: [], notices: [] };
-  if (!cfg.sddAuto || noSdd) return out;
   const name = adapterFor(cfg, 'brain', 'sdd');
   const spec = name ? sddSpec(name) : null;
   if (!spec) return out;
-  const dirs = await slugArtifactDirs(brain, spec, slug);
+  const dirs = await closeOwnedDirs(brain, spec, slug);
   const status = await gitRun(brain, ['status', '--porcelain=v1', '-z', '--untracked-files=all']).catch(
     () => '',
   );
@@ -685,6 +696,54 @@ async function sddPathsToLand(
     out.notices.push(`sdd ${name}: ${p} is dirty and was not staged — it is not this change's to commit`);
   }
   return out;
+}
+
+/**
+ * MV-146. What `change close` — abandoning or not — does with the brain's SDD
+ * files for this slug, before the archive is written: the paths to stage
+ * (`sddPathsToLand`), and the body cited. The feature directory is the first
+ * slug directory in the brain checkout, then in the change's worktree, and the
+ * body gains one line naming it unless it already does; nothing else in the
+ * body is written. `uncited` is the line for a close that found none — the
+ * caller prints it only with SDD automation on and no `--no-sdd`, since with
+ * either off there were no steps to have written one.
+ */
+async function landSdd(
+  brain: string,
+  cfg: Config,
+  parsed: ParsedChange,
+  slug: string,
+): Promise<{ paths: string[]; notices: string[]; uncited: string | null }> {
+  const sddPaths = await sddPathsToLand(brain, cfg, slug);
+  const name = adapterFor(cfg, 'brain', 'sdd');
+  const spec = name ? sddSpec(name) : null;
+  if (!name || !spec) return { ...sddPaths, uncited: null };
+  const home = await featureHome(brain, cfg, spec, slug);
+  if (home) parsed.body = citeSpec(parsed.body, home.dir, name);
+  return {
+    ...sddPaths,
+    // Worded as what this close looked at, never as a verdict on the change:
+    // its why may be recorded somewhere a slug directory does not show.
+    uncited: home ? null : `sdd ${name}: no directory for ${slug} in the brain or its worktree — nothing cited`,
+  };
+}
+
+/**
+ * MV-146. The SDD a lifecycle point's steps run under, with a feature pointer
+ * to keep, or null: none resolved in the brain, no pointer in its registry
+ * entry, or the steps are off (`sdd_auto: false`, `--no-sdd`).
+ */
+function pointed(cfg: Config, noSdd: boolean): { name: string; spec: AdapterSpec } | null {
+  if (!cfg.sddAuto || noSdd) return null;
+  const name = adapterFor(cfg, 'brain', 'sdd');
+  const spec = name ? sddSpec(name) : undefined;
+  return name && spec?.pointer ? { name, spec } : null;
+}
+
+/** The pointer line, when `pointFeature` found it naming another directory. */
+function sayRepointed(tool: { name: string; spec: AdapterSpec }, was: string | null, now: string): void {
+  if (was === null || was === now) return;
+  say(`sdd ${tool.name}: ${tool.spec.pointer!.path} named ${was}; it names ${now} now`);
 }
 
 /**
@@ -833,6 +892,9 @@ async function cmdNew(
   // work stays in the brain (MV-134).
   await equip(brain, cfg, noSdd, []);
   if (cfg.sddAuto && !noSdd) for (const l of await projectDocLines(brain, cfg)) say(l);
+  // MV-146: where the why goes, said before the steps that write it.
+  const cited = adapterFor(cfg, 'brain', 'sdd');
+  if (cfg.sddAuto && !noSdd && cited) say(citeLine(cited));
   runSdd(cfg, 'new', slug, noSdd);
   return 0;
 }
@@ -848,6 +910,11 @@ async function cmdPlan(
   const planned = await loadChange(brain, slug);
   const { change } = planned;
   assertStarted(change);
+  // MV-146: the steps printed below write into the directory the pointer
+  // names, and another change open in this checkout may have moved it.
+  const tool = pointed(cfg, noSdd);
+  const home = tool ? await featureHome(brain, cfg, tool.spec, slug) : null;
+  if (tool && home) sayRepointed(tool, await pointFeature(home.root, tool.spec, home.dir), home.dir);
   if (recordSkip(cfg, change, 'plan', noSdd)) {
     await saveChange(brain, planned);
     await commitBookkeeping(brain, [changeRel(slug)], `change plan: ${slug} — SDD skipped`);
@@ -914,6 +981,21 @@ async function cmdPlan(
     if (!anchored.has(c.id)) {
       say(`claim ${c.id}: no anchor — add <!-- @anchor ${c.id} <repo>:<glob> /<regex>/ --> before close`);
     }
+  }
+  // MV-146: the SDD's steps run in the brain checkout, and a code-less brain
+  // declares no code, so nothing gates code an agent writes there. Said where
+  // the design is about to be written, instead of left to be inferred, and
+  // only with the steps it is about. Every repo the change names is listed,
+  // the brain's own entry too: in brain==code its code is written in its
+  // worktree, never in the checkout the steps run from.
+  const sdd = adapterFor(cfg, 'brain', 'sdd');
+  const code = keys.filter((k) => k !== 'brain' && !cfg.repos[k]?.isBrain);
+  if (cfg.sddAuto && !noSdd && sdd && code.length > 0) {
+    const at = keys.length === 1 ? keys[0] : `{${keys.join(',')}}`;
+    say(
+      `sdd ${sdd}: its steps run from the brain checkout, which holds no code of this change — ` +
+        `tasks name code paths under .multivac/worktrees/${slug}/${at}/, and code is written only there`,
+    );
   }
   runSdd(cfg, 'plan', slug, noSdd);
   return rc;
@@ -1006,6 +1088,11 @@ async function cmdApply(
       if (n > 0) say(`${key}: carried ${n} ${sddName} file${n === 1 ? '' : 's'} onto ${slug} and committed them there`);
     }
   }
+  // MV-146: the directory the carry did not move — a code-less brain's, which
+  // stays in the checkout until close — is where the apply steps write.
+  const tool = pointed(cfg, noSdd);
+  const [stayed] = tool ? await slugArtifactDirs(brain, tool.spec, slug) : [];
+  if (tool && stayed !== undefined) sayRepointed(tool, await pointFeature(brain, tool.spec, stayed), stayed);
   runSdd(cfg, 'apply', slug, noSdd);
   say(`work here — one checkout per repo, nobody else's tree moves:`);
   for (const w of workspaces) say(`  ${w}`);
@@ -1204,6 +1291,10 @@ async function cmdClose(
     // That is MV-26's collision by another road, and the guard is a set the
     // sibling path already computes.
     const anchored = await anchoredClaimIds(brain);
+    // MV-146: what the SDD wrote for this slug lands with the abandon too, and
+    // the body cites it — dropping the work does not drop its record.
+    const sddPaths = await landSdd(brain, cfg, parsed, slug);
+    if (cfg.sddAuto && !noSdd && sddPaths.uncited) say(sddPaths.uncited);
     const dest = await archiveChange(brain, parsed);
     const freed = await releaseUnused(brain, slug, anchored);
     for (const l of freed) say(l);
@@ -1222,10 +1313,9 @@ async function cmdClose(
     // MV-110: abandon archives the file and gives the row back, so it edits
     // exactly what close edits — and printed no commit at all, while the
     // reference documents one. Same scoped paths, never `add -A`.
-    say(
-      `commit it: git -C ${brain} add -- ${relative(brain, dest)} ${changeRel(slug)} ${LAW_PATH} ` +
-        `&& git commit -m "Abandon the ${slug} change"`,
-    );
+    for (const l of sddPaths.notices) say(l);
+    const dropped = [relative(brain, dest), changeRel(slug), LAW_PATH, ...sddPaths.paths];
+    say(`commit it: git -C ${brain} add -- ${dropped.join(' ')} && git commit -m "Abandon the ${slug} change"`);
     return 0;
   }
   // The archive-equivalent has to have HAPPENED — not been printed at.
@@ -1310,6 +1400,12 @@ async function cmdClose(
   if (parsed.change.sdd_skipped?.length) {
     say(`sdd: skipped for this change at ${parsed.change.sdd_skipped.join(', ')} (--no-sdd) — recorded in its archive`);
   }
+  // MV-144: and what the SDD wrote in the brain for this slug. Every gate in the
+  // lifecycle demanded one of these files; a commit that leaves them untracked
+  // asks for proof and then drops it. MV-146: before the archive is written,
+  // because the body it archives cites the directory.
+  const sddPaths = await landSdd(brain, cfg, parsed, slug);
+  if (cfg.sddAuto && !noSdd && sddPaths.uncited) say(sddPaths.uncited);
   const dest = await archiveChange(brain, parsed);
   say(`archived -> ${relative(brain, dest)}`);
   // A reservation the change never used goes back to the pool; the worktrees
@@ -1341,10 +1437,6 @@ async function cmdClose(
   }
   // MV-139: the governance graph after the archive, in the same commit.
   await writeEcosystem(brain, cfg);
-  // MV-144: and what the SDD wrote in the brain for this slug. Every gate in the
-  // lifecycle demanded one of these files; a commit that leaves them untracked
-  // asks for proof and then drops it.
-  const sddPaths = await sddPathsToLand(brain, cfg, slug, noSdd);
   for (const l of sddPaths.notices) say(l);
   const paths = [relative(brain, dest), changeRel(slug), LAW_PATH, ...graphs, ECOSYSTEM_PATH, ...sddPaths.paths];
   const list = paths.join(' ');

@@ -9,8 +9,9 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { pathExists } from '../adapters/detect.js';
-import type { SddProjectStep } from '../adapters/registry.js';
-import { normUrl, run as git } from './git.js';
+import { sddNames, sddSpec, type SddProjectStep } from '../adapters/registry.js';
+import { initState } from './init-state.js';
+import { inHead, normUrl, run as git } from './git.js';
 import type { RepoEntry } from '../types.js';
 
 export type CloneState =
@@ -112,4 +113,39 @@ export async function projectDocVerdict(dir: string, doc: SddProjectStep): Promi
   const token = (doc.placeholders ?? []).find((p) => prose.includes(p));
   if (token) return { verdict: 'template', why: `placeholders remain: ${token}` };
   return { verdict: 'written' };
+}
+
+/** A known SDD's install found in a code repo (MV-146). */
+export interface Leftover {
+  sdd: string;
+  /** The vendor's state file found there, else its directory. */
+  file: string;
+  /** Whether HEAD holds it: removed by a commit, or by a delete alone. */
+  tracked: boolean;
+}
+
+/**
+ * MV-146. Every KNOWN SDD whose state in a code repo is not missing. A
+ * top-level `sdd:` used to reach every declared repo and `repos sync` ran the
+ * vendor's init in each; the SDD runs in the brain alone now, so what an
+ * earlier release installed there is a leftover nothing reads. One answer for
+ * `doctor` and `repos check`, which report it and never fail over it — and
+ * removing it is not code (MV-137), for every known SDD, not only the brain's.
+ * Files only, and git's own answer for tracked: no vendor is run.
+ */
+export async function leftoverSdds(dir: string): Promise<Leftover[]> {
+  const out: Leftover[] = [];
+  for (const sdd of sddNames) {
+    const spec = sddSpec(sdd);
+    if (!spec || (await initState(spec, dir)).state === 'missing') continue;
+    let file = spec.state.dir ?? spec.state.files[0];
+    for (const f of spec.state.files) {
+      if (await pathExists(join(dir, f))) {
+        file = f;
+        break;
+      }
+    }
+    out.push({ sdd, file, tracked: await inHead(dir, file) });
+  }
+  return out;
 }

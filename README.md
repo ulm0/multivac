@@ -18,7 +18,8 @@ told, what ships before what — as a checklist, never as a gate. Deterministic
 core, no API key required; git is the enforcement floor.
 
 Declare a spec-driven development tool (spec-kit or OpenSpec) and a code graph
-(graphify or codegraph), and multivac installs them in every repo it sets up,
+(graphify or codegraph), and multivac installs the spec tool in the brain, where
+every change's specs are written, and the graph in every repo it sets up; it
 gates each change on the tool's own artifacts, commits each repo's graph on the
 change's branch, and refuses code that reaches a repo outside a change. The
 brain also keeps `.multivac/ecosystem.json`, a graph of how its repos, law rows

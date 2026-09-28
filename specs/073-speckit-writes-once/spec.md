@@ -41,13 +41,14 @@ piece where a mistake loses a guarantee.
 2. **Given** the same ecosystem, **When** `doors` renders a code repo's door, **Then** it carries one line saying where the brain's SDD runs and where this repo's code belongs, and no SDD step block.
 3. **Given** a code repo with no `sdd:` of its own, **When** code is staged on a branch that is no open change declaring it and `verify --strict` runs, **Then** it refuses, exactly as before.
 4. **Given** a code repo whose entry says `sdd: none`, **When** code is staged on any branch, **Then** the code gate does not apply there.
-5. **Given** a code repo entry naming a tool (`sdd: opsx`), a top-level tool contradicted by the brain's own entry, or an SDD name the registry does not know, **When** any command loads the brain's config, **Then** it exits 2 naming the key, the fix and the change the config edit needs.
+5. **Given** a code repo entry naming a tool (`sdd: opsx`), a top-level tool contradicted by the brain's own entry, or an SDD name the registry does not know, **When** any command loads the brain's config, **Then** it exits 2 naming the key, the fix and the change the config edit needs — except `doctor`, `doors` and `init`, which report it as a config they cannot load and exit 1, as they do for any such config.
 6. **Given** the same refused config read through a consumer's mounted brain, **When** `verify` runs in the consumer, **Then** it prints the refusal as a line that blocks only under `--strict`, because a mount can lag its brain.
 7. **Given** a closing change in a brain that resolves an SDD, **When** `close` runs with `--no-sdd` or under `sdd_auto: false`, **Then** the brain's directories for that slug are still in the commit it prints.
 8. **Given** an openspec archive that merged the change's capability specs into the main specs and moved the change directory, **When** `close` prints its commit, **Then** the archive, the moved-from directory and each merged main spec are staged, and none is named as dirty.
 9. **Given** two changes open in one brain checkout, **When** `change plan` or `change apply` runs for one of them, **Then** spec-kit's feature pointer names that change's directory, and the command says so when it named another.
 10. **Given** a code repo that an earlier release equipped with the SDD, **When** `doctor` or `repos check` runs, **Then** the leftover install is reported with how to remove it, and neither command fails over it; removing it is not code.
 11. **Given** a missing spec for a change whose spec was written in a code repo by habit, **When** the gate refuses, **Then** it names the file it found there and says it is not read.
+12. **Given** a change open across the upgrade whose task ledger sits only in a code repo, **When** `close` runs, **Then** it refuses, naming the ledger it found there unread, instead of passing over tasks it cannot see.
 
 ### User Story 2 - The templates are skeletons (Priority: P2)
 
@@ -129,9 +130,9 @@ pointer's value is a durable link from the archive to the proof.
 
 ### Edge Cases
 
-- brain==code with no other repo (this repository): every surface behaves as before except the revisit wording, the door's step endings and the instruction count; there is no code repo to govern or exempt.
+- brain==code with no other repo (this repository): every surface behaves as before except the revisit wording, the door's step endings, the instruction count and flow.md's two rows that now say "in the brain" (the same roots, named for what they are); there is no code repo to govern or exempt.
 - brain==code declared under a key other than `brain`: the worktree the proofs are looked for in is named by that key, so a task left open still refuses close.
-- A code repo whose `sdd:` is the empty string: treated as unset, as today, not refused.
+- A code repo whose `sdd:` is the empty string: treated as unset, so not refused and its code governed; before this change an empty value stopped the top level at that root. An empty `grapher:` keeps doing that.
 - A read-only repo (MV-125): never scaffolded, never searched for a stray spec's sake beyond naming, never named by the leftover report.
 - An opsx leftover in a code repo: removing `openspec/` there is not code, like removing `.specify/`.
 - A `specs/` directory in a code repo: code, since under this rule it is no SDD's directory there.
@@ -150,15 +151,15 @@ pointer's value is a durable link from the archive to the proof.
 - **FR-003**: Loading a brain's config MUST refuse, naming the key and the fix and the change the edit needs: a code repo's `sdd:` naming anything but `none` (the empty string stays unset); a top-level tool contradicted by the brain's own entry; an SDD name the registry does not know.
 - **FR-004**: Every load of a mounted brain's config on a consumer's `verify` path, and a consumer's `count`, MUST report the refusal as one line instead of exiting 2; the line MUST gate only under `--strict`.
 - **FR-005**: The code gate MUST switch on in a repo whenever the SDD governing its code resolves and SDD automation is on.
-- **FR-006**: The SDD's step-artifact directories and project documents MUST be not-code in the brain only; every known SDD's vendor state, shared paths and harness directories MUST stay not-code everywhere, so removing a leftover install of any known SDD is free.
+- **FR-006**: The SDD's step-artifact directories and project documents MUST be not-code in the brain, so spec-kit's `specs/` is code in a code repo; everything under a known SDD's install directory (`.specify/`, and `openspec/`, which holds opsx's step artifacts and both tools' project documents), and every known SDD's shared paths and harness directories, MUST stay not-code everywhere, so removing a leftover install of any known SDD is free.
 - **FR-007**: `close`, and `close --abandon`, MUST stage the brain's directories for the slug whenever the brain resolves an SDD, whatever `sdd_auto` or `--no-sdd` say, including a slug directory git reports deleted and, for a step declaring a merge, each main spec the archive merged into.
 - **FR-008**: A step's proof MUST be looked for in the brain and in the change's worktree named by the brain entry's own key.
-- **FR-009**: When a proof is missing, the refusal MUST also name any match for the slug found in a declared, present code repo or its worktree, and say it is not read.
-- **FR-010**: `change plan` and `change apply` MUST point spec-kit's feature pointer at the slug's directory wherever it is, and say so when it named another.
-- **FR-011**: `change plan` MUST say, when the change names a repo other than the brain's entry, that the steps run from the brain checkout and code is written only in the change's worktrees.
+- **FR-009**: When a proof is missing, the refusal MUST also name any match for the slug found in a declared, present code repo or its worktree, read-only or not, and say it is not read. When a step's task ledger is found only there, the gate that reads it MUST refuse, naming it unread.
+- **FR-010**: `change plan` and `change apply` MUST point spec-kit's feature pointer at the slug's directory wherever it is, in a checkout where the tool's state probe says installed, and say so when it named another.
+- **FR-011**: `change plan` MUST say, with the steps (SDD automation on, no `--no-sdd`) and when the change names a repo other than the brain's entry, that the steps run from the brain checkout and code is written only in the worktrees of the repos the change names, the brain's own entry among them.
 - **FR-012**: A consumer door MUST carry one line saying where the brain's SDD runs and where this repo's code belongs, and no SDD step block or project-document line; a repo saying `sdd: none`, or SDD automation off, gets no line.
-- **FR-013**: `doctor` MUST report the SDD's install, flow, gates and project document for the brain only; name the code repos the brain's SDD governs and those exempt, when there is any code repo; and report a code repo's leftover install of any known SDD with whether it is tracked and how to remove it, never failing over it.
-- **FR-014**: `repos check` MUST ask the SDD checks of the brain only and add the leftover fact to a code repo's line without changing its exit code.
+- **FR-013**: `doctor` MUST report the SDD's install, flow, gates and project document for the brain only; name the code repos the brain's SDD governs and those exempt, when there is any code repo and SDD automation is on; and, where the brain resolves an SDD, report a writable code repo's leftover install of any known SDD with whether it is tracked and how to remove it, never failing over it. With no SDD in the brain it prints no `sdd` line.
+- **FR-014**: `repos check` MUST ask the SDD checks of the brain only and, where the brain resolves an SDD, add the leftover fact to a code repo's line without changing its exit code.
 - **FR-015**: `seed`, flow.md, `ecosystem.json` and `init`'s printed step MUST describe the brain's SDD and the brain's project document, never a code repo's.
 
 #### Written once
@@ -173,7 +174,7 @@ pointer's value is a durable link from the archive to the proof.
 
 - **FR-021**: Each lifecycle point MUST print its steps and then, once, the run-the-chain instruction with its opt-out on the same line; none when no step printed.
 - **FR-022**: The brain door MUST end each step with its proof path or `[ungateable]`.
-- **FR-023**: Under `sdd_auto: false`, the door, flow.md and `doctor` MUST NOT say the lifecycle refuses.
+- **FR-023**: Under `sdd_auto: false`, the door, flow.md and `doctor` MUST NOT say the lifecycle refuses, and flow.md and `doctor` MUST NOT say it runs the init or writes the skeleton.
 
 #### Cited, never restated
 
@@ -190,7 +191,7 @@ pointer's value is a durable link from the archive to the proof.
 - **Governing SDD**: the SDD whose rules a root's code falls under — the brain's, unless the root opts out with `none`.
 - **Skeleton**: per SDD, a directory, a body per template, the headings kept, the version measured and the floor.
 - **Feature pointer**: spec-kit's `.specify/feature.json` `feature_directory`, the directory its steps write into.
-- **Leftover install**: a code repo's SDD state from an earlier release, reported with its removal.
+- **Leftover install**: a code repo's SDD state from an earlier release, reported with its removal when the brain resolves an SDD.
 - **Spec pointer line**: the one line close appends to a change body.
 
 ## Success Criteria *(mandatory)*

@@ -1,4 +1,5 @@
 import type { GrapherDecl } from '../types.js';
+import { PLAN_SKELETON, SPEC_SKELETON, TASKS_SKELETON } from './skeletons.js';
 
 // Tool-shipped adapter/target registry — data, not code. Adding a harness,
 // an SDD tool, or a grapher is ADDING AN ENTRY here (an MR to multivac),
@@ -151,6 +152,14 @@ export interface SddStep {
      */
     gate: GatePoint;
   };
+  /**
+   * MV-146. Where this step moves the change's own spec deltas when it runs:
+   * each `<artifact dir>/<from>/<cap>/` is merged into `<into>/<cap>/`. Close
+   * stages every such `<into>/<cap>`, beside the directory the step archived
+   * into and the one it moved from, so the merged main specs land in the same
+   * commit as the archive instead of being named dirty and left out.
+   */
+  merges?: { from: string; into: string };
 }
 
 /**
@@ -244,6 +253,32 @@ export interface SddScaffold {
   integrations: Record<string, { key: string; safe: boolean; dirs: string[] }>;
   /** MV-130: the integration used when no declared door maps to one. */
   fallback?: string;
+  /**
+   * MV-146. Templates multivac writes where the tool resolves them first, once,
+   * on the run whose probe turns the root from missing to installed: `files`
+   * maps each file name under `dir` to its body, `keeps` names the H2 headings
+   * each body keeps, and none is written below `floor` — the lowest version
+   * measured to read `dir` first — nor over a file already there. It sits on
+   * the scaffold, not on an integration: an override is served verbatim, so it
+   * carries none of the `tokens` the init substitutes per integration.
+   */
+  skeleton?: {
+    dir: string;
+    files: Record<string, string>;
+    keeps: Record<string, string[]>;
+    measured: string;
+    floor: string;
+    tokens: string[];
+    /**
+     * Where the tool records its presets, which the override directory
+     * outranks: `registry` is the JSON file listing them (`{ presets: { <id>:
+     * { enabled, … } } }`), `templates` the directory a preset ships its own
+     * templates in, `<id>` interpolated, and `propagates` the presets that
+     * ship none and instead write into the core templates a skeleton shadows.
+     * Read by `doctor` alone, and only as a report.
+     */
+    presets?: { registry: string; templates: string; propagates: string[] };
+  };
   /** What running it actually wrote, and how that was established. */
   note: string;
 }
@@ -396,6 +431,19 @@ export interface AdapterSpec {
    */
   scaffold?: SddScaffold;
   /**
+   * MV-146. SDD only: the file and key where the tool records which feature
+   * directory its steps write into. One per checkout, so two changes open in
+   * the brain share it; the lifecycle points it at the slug's directory before
+   * printing that slug's steps.
+   */
+  pointer?: { path: string; key: string };
+  /**
+   * MV-146. SDD only: how to remove an install an earlier release left in a
+   * code repo, as measured. `doctor` prints it beside the leftover it
+   * reports; absent, it names the state directory instead.
+   */
+  leftover?: string;
+  /**
    * Grapher only: the tool's own query surface, in its own verbs. Absent ⇒ the
    * tool has none, and the door says that rather than inventing one.
    */
@@ -505,6 +553,9 @@ const sdd: Record<string, AdapterSpec> = {
     state: { dir: 'openspec', files: ['openspec/config.yaml', 'openspec/config.yml'], check: 'file' },
     shared: ['openspec/config.yaml', 'openspec/config.yml', 'openspec/specs/**'],
     local: [],
+    // Measured on 1.13.2: its init wrote `openspec/` and, per tool, the
+    // `openspec-*` skills and `opsx` commands under that harness's directory.
+    leftover: 'delete openspec/ and the openspec-* skills and opsx commands its init wrote under each harness directory',
     ignore: [],
     env: { DO_NOT_TRACK: '1', OPENSPEC_TELEMETRY: '0' },
     binaries: ['openspec'],
@@ -587,6 +638,11 @@ const sdd: Record<string, AdapterSpec> = {
           why: 'openspec archived this change with tasks still unchecked — `--yes` continues over its own warning',
           gate: 'close',
         },
+        // MV-146, measured 2026-09-28 on openspec 1.13.2: `openspec archive
+        // <slug> --yes` moved openspec/changes/<slug>/ to the dated archive and
+        // merged each specs/<cap>/spec.md delta into openspec/specs/<cap>/,
+        // creating the capability when it was new.
+        merges: { from: 'specs', into: 'openspec/specs' },
       },
     ],
     note: 'Propose, apply and archive are the /opsx: commands your agent runs in chat; the one terminal command multivac runs is `openspec validate`, and the vendor\'s own terminal CLI is larger than any list worth copying here. Network, read from openspec 1.13.0\'s source: every command, the `openspec validate` the gates run included, sends anonymous PostHog telemetry to edge.openspec.dev by default, and `openspec update` also checks registry.npmjs.org for a newer version. The vendor\'s opt-outs are OPENSPEC_TELEMETRY=0 or DO_NOT_TRACK=1 in the environment; this entry\'s `env` sets both on every run multivac makes (MV-124), and a run by hand is yours. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool\'s own escape hatches — multivac gates on what landed on disk, not on how it got there.',
@@ -606,6 +662,14 @@ const sdd: Record<string, AdapterSpec> = {
     shared: ['.specify/**'],
     // What spec-kit's own `.specify/.gitignore` already ignores.
     local: ['.specify/feature.json', '.specify/extensions/*/local-config.yml'],
+    // MV-146, measured 2026-09-28 on spec-kit 1.0.11: `/speckit.specify`
+    // persists `{"feature_directory":"specs/<n>-<name>"}` here, and the
+    // vendor's scripts (common.sh) resolve the feature directory from it, so
+    // with two changes open, `/speckit.plan` for one wrote into the other's.
+    pointer: { path: '.specify/feature.json', key: 'feature_directory' },
+    // Measured on 1.0.11: `specify integration uninstall <key>` removed that
+    // integration's ten skills and left `.specify/` in place.
+    leftover: 'delete .specify/ there; `specify integration uninstall <key>` removes its skills and leaves .specify/',
     ignore: [],
     env: {},
     binaries: ['specify'],
@@ -635,6 +699,49 @@ const sdd: Record<string, AdapterSpec> = {
         copilot: { key: 'copilot', safe: false, dirs: ['.github/skills'] },
       },
       fallback: 'claude',
+      // MV-146, measured 2026-09-28 on spec-kit 1.0.11 with HOME isolated: its
+      // resolvers read overrides/ before the core templates, a fresh init
+      // creates no overrides/, and a second `specify init --here … --force`
+      // leaves the directory byte-identical. 0.9.4's common.sh and 0.16.1's
+      // resolve overrides/ first too, and both record `version` in
+      // integration.json, which the floor is read from; 0.9.1 is not
+      // installable from the index, so the floor is the lowest version run.
+      skeleton: {
+        dir: '.specify/templates/overrides',
+        files: {
+          'spec-template.md': SPEC_SKELETON,
+          'plan-template.md': PLAN_SKELETON,
+          'tasks-template.md': TASKS_SKELETON,
+        },
+        keeps: {
+          'spec-template.md': [
+            'User Scenarios & Testing *(mandatory)*', 'Requirements *(mandatory)*',
+            'Success Criteria *(mandatory)*', 'Assumptions',
+          ],
+          'plan-template.md': ['Summary', 'Technical Context', 'Constitution Check', 'Project Structure', 'Complexity Tracking'],
+          // The core set minus Notes, Path Conventions and the repeated sample phases.
+          'tasks-template.md': [
+            'Format: `[ID] [P?] [Story] Description`', 'Phase 1: Setup (Shared Infrastructure)',
+            'Phase 2: Foundational (Blocking Prerequisites)', 'Phase 3: User Story 1 - [Title] (Priority: P1) 🎯 MVP',
+            'Phase N: Polish & Cross-Cutting Concerns', 'Dependencies & Execution Order',
+            'Parallel Example: User Story 1', 'Implementation Strategy',
+          ],
+        },
+        measured: 'spec-kit 1.0.11', floor: '0.9.4',
+        // What the init substitutes per integration (`__SPECKIT_COMMAND_<NAME>__`
+        // becomes /speckit-plan on claude), and the spelling it becomes.
+        tokens: ['__SPECKIT_COMMAND_', '/speckit'],
+        // Measured on 1.0.11: `specify preset add` records `{ schema_version,
+        // presets: { <id>: { enabled, priority, … } } }` in this file, and a
+        // preset's own templates sit under its directory. `constitution-sync`
+        // ships none: it propagates into the core templates the skeleton
+        // shadows, so every override outranks it.
+        presets: {
+          registry: '.specify/presets/.registry',
+          templates: '.specify/presets/<id>/templates',
+          propagates: ['constitution-sync'],
+        },
+      },
       // Verified by running it in a scratch repo, not read off a README: it
       // writes `.specify/**` — scripts, templates, and memory/constitution.md
       // as the UNFILLED template — plus ten .claude/skills/speckit-*/SKILL.md.
@@ -666,8 +773,16 @@ const sdd: Record<string, AdapterSpec> = {
           '[GUIDANCE_FILE]', '[CONSTITUTION_VERSION]', '[RATIFICATION_DATE]', '[LAST_AMENDED_DATE]',
         ],
         templateRecord: '.specify/memory/.constitution-template.json',
+        // MV-146, read from the vendor's own /speckit.constitution: through
+        // 1.0.5 it said to produce the report and "prepend as an HTML comment
+        // at top of the constitution file after update"; 1.0.6 through 1.0.12
+        // call it "temporary scratch material for human review of the
+        // amendment, not governance content; it is expected to be removed
+        // before the amended constitution file is committed". Git keeps the
+        // amendment record, and every committed report is read again by each
+        // step that loads the constitution.
         revisit:
-          'once at start, then on every principle change: amend it in place, bump CONSTITUTION_VERSION by semver (MAJOR removes/redefines, MINOR adds, PATCH clarifies) and prepend the Sync Impact Report. Spec-kit defines no cadence — `/speckit.plan`\'s Constitution Check and `/speckit.analyze` only surface drift, they never edit the file',
+          'once at start, then on every principle change: amend it in place, bump CONSTITUTION_VERSION by semver (MAJOR removes/redefines, MINOR adds, PATCH clarifies); commit no Sync Impact Report. Spec-kit defines no cadence — `/speckit.plan`\'s Constitution Check and `/speckit.analyze` only surface drift, they never edit the file',
       },
     ],
     steps: [

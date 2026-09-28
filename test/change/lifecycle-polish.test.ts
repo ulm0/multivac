@@ -9,6 +9,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
+import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 
@@ -421,4 +422,149 @@ test('with no SDD declared the archive pathspec is what it always was — MV-144
     add,
     /add -- \.multivac\/changes\/archive\/no-sdd-here\.md \.multivac\/changes\/no-sdd-here\.md \.multivac\/invariants\.md \.multivac\/ecosystem\.json &&/,
   );
+});
+
+// --- MV-146: close lands the brain's specs whatever the flags say, and cites them ---
+
+/** The pathspec of the commit close printed, and the result of running its `add`. */
+function runPrintedAdd(b: string, out: string): string[] {
+  const add = out.split('\n').find((l) => l.includes('add -- '))!;
+  const pathspec = add.slice(add.indexOf('add --') + 7, add.indexOf('&& git commit')).trim().split(/\s+/);
+  git(b, 'add', '--', ...pathspec);
+  return pathspec;
+}
+
+/** Paths git still reports under `under` that are not staged. */
+const unstaged = (b: string, under: string): string[] =>
+  git(b, 'status', '--porcelain', '-uall')
+    .split('\n')
+    .filter((l) => l.includes(under) && (l[1] !== ' ' || l.startsWith('??')));
+
+/** A code-less brain with spec-kit installed, governing api; `extra` lines go above `repos:`. */
+function codeBrain(extra: string[] = []): string {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-polish-code-')));
+  const b = eco.brain;
+  writeFileSync(join(b, '.multivac/config.yml'), ['doors: [agents]', 'sdd: speckit', ...extra, 'repos:', '  api: ../acme-api', ''].join('\n'));
+  mkdirSync(join(b, '.specify/memory'), { recursive: true });
+  writeFileSync(join(b, '.specify/integration.json'), SPECKIT_INTEGRATION_JSON);
+  writeFileSync(join(b, '.specify/memory/constitution.md'), '# Constitution\n\nOne principle: ship what you can check.\n');
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'sdd declared');
+  return b;
+}
+
+test('close cites and stages the directory, whatever --no-sdd says', async () => {
+  for (const [label, extra, flags] of [
+    ['--no-sdd', [], ['--no-sdd']],
+    ['sdd_auto: false', ['sdd_auto: false'], []],
+  ] as const) {
+    const b = codeBrain([...extra]);
+    const slug = 'cite-me';
+    assert.equal(await change.run(['new', slug, 'Cite me'], { cwd: b }), 0, label);
+    const parsed = await loadChange(b, slug);
+    parsed.change.repos = { api: { status: 'landed' } };
+    parsed.change.landing_order = [['api']];
+    parsed.change.invariants.adds = [];
+    await saveChange(b, parsed);
+    const before = (await loadChange(b, slug)).body;
+    featureDir(b, '001', slug);
+
+    const { code, out } = await capture(() => change.run(['close', slug, ...flags], { cwd: b }));
+    assert.equal(code, 0, `${label}\n${out}`);
+    // The flags skip the steps and their gates; they never meant "leave what
+    // was written uncommitted".
+    assert.ok(runPrintedAdd(b, out).includes('specs/001-cite-me'), `${label}\n${out}`);
+    assert.deepEqual(unstaged(b, 'specs/001-cite-me'), [], label);
+    // The archived body is the body it held, byte for byte, and one line more.
+    const archived = readFileSync(join(b, '.multivac/changes/archive', `${slug}.md`), 'utf8');
+    const body = archived.slice(archived.indexOf('\n---\n') + 6);
+    assert.ok(body.startsWith(before), label);
+    assert.equal(body.slice(before.length), '\nSpecified in `specs/001-cite-me/` (speckit).\n', label);
+    // No steps ran, so nothing is said about a directory that is there.
+    assert.doesNotMatch(out, /nothing cited/, label);
+  }
+});
+
+test('a close that finds no directory says it cited nothing, and only with the steps on', async () => {
+  const b = sddBrain();
+  await declare(b, 'no-dir');
+  assert.equal(await change.run(['land', 'no-dir', '--landed', 'brain'], { cwd: b }), 0);
+  const { code, out } = await capture(() => change.run(['close', 'no-dir'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.match(out, /^sdd speckit: no directory for no-dir in the brain or its worktree — nothing cited$/m);
+  const archived = readFileSync(join(b, '.multivac/changes/archive/no-dir.md'), 'utf8');
+  assert.doesNotMatch(archived, /Specified in/);
+
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'settle');
+  await declare(b, 'no-dir-skipped');
+  assert.equal(await change.run(['land', 'no-dir-skipped', '--landed', 'brain', '--no-sdd'], { cwd: b }), 0);
+  const skipped = await capture(() => change.run(['close', 'no-dir-skipped', '--no-sdd'], { cwd: b }));
+  assert.equal(skipped.code, 0, skipped.out);
+  assert.doesNotMatch(skipped.out, /nothing cited/);
+});
+
+test('an opsx archive lands with the specs it merged and the directory it moved', async () => {
+  const b = brain();
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\nsdd: opsx\nrepos:\n  brain: .\n');
+  mkdirSync(join(b, 'openspec/specs/billing'), { recursive: true });
+  writeFileSync(join(b, 'openspec/config.yaml'), 'schema: spec-driven\n');
+  writeFileSync(join(b, 'openspec/specs/billing/spec.md'), '# billing\n');
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'opsx installed, one main spec');
+  await declare(b, 'bill-weekly');
+  // The change as /opsx:propose wrote it, committed — the way brain==code lands
+  // it through the change's branch.
+  const change_ = join(b, 'openspec/changes/bill-weekly');
+  for (const [f, body] of [
+    ['proposal.md', '# Bill weekly\n'],
+    ['tasks.md', '- [x] 1.1 bill weekly\n'],
+    ['specs/billing/spec.md', '## MODIFIED Requirements\n'],
+    ['specs/refunds/spec.md', '## ADDED Requirements\n'],
+  ]) {
+    mkdirSync(join(change_, f, '..'), { recursive: true });
+    writeFileSync(join(change_, f), body);
+  }
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'the change, proposed');
+  assert.equal(await change.run(['land', 'bill-weekly', '--landed', 'brain', '--no-sdd'], { cwd: b }), 0);
+  // What `openspec archive bill-weekly --yes` does, measured on 1.13.2: the
+  // directory moves under a dated archive, and each capability delta is merged
+  // into the main specs — an existing one changed, a new one created.
+  const arch = 'openspec/changes/archive/2026-09-28-bill-weekly';
+  mkdirSync(join(b, 'openspec/changes/archive'), { recursive: true });
+  execFileSync('mv', [change_, join(b, arch)]);
+  writeFileSync(join(b, 'openspec/specs/billing/spec.md'), '# billing\n\nWeekly, merged.\n');
+  mkdirSync(join(b, 'openspec/specs/refunds'), { recursive: true });
+  writeFileSync(join(b, 'openspec/specs/refunds/spec.md'), '# refunds\n');
+
+  const { code, out } = await capture(() => change.run(['close', 'bill-weekly'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.doesNotMatch(out, /is dirty and was not staged/);
+  const pathspec = runPrintedAdd(b, out);
+  // Each merged main spec by its file: the archive merged `<cap>/spec.md`, and
+  // nothing else in the capability's directory is this close's.
+  for (const p of [arch, 'openspec/changes/bill-weekly', 'openspec/specs/billing/spec.md', 'openspec/specs/refunds/spec.md']) {
+    assert.ok(pathspec.includes(p), `${p} in ${pathspec.join(' ')}`);
+  }
+  // After the printed add, nothing of the change is left out of the commit.
+  for (const under of ['bill-weekly', 'openspec/specs/']) assert.deepEqual(unstaged(b, under), [], under);
+  assert.match(
+    readFileSync(join(b, '.multivac/changes/archive/bill-weekly.md'), 'utf8'),
+    /\nSpecified in `openspec\/changes\/archive\/2026-09-28-bill-weekly\/` \(opsx\)\.\n$/,
+  );
+});
+
+test('--abandon stages the slug\'s directory and cites it too', async () => {
+  const b = sddBrain();
+  assert.equal(await change.run(['new', 'drop-it', 'Drop it'], { cwd: b }), 0);
+  const before = (await loadChange(b, 'drop-it')).body;
+  featureDir(b, '004', 'drop-it');
+  const { code, out } = await capture(() => change.run(['close', 'drop-it', '--abandon'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.match(out, /^commit it: git -C .* add -- \.multivac\/changes\/archive\/drop-it\.md \.multivac\/changes\/drop-it\.md \.multivac\/invariants\.md specs\/004-drop-it && git commit -m "Abandon the drop-it change"$/m);
+  const archived = readFileSync(join(b, '.multivac/changes/archive/drop-it.md'), 'utf8');
+  const body = archived.slice(archived.indexOf('\n---\n') + 6);
+  assert.ok(body.startsWith(before));
+  assert.equal(body.slice(before.length), '\nSpecified in `specs/004-drop-it/` (speckit).\n');
 });
