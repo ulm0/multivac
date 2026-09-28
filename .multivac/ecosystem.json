@@ -5536,9 +5536,143 @@
   },
   {
    "source": "change:speckit-writes-once",
+   "target": "law:MV-120",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-122",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-129",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-130",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-132",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-133",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-134",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-135",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-136",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-137",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-140",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-143",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-144",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
    "target": "law:MV-146",
    "relation": "adds",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-146",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-55",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-56",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-75",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-76",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-87",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-93",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "law:MV-95",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:speckit-writes-once",
+   "target": "repo:brain",
+   "relation": "lands_in",
+   "confidence": "EXTRACTED",
+   "stage": 1,
+   "status": "branched"
   },
   {
    "source": "change:sql-statement-scanner",
