@@ -47,7 +47,8 @@ export function renderFlow(config: Config): string {
   // The lifecycle's own obligations: true with nothing declared, which is
   // exactly when this page is most needed.
   gate.push('- `change plan` refuses while a declared repo is missing from `landing_order`');
-  gate.push('- `change close` refuses while a declared claim does not resolve');
+  // MV-150: close checks what each claim cites as well as whether it resolves.
+  gate.push('- `change close` refuses while a declared claim does not resolve, or cites no stated row this change adds, touches or retires');
   gate.push('- `verify` refuses a commit whose anchors are broken — it runs in the pre-commit hook');
   auto.push('- the doors and the git hooks are re-projected by `multivac doors`');
   yours.push(`- the ritual in \`${RITUAL_PATH}\`, printed by \`change close\` and checked by nothing`);

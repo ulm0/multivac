@@ -141,10 +141,14 @@ claims do not cite the law this change makes — close refused; fix the lines ab
 ```
 
 Every refusal in one run: a red claim, a claim of no row, an undeclared claim (the anchor verdict
-lines are `closeGate`'s, unchanged; a claim of no row is not evaluated against anchors):
+lines are `closeGate`'s, unchanged, one per claim that has a row — the undeclared INV-05 among
+them; a claim of no row is not evaluated against anchors). `no claims declared — nothing to
+verify` is printed only for a change that declares no claim: one whose every claim cites no row
+prints no verdict line, only its citation lines and the summary:
 
 ```text
 INV-07: no anchors evaluated — add an anchor for the claim, then re-run close
+INV-05: ok
 claims are not green — close refused; fix the red claims, then re-run close
 NOPE-99: no row in .multivac/invariants.md — a claim cites a row of the law; add the row, or drop the claim
 INV-05: claimed, but this change neither adds, touches nor retires it — drop the claim, or list it under invariants.touches if this change amends that row

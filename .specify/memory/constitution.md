@@ -43,8 +43,8 @@ defect the project exists to prevent.
 ### III. The Law Changes Before The Code
 
 An invariant MUST NOT be relaxed in code. The row changes first — dated, in the
-same change that changes the behaviour — and `change close` verifies that law
-and code ended consistent. Invariant IDs are allocated by the tool, never by
+same change that changes the behaviour — and `change close` verifies the rows
+the change claims. Invariant IDs are allocated by the tool, never by
 hand, and are never renumbered or reused. Retiring is authored, never derived:
 the row is marked retired and new `absent` legs are written for the dead
 mechanism's identifiers. New claims are filed `proposed`; only a human enacts
@@ -129,7 +129,8 @@ the amendment record. An amendment that reflects a change in how the project
 actually works MUST land in the same change as that work.
 
 **Compliance.** Principles I–V are enforced by the law table in
-`.multivac/invariants.md` and checked by `multivac verify` on every commit; a
+`.multivac/invariants.md`: `multivac verify` gates its blocking legs on every
+commit where the pre-commit hook and CI run it, and reports the rest; a
 principle with no row behind it is aspiration, and adding the row is how a
 principle becomes real. This document's own *content* is deliberately never
 machine-judged — no tool can decide whether a principle still fits — but its
@@ -138,4 +139,4 @@ unreadable, empty, or still carrying the fill-in tokens spec-kit's template
 ships. Its freshness stays a report, per MV-57: a version that never moves
 while the law does is a signal to revisit rather than a failing grade.
 
-**Version**: 3.0.1 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-28
+**Version**: 3.0.2 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-29

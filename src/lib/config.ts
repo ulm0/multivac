@@ -65,6 +65,20 @@ export const DEFAULT_CHANNEL = 'origin/main';
 export const channelRef = (cfg: Config, entry: RepoEntry): string =>
   entry.channel ?? cfg.channel ?? DEFAULT_CHANNEL;
 
+/**
+ * MV-150: the brain's own channel — its entry's `channel:` (the `brain` key,
+ * else the brain==code entry), else the global, else origin/main, as MV-53
+ * reads every other entry. `land`'s channel line, `close`'s pull and
+ * `verify`'s read line all name this one ref: a pull at `origin/trunk` beside
+ * a channel line reading `origin/main` would attribute one brain's state to
+ * two refs. A brain whose own entry names no `channel:` reads what it read
+ * before.
+ */
+export const brainChannel = (cfg: Config): string => {
+  const own = cfg.repos.brain ?? Object.values(cfg.repos).find((e) => e.isBrain);
+  return own ? channelRef(cfg, own) : cfg.channel ?? DEFAULT_CHANNEL;
+};
+
 /** The law table's header row — the schema multivac writes and reads. */
 const LAW_HEADER = /^\|\s*ID\s*\|\s*statement\s*\|\s*authority\s*\|\s*state\s*\|\s*date\s*\|\s*source\s*\|/m;
 

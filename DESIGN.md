@@ -95,7 +95,8 @@ Four fields:
    ships".
 3. **Which invariants it touches**, under the rule already written: an
    invariant is never relaxed in code — it is changed in the law first.
-4. **Which claims it makes true**, and with them, their anchors.
+4. **Which claims it makes true** — each its row's ID, the row stating the
+   rule — and with them, their anchors.
 
 A change is a **file in the brain**: `.multivac/changes/<slug>.md`, carrying the four
 declared fields — repos, the landing-order graph, invariants touched, claims
@@ -160,7 +161,7 @@ what today gets checked after (when anyone remembers).
 
 Closing a change is a **ceremony**, and only half of it is mechanical.
 multivac executes that half: the landing order held, every declared claim
-resolves, no invariant was relaxed in code instead of in the law. The other
+resolves and cites a row of the law that states its rule. The other
 half belongs to the team — who reviews what, who gets told, what ships before
 what when the reason is not technical. No tool can invent those, and none can
 check them.
@@ -201,16 +202,20 @@ refused by name with the exact command that unblocks it — never git's raw
 stderr. And a branch that already exists is switched to and reported: `apply`
 is re-runnable.
 
-### The tool owns the frontmatter, so prose can be prose
+### The tool owns the frontmatter, and a claim is an ID
 
-A claim statement is a sentence, and sentences contain colons: `staleness:
-block` typed into a value is valid prose and invalid YAML. Since the lifecycle
-is the writer, **the writer does the quoting**: every save serializes through
-one function that quotes what needs quoting and never folds a long statement
-onto continuation lines, so a statement comes back exactly as written. When a
-hand-edited file does break, the error is the teaching kind — the file line,
-the offending source line, and the quoted rewrite to type — never the parser's
-raw complaint about compact mappings.
+A claim cites its row: `claims: [INV-02]`. The row is the statement (MV-111) —
+the one place the rule is written, and the one place anything reads it — so the
+change file carries no second copy to drift from it, and `close` checks that
+each claim cites a row this change adds, touches or retires, and that the row
+states its rule. A legacy `statement:`, written before claims were IDs, still
+parses and round-trips unchanged: the lifecycle is the writer, and every save
+serializes through one function that quotes what needs quoting and never folds a
+long value onto continuation lines, so it comes back exactly as written. Nothing
+creates one any more. When a hand-edited file does break — a colon typed into a
+value is valid prose and invalid YAML — the error is the teaching kind: the file
+line, the offending source line, and the quoted rewrite to type, never the
+parser's raw complaint about compact mappings.
 
 The body below the closing `---` is the human's. With an SDD declared, the
 lifecycle writes exactly one line there: `change close` appends
@@ -780,8 +785,9 @@ enact that alone.
 States: `proposed → active → amended → retired`.
 
 - **Amend**: never relaxed in code — changed in the law first, same change,
-  dated. `multivac change` declares "amends INV-xx"; `close` checks law and code
-  ended up consistent.
+  dated. `multivac change` declares "amends INV-xx"; `close` verifies each
+  declared claim against its anchors and its row, so a change claims the row it
+  amends to have close answer for it — the pre-commit hook checks it either way.
 - **Retire**: the row is not deleted — it is marked `retired`, keeps its ID,
   and its existing legs stop being evaluated. The tombstone is **authored,
   not derived**: retiring writes new `absent` legs on that row for the dead

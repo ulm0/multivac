@@ -14,13 +14,14 @@ import type { Command, Config, VerifyReport } from '../types.js';
 import {
   CHANGES_DIR,
   CONFIG_PATH,
-  DEFAULT_CHANNEL,
   ECOSYSTEM_PATH,
   LAW_PATH,
   RITUAL_PATH,
+  brainChannel,
   loadConfig,
 } from '../lib/config.js';
-import { ignoredPaths, inHead, lastFetchAge, lsFiles, revParse, run as gitRun } from '../lib/git.js';
+import { collectBrainAnchors, parseClaimRows } from '../anchor/parse.js';
+import { ignoredPaths, inHead, lastFetchAge, revParse, run as gitRun } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { ritualChecklist } from '../lib/ritual.js';
 import { writeEcosystem } from '../doors/ecosystem.js';
@@ -64,11 +65,17 @@ import {
   scaffoldChange,
 } from '../change/file.js';
 import {
+  abandonLines,
+  citeLines,
+  DECLARATION_KINDS,
   readLaw,
   releaseUnused,
   reserveId,
   reserveIdLocked,
+  stillReserved,
   withLawLock,
+  type AnchorSite,
+  type CiteLine,
 } from '../change/reserve.js';
 
 const execFileP = promisify(execFile);
@@ -369,7 +376,7 @@ async function channelEvidence(
   claimIds: string[],
 ): Promise<{ line: string; ok: boolean } | null> {
   if (claimIds.length === 0) return null;
-  const ref = cfg.channel ?? DEFAULT_CHANNEL;
+  const ref = brainChannel(cfg);
   const sha = await revParse(brain, ref);
   if (sha === null) {
     return {
@@ -394,6 +401,56 @@ async function channelEvidence(
           `not every declared claim resolves at ${at} — not landed, or not fetched: ` +
           '`multivac repos sync`, then re-read',
       };
+}
+
+/** What the brain's channel states that this checkout does not: its ref, how far behind, which rows. */
+interface Upstream {
+  ref: string;
+  behind: string;
+  ids: Set<string>;
+}
+
+/**
+ * MV-150: a claim whose row states no rule HERE may state it at the brain's
+ * channel — merged on a forge, fetched, not pulled. Telling that author to
+ * state it would write the rule twice, and the second copy is the one the
+ * merge conflicts on. So the channel is asked, at the ref the channel line
+ * above reads (the brain's own entry first, MV-53), offline (MV-01) and only
+ * when a claim's row states nothing here: its law, parsed by the one parser,
+ * and how many commits this checkout lacks. Null when the ref does not
+ * resolve, its law cannot be read, or it states none of `ids` — and then the
+ * refusal says to state the row, which is then true.
+ */
+async function statedUpstream(brain: string, cfg: Config, ids: string[]): Promise<Upstream | null> {
+  const ref = brainChannel(cfg);
+  const sha = await revParse(brain, ref);
+  if (sha === null) return null;
+  const text = await gitRun(brain, ['show', `${sha}:${LAW_PATH}`]).catch(() => null);
+  if (text === null) return null;
+  const want = new Set(ids);
+  const stated = new Set(
+    parseClaimRows(text)
+      .filter((r) => want.has(r.id) && r.statement !== '' && !stillReserved(r))
+      .map((r) => r.id),
+  );
+  if (stated.size === 0) return null;
+  const behind = await gitRun(brain, ['rev-list', '--count', `HEAD..${sha}`]).then(
+    (n) => n.trim(),
+    () => '?',
+  );
+  return { ref, behind, ids: stated };
+}
+
+/**
+ * MV-150: a citation line as `close` and `land` print it — the one place the
+ * pull is spelled. An unstated row the channel states is a pull, never a
+ * second statement; every other line is its own text.
+ */
+function citeText(l: CiteLine, upstream: Upstream | null): string {
+  return l.kind === 'unstated' && upstream?.ids.has(l.id)
+    ? `${l.id}: its row states no rule here, but ${upstream.ref} states it ` +
+        `(${upstream.behind} commit(s) this checkout lacks) — pull, then re-run close`
+    : l.text;
 }
 
 const hasOrigin = (repo: string): Promise<boolean> =>
@@ -798,21 +855,22 @@ async function invariantStates(brain: string): Promise<Map<string, string>> {
   return new Map((law?.rows ?? []).map((r) => [r.id, r.state || '?']));
 }
 
-/** Every claim ID that has at least one @anchor line somewhere in the brain. */
-async function anchoredClaimIds(brain: string, skip?: string): Promise<Set<string>> {
-  const found = new Set<string>();
-  for (const rel of await lsFiles(brain)) {
-    if (skip !== undefined && rel === skip) continue;
-    let text: string;
-    try {
-      text = await readFile(join(brain, rel), 'utf8');
-    } catch {
-      continue;
-    }
-    for (const m of text.matchAll(/@anchor[ \t]+(\S+)/g)) found.add(m[1]);
-  }
-  return found;
+/**
+ * MV-150, MV-45: where every anchor `verify` parses sits — its claim ID and
+ * the brain-relative file it is written in — from the brain's root,
+ * `.multivac/` and `.multivac/changes/`, the collector's own set. "Anchored"
+ * means this set for plan's "no anchor" line, the orphan check, the citation
+ * gate and both releases, never anchor-shaped text in any tracked file: that
+ * scan counted a fresh claude-door brain's skill examples as anchors, so its
+ * first reservation was never given back. The one collection in this file.
+ */
+async function brainAnchorSites(brain: string): Promise<AnchorSite[]> {
+  return (await collectBrainAnchors(brain)).anchors.map((a) => ({ claimId: a.claimId, file: a.file }));
 }
+
+/** The claim IDs of `sites`: what "anchored" means to a release and to plan's notice. */
+const anchoredIds = (sites: ReadonlyArray<{ claimId: string }>): Set<string> =>
+  new Set(sites.map((a) => a.claimId));
 
 const bump = (cur: RepoStatus, min: RepoStatus): RepoStatus =>
   REPO_STATUSES.indexOf(cur) >= REPO_STATUSES.indexOf(min) ? cur : min;
@@ -1085,7 +1143,8 @@ async function cmdNew(
   say('three edits before plan:');
   say(`  1. repos: { api: { status: planned } }        # status: ${REPO_STATUSES.join('|')}`);
   say('  2. landing_order: [[api]]                     # stages; earlier stages land first');
-  say(`  3. claims: [{ id: ${reserved?.id ?? '<ID>'}, statement: "..." }]  # what close verifies`);
+  // MV-150: a claim is its row's ID; the row states the rule.
+  say(`  3. claims: [${reserved?.id ?? '<ID>'}]`.padEnd(48) + '# the rows close verifies; each states its rule');
   // The first moment the tool's steps are printed is the first moment they
   // have to be runnable: scaffold before printing, so the lines below name
   // steps that can run. A new change names no repo yet, so the graph
@@ -1185,11 +1244,28 @@ async function cmdPlan(
       rc = 1;
     }
   }
-  const anchored = await anchoredClaimIds(brain);
+  // MV-45, MV-150: "anchored" is the set `verify` parses, read once here for
+  // the "no anchor" line and the declaration half of close's citation gate.
+  const sites = await brainAnchorSites(brain);
+  const anchored = anchoredIds(sites);
   for (const c of change.claims) {
     if (!anchored.has(c.id)) {
       say(`claim ${c.id}: no anchor — add <!-- @anchor ${c.id} <repo>:<glob> /<regex>/ --> before close`);
     }
+    // MV-150: said, never gated, and never "convert it" — an older multivac
+    // cannot read the bare form, so a change in flight keeps what it has.
+    if (c.statement !== undefined) {
+      say(`claim ${c.id}: its statement: restates the row — kept as written; a claim is its ID, and the row states the rule (MV-111)`);
+    }
+  }
+  // MV-150: the declaration half of close's citation gate, said where it is
+  // cheapest to fix and gating nothing. A row that states no rule yet is the
+  // ordinary state of a change at plan, and a retiring row is retired later:
+  // close asks those, plan does not. Read after the reservations above, so a
+  // row this plan just reserved is in the law it reads.
+  const planRows = (await readLaw(brain))?.rows ?? [];
+  for (const l of citeLines(planRows, change, sites)) {
+    if (DECLARATION_KINDS.includes(l.kind)) say(`claim ${l.text} — close refuses this`);
   }
   // MV-146: the SDD's steps run in the brain checkout, and a code-less brain
   // declares no code, so nothing gates code an agent writes there. Said where
@@ -1603,12 +1679,23 @@ async function cmdLand(
   // and they all resolve — are not read here, so the sentence is conditional;
   // but `verify --strict` runs on the channel in CI, and a red main that
   // arrives unannounced is a gate people learn to route around.
-  if (change.claims.length > 0 && Object.values(change.repos).every((r) => r.status === 'landed')) {
+  const allLanded = Object.values(change.repos).every((r) => r.status === 'landed');
+  if (change.claims.length > 0 && allLanded) {
     say(
       `every repo is now landed — once every declared claim resolves, \`verify --strict\` ` +
         `refuses ${slug} as unclosed (MV-80), here and in CI, until: multivac change close ${slug}`,
     );
   }
+  // MV-150: the moment the gate arms, what close's citation gate will refuse —
+  // never a bare "close it" that the same binary then rejects (MV-80). Over
+  // the anchors `verify` parses and this checkout's law, with the pull where
+  // the brain's channel already states a row this checkout does not.
+  const refusals = allLanded
+    ? citeLines((await readLaw(brain))?.rows ?? [], change, await brainAnchorSites(brain)).filter((l) => l.gates)
+    : [];
+  const unstated = refusals.filter((l) => l.kind === 'unstated').map((l) => l.id);
+  const upstream = unstated.length > 0 ? await statedUpstream(brain, cfg, unstated) : null;
+  for (const l of refusals) say(`  close refuses until: ${citeText(l, upstream)}`);
   const plan = landingPlan(change);
   let rc = 0;
   for (const [i, s] of plan.entries()) {
@@ -1643,7 +1730,12 @@ async function cmdLand(
     // The archive-equivalent belongs here, not at close: close REFUSES without
     // it, so the instruction has to come one step earlier than its own gate.
     runSdd(cfg, 'land', slug, noSdd);
-    say(`all stages landed — run \`multivac change close ${slug}\``);
+    say(
+      refusals.length === 0
+        ? `all stages landed — run \`multivac change close ${slug}\``
+        : `all stages landed — fix the ${refusals.length > 1 ? `${refusals.length} lines` : 'line'} ` +
+            `close refuses on above, then: multivac change close ${slug}`,
+    );
   }
   return rc;
 }
@@ -1670,6 +1762,15 @@ async function cmdClose(
       warn('  drop the claims first, or close it properly');
       return 1;
     }
+    // MV-150: abandoning verifies nothing, so a rule this change stated would
+    // enter the law as a proposal nobody checked, and a proposal never gates.
+    // A row still reserved is what abandon exists to give back, and is kept
+    // only when an anchor names it (below).
+    const stated = abandonLines((await readLaw(brain))?.rows ?? [], parsed.change);
+    if (stated.length > 0) {
+      for (const l of stated) warn(l);
+      return 1;
+    }
     // MV-45: the anchor set is read BEFORE the archive moves the change file
     // out of tracked sight, and release requires that no anchor names the ID.
     // This path did neither — it archived first and released against an empty
@@ -1678,8 +1779,10 @@ async function cmdClose(
     // impossible: one written by hand would send that ID back to the pool with
     // a live reference to it, and the next `change new` would hand it out.
     // That is MV-26's collision by another road, and the guard is a set the
-    // sibling path already computes.
-    const anchored = await anchoredClaimIds(brain);
+    // sibling path already computes — the anchors `verify` parses (MV-150),
+    // among them any written in this change file, which archive moves out of
+    // the collector's sight.
+    const anchored = anchoredIds(await brainAnchorSites(brain));
     // MV-146: what the SDD wrote for this slug lands with the abandon too, and
     // the body cites it — dropping the work does not drop its record.
     const sddPaths = await landSdd(brain, cfg, parsed, slug);
@@ -1749,41 +1852,67 @@ async function cmdClose(
     }
     return 1;
   }
+  // Read the anchor set before archive moves the change file: its anchors
+  // land at changes/archive/<slug>.md, a directory the collector never walks —
+  // checking after would release rows this very close just verified green.
+  // Read once (MV-45, MV-150): the orphan check, the citation gate and the
+  // release below all mean this one set, so the gate exempts exactly what
+  // release gives back.
+  const sites = await brainAnchorSites(brain);
+  const rows = (await readLaw(brain))?.rows ?? [];
+  const cite = citeLines(rows, parsed.change, sites);
+  const unstated = cite.filter((l) => l.kind === 'unstated').map((l) => l.id);
+  const upstream = unstated.length > 0 ? await statedUpstream(brain, cfg, unstated) : null;
+  // Every refusal is named in one run — the red claims, the orphans, the
+  // citations — and nothing is written, staged, archived or released first.
+  let refused = false;
   const ids = parsed.change.claims.map((c) => c.id);
   if (ids.length > 0) {
-    const report = await evaluate(brain, { claimIds: ids });
-    const gate = closeGate(report, ids);
-    for (const l of gate.lines) say(l);
-    if (!gate.ok) {
-      warn('claims are not green — close refused; fix the red claims, then re-run close');
-      return 1;
-    }
-    // MV-117: green here, unanchored from the next run onwards. `close`
-    // verifies a claim against every anchor it can see — INCLUDING the ones
-    // written inside the change file — and then archives that file, and the
-    // parser never walks `changes/archive/`. So the ceremony whose job is to
-    // stop a claim nobody checks could create one, and report success doing
-    // it. The anchors belong beside the code they pin; reading the archive
-    // instead would keep every closed change's anchors alive forever, which is
-    // the opposite of archiving.
-    const elsewhere = await anchoredClaimIds(brain, changeRel(slug));
-    const orphans = ids.filter((id) => !elsewhere.has(id));
-    if (orphans.length > 0) {
-      warn(
-        `close refused — ${orphans.join(', ')} ${orphans.length > 1 ? 'are' : 'is'} anchored ONLY in ` +
-          `${changeRel(slug)}, which this close archives: the claim would be green now and unanchored ` +
-          'from the next run on. Move the anchor beside the code it pins, then re-run close',
-      );
-      return 1;
+    // A claim of no row is named once, by its citation line below: evaluating
+    // it against anchors too would refuse it twice, in two voices.
+    const inLaw = new Set(rows.map((r) => r.id));
+    const evaluable = ids.filter((id) => inLaw.has(id));
+    if (evaluable.length > 0) {
+      const report = await evaluate(brain, { claimIds: evaluable });
+      const gate = closeGate(report, evaluable);
+      for (const l of gate.lines) say(l);
+      if (!gate.ok) {
+        warn('claims are not green — close refused; fix the red claims, then re-run close');
+        refused = true;
+      } else {
+        // MV-117: green here, unanchored from the next run onwards. `close`
+        // verifies a claim against every anchor it can see — INCLUDING the ones
+        // written inside the change file — and then archives that file, and the
+        // parser never walks `changes/archive/`. So the ceremony whose job is to
+        // stop a claim nobody checks could create one, and report success doing
+        // it. The anchors belong beside the code they pin; reading the archive
+        // instead would keep every closed change's anchors alive forever, which is
+        // the opposite of archiving. MV-150: the citation predicate finds them,
+        // and this text stays theirs, so a claim is named once.
+        const orphans = cite.filter((l) => l.kind === 'orphan').map((l) => l.id);
+        if (orphans.length > 0) {
+          warn(
+            `close refused — ${orphans.join(', ')} ${orphans.length > 1 ? 'are' : 'is'} anchored ONLY in ` +
+              `${changeRel(slug)}, which this close archives: the claim would be green now and unanchored ` +
+              'from the next run on. Move the anchor beside the code it pins, then re-run close',
+          );
+          refused = true;
+        }
+      }
     }
   } else {
     say('no claims declared — nothing to verify');
   }
-  // Read the anchor set before archive moves the change file: its anchors
-  // land at changes/archive/<slug>.md, a path `lsFiles` cannot see until the
-  // archive is committed — checking after would release rows this very close
-  // just verified green.
-  const anchored = await anchoredClaimIds(brain);
+  // MV-150: what each claim cites. Said lines first (they never gate), then
+  // the refusals, each a pull where the channel already states the row.
+  for (const l of cite) if (!l.gates) say(l.text);
+  const citing = cite.filter((l) => l.gates && l.kind !== 'orphan');
+  if (citing.length > 0) {
+    for (const l of citing) warn(citeText(l, upstream));
+    warn('claims do not cite the law this change makes — close refused; fix the lines above, then re-run close');
+    refused = true;
+  }
+  if (refused) return 1;
   runSdd(cfg, 'close', slug, noSdd);
   recordSkip(cfg, parsed.change, 'close', noSdd);
   if (parsed.change.sdd_skipped?.length) {
@@ -1799,7 +1928,7 @@ async function cmdClose(
   say(`archived -> ${relative(brain, dest)}`);
   // A reservation the change never used goes back to the pool; the worktrees
   // go with the change that owned them.
-  const released = await releaseUnused(brain, slug, anchored);
+  const released = await releaseUnused(brain, slug, anchoredIds(sites));
   if (released.length > 0) {
     say(`released unused reservation${released.length > 1 ? 's' : ''}: ${released.join(', ')}`);
   }

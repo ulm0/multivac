@@ -86,9 +86,9 @@ multivac validates and files what it produces and never calls a model itself.
 ## The ritual
 
 Closing a change has two halves. One is mechanical, and multivac runs it:
-the landing order held, every claim the change promised resolves green, no
-invariant got quietly relaxed in code instead of amended in the law. `mvac
-change close` refuses until that half passes.
+the landing order held, and every claim the change promised resolves green
+and cites a row of the law that states its rule. `mvac change close` refuses
+until that half passes.
 
 The other half is the team's, and no tool can invent or check it — who
 reviews what, who gets told, what ships before what when the reason is not

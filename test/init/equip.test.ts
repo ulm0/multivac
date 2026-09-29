@@ -348,3 +348,58 @@ test('bodies an earlier init left leave through any commit — MV-142, MV-144, M
   // …and with them gone.
   await lifecycle(dir);
 });
+
+/**
+ * MV-45, MV-150. A fresh claude-door brain carries the skill, whose examples
+ * are anchor-shaped text naming INV-01 — the first ID `change new` reserves.
+ * Read as a text scan of every tracked file, that example kept the brain's
+ * first reservation forever; read as the anchors `verify` parses, it is none.
+ */
+test('a fresh claude-door brain gives its first unused reservation back — MV-45, MV-150', async () => {
+  const dir = tmp();
+  initRepo(dir, { 'app.py': 'print(1)\n' });
+  const { code, out } = await run(['--provider', 'claude'], dir);
+  assert.equal(code, 0, out);
+  // A brain holding code: init declares `brain: .` itself.
+  assert.match(readFileSync(join(dir, '.multivac/config.yml'), 'utf8'), /^ {2}brain: \.$/m);
+  const hookBin = mkdtempSync(join(tmpdir(), 'mvac-hookbin-leak-'));
+  writeFileSync(join(hookBin, 'mvac'), `#!/bin/sh\nexec '${process.execPath}' '${join(process.cwd(), 'dist/cli.js')}' "$@"\n`, { mode: 0o755 });
+  const hooked = [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':');
+  const zero = out.split('\n').find((l) => /0\. commit what was just written/.test(l)) ?? '';
+  execFileSync('sh', ['-c', `${zero.replace(/^.*?0\. commit what was just written: /, '')} -q`], {
+    cwd: dir,
+    stdio: 'pipe',
+    env: { ...process.env, PATH: hooked },
+  });
+  assert.match(readFileSync(join(dir, '.claude/skills/multivac/references/anchors.md'), 'utf8'), /@anchor INV-01 /, 'the example this test is about');
+
+  const lines: string[] = [];
+  const orig = { log: console.log, error: console.error, path: process.env.PATH };
+  console.log = console.error = (...a: unknown[]) => {
+    lines.push(a.map(String).join(' '));
+  };
+  process.env.PATH = hooked;
+  let opened: number;
+  let closed: number;
+  try {
+    opened = await change.run(['new', 'leak', 'Leak'], { cwd: dir });
+    const file = join(dir, '.multivac/changes/leak.md');
+    writeFileSync(
+      file,
+      readFileSync(file, 'utf8')
+        .replace(/^repos: \{\}$/m, 'repos:\n  brain:\n    status: landed')
+        .replace(/^landing_order: \[\]$/m, 'landing_order:\n  - - brain'),
+    );
+    execFileSync('git', ['commit', '-qam', 'leak: landed'], { cwd: dir, stdio: 'pipe', env: { ...process.env, PATH: hooked } });
+    closed = await change.run(['close', 'leak'], { cwd: dir });
+  } finally {
+    console.log = orig.log;
+    console.error = orig.error;
+    process.env.PATH = orig.path;
+  }
+  const said = lines.join('\n');
+  assert.equal(opened, 0, said);
+  assert.equal(closed, 0, said);
+  assert.ok(lines.includes('released unused reservation: INV-01'), said);
+  assert.doesNotMatch(readFileSync(join(dir, '.multivac/invariants.md'), 'utf8'), /\| INV-01 \|/);
+});

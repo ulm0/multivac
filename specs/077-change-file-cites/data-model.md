@@ -110,7 +110,8 @@ inside `stillReserved` (MV-45's leg must not move).
 ### `citeLines`, per claim (first match, in order)
 
 `byId` from `rows`; `declared = adds ∪ touches ∪ retires`; `anchored` = the set of `anchors`'
-claim IDs; `outside` = the claim IDs of anchors whose `file` is not `changeRel(change.slug)`.
+claim IDs; `outside` = the claim IDs of anchors whose `file`, '/'-separated first (a win32 `join`
+is not; `changeRel` is), is not `changeRel(change.slug)`.
 
 | # | kind | when | gates |
 | --- | --- | --- | --- |
@@ -157,7 +158,7 @@ claim cites and that has no line yet, skipping IDs with no row:
 | `cmdPlan` (:1004-1009) | one site read; the "no anchor" loop over `anchoredIds`; the legacy notice per legacy claim; `citeLines` filtered to `DECLARATION_KINDS`, each said as `claim <text> — close refuses this` |
 | `cmdLand` (:1227-1287) | when every repo is landed: `citeLines` gating lines, `statedUpstream` when one is `unstated`, `  close refuses until: <citeText>` after the armed line, the final line's variant |
 | `cmdClose --abandon` (:1306-1346) | after the claims refusal: `abandonLines` refuses; the anchor read stays before the archive and feeds `releaseUnused` |
-| `cmdClose` (:1392-1426) | after the unlanded check: one site read; `readLaw`; `citeLines`; `statedUpstream` when one is `unstated`; `closeGate` over the claims with a row; the red line, or the MV-117 orphan text for the `orphan` lines; then non-gating lines (`say`), gating lines but `orphan` (`warn`, through `citeText`), the summary; return 1 once; the second anchor read (:1426) goes and `releaseUnused` takes `anchoredIds(sites)` |
+| `cmdClose` (:1392-1426) | after the unlanded check: one site read; `readLaw`; `citeLines`, always — with no claims too, since `not-new` and `unclaimed` are per owned row; `statedUpstream` when one is `unstated`; `closeGate` over the claims with a row (none evaluated when no claim has one; `no claims declared — nothing to verify` only when `claims` is empty); the red line, or the MV-117 orphan text for the `orphan` lines; then non-gating lines (`say`), gating lines but `orphan` (`warn`, through `citeText`), the summary; return 1 once; the second anchor read (:1426) goes and `releaseUnused` takes `anchoredIds(sites)` |
 
 ## The channel (src/lib/config.ts)
 
@@ -209,8 +210,9 @@ line (:1184-1192) reads it: contracts/cli-output.md. Verify never reads the chan
 | site/content/docs/concepts/the-change.md:57-61 | "every claim cites a row this change adds, touches or retires, and that row states its rule" joins the list |
 | skills/multivac/references/change.md | :104-106 (field 4), :175-180 (what close refuses), :315 (the retire step) |
 | skills/multivac/SKILL.md:76-78 | item 4's last sentence |
-| DESIGN.md | :204-212 (heading and paragraph), :783-784 |
-| .specify/memory/constitution.md | Principle III, :45-47; Version 3.0.1 → 3.0.2; Last Amended |
+| DESIGN.md | :204-212 (heading and paragraph), :783-784, :163 (FR-021) |
+| site/content/docs/concepts/philosophy.md:90, the-change.md:84 | the "relaxed in code instead of" copies of what close checks (FR-021) |
+| .specify/memory/constitution.md | ONE amendment (FR-021, T069): Principle III, :47, and the Governance Compliance line, :132; Version 3.0.1 → 3.0.2; Last Amended 2026-09-29 |
 | CHANGELOG.md | Unreleased, "Changed — read before upgrading" (FR-020), and its lead-in count |
 | .claude/skills/multivac/** | re-projected by `multivac doors` from the rebuilt dist, never hand-edited |
 

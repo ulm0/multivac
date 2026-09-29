@@ -9,8 +9,8 @@
 
 An agent opens a change. Today `change new` prints `3. claims: [{ id: <ID>, statement: "..." }]`
 and the scaffold teaches claim prose, so the agent writes the rule twice: once in the row,
-once in the change file. Nothing in multivac reads the second copy. On this brain all 160
-claims carry a statement, 141 of them no longer match their row, and one archive no longer
+once in the change file. Nothing in multivac reads the second copy. On this brain all 164
+claims carry a statement, 144 of them no longer match their row, and one archive no longer
 parses because of its statement, which drops that change from the ecosystem graph. The row
 is already the rule's one home, and the skill already says to cite by ID in change files.
 The claim becomes the ID. Every file written before keeps working unchanged.
@@ -84,8 +84,8 @@ Every surface that says "close" now names close's citation-gate refusal first.
 
 `close` releases a reservation only when no anchor names its ID (MV-45), but it decides that
 by scanning the text of every tracked file, while `verify` parses anchors from the brain's
-root, `.multivac/` and `.multivac/changes/` only. The scan counts 221 IDs here where verify
-parses 147. On a fresh `init --provider claude` brain it counts six IDs from the skill's own
+root, `.multivac/` and `.multivac/changes/` only. The scan counts 223 IDs here where verify
+parses 149. On a fresh `init --provider claude` brain it counts six IDs from the skill's own
 examples where verify parses none, so the first reservation of that brain is never released.
 
 **Why this priority**: the citation gate exempts exactly the rows release gives back, so both
@@ -187,13 +187,13 @@ ID-only change file.
 #### The words, the law and the upgrade
 
 - **FR-017**: flow.md's gate line MUST read `` - `change close` refuses while a declared claim does not resolve, or cites no stated row this change adds, touches or retires ``.
-- **FR-018**: Every published sentence and source comment this change makes false MUST be amended in the same change (MV-111): the site's guide, reference and concept pages, both copies of the multivac skill, DESIGN.md, the constitution's Principle III (a PATCH bump, no Sync Impact Report) and the tool's comments. None of them may show a claim statement or the claim form `{ id, statement }`, or say close checks that law and code ended consistent or that no blocking leg broke anywhere the change touched. The retire steps MUST say the tombstone's legs are verified at close when the change claims the row. The site's pages MUST name no row ID and no version string (MV-84).
+- **FR-018**: Every published sentence and source comment this change makes false MUST be amended in the same change (MV-111): the site's guide, reference and concept pages, both copies of the multivac skill, DESIGN.md, the constitution's Principle III (in FR-021's one amendment: a PATCH bump, no Sync Impact Report) and the tool's comments. None of them may show a claim statement or the claim form `{ id, statement }`, or say close checks that law and code ended consistent or that no blocking leg broke anywhere the change touched. The retire steps MUST say the tombstone's legs are verified at close when the change claims the row. The site's pages MUST name no row ID and no version string (MV-84).
 - **FR-019**: The law MUST carry MV-150, filed proposed, stating the rule with its measurements and ceilings, every edge case above that states a limit marked a ceiling, and a dated note by MV-150 on each of MV-15, MV-45, MV-80 and MV-117 withdrawing only the sentences this change makes false. The change MUST declare exactly those four under `touches`, `[MV-150]` under `adds`, and nothing under `retires`.
 - **FR-020**: The changelog's Unreleased section MUST say, under "Changed — read before upgrading", what an older multivac does with an ID-only change, to upgrade every consumer's pinned and global multivac first, to set `requires:` to the release carrying this change (MV-86), and that legacy statements keep working and in-flight changes are not converted. No `requires:` floor may be set on this change's branch.
 
 #### Hand-offs (added before apply)
 
-- **FR-021**: Every copy of the retired claim that `change close` verifies law and code "ended consistent" (close verifies only the rows the change claims) MUST be gone: DESIGN.md (two places), site/content/docs/concepts/philosophy.md, site/content/docs/concepts/the-change.md (two places), site/content/docs/guide/running-changes.md (two places), skills/multivac/SKILL.md (both copies), with the `absent` leg over `{*.md,.specify/memory/*.md,site/content/**,skills/**,.claude/skills/multivac/**} !CHANGELOG.md` on MV-150. The constitution is corrected once, in the same pass: Principle III's sentence ("`change close` verifies the rows the change claims") and the Governance Compliance line that says the law is "checked by `multivac verify` on every commit" (say what ships: verify gates the blocking legs on every commit and reports the rest) — version 3.0.2 (PATCH, re-gradable by the human), no Sync Impact Report committed.
+- **FR-021**: Every copy of the retired claim that `change close` verifies law and code "ended consistent" (close verifies only the rows the change claims) MUST be gone — 15 lines in 9 files at `e61cf5f` (research.md R19): DESIGN.md:163 and :783-784, site/content/docs/concepts/philosophy.md:90, site/content/docs/concepts/the-change.md:84, site/content/docs/guide/running-changes.md:414, skills/multivac/SKILL.md:77-78 and skills/multivac/references/change.md:206-207 (both copies of each), and .specify/memory/constitution.md:47 — with ONE `absent` leg on MV-150 over `{*.md,.specify/memory/*.md,site/content/**,skills/**,.claude/skills/multivac/**} !CHANGELOG.md` on `ended (up )?consistent|checks law and code|anywhere the change touched|relaxed in code instead of|got quietly relaxed`, in place of research.md R15's draft leg 22. The constitution is corrected once, in the same pass: Principle III's sentence ("`change close` verifies the rows the change claims") and the Governance Compliance line that says the law is "checked by `multivac verify` on every commit" (say what ships: verify gates the blocking legs on every commit where the pre-commit hook and CI run it, and reports the rest) — version 3.0.2 (PATCH, re-gradable by the human), no Sync Impact Report committed.
 
 ### Key Entities
 
@@ -217,7 +217,7 @@ ID-only change file.
 - **SC-007**: A row stated at the brain's channel, fetched and not pulled, makes close and land name the pull and the count of commits lacking, never "state it"; after `git pull` close exits 0. With `channel: origin/trunk` on the brain's own entry, the line names `origin/trunk`.
 - **SC-008**: `--abandon` over a stated own proposed row exits 1 and archives nothing; over a RESERVED row an anchor names it exits 0 and keeps the row.
 - **SC-009**: A clean change's plan, apply, land, `verify --strict`, close and the verify after it print byte-identical output to the build before this change (257, 537, 520, 535, 655 and 298 bytes under codegraph); only `change new` grows, by 25 bytes.
-- **SC-010**: Over this brain's history, 0 of 158 archived claims had a RESERVED row at their archive commit, 0 of 160 claims name a missing row, 0 fall outside `adds` ∪ `touches`, 0 are listed in `retires`, and 136 of 136 added rows are claimed: the gate would have refused none of the past closes.
+- **SC-010**: Over this brain's history, 0 of 161 archived claims had a RESERVED row at their archive commit, 0 of 163 readable claims name a missing row, 0 fall outside `adds` ∪ `touches`, 0 are listed in `retires`, and 137 of 137 rows added by an archived change are claimed (re-run at `e61cf5f`; 158, 160 and 136 of 136 at `92c4c08`): the gate would have refused none of the past closes.
 - **SC-011**: A finished change whose claim is undeclared prints the refusing finished line under `--strict`, never "close it", and the printed summary agrees with the exit code.
 - **SC-012**: Under speckit, opsx, graphify, codegraph and a code-less brain with two code repos, an unstated claim gives: land prints `close refuses until:`, `verify --strict` exits 1 with the refusing line, close exits 1; after the row is stated, `verify --strict` prints `close it` and close exits 0.
 - **SC-013**: A claim anchored only in its change file is named by `land` and by `verify`'s finished line before close runs, and close's refusal text is unchanged.
@@ -225,8 +225,8 @@ ID-only change file.
 - **SC-015**: A claim of a row the change retires refuses while the row is in force and, once the row reads retired, passes with its absent legs evaluated at close.
 - **SC-016**: On a fresh `init --provider claude` brain, a change that adds nothing closes with `released unused reservation: INV-01` and the row is gone (today it is kept).
 - **SC-017**: Moving `--abandon`'s anchor read after the archive fails the test that pins its order.
-- **SC-018**: On this brain the text scan finds 221 IDs and the parse 147, and none of the 74 found only by the scan is an `MV-` ID, so no row of this brain changes fate.
-- **SC-019**: Every leg of MV-150 and every leg added to the amended rows resolves; `verify --strict` exits 0 with nothing reported moved; the dated notes by MV-150 count 4; the retired-example leg goes from 7 matching lines to 0, and the "ended consistent" leg from 12 lines in 7 files to 0.
+- **SC-018**: On this brain the text scan finds 223 IDs and the parse 149 (main, `9c615ca`), and none of the 74 found only by the scan is an `MV-` ID, so no row of this brain changes fate; the branch's own spec adds `MV-150` and `<ID>` to the scan (225), and MV-150 is stated before close, so it is never released either.
+- **SC-019**: Every leg of MV-150 and every leg added to the amended rows resolves; `verify --strict` exits 0 with nothing reported moved; the dated notes by MV-150 count 4; the retired-example leg goes from 7 matching lines to 0, and the "ended consistent" leg (FR-021's) from 15 lines in 9 files to 0.
 - **SC-020**: The changelog entry names MV-150 and the `requires:` floor, and the change's branch leaves `.multivac/config.yml` with no new `requires:`.
 
 ## Assumptions

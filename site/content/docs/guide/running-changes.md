@@ -79,7 +79,7 @@ reserved INV-02 — proposed row in .multivac/invariants.md, declared in invaria
 three edits before plan:
   1. repos: { api: { status: planned } }        # status: planned|branched|committed|mr|landed
   2. landing_order: [[api]]                     # stages; earlier stages land first
-  3. claims: [{ id: INV-02, statement: "..." }]  # what close verifies
+  3. claims: [INV-02]                           # the rows close verifies; each states its rule
 ```
 
 `new` also takes the next free invariant ID out of the law table and writes it
@@ -118,7 +118,7 @@ then run `multivac change plan points-expire`. For example:
 
     # repos: { api: { status: planned } } — planned|branched|committed|mr|landed
     # landing_order: [[api]] — stages; earlier stages land first
-    # claims: [{ id: <ID>, statement: "..." }] — what close verifies
+    # claims: [<ID>] — the rows close verifies; each row states its own rule
 ```
 
 Fill the four declared fields before writing code:
@@ -137,10 +137,13 @@ Fill the four declared fields before writing code:
    `retires` for tombstoning. An
    invariant is never relaxed in code: the row changes first, dated, in
    this change; the code follows in the same change.
-4. **`claims`** — the statements this change makes true, with their
-   anchors. This is the contract `close` verifies. Draft the anchors now,
-   while you know exactly what the change promises — after merge nobody
-   remembers.
+4. **`claims`** — the IDs of the rows this change makes true. A claim is an
+   ID and nothing else: the row states the rule, so state it there before
+   close. Draft the anchors now, while you know exactly what the change
+   promises. `close` refuses a claim of no row, of a row the change neither
+   adds, touches nor retires, of a retired row it does not retire, or of a
+   row that still reads RESERVED, and a row you add and anchor without
+   claiming it.
 
 A filled declaration:
 
@@ -157,9 +160,7 @@ invariants:
   touches: []
   adds: [INV-02]
   retires: []
-claims:
-  - id: INV-02
-    statement: Expired points are excluded from every balance read.
+claims: [INV-02]
 ```
 
 If an SDD adapter is declared, `new` **prints** that tool's propose step for you
@@ -349,6 +350,15 @@ When every stage is landed:
 all stages landed — run `multivac change close points-expire`
 ```
 
+If close would still refuse the change on what its claims cite, the last
+`land` says so instead of sending you there: it names each line close refuses
+on, and ends `all stages landed — fix the line close refuses on above, then:
+multivac change close points-expire`.
+
+```txt
+  close refuses until: INV-02: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md
+```
+
 ## close — the gate
 
 `close` refuses until the work is actually done. Repos not landed:
@@ -398,6 +408,16 @@ The change file is archived, never deleted; its `status` flips to
 reported, never forced. If a declared claim's anchors don't hold, close fails: fix the
 code or fix the declaration, honestly.
 
+Close verifies each declared claim — its anchors and its row — and nothing
+else: a row you only amend is checked here when the change claims it, and on
+every commit by the pre-commit hook. Before anything is written it also checks
+what each claim cites, and names every refusal in one run — among them a
+claim of no row, of a row this change neither adds, touches nor retires, of a
+row that states no rule yet, or anchored only in the change file it archives,
+and a row you added and anchored but never claimed. A row the brain's channel
+already states and this checkout lacks is named as a pull, never as a second
+statement.
+
 The tail is the [ritual](../../concepts/the-change#the-ritual): the half of
 the closing ceremony no tool can check, written by the team in
 `.multivac/ritual.md` and printed here verbatim — never verified, never
@@ -411,8 +431,8 @@ state.
 
 **Amend**: an invariant is never relaxed in code. Open a change declaring
 it in `invariants.touches`, update the row (dated) in the same change,
-change the code in the same change; close checks law and code ended
-consistent.
+change the code in the same change. Claim the row, and close verifies its
+amended legs; claimed or not, the pre-commit hook checks them on every commit.
 
 **Retire**: a change like any other, and the tombstone is authored, never
 derived:
@@ -433,4 +453,5 @@ derived:
    ```
 
 5. In the same change, remove the dead mechanism's remains from the code
-   and the doors — the new legs hold you to it at close.
+   and the doors — the new legs hold you to it at close when the change
+   claims the row.

@@ -223,7 +223,9 @@ async function sync(brain: string, cfg: Config): Promise<number> {
   for (const { file, archived } of files) {
     let parsed;
     try {
-      parsed = parseChange(await readFile(file, 'utf8'), file);
+      // MV-150: this reader writes the file back when it records an issue
+      // number, so a key inside a claim it would drop is refused, not lost.
+      parsed = parseChange(await readFile(file, 'utf8'), file, { claimKeys: 'refuse' });
     } catch {
       continue; // a broken change file is `change`'s diagnostic to raise
     }

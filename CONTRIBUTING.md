@@ -41,7 +41,7 @@ Ship your change **through the tool**:
 ```sh
 node dist/cli.js change new "Fix the thing"    # scaffolds the change, reserves an id
 # edit .multivac/changes/fix-the-thing.md: which repos, landing order,
-# which invariants it touches, and which claims it makes true — with anchors
+# which invariants it touches, and which rows it claims (their IDs) — with anchors
 node dist/cli.js change plan  fix-the-thing    # resolves repos, prints the landing graph
 node dist/cli.js change apply fix-the-thing    # a worktree per repo, branched for you
 # ... write the code and the tests in the worktree it names ...

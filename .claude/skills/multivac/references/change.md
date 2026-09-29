@@ -101,7 +101,8 @@ Fill the four declared fields before writing code:
    relaxes or reshapes. An invariant is never relaxed in code — the row
    changes first (dated, in this change), the code follows in the same
    change.
-4. **Claims it makes true**, with their anchors. This is the contract
+4. **Claims** — the IDs of the rows it makes true. The row states the
+   rule; the claim cites it and never restates it. This is the contract
    `close` verifies. Draft the anchors now (`anchors.md`), while you know
    exactly what the change promises — after merge nobody remembers.
 
@@ -202,9 +203,15 @@ projected into or gated, and `plan` and `apply` refuse a change that names one
 `close` re-runs verify **scoped to the declared claims** and refuses to
 archive until they hold:
 
-- every claim in field 4 resolves ok on its new anchors,
-- every "amends INV-xx" ended consistent — row and code agree,
-- no blocking leg broke anywhere the change touched.
+- every claim in field 4 resolves ok on its anchors,
+- every claim cites a row this change adds, touches or retires, and that row
+  states its rule — a RESERVED row states none yet,
+- every row the change adds and anchors is claimed.
+
+A row the change only touches is verified here only when the change claims
+it; the pre-commit hook checks it on every commit. Close names every refusal
+in one run, before anything is written — and a row the brain's channel
+already states and this checkout lacks as a pull, never a second statement.
 
 On success the brain is updated (rows enacted by the human, journal entry,
 change file archived — never deleted), the change's worktrees are removed,
@@ -350,7 +357,8 @@ never derived**:
    ```
 
 5. In the same change, remove the dead mechanism's remains from the code
-   and the doors — the new legs will hold you to it at close.
+   and the doors — the new legs will hold you to it at close when the
+   change claims the row.
 
 The dead-terms dictionary is not a separate feature: it is these `absent`
 legs, accumulated on retired rows, blocking forever.

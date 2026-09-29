@@ -12,6 +12,7 @@ import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
+import { verify } from '../../src/commands/verify.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -76,7 +77,10 @@ test('the scaffold teaches: commented example with the status enum, and new prin
   assert.match(out, /three edits before plan:/);
   assert.match(out, /1\. repos: \{ api: \{ status: planned \} \}\s+# status: planned\|branched\|committed\|mr\|landed/);
   assert.match(out, /2\. landing_order: \[\[api\]\]/);
-  assert.match(out, /3\. claims: \[\{ id: ACME-2, statement: "\.\.\." \}\]/);
+  assert.match(out, /3\. claims: \[ACME-2\]\s+# the rows close verifies; each states its rule/);
+  // MV-150: a claim is its row's ID — nothing new writes, prints or teaches a restatement
+  assert.doesNotMatch(out, /statement/);
+  assert.doesNotMatch(body, /statement:|Statements are prose/);
   // the bookkeeping went in as one commit on the current branch
   assert.match(out, /committed: change open: teach-me — reserves ACME-2/);
   assert.equal(git(b, 'status', '--porcelain', '--', '.multivac/changes/teach-me.md', '.multivac/invariants.md'), '');
@@ -191,11 +195,16 @@ function publishedBrain(publishCode: boolean, extraRepos = ''): string {
   return eco.brain;
 }
 
-/** Declare the change and point it at ACME-1, the row `publishedBrain` anchors. */
+/**
+ * Declare the change and point it at ACME-1, the row `publishedBrain` anchors.
+ * MV-150: a clean change — it touches the row it claims, and the claim is the
+ * row's ID — so land has nothing of close's to announce.
+ */
 async function claimAcme1(b: string, slug: string): Promise<void> {
   await declare(b, slug);
   const parsed = await loadChange(b, slug);
-  parsed.change.claims = [{ id: 'ACME-1', statement: 'points expire after a year' }];
+  parsed.change.invariants.touches = ['ACME-1'];
+  parsed.change.claims = [{ id: 'ACME-1' }];
   await saveChange(b, parsed);
 }
 
@@ -641,4 +650,256 @@ test('--abandon stages the slug\'s directory and cites it too', async () => {
   const body = archived.slice(archived.indexOf('\n---\n') + 6);
   assert.ok(body.startsWith(before));
   assert.equal(body.slice(before.length), '\nSpecified in `specs/004-drop-it/` (speckit).\n');
+});
+
+test('a legacy claim keeps its statement through apply, land and close — MV-15, MV-150', async () => {
+  // A change in flight when claims became IDs keeps its restatement: an older
+  // multivac cannot read the bare form, so nothing converts it, and every
+  // rewrite on the way to the archive gives it back the way it was written.
+  const b = brain();
+  writeFileSync(join(b, 'points.ts'), 'export const expiresAt = 365;\n');
+  const law = join(b, '.multivac/invariants.md');
+  writeFileSync(law, `${readFileSync(law, 'utf8')}<!-- @anchor ACME-1 brain:points.ts /expiresAt/ -->\n`);
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'ACME-1 anchored');
+  await declare(b, 'kept-prose');
+  const parsed = await loadChange(b, 'kept-prose');
+  parsed.change.invariants.touches = ['ACME-1'];
+  parsed.change.claims = [{
+    id: 'ACME-1',
+    statement: 'points expire: after a year # a run of words long enough to be folded at the default eighty columns',
+  }];
+  await saveChange(b, parsed);
+  const file = join(b, '.multivac/changes/kept-prose.md');
+  const statementOf = (text: string): string => /^ {4}statement: .*$/m.exec(text)?.[0] ?? '(none)';
+  const declared = statementOf(readFileSync(file, 'utf8'));
+  assert.match(declared, /^ {4}statement: "points expire: after a year # a run/);
+
+  assert.equal(await change.run(['apply', 'kept-prose'], { cwd: b }), 0);
+  assert.equal(statementOf(readFileSync(file, 'utf8')), declared, 'apply');
+  assert.equal(await change.run(['land', 'kept-prose', '--landed', 'brain'], { cwd: b }), 0);
+  assert.equal(statementOf(readFileSync(file, 'utf8')), declared, 'land');
+  const { code, out } = await capture(() => change.run(['close', 'kept-prose'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.equal(statementOf(readFileSync(join(b, '.multivac/changes/archive/kept-prose.md'), 'utf8')), declared, 'close');
+});
+
+/** Both streams, split: close says its refusals on stderr. */
+const captureAll = async (fn: () => Promise<number>): Promise<{ code: number; out: string; err: string }> => {
+  const out: string[] = [];
+  const err: string[] = [];
+  const log = console.log;
+  const error = console.error;
+  console.log = (l: string) => out.push(String(l));
+  console.error = (l: string) => err.push(String(l));
+  try {
+    return { code: await fn(), out: out.join('\n'), err: err.join('\n') };
+  } finally {
+    console.log = log;
+    console.error = error;
+  }
+};
+
+/**
+ * MV-150: a landed change on a `publishedBrain` claiming the row it reserved,
+ * anchored from the law at points.ts, committed — and the row still RESERVED
+ * here. Returns the reserved ID.
+ */
+async function claimReserved(b: string, slug: string): Promise<string> {
+  assert.equal(await change.run(['new', slug, 'Cite it'], { cwd: b }), 0);
+  const parsed = await loadChange(b, slug);
+  const id = parsed.change.invariants.adds[0];
+  parsed.change.repos = { brain: { status: 'landed' } };
+  parsed.change.landing_order = [['brain']];
+  parsed.change.claims = [{ id }];
+  await saveChange(b, parsed);
+  const law = join(b, '.multivac/invariants.md');
+  writeFileSync(law, `${readFileSync(law, 'utf8')}<!-- @anchor ${id} brain:points.ts /expiresAt/ -->\n`);
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', `${slug}: claim the reserved row`);
+  return id;
+}
+
+/** Another clone states `slug`'s row and publishes it on `branches`; `b` fetches and does not pull. */
+function stateUpstream(b: string, slug: string, branches: string[]): void {
+  const other = mkdtempSync(join(tmpdir(), 'mvac-upstream-'));
+  execFileSync('git', ['clone', '-q', git(b, 'remote', 'get-url', 'origin'), other], { stdio: 'ignore' });
+  const law = join(other, '.multivac/invariants.md');
+  writeFileSync(
+    law,
+    readFileSync(law, 'utf8').replace(new RegExp(`RESERVED by change ${slug} — [^|]*`), 'points expire on the day. '),
+  );
+  git(other, 'commit', '-q', '-am', `state the ${slug} row`);
+  for (const br of branches) git(other, 'push', '-q', 'origin', `HEAD:${br}`);
+  git(b, 'fetch', '-q', 'origin');
+}
+
+test('a row stated upstream is pulled, not stated twice — MV-150', async () => {
+  // The row was stated on the change's branch and merged on the forge; this
+  // checkout fetched and did not pull. "State it" would write the rule a
+  // second time, and the merge would conflict on that copy.
+  const b = publishedBrain(true);
+  const id = await claimReserved(b, 'pull-first');
+  git(b, 'push', '-q', 'origin', 'main');
+  stateUpstream(b, 'pull-first', ['main']);
+
+  const refused = await captureAll(() => change.run(['close', 'pull-first'], { cwd: b }));
+
+  assert.equal(refused.code, 1, refused.out + refused.err);
+  assert.ok(
+    refused.err.split('\n').includes(
+      `${id}: its row states no rule here, but origin/main states it (1 commit(s) this checkout lacks) — pull, then re-run close`,
+    ),
+    refused.err,
+  );
+  assert.doesNotMatch(refused.err, /state it in \.multivac\/invariants\.md/);
+
+  git(b, 'pull', '-q', '--ff-only', 'origin', 'main');
+  const closed = await captureAll(() => change.run(['close', 'pull-first'], { cwd: b }));
+  assert.equal(closed.code, 0, closed.out + closed.err);
+});
+
+test("a brain entry's own channel is the ref land and close read — MV-150", async () => {
+  // MV-53: `channel:` on the entry, else the global, else origin/main — for
+  // the brain's own entry too. Read as the global alone, a brain published at
+  // trunk was told to state a row trunk already states.
+  const b = publishedBrain(true);
+  const config = join(b, '.multivac/config.yml');
+  writeFileSync(config, 'doors: [agents]\nrepos:\n  brain:\n    path: .\n    channel: origin/trunk\n');
+  git(b, 'commit', '-q', '-am', 'the brain is published at trunk');
+  const id = await claimReserved(b, 'at-trunk');
+  git(b, 'push', '-q', 'origin', 'main', 'main:trunk');
+  stateUpstream(b, 'at-trunk', ['trunk', 'main']);
+  const pull = (ref: string): string =>
+    `${id}: its row states no rule here, but ${ref} states it (1 commit(s) this checkout lacks) — pull, then re-run close`;
+
+  const atTrunk = await captureAll(() => change.run(['close', 'at-trunk'], { cwd: b }));
+  assert.equal(atTrunk.code, 1, atTrunk.out + atTrunk.err);
+  assert.ok(atTrunk.err.split('\n').includes(pull('origin/trunk')), atTrunk.err);
+  const landTrunk = await captureAll(() => change.run(['land', 'at-trunk'], { cwd: b }));
+  assert.match(landTrunk.out, /^channel: (every|not every) declared claim resolves at origin\/trunk [0-9a-f]{7} /m);
+  // ...and verify's read line names the same ref: three surfaces, one channel.
+  const readTrunk = await captureAll(() => verify.run([], { cwd: b }));
+  assert.match(readTrunk.out, /brain: working tree .*; 1 behind its own channel origin\/trunk @ [0-9a-f]{7}/, readTrunk.out);
+
+  // No `channel:` on the entry: both read origin/main, as before.
+  writeFileSync(config, 'doors: [agents]\nrepos:\n  brain: .\n');
+  git(b, 'commit', '-q', '-am', 'the brain is published at main');
+  const atMain = await captureAll(() => change.run(['close', 'at-trunk'], { cwd: b }));
+  assert.equal(atMain.code, 1, atMain.out + atMain.err);
+  assert.ok(atMain.err.split('\n').includes(pull('origin/main')), atMain.err);
+  const landMain = await captureAll(() => change.run(['land', 'at-trunk'], { cwd: b }));
+  assert.match(landMain.out, /^channel: (every|not every) declared claim resolves at origin\/main [0-9a-f]{7} /m);
+  const readMain = await captureAll(() => verify.run([], { cwd: b }));
+  assert.match(readMain.out, /brain: working tree .*; 1 behind its own channel origin\/main @ [0-9a-f]{7}/, readMain.out);
+  assert.doesNotMatch(readMain.out, /origin\/trunk/);
+});
+
+/** A change on a `publishedBrain` claiming the row it reserved, anchored at points.ts from the law — not yet landed. */
+async function openReserved(b: string, slug: string): Promise<string> {
+  const id = await claimReserved(b, slug);
+  const parsed = await loadChange(b, slug);
+  parsed.change.repos = { brain: { status: 'planned' } };
+  await saveChange(b, parsed);
+  git(b, 'commit', '-q', '-am', `${slug}: not landed yet`);
+  return id;
+}
+
+test('landing the last repo names what close will refuse — MV-150', async () => {
+  // The gate arms here, and the next command it names is close. If close would
+  // refuse, saying "run close" is an instruction the same binary rejects.
+  const b = publishedBrain(true);
+  const id = await openReserved(b, 'cite-late');
+  const armed = /refuses cite-late as unclosed \(MV-80\), here and in CI, until: multivac change close cite-late/;
+
+  const one = await capture(() => change.run(['land', 'cite-late', '--landed', 'brain'], { cwd: b }));
+  assert.equal(one.code, 0, one.out);
+  const lines = one.out.split('\n');
+  const at = lines.findIndex((l) => armed.test(l));
+  assert.ok(at >= 0, one.out);
+  assert.equal(
+    lines[at + 1],
+    `  close refuses until: ${id}: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md`,
+  );
+  assert.equal(lines.at(-1), 'all stages landed — fix the line close refuses on above, then: multivac change close cite-late');
+  assert.doesNotMatch(one.out, /run `multivac change close cite-late`/);
+
+  // Two refusals: each named, and the last line counts them.
+  const two = await loadChange(b, 'cite-late');
+  two.change.claims = [{ id }, { id: 'NOPE-9' }];
+  await saveChange(b, two);
+  const both = await capture(() => change.run(['land', 'cite-late'], { cwd: b }));
+  assert.equal(both.code, 0, both.out);
+  assert.match(both.out, /^ {2}close refuses until: NOPE-9: no row in \.multivac\/invariants\.md — /m);
+  assert.equal(both.out.split('\n').filter((l) => l.startsWith('  close refuses until: ')).length, 2);
+  assert.equal(both.out.split('\n').at(-1), 'all stages landed — fix the 2 lines close refuses on above, then: multivac change close cite-late');
+
+  // Stated and cited: today's line, and nothing of close's to say.
+  const law = join(b, '.multivac/invariants.md');
+  writeFileSync(law, readFileSync(law, 'utf8').replace(/RESERVED by change cite-late — [^|]*/, 'points expire on the day. '));
+  const clean = await loadChange(b, 'cite-late');
+  clean.change.claims = [{ id }];
+  await saveChange(b, clean);
+  const ok = await capture(() => change.run(['land', 'cite-late'], { cwd: b }));
+  assert.equal(ok.code, 0, ok.out);
+  assert.doesNotMatch(ok.out, /close refuses until/);
+  assert.equal(ok.out.split('\n').at(-1), 'all stages landed — run `multivac change close cite-late`');
+});
+
+test('land before pull names the pull, never a second statement — MV-150', async () => {
+  // The row was stated and merged on the forge; this checkout fetched and did
+  // not pull. Land is where the author would otherwise write the rule again.
+  const b = publishedBrain(true);
+  const id = await openReserved(b, 'land-first');
+  git(b, 'push', '-q', 'origin', 'main');
+  stateUpstream(b, 'land-first', ['main']);
+
+  const { code, out } = await capture(() => change.run(['land', 'land-first', '--landed', 'brain'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.ok(
+    out.split('\n').includes(
+      `  close refuses until: ${id}: its row states no rule here, but origin/main states it (1 commit(s) this checkout lacks) — pull, then re-run close`,
+    ),
+    out,
+  );
+  assert.doesNotMatch(out, /state it in \.multivac\/invariants\.md/);
+  assert.equal(out.split('\n').at(-1), 'all stages landed — fix the line close refuses on above, then: multivac change close land-first');
+});
+
+test('land and verify name a claim close would orphan — MV-150', async () => {
+  // Stated, green, and anchored only in the change file close archives: close
+  // refuses it (MV-117), so land and the finished line say so first.
+  const b = publishedBrain(true);
+  assert.equal(await change.run(['new', 'orp', 'Orphan'], { cwd: b }), 0);
+  const parsed = await loadChange(b, 'orp');
+  const id = parsed.change.invariants.adds[0];
+  parsed.change.repos = { brain: { status: 'planned' } };
+  parsed.change.landing_order = [['brain']];
+  parsed.change.claims = [{ id }];
+  parsed.body += `\n<!-- @anchor ${id} brain:points.ts /expiresAt/ -->\n`;
+  await saveChange(b, parsed);
+  const law = join(b, '.multivac/invariants.md');
+  writeFileSync(law, readFileSync(law, 'utf8').replace(/RESERVED by change orp — [^|]*/, 'points expire on the day. '));
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'orp: stated, anchored in its change file');
+  const orphan = `${id}: anchored only in .multivac/changes/orp.md, which close archives — move the anchor beside the code it pins`;
+
+  const land = await capture(() => change.run(['land', 'orp', '--landed', 'brain'], { cwd: b }));
+  assert.equal(land.code, 0, land.out);
+  assert.ok(land.out.split('\n').includes(`  close refuses until: ${orphan}`), land.out);
+
+  const strict = await captureAll(() => verify.run(['--strict'], { cwd: b }));
+  assert.equal(strict.code, 1, strict.out + strict.err);
+  assert.match(
+    strict.out,
+    new RegExp(`finished, not pending — close refuses until: ${orphan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} — then: multivac change close orp · blocking$`, 'm'),
+  );
+
+  const close = await captureAll(() => change.run(['close', 'orp'], { cwd: b }));
+  assert.equal(close.code, 1, close.out + close.err);
+  assert.match(
+    close.err,
+    new RegExp(`^close refused — ${id} is anchored ONLY in \\.multivac/changes/orp\\.md, which this close archives: the claim would be green now and unanchored from the next run on\\. Move the anchor beside the code it pins, then re-run close$`, 'm'),
+  );
+  assert.doesNotMatch(close.err, /claims do not cite the law this change makes/);
 });

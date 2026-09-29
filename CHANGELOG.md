@@ -12,12 +12,13 @@ keeping a second one (MV-78).
 
 ## Unreleased
 
-Two behaviours changed in a way that can newly refuse what used to pass: a
-brain that was loading, and an opsx brain's slugs and archives. A third changes
-where a code graph is kept: a brain with no `repos:` entry at `.` stops graphing
-itself. A fourth writes where multivac did not: codegraph repos get an index in
-each change worktree, an `info/exclude` line and a `codegraph.json`. Read the
-first four items before upgrading.
+Three behaviours changed in a way that can newly refuse what used to pass: a
+brain that was loading, an opsx brain's slugs and archives, and a `change close`
+whose claims cite no stated row. A fourth changes where a code graph is kept: a
+brain with no `repos:` entry at `.` stops graphing itself. A fifth writes where
+multivac did not: codegraph repos get an index in each change worktree, an
+`info/exclude` line and a `codegraph.json`. And `change new` now writes a claim
+an older multivac cannot read. Read the first five items before upgrading.
 
 **Changed — read before upgrading**
 
@@ -208,6 +209,25 @@ first four items before upgrading.
     which a later un-opted-out run sends; without the bundle the npm shim
     downloads it whatever `DO_NOT_TRACK` says, and `CODEGRAPH_NO_DOWNLOAD=1`
     where the agent runs turns that off.
+- **A claim is its row's ID, and close checks what it cites (MV-150).** `change new` and the
+  scaffold now write `claims: [<ID>]`; the row states the rule. A legacy `{ id, statement }`
+  keeps working and is written back unchanged — do not convert a change in flight.
+  - **An older multivac reads an ID-only change as absent**: its `change` commands refuse the
+    file, and its `verify`, `roadmap` and `doors` skip it without a word, so the change's claims
+    stop pending and a brain==code hook running it blocks the change's own commits. Upgrade
+    every consumer's pinned and global multivac before the brain writes one, and set
+    `requires:` in the brain's `.multivac/config.yml` to the release carrying this change
+    (MV-86), with or after that release.
+  - **`change close` refuses a claim that cites no stated row the change adds, touches or
+    retires**, a claim anchored only in its change file, an added row already in the law, and a
+    proposed row it anchors but never claims — all in one run, before anything is written.
+    `--abandon` refuses a change whose own proposed row states a rule. `verify`'s finished line,
+    `land` and `plan` say what close will refuse, and a row the brain's channel states and this
+    checkout lacks is named as a pull.
+  - **A key inside a claim other than `id` and `statement`** is refused by every command that
+    rewrites the change file, and named by every other reader.
+  - Close's reservation release reads the anchors `verify` parses; a fresh claude-door brain's
+    first unused reservation is now released.
 
 **Fixed**
 

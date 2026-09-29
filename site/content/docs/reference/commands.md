@@ -540,6 +540,18 @@ finished  points-expire — every declared claim resolves and every declared rep
 1 blocking broken · exit 1 · 1 finished change unclosed
 ```
 
+When `close` would still refuse the change on what its claims cite — a claim
+whose row states no rule yet, a claim anchored only in its change file — the
+line never sends you to it: it names the first line close refuses on, and how
+many more, before the command. The counts and the exit are the same:
+
+```txt
+finished  points-expire — every declared claim resolves and every declared repo is landed (1 claim whose failure this run would not gate); finished, not pending — close refuses until: INV-02: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md — then: multivac change close points-expire · blocking
+```
+
+The line reads this checkout only: a brain behind its channel is named on the
+read line, and the pull is `land`'s and `close`'s to say.
+
 The default policy prints the same line and exits 0: a pre-commit hook is not
 where you are told to go run another command. A change declaring no claims is
 never finished — a universal over nothing is true of a change scaffolded
@@ -1292,8 +1304,12 @@ reserved INV-02 — proposed row in .multivac/invariants.md, declared in invaria
 three edits before plan:
   1. repos: { api: { status: planned } }        # status: planned|branched|committed|mr|landed
   2. landing_order: [[api]]                     # stages; earlier stages land first
-  3. claims: [{ id: INV-02, statement: "..." }]  # what close verifies
+  3. claims: [INV-02]                           # the rows close verifies; each states its rule
 ```
+
+A claim is its row's ID: the row states the rule, and the change file cites
+it. A legacy `{ id, statement }` claim still parses and is written back
+unchanged; nothing creates one.
 
 Refuses to overwrite an existing change file (exit 1). It also takes the next
 free invariant ID out of the law table and writes it straight back as a
@@ -1378,6 +1394,20 @@ claim INV-07: no anchor — add <!-- @anchor INV-07 <repo>:<glob> /<regex>/ --> 
 A change declaring no repos exits 1. A repo not declared in the config is
 named and exits 1. `plan` **does** clone a declared-with-url repo that is
 missing.
+
+What `close` will refuse on the declaration itself is said here, where it is
+cheapest to fix, and gates nothing — a claim of no row, of a short row, of a
+retired row the change does not retire, of a row the change neither adds,
+touches nor retires, or of a row another change reserved. A legacy claim
+statement is named as a restatement, and kept:
+
+```txt
+claim NOPE-1: no row in .multivac/invariants.md — a claim cites a row of the law; add the row, or drop the claim — close refuses this
+claim INV-03: its statement: restates the row — kept as written; a claim is its ID, and the row states the rule (…)
+```
+
+A row that states no rule yet is the ordinary state of a change at `plan`, and
+a retiring row is retired later: `close` asks those, `plan` does not.
 
 A change may name `brain`. Where no `repos:` entry is the brain, it holds no
 code, and `plan` says what that means for a declared grapher:
@@ -1646,6 +1676,26 @@ that gate on the channel, so a change left open turns main red:
 every repo is now landed — once every declared claim resolves, `verify --strict` refuses points-expire as unclosed …, here and in CI, until: multivac change close points-expire
 ```
 
+At that moment it also says what `close` would refuse on what the claims cite
+— one line each, after the armed line — and the last line names them instead
+of a bare `change close`. A row the brain's channel already states and this
+checkout lacks is named as a pull, never as a second statement:
+
+```txt
+  close refuses until: INV-02: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md
+all stages landed — fix the line close refuses on above, then: multivac change close points-expire
+```
+
+```txt
+  close refuses until: INV-02: its row states no rule here, but origin/main states it (2 commit(s) this checkout lacks) — pull, then re-run close
+```
+
+With nothing to refuse, the last line stays
+`` all stages landed — run `multivac change close points-expire` ``. The
+brain's channel is its own `repos:` entry's `channel:`, else the global
+`channel:`, else `origin/main` — the ref the `channel:` line, the pull and
+`verify`'s read line all read.
+
 A repo with no `origin` is told to land locally instead of to push:
 
 ```txt
@@ -1680,6 +1730,53 @@ is not green:
 INV-07: no anchors evaluated — add an anchor for the claim, then re-run close
 claims are not green — close refused; fix the red claims, then re-run close
 ```
+
+**And refuses a claim that cites nothing.** A claim is its row's ID, so the row
+is the only place its rule is written. Before anything is written, staged,
+archived or released, `close` checks what each claim cites and names, per
+claim, the first of: no row; a row short of its six columns; a retired row the
+change does not retire; a row under `invariants.retires` not yet retired; a row
+the change neither adds, touches nor retires; a row another change reserved
+and has not stated; a row that states no rule yet; a claim anchored only in the
+change file it archives. It also refuses a row under `adds` already in the law,
+and a proposed row the change owns that an anchor names and no claim cites:
+
+```txt
+INV-04: ok
+INV-04: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md
+claims do not cite the law this change makes — close refused; fix the lines above, then re-run close
+```
+
+Every refusal comes in one run — the red claims, the citation lines and the
+orphan line — so you never close repeatedly to discover the rest. A claim of no
+row is named once, by its citation line, and never evaluated against anchors:
+
+```txt
+INV-07: no anchors evaluated — add an anchor for the claim, then re-run close
+INV-05: ok
+claims are not green — close refused; fix the red claims, then re-run close
+NOPE-99: no row in .multivac/invariants.md — a claim cites a row of the law; add the row, or drop the claim
+INV-05: claimed, but this change neither adds, touches nor retires it — drop the claim, or list it under invariants.touches if this change amends that row
+```
+
+A row the brain's channel already states — merged on the forge, fetched, not
+pulled — is named as a pull, never as a second statement; the channel is read
+offline, and only on such a refusal:
+
+```txt
+INV-01: its row states no rule here, but origin/main states it (2 commit(s) this checkout lacks) — pull, then re-run close
+```
+
+A rule the change states and nothing anchors still enters the law — coverage
+below one hundred percent is supported — and `close` says so without refusing:
+
+```txt
+INV-02: enters the law stated but unanchored — nothing verifies it; claim and anchor it to have close verify it
+```
+
+A legacy claim that still carries its `statement:` is told to move it into the
+row when the row states nothing yet. `verify`'s finished line, the last `land`
+and `plan` say what this gate will refuse before you get here.
 
 Green: the SDD `archive` step runs, the change file moves to
 `.multivac/changes/archive/`, the worktrees are removed, and the ritual is
@@ -1773,7 +1870,13 @@ abandoned -> .multivac/changes/archive/points-expire.md — nothing was verified
 
 Nothing is verified, on purpose: an abandoned change made no claims to verify.
 A change that *did* declare claims is refused — drop them first, or close it
-properly.
+properly. So is a change whose own proposed row states a rule: abandoning it
+would enter that rule as a proposal nobody verified. A row still reading
+RESERVED is what `--abandon` gives back, and never refuses:
+
+```txt
+INV-07: states a rule this abandoned change never verified — delete the row from .multivac/invariants.md (a proposed row may be removed), or close the change properly
+```
 
 The printed commit — closing or abandoning — is **scoped to the closing
 change's paths**: the archived file, the old change path, the law table when a

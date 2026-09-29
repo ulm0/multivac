@@ -48,7 +48,8 @@ becomes `  3. claims: [<ID>]`, padded to column 48, then `# the rows close verif
 states its rule` (FR-005).
 
 **Rationale**: the row is the only copy that gates; a second copy drifts (141 of 160) and can
-break a parse. A median 366 B of statement (mean 506) is no longer written per new change.
+break a parse. A median 370 B of claims block (mean 507; the statements alone a median 350 B) is
+no longer written per new change, over the 30 closes since the history root (R19).
 
 **Alternatives considered**: `{ id }` maps as the canonical form — 640 B more than bare IDs
 over the corpus and nothing to carry (0 of 160 extra keys). Dropping a legacy statement at the
@@ -287,7 +288,9 @@ file; verify parses the brain root's Markdown, `.multivac/*.md` and `.multivac/c
 | --- | --- | --- | --- | --- | --- |
 | this brain, `92c4c08` | 220 | 146 | 74 | 0 | `node anch2.mjs` **(synth)** |
 | this brain, `62d4588` | 221 | 147 | 74 | 0 | `node c7/anchsets.mjs /home/user/multivac` **(plan)** |
-| fresh `init --provider claude` | 6 (the skill's examples, INV-01 among them) | 0 | 6 | — | `$SCR/synth/fresh2` against `fresh3` **(synth)** |
+| this brain, main `9c615ca` | 223 | 149 | 74 | 0 | `node c7/impl/anchsets.mjs <dist> /home/user/multivac` **(apply, T001)** |
+| this brain, branch head `e61cf5f` | 225 | 149 | 76 | 1 (`MV-150`, quoted with `<ID>` by this change's own spec) | same, on the worktree **(apply, T001)** |
+| fresh `init --provider claude` | 6 (the skill's examples, INV-01 among them) | 0 | 6 | — | `$SCR/synth/fresh2` against `fresh3` **(synth)**; the same at `e61cf5f`, `c7/impl/fresh` **(apply, T001)** |
 
 On the fresh brain, `change new leak`, `repos: {brain: landed}`, close: today rc 0, no release
 line, `| INV-01 | RESERVED by change leak …` still in the law; the prototype prints `released
@@ -344,12 +347,17 @@ site/content/docs/guide/running-changes.md:369-370, skills/multivac/SKILL.md:77-
 row closes rc 0 (close-gate s14) **(inv)**, and the site's concept page already says so
 (site/content/docs/concepts/the-change.md:63-68).
 
-**Decision**: correct every copy in the same commit (FR-018), with one `absent` leg over
-`{DESIGN.md,.specify/memory/constitution.md,site/content/**,skills/**,.claude/skills/multivac/**}`
-on `ended (up )?consistent|checks law and code|anywhere the change touched`: 12 lines in 7 files
-today **(plan)** (the two skill copies of SKILL.md 2 each and of references/change.md 2 each,
-DESIGN.md 2, the constitution 1, running-changes.md 1 — `checks law and code` catches its
-line-wrapped copy), 0 after. The constitution takes a PATCH, 3.0.1 → 3.0.2, its Last Amended
+**Decision**: correct every copy in the same commit (FR-018, FR-021), with ONE `absent` leg on
+MV-150 — FR-021's glob `{*.md,.specify/memory/*.md,site/content/**,skills/**,.claude/skills/multivac/**} !CHANGELOG.md`
+on `ended (up )?consistent|checks law and code|anywhere the change touched|relaxed in code instead of|got quietly relaxed`
+(R15 leg 22, widened by the hand-off; analysis A1, B1): 15 lines in 9 files at `e61cf5f`
+**(apply, T001)** — the two skill copies of SKILL.md 2 each and of references/change.md 2 each,
+DESIGN.md 3 (:163, :783-784), the constitution 1, running-changes.md 1 (:414; `checks law and
+code` catches its line-wrapped copy), philosophy.md 1 (:90) and the-change.md 1 (:84) — 0 after.
+The draft's narrower glob and regex found 12 lines in 7 files **(plan)**, missing the three
+"relaxed in code" copies; DESIGN.md:97 and the-change.md:37 ("never relaxed in code — it is
+changed in the law first") state the amend rule, not what close checks, and the widened regex
+does not match them. The constitution takes a PATCH, 3.0.1 → 3.0.2, its Last Amended
 date the commit's, and no Sync Impact Report (MV-146's `absent` leg on `Sync Impact` holds;
 MV-120's on `2\.0\.[01]` holds). The other surfaces are the design's list: flow.ts:50 and the
 re-rendered flow.md gate line (FR-017, 64 → 125 B, read on demand, injected nowhere; flow.test's
@@ -400,7 +408,7 @@ The case is correctness; the token effect is small and its sign depends on reade
 
 | What | Before | After | Command |
 | --- | --- | --- | --- |
-| statement bytes written per new change | median 366, mean 506 B at the 27 closes after the history root (corpus: median 305, mean 424) | 0 | `node m2.mjs`, `node m1.mjs` (verify-claims-cite-measurement) **(ver)** |
+| claims-block bytes written per new change | median 366, mean 506 B at the 27 closes after the history root (corpus: median 305, mean 424) **(ver)**; median 370, mean 507 at the 30 closes at `e61cf5f` (the statements alone: median 350, mean 483) **(apply)** | 0 | `node m2.mjs` (its `save` column, which the design labelled statement bytes), `node m1.mjs` (verify-claims-cite-measurement) |
 | tokens per new change | ~92–127 once, plus that per read-back (count not measured) | 0 | bytes/4 |
 | scaffold claim lines, read at `change new` | 164 B | 80 B (−84) | `node -e` **(plan)**, `bytes.mjs` **(synth)** |
 | `change new` stdout | 544 B | 569 B (+25) | `lc.sh` **(synth)** |
@@ -408,10 +416,10 @@ The case is correctness; the token effect is small and its sign depends on reade
 | clean plan / apply / land / `verify --strict` / close / verify-after | 257 / 537 / 520 / 535 / 655 / 298 B | identical | same **(synth)** |
 | plan notice | — | 121 B per legacy claim per plan run | **(plan)** |
 | flow.md gate line (read on demand) | 64 B | 125 B (+61) | **(plan)** |
-| law growth, once | 416,889 B | +12,507 B (+3.0%): row line 5,444, notes 2,382, 33 MV-150 legs 3,505, 11 legs on amended rows 1,176 | `wc -c` on c7/law/* **(plan)** |
+| law growth, once | 416,889 B **(plan)**; 473,051 B at `e61cf5f` | +12,507 B (+3.0%) **(plan)**; +12,707 B (+2.7%) as written at apply: row line 5,451, notes 2,530, 33 MV-150 legs 3,550 (leg 22 widened), 11 legs on amended rows 1,176 | `wc -c` on c7/law/*, c7/impl/{row-head,notes-head}.txt **(apply)** |
 | corpus, counterfactual | claims block 54,819 B | 2,638 B had bare IDs been used from the start; delivered on landing 0 B | `node forms.mjs` **(inv)** |
 
-At 366 B per future change the law's growth is repaid in bytes after about 34 changes; the law
+At 370 B per future change the law's growth is repaid in bytes after about 34 changes; the law
 is read far less often than a live change file, so this overstates the cost. A claimed row is a
 median 1,977.5 B against a median statement of 254 B (ratio 7.1, `node m2.mjs`) **(ver)**, and
 `ecosystem.json` and graphify carry no row text (`graphify explain "MV-146"`: 1,945 B of edges,
@@ -450,7 +458,7 @@ legs are written once every task they read has landed (tasks.md).
 <!-- @anchor MV-150 brain:src/commands/change.ts /@anchor\[ \\t\]/ absent -->
 <!-- @anchor MV-150 brain:src/** /statement: "\.\.\."|Statements are prose/ absent -->
 <!-- @anchor MV-150 brain:{site/content/**,skills/**,.claude/skills/multivac/**} /statement: "\.\.\."|statements this change makes true|\*\*Claims it makes true\*\*|^[[:space:]]+statement:[[:space:]]/ absent -->
-<!-- @anchor MV-150 brain:{DESIGN.md,.specify/memory/constitution.md,site/content/**,skills/**,.claude/skills/multivac/**} /ended (up )?consistent|checks law and code|anywhere the change touched/ absent -->
+<!-- @anchor MV-150 brain:{*.md,.specify/memory/*.md,site/content/**,skills/**,.claude/skills/multivac/**} !CHANGELOG.md /ended (up )?consistent|checks law and code|anywhere the change touched|relaxed in code instead of|got quietly relaxed/ absent -->
 <!-- @anchor MV-150 brain:test/change/file.test.ts /a claim is its row's ID/ -->
 <!-- @anchor MV-150 brain:test/change/cite-lines.test.ts /one line per claim, the first reason in order/ -->
 <!-- @anchor MV-150 brain:test/change/ledger.test.ts /close refuses a claim whose row was never stated/ -->
@@ -486,7 +494,8 @@ The investigator's `/still reads? RESERVED/` matched 0 in its own prototype and 
 
 **Dry-run today (plan)**: `@anchor\[ \\t\]` in change.ts 1 (:637); `statement: "\.\.\."|Statements
 are prose` over `src/**` 2 (file.ts, change.ts); the retired-example leg 7 lines (R12); the
-"ended consistent" leg 12 lines in 7 files (R12). Each `absent` leg has teeth today and matches
+"ended consistent" leg 12 lines in 7 files (R12). **Re-run at apply (T001, through `verify`'s own
+scanner)**: 1 (:812 at `e61cf5f`), 2, 7, and the widened leg 22 15 lines in 9 files (R19). Each `absent` leg has teeth today and matches
 0 after; each `unique` leg matched 1 in the prototype tree **(synth)**; the legs the critic
 added (the orphan and not-new clauses, `claimKeys: 'refuse'`, `statedUpstream` twice,
 `brainChannel`) are dry-run at the task that writes them.
@@ -513,24 +522,30 @@ move" leg resolved, nothing moved **(critic)**.
 ## R16. The law as it will be written
 
 **MV-150**, one physical line, `| open | proposed | 2026-09-29 | [changes/change-file-cites.md](changes/change-file-cites.md) |`,
-5,444 B, statement cell 5,336 B **(plan)**, the text in `c7/law/row.txt`:
+5,451 B, statement cell 5,344 B **(apply)**, the text in `c7/impl/row-head.txt` — `c7/law/row.txt`
+(5,444 B) with T001's figures (R19), as written by T002:
 
-> **A change file cites the law it makes true and never restates it: a claim is its row's ID, and `change close` refuses until every claim cites a stated row the change adds, touches or retires, and every row the change adds and anchors is claimed.** Measured 2026-09-29 on this brain's 131 change files: nothing read `claims[].statement` but the parser, the serializer, the scaffold and `change new`'s example, yet all 160 claims carried one, 136 restating a row the same change added; 141 no longer sat verbatim in their row, and of the 32 written at a close commit after the history root none was an exact copy even then. One archive's statement no longer parses, which drops that change and its two edges to MV-32 from `ecosystem.json`. `close` checked a claim's anchors, never its row: of 16 bad declarations, 11 closed green — a claim of no row, of a row the change neither adds nor touches, of a retired row, of a row still reading `RESERVED by change <slug> — state the rule here before close.`, and an added, anchored, unclaimed row, which as a proposed row never gates. And `close`'s anchored set was a text scan of every tracked file — 220 IDs against the 146 `verify` parses here, six against none on a fresh `init --provider claude` brain, whose first reservation was therefore never released. **The rule.** *A claim is an ID.* `change new` prints `claims: [<ID>]` and the scaffold teaches it; a `{ id }` map is written back bare. A legacy `statement:` parses, is written back unchanged and is never created; `change plan` names it as a restatement, gates nothing and never asks an in-flight change to convert. A key inside a claim other than `id` and a legacy `statement` is named by every reader and refused by every command that rewrites the file, which would drop it; `verify`, `roadmap`, `doors` and the code gate still read the change. *Close checks the citation.* Before anything is archived, `change close` names for each claim the first of: no row; a row short of its six columns; a retired row the change does not retire; a row under its `retires` not yet retired; a row the change neither adds, touches nor retires; a row another change reserved and has not stated; a row that states no rule yet — to be stated there, or pulled when the brain's channel already states it; a claim anchored only in the change file it archives. It refuses a row under `adds` already in the law and a proposed row the change owns that an anchor names and no claim cites, and says without refusing that a stated owned row nothing anchors enters unverified. The red claims, these lines and the orphan line come in one run; an unused reservation is released as before; `--abandon` refuses a change whose own proposed row states a rule. "Anchored" is the set `verify` parses, read once before the archive. The brain's channel is its own entry's `channel:`, else the global, else `origin/main`, for `land`, `close` and `verify`'s read line alike. *What says close says what its citation gate refuses*: `verify`'s finished line (MV-80) names the first refusal before `change close <slug>`, still blocking under `--strict`; `land` prints the refusals, the pull included, when it records the last repo; `plan` prints the declaration half as notices. **What is mechanical**: `unique` legs on the bare read and write, the claim-key message and its refusal by the writers, the legacy notice, `citeLines` and its clauses, `abandonLines`, `statedUpstream` at `land` and `close`, `brainChannel`, the parsed anchor set and the finished line's reading, with `count=3` on `citeLines` in `change.ts`; `absent` legs on the text scan, the retired examples and phrases, and every copy of the sentence that close checks law and code ended consistent; test legs, a site leg and a count on the four amendment notes. **Ceilings.** An older multivac cannot read an ID-only claim: its `change` commands refuse the file, and its `verify`, `roadmap` and `doors` skip it without a word — the change reads as absent, its claims stop pending and can gate, a brain==code hook running an older build blocks the change's own commits, and the finished gate goes quiet; MV-86's `requires:` floor makes the brain loud and does not reach a consumer's run. Archives keep their 48,835 bytes of statements, the one that does not parse included, and a change open at this row's birth keeps its own. `roadmap sync` skips a file whose claim carries a stray key as it skips any file it cannot parse. The SDD, graph and tracked-graph gates `close` runs before its citation gate are not announced by `verify` or `land`, and `verify`'s finished line reads this checkout only: a brain behind its channel is named on its read line, and the pull is `land`'s and `close`'s to say. The channel is read offline, on a refusal only. A stated rule nothing anchors still enters the law, with its line: coverage below one hundred percent is supported. An undeclared claim still holds its row pending under MV-17 until `plan` or `close` names it. A change's contribution to a row it only touches belongs in that row's amendment note, its body or its spec, and whether they restate the row stays ungateable (MV-146). The saving is per future change, a median 366 bytes of statement at the 27 closes since the history root; whether an ID-only file costs a row read later is not measured.
+> **A change file cites the law it makes true and never restates it: a claim is its row's ID, and `change close` refuses until every claim cites a stated row the change adds, touches or retires, and every row the change adds and anchors is claimed.** Measured 2026-09-29 on this brain's 131 change files: nothing read `claims[].statement` but the parser, the serializer, the scaffold and `change new`'s example, yet all 164 claims carried one, 140 restating a row the same change added; 144 no longer sat verbatim in their row, and of the 35 written at a close commit after the history root none was an exact copy even then. One archive's statement no longer parses, which drops that change and its two edges to MV-32 from `ecosystem.json`. `close` checked a claim's anchors, never its row: of 16 bad declarations, 11 closed green — a claim of no row, of a row the change neither adds nor touches, of a retired row, of a row still reading `RESERVED by change <slug> — state the rule here before close.`, and an added, anchored, unclaimed row, which as a proposed row never gates. And `close`'s anchored set was a text scan of every tracked file — 223 IDs against the 149 `verify` parses here, six against none on a fresh `init --provider claude` brain, whose first reservation was therefore never released. **The rule.** *A claim is an ID.* `change new` prints `claims: [<ID>]` and the scaffold teaches it; a `{ id }` map is written back bare. A legacy `statement:` parses, is written back unchanged and is never created; `change plan` names it as a restatement, gates nothing and never asks an in-flight change to convert. A key inside a claim other than `id` and a legacy `statement` is named by every reader and refused by every command that rewrites the file, which would drop it; `verify`, `roadmap`, `doors` and the code gate still read the change. *Close checks the citation.* Before anything is archived, `change close` names for each claim the first of: no row; a row short of its six columns; a retired row the change does not retire; a row under its `retires` not yet retired; a row the change neither adds, touches nor retires; a row another change reserved and has not stated; a row that states no rule yet — to be stated there, or pulled when the brain's channel already states it; a claim anchored only in the change file it archives. It refuses a row under `adds` already in the law and a proposed row the change owns that an anchor names and no claim cites, and says without refusing that a stated owned row nothing anchors enters unverified. The red claims, these lines and the orphan line come in one run; an unused reservation is released as before; `--abandon` refuses a change whose own proposed row states a rule. "Anchored" is the set `verify` parses, read once before the archive. The brain's channel is its own entry's `channel:`, else the global, else `origin/main`, for `land`, `close` and `verify`'s read line alike. *What says close says what its citation gate refuses*: `verify`'s finished line (MV-80) names the first refusal before `change close <slug>`, still blocking under `--strict`; `land` prints the refusals, the pull included, when it records the last repo; `plan` prints the declaration half as notices. **What is mechanical**: `unique` legs on the bare read and write, the claim-key message and its refusal by the writers, the legacy notice, `citeLines` and its clauses, `abandonLines`, `statedUpstream` at `land` and `close`, `brainChannel`, the parsed anchor set and the finished line's reading, with `count=3` on `citeLines` in `change.ts`; `absent` legs on the text scan, the retired examples and phrases, and every copy of the sentence that close checks law and code ended consistent; test legs, a site leg and a count on the four amendment notes. **Ceilings.** An older multivac cannot read an ID-only claim: its `change` commands refuse the file, and its `verify`, `roadmap` and `doors` skip it without a word — the change reads as absent, its claims stop pending and can gate, a brain==code hook running an older build blocks the change's own commits, and the finished gate goes quiet; MV-86's `requires:` floor makes the brain loud and does not reach a consumer's run. Archives keep their 50,477 bytes of statements, the one that does not parse included, and a change open at this row's birth keeps its own. `roadmap sync` skips a file whose claim carries a stray key as it skips any file it cannot parse. The SDD, graph and tracked-graph gates `close` runs before its citation gate are not announced by `verify` or `land`, and `verify`'s finished line reads this checkout only: a brain behind its channel is named on its read line, and the pull is `land`'s and `close`'s to say. The channel is read offline, on a refusal only. A stated rule nothing anchors still enters the law, with its line: coverage below one hundred percent is supported. An undeclared claim still holds its row pending under MV-17 until `plan` or `close` names it. A change's contribution to a row it only touches belongs in that row's amendment note, its body or its spec, and whether they restate the row stays ungateable (MV-146). The saving is per future change, a median 370 bytes off the claims block at the 30 closes since the history root; whether an ID-only file costs a row read later is not measured.
 
 The sentence "MV-86's `requires:` floor makes the brain loud and does not reach a consumer's
 run." is kept verbatim: `verify-rooted-and-quiet` amends it by a note if it lands with it. The
-row measures the brain as the design found it (131 files, 220 against 146) and says so by its
-date; R10 records `62d4588`'s 221 against 147.
+row's figures are read at `e61cf5f` (R19) and dated by the row: 164 claims (140 restating a row
+their change added, 144 no longer verbatim), 35 claims at 30 closes after the history root,
+223 IDs against 149, 50,477 bytes of archived statements, a median 370 bytes of claims block.
+The design's draft carried `92c4c08`'s 160, 136, 141, 32 at 27, 220 against 146, 48,835 (every
+readable file's statements, live ones included and the unparsable archive's left out) and a
+median 366 labelled "of statement" that was the claims-block saving (R14).
 
 **The four notes**, each appended to the end of its row's statement cell, withdrawing only a
-sentence this change makes false and quoting it exactly (401, 632, 571 and 778 B) **(plan)**:
+sentence this change makes false and quoting its row's own current sentence exactly (535, 631,
+570 and 794 B as written at T003; 401, 632, 571 and 778 B drafted) **(apply)**:
 
 | Row | Note |
 | --- | --- |
-| MV-15 | **Amended 2026-09-29 by MV-150**: a claim is its row's ID, and nothing scaffolds, prints or documents claim prose any more. A legacy `statement:` still parses and round-trips unchanged and unreflowed: 130 of this brain's 131 change files re-serialize byte-identically under the old and the new reader, and the one that fails fails under both. The teaching error still stands for any hand-typed value. |
+| MV-15 | **Amended 2026-09-29 by MV-150**: "Claim prose survives the frontmatter" now speaks of a legacy `statement:` alone: a claim is its row's ID, and nothing scaffolds, prints or documents claim prose any more. A legacy `statement:` still parses and round-trips unchanged and unreflowed: 130 of this brain's 131 change files re-serialize byte-identically under the old and the new reader, and the one that fails fails under both. "a frontmatter YAML error names the offending line and the quoting fix" still stands for any hand-typed value. |
 | MV-45 | **Amended 2026-09-29 by MV-150**: "no anchor names its ID" means an anchor `verify` parses — the collector's set from the brain's root, `.multivac/` and `.multivac/changes/` — and no longer `@anchor` text in any tracked file. On a fresh `init --provider claude` brain that scan counted six IDs from the skill's own examples, INV-01 among them, so the first reservation, never used, was never released. Close reads the set once, before its citation gate, and the gate exempts exactly the rows this release gives back. Close now refuses every row anchored only in the file it archives, so the read order is pinned on `--abandon`. |
 | MV-80 | **Amended 2026-09-29 by MV-150**: "the gate's only output is `change close <slug>`" is WITHDRAWN. `close` also refuses on its citation gate and its orphan check, so when a finished change would be refused there, the line names the first refusal before `change close <slug>` and stays blocking under `--strict`. `land`, recording the last repo, prints the same refusals, a row the brain's channel states and this checkout lacks as a pull, and its closing line names them instead of a bare `change close`. The SDD and graph gates `close` runs first are not announced here. |
-| MV-117 | **Amended 2026-09-29 by MV-150**: a fifth thing went through close without a word. A claim whose row still read `RESERVED by change <slug> — state the rule here before close.` closed green, and so did a claim of no row, a claim of a row the change neither adds nor touches, a claim of a retired row, and a row the change added and anchored but never claimed. Close now refuses each by name before anything is archived, in the same run as the red claims and the orphan line, and the orphan check is the one predicate `verify`'s finished line and `land` read too. A key inside a claim other than `id` and a legacy `statement` can only be rule prose: every reader names it, and every command that rewrites the file refuses it rather than drop it. A top-level key stays a notice. |
+| MV-117 | **Amended 2026-09-29 by MV-150**: "four things went through it without a word" — a fifth did too. A claim whose row still read `RESERVED by change <slug> — state the rule here before close.` closed green, and so did a claim of no row, a claim of a row the change neither adds nor touches, a claim of a retired row, and a row the change added and anchored but never claimed. Close now refuses each by name before anything is archived, in the same run as the red claims and the orphan line, and the orphan check is the one predicate `verify`'s finished line and `land` read too. A key inside a claim other than `id` and a legacy `statement` can only be rule prose: every reader names it, and every command that rewrites the file refuses it rather than drop it. A top-level key stays a notice. |
 
 `invariants.touches` lists exactly MV-15, MV-45, MV-80 and MV-117; `adds: [MV-150]`; `retires:
 []`. MV-111 is cited, not touched: this change applies it and makes none of its sentences false.
@@ -544,7 +559,7 @@ holds exactly seven `|`.
 - **#8 `verify-rooted-and-quiet`** lands after this change and rebases on `OpenChanges.changes`, `Evaluated.closeRefusals` and the finished line's refusing variant, emitted there with `quiet: null`; the variant's name and shape stay as R11 gives them, and #8's design counts an unparsable open change file as "off" (its §1.5). `brainChannel` touches verify's `bChannel` line (:712), a separate site #8 should expect.
 - **#9 `skill-cites-references`** trims the skill after this change and keeps the corrected facts (R12).
 - **The prototype's defects** (critic gap 11), fixed in the implementation: `CLAIM_KEYS` goes above `KNOWN_KEYS`' doc comment ("Every frontmatter key …"), not between them; `lsFiles` stays imported in change.ts only while another caller uses it; the two imports from `../anchor/parse.js` become one.
-- **Suite (plan)**: `62d4588` built from `git archive` runs 852 tests, 847 pass, 3 skipped; the 2 failures need a git checkout (the roadmap-absence scan and the font check read `git ls-files`) and pass in the repository. The prototype went from 831 tests (824 pass, 4 fail as predicted from the code, 3 skipped) to 839 (836 pass, 0 fail) with its test edits **(synth)**; merged with #4 (`e4b09a7`, `git apply --3way`, all 10 files clean) it ran 858, 855 pass, 0 fail **(critic)**.
+- **Suite (apply, T001)**: the branch head `e61cf5f`, #5 and #6 merged, runs 933 tests, 930 pass, 3 skipped, 0 fail, in the worktree (152 s). **Suite (plan)**: `62d4588` built from `git archive` runs 852 tests, 847 pass, 3 skipped; the 2 failures need a git checkout (the roadmap-absence scan and the font check read `git ls-files`) and pass in the repository. The prototype went from 831 tests (824 pass, 4 fail as predicted from the code, 3 skipped) to 839 (836 pass, 0 fail) with its test edits **(synth)**; merged with #4 (`e4b09a7`, `git apply --3way`, all 10 files clean) it ran 858, 855 pass, 0 fail **(critic)**.
 
 ## R18. Ceilings, stated
 
@@ -557,3 +572,81 @@ offline, only on a refusal. A stated rule nothing anchors enters the law with it
 undeclared claim holds its row pending until plan or close names it. Rows a change only touches
 are checked at close only when claimed. Whether an ID-only file costs a row read later is not
 measured.
+
+## R19. Re-anchored and re-measured at apply (T001)
+
+Read on the branch head `e61cf5f` (#5 and #6 merged, the speckit files carried), clean worktree,
+`corepack pnpm run build` exit 0, `node dist/cli.js verify` `150 claims · 149 anchored`, `0
+blocking broken`. `change new` reserved MV-150 (`92e0f18`). Scripts under
+`/tmp/claude-0/-home-user-multivac/2009d32c-ec8a-53c2-87bc-5b2df689ff4a/scratchpad/c7/impl/`
+**(apply)**:
+
+```bash
+I=/tmp/claude-0/-home-user-multivac/2009d32c-ec8a-53c2-87bc-5b2df689ff4a/scratchpad/c7/impl
+W=/home/user/multivac/.multivac/worktrees/change-file-cites/brain
+node --test "dist-test/**/*.test.js"                  # 933 tests, 930 pass, 3 skipped, 0 fail
+node $I/../../c78/claims-cite/measure.mjs $W          # 131 files (127 archived, 1 unparsable); 163 readable claims, all stated; 144 diverge from their row
+node $I/stmtbytes.mjs $W $W/dist                      # archives 49,723 B + the unparsable one's 754 B; 139 readable claims restate an added row
+node $I/m2.mjs $W                                     # 30 closes after the root: claims-block saving median 370, mean 507.1; statements median 350; RESERVED at archive 0 of 161
+node $I/afterroot.mjs $W $W/dist                      # those 30 closes hold 35 claims, 0 an exact copy of their row then
+node $I/roundtrip.mjs $I/../../c78/synth/proto $W/dist $W   # the prototype reader against the head's: 131 files, 130 identical, 0 differ, 1 fails under both
+node $I/anchsets.mjs $W/dist /home/user/multivac      # main 9c615ca: 223 scanned, 149 parsed, 74 only scanned, 0 MV-
+node $I/anchsets.mjs $W/dist $W                       # branch head: 225, 149, 76, MV-150 (this change's own spec quotes it)
+node $I/legdry.mjs $W/dist $W $I/t001-legs.md         # the legs below, through verify's own scanner
+```
+
+**The corpus, as MV-150's row now states it**: 131 change files; 164 claims, every one carrying a
+statement (163 readable, and the unparsable archive's claim of MV-32); 140 restate a row their own
+change added (139 readable, and MV-32); 144 no longer sit verbatim in their row (MV-32's still
+does, normalized); the 30 closes after the history root hold 35 claims, none an exact copy of its
+row at the archive commit; archives hold 50,477 B of statements, the unparsable one included; the
+claims block of those 30 closes would have shrunk by a median 370 B. SC-010 re-run: 0 of 161
+archived claims had a RESERVED row at their archive commit, 0 of 163 readable claims name a
+missing row, 0 fall outside `adds` ∪ `touches`, 0 sit under `retires`, 137 of 137 rows an archived
+change added are claimed. The fresh `init --provider claude` brain (built from `e61cf5f`, `HOME`
+isolated): text scan 6, parsed 0.
+
+**Dry-run through `verify`'s own scanner** (`legdry.mjs`: `parseAnchors` + `scanLeg`, so globs are
+picomatch's and anchor lines are skipped):
+
+| Leg | At `e61cf5f` |
+| --- | --- |
+| retired examples over `{site/content/**,skills/**,.claude/skills/multivac/**}` | 7 lines in 4 files: running-changes.md :82, :121, :140, :162; commands.md :1295; `**Claims it makes true**` at :104 of both references/change.md copies |
+| R15's draft leg 22 (its glob and regex) | 12 lines in 7 files |
+| FR-021's glob with the R15 regex | 12 lines in 7 files |
+| FR-021's glob with the widened regex (the leg T065 writes) | 15 lines in 9 files: both SKILL.md :77-78, both references/change.md :206-207, constitution.md :47, DESIGN.md :163, :783, :784, philosophy.md :90, the-change.md :84, running-changes.md :414 |
+| `statement: "\.\.\."\|Statements are prose` over `src/**` | 2: file.ts :303, change.ts :1088 |
+| `@anchor\[ \\t\]` in change.ts | 1 (:812) |
+
+A `git grep` dry-run with a bare `*.md` pathspec recurses and reports 44 lines in 16 files for
+FR-021's glob; picomatch does not recurse, so dry-run through the scanner or with `:(glob)*.md`.
+
+**Re-anchored lines**, after T002–T008 (the `wip(change-file-cites): S1` commit), for the tasks
+that follow; print sites are still found by their text:
+
+| Artifact line | Now |
+| --- | --- |
+| file.ts `ChangeClaim` :28-31 | :28-35 (statement optional, documented legacy) |
+| file.ts `KNOWN_KEYS` and its doc :73-78 | `CLAIM_KEYS` :78-83, `KNOWN_KEYS` :84-87, `ClaimKeys` :89-95, `normalizeChange` :97-98 (the "Validate …" comment now on it) |
+| file.ts claim reader :176-189 | :194-207 |
+| file.ts MV-117 notice | :212-223 |
+| file.ts `parseChange` :253 / `serializeChange` :282 / `scaffoldChange` :303 / `loadChange` :344-371 | :271 / :288 (its `claims:` at :300, `lineWidth` comment :303) / :311 (body :321) / :362 (`parseChange` call :382) |
+| reserve.ts `owns` :39; `releaseUnused` filter :183-192 | `owns` :39, `stillReserved` :47, `unused` :55, `reservedBy` :59; `releaseUnused` :197, its filter :205 |
+| config.ts `channelRef` :65 | :65; `brainChannel` :77 |
+| change.ts `channelEvidence` ref :365 | :374 |
+| change.ts `anchoredClaimIds` :627-640 | `brainAnchorSites` :812, `anchoredIds` :817, `anchoredClaimIds` :821-834 (regex :831) |
+| change.ts `cmdNew` third edit :913 | :1107 |
+| change.ts `cmdPlan` "already in … not new" :996 / claim loop :1004-1009 | :1199 / :1207-1212 |
+| change.ts `cmdLand` :1227-1287 (armed line, final line) | :1537; armed line :1626-1629; final line :1665 |
+| change.ts `--abandon` :1306-1346 | :1684-1728 (claims refusal :1687-1691, anchor read :1701, release :1707) |
+| change.ts close unlanded check :1383-1390 / claims block :1392-1426 | :1764-1770 / :1771-1800; anchor read :1801-1805; `runSdd('close')` :1806; release :1821 |
+| verify.ts `OpenChanges` :65-70, `openChangeClaims` :83-118, `bChannel` :712, `Evaluated` :849-864, claim-scoped literal :934-936, `finished` :944, finished line :1184-1192 | unchanged but the literal, :930 |
+| roadmap.ts :77, :146, :226, :271; ecosystem.ts :91 | unchanged |
+| code-in-change.ts `readChange` :131 | :214 |
+| flow.ts gate line :50; flow.test.ts assertion :135 | :50; :174 |
+| running-changes.md :300 (land), :369-370, :391 | land sample :349; "ended consistent" :414; retire sentence :436 |
+| commands.md :510, :1255, near :1534, ~:1564, ~:1642 | finished line :538; three edits :1295; armed-line sample :1646; "Then re-verifies" :1676; `--abandon` :1760 |
+| references/change.md :104-106, :175-180, :315 | :104-106, :206-207, :353 |
+| DESIGN.md :204-212, :783-784 | :204, :782-784, and :163 |
+| the-change.md :57-61 | :57, and :84 |
+| constitution.md Principle III :45-47 | :47; Compliance line :132; Version line :141 (Last Amended 2026-09-28) |

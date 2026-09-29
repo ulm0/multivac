@@ -27,7 +27,11 @@ export type Horizon = (typeof HORIZONS)[number];
 
 export interface ChangeClaim {
   id: string;
-  statement: string;
+  /**
+   * Legacy (MV-150): a restatement of the row, read and written back
+   * unchanged, never created. The row states the rule; a claim is its ID.
+   */
+  statement?: string;
 }
 
 export interface ChangeFile {
@@ -71,13 +75,31 @@ function strList(v: unknown, key: string, errs: string[]): string[] {
   return v as string[];
 }
 
-/** Validate a parsed frontmatter object into a ChangeFile, or throw listing every problem. */
+/**
+ * MV-150: what a claim entry may hold — its ID, and a legacy statement read
+ * back unchanged. Anything else inside a claim can only be rule prose, which
+ * belongs in the row the ID names.
+ */
+const CLAIM_KEYS = ['id', 'statement'];
 /** Every frontmatter key the lifecycle carries through a rewrite. */
 const KNOWN_KEYS = [
   'slug', 'status', 'horizon', 'issue', 'repos', 'landing_order', 'invariants', 'claims', 'sdd_skipped',
 ];
 
-export function normalizeChange(raw: unknown, label: string): ChangeFile {
+/**
+ * How a reader treats a key inside a claim that is not in CLAIM_KEYS (MV-150):
+ * `'name'` reads the claim without it and says so, so the change stays visible
+ * to the gates that protect it; `'refuse'` is for a caller that writes the
+ * file back, which would otherwise drop the key — and the prose in it — on disk.
+ */
+type ClaimKeys = 'name' | 'refuse';
+
+/** MV-150: the one wording of a stray claim key, whether a reader names it or refuses it. */
+const strayClaimKey = (id: string, key: string): string =>
+  `claim ${id}: unknown key "${key}" — a claim is its row's ID; state the rule in the row`;
+
+/** Validate a parsed frontmatter object into a ChangeFile, or throw listing every problem. */
+export function normalizeChange(raw: unknown, label: string, claimKeys: ClaimKeys = 'name'): ChangeFile {
   const errs: string[] = [];
   const o = (
     raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
@@ -174,19 +196,39 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
   }
 
   const claims: ChangeClaim[] = [];
+  const stray: string[] = [];
   const claimsRaw = o.claims ?? [];
   if (!Array.isArray(claimsRaw)) {
-    errs.push('"claims" must be a list of { id, statement }');
+    errs.push('"claims" must be a list of row IDs — claims: [<ID>]');
   } else {
+    const malformed = 'each claim is a row ID — claims: [<ID>]; the row states the rule';
     for (const c of claimsRaw) {
-      const cc = c as { id?: unknown; statement?: unknown } | null;
-      if (cc === null || typeof cc.id !== 'string' || typeof cc.statement !== 'string') {
-        errs.push('each claim needs a string "id" and "statement"');
+      // MV-150: a claim is its row's ID, the form every command writes. The
+      // row states the rule; a claim that restated it drifted from it.
+      if (typeof c === 'string' && c !== '') {
+        claims.push({ id: c });
         continue;
       }
-      claims.push({ id: cc.id, statement: cc.statement });
+      const cc = c !== null && typeof c === 'object' && !Array.isArray(c) ? (c as Record<string, unknown>) : null;
+      if (
+        cc === null ||
+        typeof cc.id !== 'string' ||
+        cc.id === '' ||
+        (cc.statement !== undefined && typeof cc.statement !== 'string')
+      ) {
+        if (!errs.includes(malformed)) errs.push(malformed);
+        continue;
+      }
+      // Anything else inside a claim can only be rule prose, whose home is the
+      // row. A writer would drop it at the next rewrite, so it is named here
+      // and refused by every caller that writes the file back.
+      for (const k of Object.keys(cc)) if (!CLAIM_KEYS.includes(k)) stray.push(strayClaimKey(cc.id, k));
+      // A legacy statement is read so it can be written back unchanged; no
+      // command creates one.
+      claims.push(typeof cc.statement === 'string' ? { id: cc.id, statement: cc.statement } : { id: cc.id });
     }
   }
+  if (claimKeys === 'refuse') errs.push(...stray);
 
   if (errs.length > 0) {
     throw new ChangeError(`${label}: ${errs.join('; ')} — fix the frontmatter`);
@@ -203,6 +245,12 @@ export function normalizeChange(raw: unknown, label: string): ChangeFile {
         `${dropped.join(', ')}. The lifecycle rewrites this file and keeps only what it declares; ` +
         'prose belongs below the closing ---',
     );
+  }
+  // MV-150: a reader that writes nothing reads the claim without the key and
+  // says so, so the change stays visible to the gates that protect it. (A
+  // 'refuse' reader has thrown on these above.)
+  for (const s of stray) {
+    warn(`${label}: ${s} (read without it here; every command that rewrites the file refuses it until it goes)`);
   }
   return {
     slug,
@@ -250,7 +298,11 @@ function frontmatterError(label: string, fm: string, e: unknown): ChangeError {
   return new ChangeError(out.join('\n'));
 }
 
-export function parseChange(text: string, label = 'change file'): ParsedChange {
+export function parseChange(
+  text: string,
+  label = 'change file',
+  opts: { claimKeys?: ClaimKeys } = {},
+): ParsedChange {
   const m = /^---\n([\s\S]*?)\n---\n/.exec(text);
   if (!m) {
     throw new ChangeError(
@@ -264,7 +316,7 @@ export function parseChange(text: string, label = 'change file'): ParsedChange {
     throw frontmatterError(label, m[1], e);
   }
   const body = text.slice(m[0].length).replace(/^\n/, '');
-  return { change: normalizeChange(raw, label), body };
+  return { change: normalizeChange(raw, label, opts.claimKeys), body };
 }
 
 export function serializeChange(change: ChangeFile, body: string): string {
@@ -279,10 +331,11 @@ export function serializeChange(change: ChangeFile, body: string): string {
       repos: change.repos,
       landing_order: change.landing_order,
       invariants: change.invariants,
-      claims: change.claims,
+      // MV-150: a claim is written as its row's ID; only a legacy claim is a map.
+      claims: change.claims.map((c) => (c.statement === undefined ? c.id : { id: c.id, statement: c.statement })),
       ...(change.sdd_skipped?.length ? { sdd_skipped: change.sdd_skipped } : {}),
     },
-    // lineWidth: 0 — never fold prose onto continuation lines: the writer's
+    // lineWidth: 0 — never fold prose onto continuation lines: a legacy
     // statement comes back the way it was written. Quoting is the library's job.
     { lineWidth: 0 },
   );
@@ -300,7 +353,7 @@ export function scaffoldChange(slug: string, title: string): ParsedChange {
       invariants: { touches: [], adds: [], retires: [] },
       claims: [],
     },
-    body: `# ${title}\n\nDeclare repos, landing_order, invariants and claims in the frontmatter,\nthen run \`multivac change plan ${slug}\`. For example:\n\n    # repos: { api: { status: planned } } — ${REPO_STATUSES.join('|')}\n    # landing_order: [[api]] — stages; earlier stages land first\n    # claims: [{ id: <ID>, statement: "..." }] — what close verifies\n\nStatements are prose: quote any value holding a colon —\n\`statement: "staleness: block"\`.\n\nmultivac owns the frontmatter formatting: every lifecycle step rewrites it, so\nhand-tuned layout will not survive, and a key it does not know is DROPPED\nrather than carried through. Declared values round-trip unchanged; the body,\nbelow the closing ---, is yours: with an SDD declared, \`change close\` only\nappends the line citing its directory.\n`,
+    body: `# ${title}\n\nDeclare repos, landing_order, invariants and claims in the frontmatter,\nthen run \`multivac change plan ${slug}\`. For example:\n\n    # repos: { api: { status: planned } } — ${REPO_STATUSES.join('|')}\n    # landing_order: [[api]] — stages; earlier stages land first\n    # claims: [<ID>] — the rows close verifies; each row states its own rule\n\nmultivac owns the frontmatter formatting: every lifecycle step rewrites it, so\nhand-tuned layout will not survive, and a key it does not know is DROPPED\nrather than carried through. Declared values round-trip unchanged; the body,\nbelow the closing ---, is yours: with an SDD declared, \`change close\` only\nappends the line citing its directory.\n`,
   };
 }
 
@@ -361,7 +414,9 @@ export async function loadChange(brain: string, slug: string): Promise<ParsedCha
       `no ${changeRel(slug)} — run \`multivac change new ${slug} "<title>"\` first`,
     );
   }
-  const parsed = parseChange(text, changeRel(slug));
+  // MV-150: every lifecycle step rewrites the file, so a key inside a claim
+  // that this reader would drop is refused here, never lost on disk.
+  const parsed = parseChange(text, changeRel(slug), { claimKeys: 'refuse' });
   if (parsed.change.slug !== slug) {
     throw new ChangeError(
       `${changeRel(slug)}: frontmatter slug "${parsed.change.slug}" does not match the filename — fix the slug`,

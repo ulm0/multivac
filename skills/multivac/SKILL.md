@@ -74,8 +74,9 @@ refuses work for not having been planned first (MV-89).
    specs, change files, commit messages — everywhere law is referenced.
 4. **Never relax an invariant in code.** The law changes first: open a
    change that declares "amends INV-xx", update the row (dated), then change
-   the code in the same change. `mvac change close` checks law and code
-   ended consistent.
+   the code in the same change. `mvac change close` verifies each claim the
+   change declares — its anchors resolve and its row states the rule — so
+   claim the row you amend to have close answer for it.
 5. **You propose; the human enacts.** New claims are filed as `proposed`
    rows. Only a human flips a row to `active` — an authority label like
    "published" means someone answered for it, and you cannot answer for it.

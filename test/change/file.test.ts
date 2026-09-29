@@ -243,3 +243,60 @@ test('the scaffold says close appends only the line citing the directory', () =>
   assert.match(citeLine('speckit'), /^sdd speckit: the why, the design and the tasks go into its files — .*`change close` cites the directory; do not cite it yourself$/);
   assert.doesNotMatch(citeLine('speckit'), /continue|without asking/);
 });
+
+test("a claim is its row's ID — MV-150", () => {
+  const fm = (claims: string): string =>
+    `---\nslug: t\nstatus: open\nrepos: {}\nlanding_order: []\ninvariants:\n  touches: []\n  adds: []\n  retires: []\n${claims}---\n\n# b\n`;
+  // The bare ID is the form every command writes.
+  const bare = parseChange(fm('claims:\n  - MV-1\n'), 't');
+  assert.deepEqual(bare.change.claims, [{ id: 'MV-1' }]);
+  assert.equal(serializeChange(bare.change, bare.body), fm('claims:\n  - MV-1\n'));
+  assert.doesNotMatch(serializeChange(bare.change, bare.body), /statement/);
+  // A map holding only its ID is read, and written back bare.
+  const map = parseChange(fm('claims:\n  - id: MV-2\n'), 't');
+  assert.deepEqual(map.change.claims, [{ id: 'MV-2' }]);
+  assert.equal(serializeChange(map.change, map.body), fm('claims:\n  - MV-2\n'));
+  // A legacy statement beside a bare ID comes back byte for byte, never created.
+  const mixed = fm('claims:\n  - MV-1\n  - id: MV-13\n    statement: "legacy: prose # kept"\n');
+  const m = parseChange(mixed, 't');
+  assert.deepEqual(m.change.claims, [{ id: 'MV-1' }, { id: 'MV-13', statement: 'legacy: prose # kept' }]);
+  assert.equal(serializeChange(m.change, m.body), mixed);
+  // Anything else is no claim: refused by every reader, whatever it does with a stray key.
+  for (const bad of [
+    'claims:\n  - statement: x\n',
+    'claims:\n  - 1\n',
+    'claims: MV-1\n',
+    'claims:\n  - id: MV-1\n    statement: 3\n',
+    'claims:\n  - id: ""\n',
+    'claims:\n  - ""\n',
+  ]) {
+    for (const opts of [{}, { claimKeys: 'refuse' as const }]) {
+      assert.throws(
+        () => parseChange(fm(bad), 't', opts),
+        (e: unknown) => e instanceof ChangeError && /claims: \[<ID>\]/.test(e.message),
+        `${JSON.stringify(bad)} ${JSON.stringify(opts)}`,
+      );
+    }
+  }
+  // A stray key inside a claim: a writer refuses it by name, a reader names it
+  // and reads the claim without it.
+  const stray = fm('claims:\n  - id: MV-1\n    statment: Points carry an expiry.\n');
+  const named = 'claim MV-1: unknown key "statment" — a claim is its row\'s ID; state the rule in the row';
+  assert.throws(
+    () => parseChange(stray, 't', { claimKeys: 'refuse' }),
+    (e: unknown) => e instanceof ChangeError && e.message === `t: ${named} — fix the frontmatter`,
+  );
+  const said: string[] = [];
+  const err = console.error;
+  console.error = (...a: unknown[]) => { said.push(a.map(String).join(' ')); };
+  let read: ReturnType<typeof parseChange>;
+  try {
+    read = parseChange(stray, 't');
+  } finally {
+    console.error = err;
+  }
+  assert.deepEqual(read.change.claims, [{ id: 'MV-1' }]);
+  assert.deepEqual(said, [
+    `t: ${named} (read without it here; every command that rewrites the file refuses it until it goes)`,
+  ]);
+});

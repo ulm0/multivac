@@ -215,9 +215,19 @@ test('close keeps a reservation anchored in the change file it archives', async 
   // the anchor lives in the change file, tracked — exactly what archive moves
   execFileSync('git', ['-C', eco.brain, 'add', '-A'], { stdio: 'ignore' });
   execFileSync('git', ['-C', eco.brain, 'commit', '-q', '-m', 'kept-two bookkeeping'], { stdio: 'ignore' });
-  assert.equal(await change.run(['close', 'kept-two'], ctx), 0);
+  // MV-150: a reservation an anchor names, claimed by nothing, would enter the
+  // law unverified — close refuses it now, and a refused close releases nothing.
+  assert.equal(await change.run(['close', 'kept-two'], ctx), 1);
   const law = readFileSync(join(eco.brain, '.multivac/invariants.md'), 'utf8');
-  assert.ok(law.includes(`| ${id} |`), 'anchors are read before archive moves the file');
+  assert.ok(law.includes(`| ${id} |`), 'a reservation an anchor names is never released');
+  // Leave the shared brain as the next test expects it: the anchor dropped,
+  // the change abandoned, the reservation given back, all committed.
+  const dropped = await loadChange(eco.brain, 'kept-two');
+  dropped.body = dropped.body.replace(`\n<!-- @anchor ${id} api:README.md /acme-api/ -->\n`, '');
+  await saveChange(eco.brain, dropped);
+  assert.equal(await change.run(['close', 'kept-two', '--abandon'], ctx), 0);
+  execFileSync('git', ['-C', eco.brain, 'add', '-A'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', eco.brain, 'commit', '-q', '-m', 'Abandon the kept-two change'], { stdio: 'ignore' });
 });
 
 test('close releases a reservation the change never used', async () => {
@@ -259,4 +269,57 @@ test('--abandon will not release a reservation an anchor names (MV-45)', async (
     readFileSync(law, 'utf8').includes(`| ${id} |`),
     `${id} was released while an anchor still names it — the next change new would reuse it`,
   );
+});
+
+// MV-45, MV-150. The one path where the read order is still observable: an
+// anchor written in the change file itself is parsed while the file sits in
+// `.multivac/changes/`, and never again once archive moves it — so reading
+// after the archive releases a row a live anchor names.
+test('--abandon reads anchors before archive moves the change file (MV-45)', async () => {
+  const solo = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-abandon-order-')));
+  const soloCtx = { cwd: solo.brain };
+  assert.equal(await change.run(['new', 'delta', 'Delta'], soloCtx), 0);
+  const id = (await loadChange(solo.brain, 'delta')).change.invariants.adds[0];
+  const parsed = await loadChange(solo.brain, 'delta');
+  parsed.body += `\n<!-- @anchor ${id} brain:AGENTS.md /multivac/ -->\n`;
+  await saveChange(solo.brain, parsed);
+  execFileSync('git', ['-C', solo.brain, 'add', '-A'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', solo.brain, 'commit', '-q', '-m', 'delta anchors its reservation'], { stdio: 'ignore' });
+
+  assert.equal(await change.run(['close', 'delta', '--abandon'], soloCtx), 0);
+  const law = readFileSync(join(solo.brain, '.multivac/invariants.md'), 'utf8');
+  assert.ok(law.includes(`| ${id} |`), 'anchors are read before archive moves the file');
+});
+
+// MV-45, MV-150. "No anchor names its ID" means an anchor `verify` parses. The
+// old text scan read every tracked file, so anchor-shaped text in a doc no
+// run ever parses — a fresh claude-door brain's skill examples among them —
+// kept an unused reservation out of the pool forever.
+test('an unused reservation named only by anchor text outside the parsed files is released', async () => {
+  const solo = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-release-parsed-')));
+  const soloCtx = { cwd: solo.brain };
+  assert.equal(await change.run(['new', 'epsilon', 'Epsilon'], soloCtx), 0);
+  const parsed = await loadChange(solo.brain, 'epsilon');
+  const id = parsed.change.invariants.adds[0];
+  parsed.change.repos = { api: { status: 'landed' } };
+  parsed.change.landing_order = [['api']];
+  await saveChange(solo.brain, parsed);
+  // A doc under a subdirectory: tracked, anchor-shaped, never parsed.
+  mkdirSync(join(solo.brain, 'docs'), { recursive: true });
+  writeFileSync(join(solo.brain, 'docs/example.md'), `An example:\n\n<!-- @anchor ${id} api:README.md /acme-api/ -->\n`);
+  execFileSync('git', ['-C', solo.brain, 'add', '-A'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', solo.brain, 'commit', '-q', '-m', 'epsilon, and a doc quoting an anchor'], { stdio: 'ignore' });
+
+  const lines: string[] = [];
+  const orig = console.log;
+  console.log = (...a: unknown[]) => { lines.push(a.map(String).join(' ')); };
+  let code: number;
+  try {
+    code = await change.run(['close', 'epsilon'], soloCtx);
+  } finally {
+    console.log = orig;
+  }
+  assert.equal(code, 0, lines.join('\n'));
+  assert.ok(lines.includes(`released unused reservation: ${id}`), lines.join('\n'));
+  assert.ok(!readFileSync(join(solo.brain, '.multivac/invariants.md'), 'utf8').includes(`| ${id} |`));
 });

@@ -171,7 +171,7 @@ test('a brain with nothing declared still gets a useful page', async () => {
   const { cfg } = await eco(['doors: [agents]', 'repos:', '  api: ../acme-api']);
   const page = renderFlow(cfg);
   assert.match(page, /## Gate — multivac refuses without it/);
-  assert.match(page, /`change close` refuses while a declared claim does not resolve/);
+  assert.match(page, /`change close` refuses while a declared claim does not resolve, or cites no stated row this change adds, touches or retires/);
   assert.match(page, /no SDD tool is declared/);
   assert.match(page, /no grapher is declared/);
 });

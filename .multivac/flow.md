@@ -15,7 +15,7 @@ this describes what it and the declared adapters already do.
 ## Gate — multivac refuses without it
 
 - `change plan` refuses while a declared repo is missing from `landing_order`
-- `change close` refuses while a declared claim does not resolve
+- `change close` refuses while a declared claim does not resolve, or cites no stated row this change adds, touches or retires
 - `verify` refuses a commit whose anchors are broken — it runs in the pre-commit hook
 - `change plan` refuses without `specs/<n>-<slug>/spec.md`
 - `change apply` refuses without `specs/<n>-<slug>/plan.md`

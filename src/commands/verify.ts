@@ -6,15 +6,16 @@ import { parseArgs, type ArgsDef } from 'citty';
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { basename, join, relative, resolve } from 'node:path';
-import { changesDir, parseChange } from '../change/file.js';
+import { changesDir, parseChange, type ChangeFile } from '../change/file.js';
+import { citeLines } from '../change/reserve.js';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import {
+  brainChannel,
   channelRef,
   loadConfig,
   ConfigError,
   CONFIG_PATH,
   ECOSYSTEM_PATH,
-  DEFAULT_CHANNEL,
   LAW_PATH,
   type LoadOpts,
 } from '../lib/config.js';
@@ -67,6 +68,8 @@ interface OpenChanges {
   pendingBy: Map<string, string>;
   /** Slugs whose every declared repo is recorded `landed`. */
   landed: Set<string>;
+  /** The open change files themselves, by slug — what MV-80's line asks close's citation gate about. */
+  changes: Map<string, ChangeFile>;
 }
 
 /**
@@ -82,7 +85,7 @@ interface OpenChanges {
  */
 async function openChangeClaims(brainDir: string): Promise<OpenChanges> {
   const dir = changesDir(brainDir);
-  const out: OpenChanges = { pendingBy: new Map(), landed: new Set() };
+  const out: OpenChanges = { pendingBy: new Map(), landed: new Set(), changes: new Map() };
   let names: string[];
   try {
     // Sorted, because the next loop resolves a collision by first-wins: two
@@ -103,6 +106,7 @@ async function openChangeClaims(brainDir: string): Promise<OpenChanges> {
       // cannot delay a release. The comparison is the guarantee — do not
       // widen it to "not archived".
       if (change.status !== 'open') continue;
+      out.changes.set(change.slug, change);
       for (const c of change.claims) {
         if (!out.pendingBy.has(c.id)) out.pendingBy.set(c.id, change.slug);
       }
@@ -140,8 +144,10 @@ async function openChangeClaims(brainDir: string): Promise<OpenChanges> {
  *   declared claim into `pending`, so `ok` is the only other state reachable
  *   and this is one comparison. A claim nothing anchors produces no result at
  *   all, and no result is not a resolution (Principle II).
- * - **every declared repo landed.** The only thing this gate prints is
- *   `change close <slug>`, and close refuses a change with a repo outstanding.
+ * - **every declared repo landed.** The instruction this gate prints ends in
+ *   `change close <slug>` — after the first line close's citation gate would
+ *   refuse on, when there is one (MV-150) — and close refuses a change with a
+ *   repo outstanding.
  *   Without this, the gate would fire on the author's own branch the moment
  *   their tests went green — telling them to run a command that would refuse.
  */
@@ -709,7 +715,9 @@ export async function resolveSources(
     bu.length === 0
       ? ''
       : ` · ${bu.length} path(s) MID-MERGE (${bu.slice(0, 2).join(', ')}${bu.length > 2 ? ', …' : ''}) — resolve the merge before trusting any verdict here`;
-  const bChannel = cfg.channel ?? DEFAULT_CHANNEL;
+  // MV-150: the brain's own entry first, as MV-53 reads every other entry —
+  // the ref `land`'s channel line and `close`'s pull name, so the three agree.
+  const bChannel = brainChannel(cfg);
   out.push(
     (await brainAtChannel('brain', brainDir, bChannel, atChannel)) ?? {
       key: 'brain',
@@ -859,6 +867,8 @@ interface Evaluated {
   pendingBy: Map<string, string>;
   /** Open changes that are finished, not pending (MV-80). Empty in a partial run. */
   finished: string[];
+  /** MV-150: per finished slug, the lines `change close` would refuse on — empty when it would not. */
+  closeRefusals: Map<string, string[]>;
   /** What each repo contributed, ref or branch and sha. The report prints it. */
   sources: RepoSource[];
   report: VerifyReport;
@@ -926,8 +936,8 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
 
   // Pendency is a reporting grace, and the close gate is where it ends: a
   // claim-scoped run (change close) asks for the unmasked truth.
-  const open = opts.claimIds
-    ? { pendingBy: new Map<string, string>(), landed: new Set<string>() }
+  const open: OpenChanges = opts.claimIds
+    ? { pendingBy: new Map(), landed: new Set(), changes: new Map() }
     : await openChangeClaims(brainDir);
   const pendingBy = open.pendingBy;
   const claims = await evaluateAnchors(evalAnchors, handles, {
@@ -942,6 +952,18 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
   // this tool exists to catch (Principle II). A claim-scoped run has no grace
   // to withdraw: `open` is empty above.
   const finished = opts.scope ? [] : finishedChanges(claims, open);
+  // MV-150. The finished line's one instruction is `change close`, so it asks
+  // close's own citation predicate first — over the rows and the whole parsed
+  // anchor set already in hand, nothing read again, and only when a change is
+  // finished. The channel is never read here: a pull is close's and land's to
+  // name, and this run's read line already says when the brain is behind.
+  const closeRefusals = new Map<string, string[]>();
+  for (const slug of finished) {
+    const change = open.changes.get(slug);
+    if (!change) continue;
+    const why = citeLines(rows, change, collected.anchors).filter((l) => l.gates);
+    if (why.length > 0) closeRefusals.set(slug, why.map((l) => l.text));
+  }
 
   // Exit matrix — one loop, one predicate. `blockingBroken` is the headline
   // number (blocking modes alone); `gating` is what this run actually gates
@@ -980,6 +1002,7 @@ async function evaluateCore(brainDir: string, opts: EvaluateOpts): Promise<Evalu
     gating,
     pendingBy,
     finished,
+    closeRefusals,
     sources,
     report: { claims, counts, blockingBroken, exitCode },
   };
@@ -1183,11 +1206,17 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
   const finishedBlocking = strict ? ev.finished.length : 0;
   for (const slug of ev.finished) {
     const held = [...ev.pendingBy.values()].filter((s) => s === slug).length;
+    // MV-150: never "close it" when close would refuse — the first line it
+    // would refuse on, and how many follow. Still finished, still counted.
+    const why = ev.closeRefusals.get(slug) ?? [];
     say(
       `  ${paint(strict ? 'broken' : 'pending', 'finished'.padEnd(9))} ${slug} — ` +
         `every declared claim resolves and every declared repo is landed ` +
         `(${held} claim${held > 1 ? 's' : ''} whose failure this run would not gate); ` +
-        `finished, not pending — close it: multivac change close ${slug}` +
+        (why.length === 0
+          ? `finished, not pending — close it: multivac change close ${slug}`
+          : `finished, not pending — close refuses until: ${why[0]}` +
+            `${why.length > 1 ? ` (+${why.length - 1} more)` : ''} — then: multivac change close ${slug}`) +
         (strict ? ' · blocking' : ' · reported only — this run is not --strict'),
     );
   }

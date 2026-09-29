@@ -36,9 +36,10 @@ A change declares, before anything is touched:
 3. **Which invariants it touches**, under the rule: an invariant is never
    relaxed in code — it is changed in the law first, dated, in the same
    change.
-4. **Which claims it makes true**, with their anchors. This is the contract
-   `close` verifies. Draft the anchors now, while the promise is fresh —
-   after merge nobody remembers.
+4. **Which rows it makes true** — its claims, each a row's ID, with their
+   anchors. The row states the rule; the claim cites it and never restates
+   it. This is the contract `close` verifies. Draft the anchors now, while
+   the promise is fresh — after merge nobody remembers.
 
 ## The change file
 
@@ -57,6 +58,8 @@ someone updated the docs — it re-runs `verify` **scoped to the declared
 claims** and refuses to archive until:
 
 - every claim in field 4 resolves ok or moved on its new anchors,
+- every claim cites a row this change adds, touches or retires, and that row
+  states its rule,
 - every declared repo is recorded landed,
 - the SDD's own artifacts exist, where one is declared.
 
@@ -81,7 +84,7 @@ after, when anyone remembers.
 
 Closing a change is a **ceremony**, and only half of it is mechanical.
 multivac executes that half — the landing order held, every declared claim
-resolves, no invariant was relaxed in code instead of in the law. The other
+resolves and cites a row of the law that states its rule. The other
 half is the team's: who reviews what, who gets told, what ships before what
 when the reason is not technical. No tool can invent those, and none can
 check them.
