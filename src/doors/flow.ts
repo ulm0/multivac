@@ -95,7 +95,13 @@ export function renderFlow(config: Config): string {
       }
       // Ungateable: the adapter's own reason, carried whole. A paraphrase
       // would age beside its source.
-      const verb = /\/[\w.:-]+/.exec(s.run)?.[0] ?? s.at;
+      // MV-147: the verb is the first backticked command of a required binary —
+      // opsx's apply run names `change apply` before `openspec instructions
+      // apply …` — then a chat command's `/…` token, then the point.
+      const verb =
+        [...s.run.matchAll(/`([^`]+)`/g)].map((m) => m[1]).find((c) => spec.required.includes(c.split(' ')[0])) ??
+        /\/[\w.:-]+/.exec(s.run)?.[0] ??
+        s.at;
       yours.push(`- \`${verb}\` — ${proofOf(s).slice('ungateable: '.length)}`);
     }
     // MV-135: the project document, from the same step the gate reads.

@@ -63,10 +63,13 @@ With one declared, three things change:
    artifact alone accepts that silently.
 
 **The cost, stated.** Declaring an SDD in a repo where that tool has never run
-makes the change that installs it unplannable: `plan` wants an artifact from a
-chat command that does not exist until the tool's own `init` has run. Today the
-way through is one `--no-sdd`, said out loud. Recommending a tool without saying
-that would be selling you a hole.
+used to make the change that installs it unplannable: `plan` wanted an artifact
+from a chat command that did not exist until the tool's own `init` had run. The
+lifecycle now runs that init in the brain first, and prints it. The cost is the
+vendor's files in your tree: spec-kit's commands and templates for your doors,
+and for OpenSpec its `openspec/` directory and nothing else, since its steps are
+its own terminal verbs, which every harness runs alike. Recommending a tool
+without saying that would be selling you a hole.
 
 ## Why a grapher helps
 

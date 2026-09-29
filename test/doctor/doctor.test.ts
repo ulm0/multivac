@@ -19,6 +19,7 @@ import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { installHooks } from '../../src/hooks/install.js';
+import { sddSpec } from '../../src/adapters/registry.js';
 
 const line = (lines: string[], section: string): string => {
   const l = lines.find((x) => x.startsWith(section));
@@ -105,15 +106,22 @@ repos:
     // The scope is part of the verdict now (MV-87): a root, not an ecosystem.
     assert.match(sdd, /opsx @ brain: missing \(no openspec\)/);
     // MV-130: opsx's init is measured now, so doctor names the one the
-    // lifecycle would run for these doors.
-    assert.match(sdd, /declared but never run here; `change new` runs the tool's own `openspec init --tools agents --no-animation \.`/);
+    // lifecycle would run — MV-147: the same `--tools none` for any doors.
+    assert.match(sdd, /declared but never run here; `change new` runs the tool's own `openspec init --tools none --no-animation \.`/);
     assert.match(sdd, /binary missing → `openspec` found on neither PATH nor brain's node_modules\/\.bin — install opsx: npm i -g @fission-ai\/openspec \(https:\/\/github\.com\/Fission-AI\/OpenSpec\)/);
     assert.match(sdd, /sdd_auto on — the lifecycle prints this tool's own steps and refuses/);
     // The flow lines name every step and what proves it.
     const all = lines.filter((l) => l.startsWith('sdd')).join('\n');
-    assert.match(all, /flow — new: run \/opsx:propose <slug>/);
-    assert.match(all, /flow — land: run \/opsx:archive <slug>/);
+    assert.match(all, /flow — new: in the brain checkout run `openspec new change <slug> --json`/);
+    assert.match(all, /flow — land: after the merge, in the brain checkout/);
     assert.match(all, /ungateable: apply leaves no artifact of its own/);
+    // A step's guide is the lifecycle's, printed where the step comes up
+    // (MV-147); a flow line carries the run alone.
+    const flow = lines.filter((l) => l.includes('opsx flow — '));
+    assert.equal(flow.length, 4, flow.join('\n'));
+    for (const g of (sddSpec('opsx')!.steps ?? []).flatMap((s) => (s.guide ? [s.guide] : []))) {
+      for (const l of flow) assert.ok(!l.includes(g), `a flow line carries a guide: ${l}`);
+    }
     // ...and one line says exactly which lifecycle commands refuse.
     assert.match(all, /gates — change plan: refuses without openspec\/changes\/<slug>\/proposal\.md/);
     assert.match(all, /change close: refuses without openspec\/changes\/archive\/<n>-<n>-<n>-<slug>/);
@@ -339,6 +347,108 @@ test('doctor: a leftover sdd install in a code repo is named with its removal, t
   // Governed all the same: a leftover is not an exemption.
   assert.match(sdd, /speckit governs the code of api, web, vendor — its steps run in the brain$/m);
   assert.equal(exit, 0);
+});
+
+/**
+ * MV-147: the scaffold installs no command body, so a brain an earlier
+ * multivac scaffolded keeps the bodies its init wrote — listed by the harness
+ * every session, named by no printed step. doctor names them on one line, with
+ * a removal that works as printed: `git rm -r` for what git tracks, since it
+ * refuses a pathspec matching nothing tracked, and a delete for the rest.
+ * Under a door no longer declared and under `.codex/` (openspec 1.7.0's codex)
+ * alike. A report, never a failure; nothing when none is left.
+ */
+test('doctor names opsx bodies an earlier init left in the brain', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-bodies-')));
+  const git = (...args: string[]): string =>
+    execFileSync('git', ['-C', eco.brain, '-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { encoding: 'utf8' });
+  const put = (rel: string, body = 'openspec body\n'): void => {
+    mkdirSync(join(eco.brain, rel, '..'), { recursive: true });
+    writeFileSync(join(eco.brain, rel), body);
+  };
+  writeFileSync(join(eco.brain, '.multivac/config.yml'), 'doors: [claude]\nsdd: opsx\nrepos:\n  api: ../acme-api\n');
+  put('openspec/config.yaml', 'schema: spec-driven\n');
+  for (const rel of [
+    '.claude/commands/opsx/propose.md',
+    '.claude/skills/openspec-propose/SKILL.md',
+    '.claude/skills/openspec-apply-change/SKILL.md',
+    '.agents/skills/openspec-propose/SKILL.md',
+    '.agents/skills/.openspec-target',
+    '.codex/skills/openspec-explore/SKILL.md',
+    '.cursor/commands/opsx-propose.md',
+    '.cursor/commands/opsx-apply.md',
+  ]) put(rel);
+  git('add', '-A');
+  git('commit', '-qm', 'an earlier init');
+  const bodyLines = (lines: string[]): string[] => lines.filter((l) => l.includes('an earlier init left command bodies'));
+
+  const tracked = await doctorReport(eco.brain);
+  assert.equal(tracked.exit, 0);
+  assert.ok(!tracked.lines.some((l) => /\bFAIL\b/.test(l)), tracked.lines.join('\n'));
+  // Siblings sharing `openspec-` or `opsx-` collapse, under a door no longer
+  // declared (`.cursor/`) as under one that is.
+  assert.deepEqual(bodyLines(tracked.lines), [
+    'sdd        opsx @ brain: an earlier init left command bodies no printed step names — ' +
+      '`git rm -r .agents/skills/.openspec-target .agents/skills/openspec-propose .claude/commands/opsx .claude/skills/openspec-* .codex/skills/openspec-explore .cursor/commands/opsx-*` removes them; ' +
+      'they are not code, so the commit needs no open change',
+  ]);
+  // One line after the brain's install line.
+  const install = tracked.lines.findIndex((l) => l.startsWith('sdd        opsx @ brain: ') && !l.includes('an earlier init'));
+  assert.ok(install >= 0, tracked.lines.join('\n'));
+  assert.equal(tracked.lines.indexOf(bodyLines(tracked.lines)[0]), install + 1, tracked.lines.join('\n'));
+  // No law ID: the site shows the line.
+  assert.doesNotMatch(bodyLines(tracked.lines)[0], /MV-\d/);
+  // The collapsed form works as printed, through a shell that expands it.
+  const printedRm = (l: string): string => /`(git rm -r [^`]+)`/.exec(l)![1];
+  execFileSync('sh', ['-c', `${printedRm(bodyLines(tracked.lines)[0])} -q --dry-run`], { cwd: eco.brain });
+
+  // A sibling git ignores is listed by no `git ls-files`, and the shell still
+  // expands a glob into it: no pattern is printed that reaches it, and it is
+  // not named, since nothing but the operator put it out of git's sight.
+  put('.claude/skills/openspec-local/SKILL.md');
+  writeFileSync(join(eco.brain, '.git/info/exclude'), '.claude/skills/openspec-local/\n');
+  const ignored = bodyLines((await doctorReport(eco.brain)).lines);
+  assert.deepEqual(ignored, [
+    'sdd        opsx @ brain: an earlier init left command bodies no printed step names — ' +
+      '`git rm -r .agents/skills/.openspec-target .agents/skills/openspec-propose .claude/commands/opsx .claude/skills/openspec-apply-change .claude/skills/openspec-propose .codex/skills/openspec-explore .cursor/commands/opsx-*` removes them; ' +
+      'they are not code, so the commit needs no open change',
+  ]);
+  execFileSync('sh', ['-c', `${printedRm(ignored[0])} -q --dry-run`], { cwd: eco.brain });
+  rmSync(join(eco.brain, '.claude/skills/openspec-local'), { recursive: true });
+  writeFileSync(join(eco.brain, '.git/info/exclude'), '');
+
+  // An untracked body is named to delete, outside the `git rm -r` — and a
+  // sibling glob that would reach it is not printed, since a shell expanding
+  // it would hand `git rm -r` a path git does not track. An entry holding
+  // both is listed once as each.
+  put('.gemini/skills/openspec-explore/SKILL.md');
+  put('.claude/skills/openspec-explore/SKILL.md');
+  put('.claude/commands/opsx/extra.md');
+  const mixed = bodyLines((await doctorReport(eco.brain)).lines);
+  assert.deepEqual(mixed, [
+    'sdd        opsx @ brain: an earlier init left command bodies no printed step names — ' +
+      '`git rm -r .agents/skills/.openspec-target .agents/skills/openspec-propose .claude/commands/opsx .claude/skills/openspec-apply-change .claude/skills/openspec-propose .codex/skills/openspec-explore .cursor/commands/opsx-*` removes them, ' +
+      'and .claude/commands/opsx .claude/skills/openspec-explore .gemini/skills/openspec-explore are untracked: delete them; they are not code, so the commit needs no open change',
+  ]);
+
+  // The removal works as printed.
+  execFileSync('sh', ['-c', `${printedRm(mixed[0])} -q`], { cwd: eco.brain });
+  git('commit', '-qm', 'drop openspec bodies');
+  const untracked = bodyLines((await doctorReport(eco.brain)).lines);
+  assert.deepEqual(untracked, [
+    'sdd        opsx @ brain: an earlier init left command bodies no printed step names — .claude/commands/opsx .claude/skills/openspec-explore .gemini/skills/openspec-explore are untracked: delete them',
+  ]);
+  rmSync(join(eco.brain, '.gemini'), { recursive: true });
+  rmSync(join(eco.brain, '.claude/skills/openspec-explore'), { recursive: true });
+  rmSync(join(eco.brain, '.claude/commands/opsx'), { recursive: true });
+  const none = await doctorReport(eco.brain);
+  assert.equal(none.exit, 0);
+  assert.deepEqual(bodyLines(none.lines), [], 'none left, no line');
+
+  // A speckit brain records no bodies, so the same files earn no line.
+  put('.claude/skills/openspec-propose/SKILL.md');
+  writeFileSync(join(eco.brain, '.multivac/config.yml'), 'doors: [claude]\nsdd: speckit\nrepos:\n  api: ../acme-api\n');
+  assert.deepEqual(bodyLines((await doctorReport(eco.brain)).lines), []);
 });
 
 /**

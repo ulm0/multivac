@@ -129,7 +129,9 @@ export interface SddStep {
    * `artifact`, which only proves a step ran. Every SDD tool here ships an
    * escape hatch letting a step complete over its own objection — OpenSpec's
    * `openspec archive --yes` prints `Warning: 4 incomplete task(s) found` and
-   * archives anyway — and gating on the artifact alone accepts that silently.
+   * archives anyway in text mode, and under `--json` archives with no word at
+   * all (1.5.0–1.13.2, MV-147) — and gating on the artifact alone accepts that
+   * silently.
    * Reading the ledger is not reimplementing the tool's rules: the tool wrote
    * the file and already decided what the marker means.
    *
@@ -154,12 +156,33 @@ export interface SddStep {
   };
   /**
    * MV-146. Where this step moves the change's own spec deltas when it runs:
-   * each `<artifact dir>/<from>/<cap>/` is merged into `<into>/<cap>/`. Close
-   * stages every such `<into>/<cap>`, beside the directory the step archived
-   * into and the one it moved from, so the merged main specs land in the same
-   * commit as the archive instead of being named dirty and left out.
+   * each `<artifact dir>/<from>/<cap>/<file>` is merged into
+   * `<into>/<cap>/<file>`. Close stages every such file, beside the directory
+   * the step archived into and the one it moved from, so the merged main
+   * specs land in the same commit as the archive instead of being named dirty
+   * and left out.
+   *
+   * MV-147: `file` is the one name the tool merges. Any other file under
+   * `<from>/` — notes kept beside a delta — has no main spec, so no path of a
+   * human's under `<into>/` is staged in its name.
    */
-  merges?: { from: string; into: string };
+  merges?: { from: string; into: string; file: string };
+  /**
+   * MV-147. What the lifecycle prints on the line under this step — at its
+   * point and in every refusal that re-prints it, never in the door, `doctor`
+   * or flow.md — `<slug>` interpolated: the rest of what the vendor's own
+   * command body told the agent, measured on a named version, where `run` has
+   * room only for the command and the human's question. Whether the agent
+   * asked what it names is ungateable (MV-95).
+   */
+  guide?: string;
+  /**
+   * MV-147. An ERE over the issue messages of a PASSING `validate` verdict:
+   * each match is printed as a note and refuses nothing — the tool said the
+   * artifact is valid and, in the same output, what a later step of its own
+   * will refuse.
+   */
+  validateNotes?: string;
 }
 
 /**
@@ -211,15 +234,21 @@ export interface SddProjectStep {
 /**
  * The tool's OWN init.
  *
- * The one command in this file multivac runs ITSELF. Every `SddStep` is a chat
- * command an agent runs and the lifecycle only prints (MV-51); a scaffold is a
- * terminal command with a vendor behind it, so it lives in its own field rather
- * than as a step nothing could tell apart at the point steps are printed.
+ * Beside the validator, the one command in this file multivac runs ITSELF.
+ * Every `SddStep` is run by the agent and only printed here (MV-51) — a chat
+ * command for spec-kit, the vendor's own terminal verbs for opsx (MV-147); a
+ * scaffold is a terminal command multivac runs, so it lives in its own field
+ * rather than as a step nothing could tell apart at the point steps are printed.
  *
  * It exists because declaring an SDD in a repo where it has never run was a
  * deadlock: `plan` refuses without an artifact, the artifact comes from a chat
  * command, and the chat command does not exist until the tool's own init has
  * run — the change that would install it being the change its own gate refused.
+ * That deadlock is spec-kit's (MV-147): opsx's verbs are there wherever the
+ * binary is, and `openspec new change` creates a root where none resolves
+ * (1.13.2). Its scaffold still runs where the probe says missing, so the brain
+ * gets the vendor's own `config.yaml` and the probe reads an init, not a side
+ * effect.
  *
  * The command is STATED, never derived from the adapter's name. Whether it has
  * already run here is not this field's to say: the entry's `state` answers
@@ -229,9 +258,11 @@ export interface SddProjectStep {
  */
 export interface SddScaffold {
   /**
-   * The vendor's own init command, verbatim but for one placeholder: `{key}`
-   * takes the first declared door's integration, `{keys}` all of them joined
-   * by commas. Runs in each root that is missing the tool.
+   * The vendor's own init command, verbatim but for a door placeholder when it
+   * holds one: `{key}` takes the first declared door's integration, `{keys}`
+   * all of them joined by commas. MV-147: a run with neither is run as
+   * written, whatever the doors, and names no door as a gap. Runs in each root
+   * that is missing the tool.
    */
   run: string;
   /** MV-130: the vendor's command adding one more integration, `{key}` per further door. */
@@ -240,7 +271,8 @@ export interface SddScaffold {
    * MV-130: door -> the vendor's own integration for it, measured on a named
    * version. `safe` is the vendor's multi-install flag: an integration that is
    * not safe is never installed beside another, and multivac never forces it.
-   * A door missing here has no verified integration and is named as a gap.
+   * A door missing here has no verified integration, and is named as a gap
+   * only for a `run` with a door placeholder (MV-147).
    */
   /**
    * Per door target: the vendor's own integration key, whether installing it
@@ -279,6 +311,15 @@ export interface SddScaffold {
      */
     presets?: { registry: string; templates: string; propagates: string[] };
   };
+  /**
+   * MV-147. What the vendor's integration inits write under a directory:
+   * `names` are globs over an entry's name (depth one or two under the
+   * directory), `dirs` the directories an earlier version wrote that
+   * `integrations` no longer records. The code gate reads the entries as not
+   * code under every integration's `dirs` and these, declared door or not;
+   * `doctor` names those left in the brain once the scaffold installs none.
+   */
+  bodies?: { names: string[]; dirs: string[] };
   /** What running it actually wrote, and how that was established. */
   note: string;
 }
@@ -411,10 +452,12 @@ export interface AdapterSpec {
   automation: 'sdd_auto' | 'grapher-refresh';
   /**
    * SDD only: the tool's OWN per-change flow, in order, verified against its
-   * own docs. These are chat commands, not terminal subcommands — the
-   * lifecycle prints them and gates on what they leave behind, it never shells
-   * them out. A lifecycle point no step declares is a point this tool has no
-   * equivalent for; the lifecycle says so honestly instead of inventing one.
+   * own docs. A step is what the AGENT runs — a chat command for spec-kit, the
+   * vendor's own terminal verbs for opsx (MV-147), measured on a named
+   * version — and multivac runs none of them:
+   * the lifecycle prints them and gates on what they leave behind, and never spawns one.
+   * A lifecycle point no step declares is a point this tool has no equivalent
+   * for; the lifecycle says so honestly instead of inventing one.
    */
   steps?: SddStep[];
   /**
@@ -443,6 +486,13 @@ export interface AdapterSpec {
    * reports; absent, it names the state directory instead.
    */
   leftover?: string;
+  /**
+   * MV-147. SDD only: the slugs the tool's own create step accepts — an ERE,
+   * the names it reserves, and the reason printed with a refusal. `change new`
+   * and `roadmap add` refuse any other slug, whatever `sdd_auto` and `--no-sdd`
+   * say; absent, they accept what they always did.
+   */
+  slug?: { pattern: string; reserved: string[]; why: string };
   /**
    * Grapher only: the tool's own query surface, in its own verbs. Absent ⇒ the
    * tool has none, and the door says that rather than inventing one.
@@ -561,10 +611,19 @@ const sdd: Record<string, AdapterSpec> = {
     binaries: ['openspec'],
     required: ['openspec'],
     installHint: 'npm i -g @fission-ai/openspec',
+    // MV-147: it refreshes only the bodies a human installed. In a brain the
+    // scaffold below made (`--tools none`) there are none, and 1.13.2 prints
+    // `No configured tools found.`, exits 0 and writes nothing.
     refresh: 'openspec update',
     automation: 'sdd_auto',
     scaffold: {
-      run: 'openspec init --tools {keys} --no-animation .',
+      // MV-147, measured 2026-09-28 on openspec 1.13.2 with HOME isolated:
+      // `--tools none` wrote openspec/config.yaml and the two gitkeeps, nothing
+      // outside `openspec/` and nothing under HOME, whatever the doors. The
+      // printed steps are openspec's own terminal verbs, which every harness
+      // runs alike, so no command body is installed for them to need. Its
+      // floor is 1.7.0, the first `--no-animation`.
+      run: 'openspec init --tools none --no-animation .',
       // MV-130, measured 2026-09-16 on openspec 1.13.0 in a scratch repo with
       // DO_NOT_TRACK=1 and OPENSPEC_TELEMETRY=0: `openspec init --tools
       // claude,cursor --no-animation .` exited 0 and wrote openspec/config.yaml,
@@ -575,6 +634,10 @@ const sdd: Record<string, AdapterSpec> = {
       // MV-144, measured 2026-09-25 on openspec 1.13.2, one fresh git repo per
       // integration with HOME isolated: each wrote its own store under
       // `openspec/` plus the directories below, and nothing else.
+      // MV-147: the record of what `openspec init --tools <key> --no-animation .`
+      // writes, measured on 1.13.2; multivac no longer runs it — a human's
+      // opt-in, or an earlier multivac's init, leaves these, which the code
+      // gate reads (MV-144) and `doctor` names.
       integrations: {
         agents: { key: 'agents', safe: true, dirs: ['.agents'] },
         claude: { key: 'claude', safe: true, dirs: ['.claude'] },
@@ -585,7 +648,18 @@ const sdd: Record<string, AdapterSpec> = {
         copilot: { key: 'github-copilot', safe: true, dirs: ['.github/prompts', '.github/skills'] },
         windsurf: { key: 'windsurf', safe: true, dirs: ['.devin'] },
       },
-      note: 'One command installs every declared tool: `--tools` takes them comma-separated. It writes openspec/config.yaml, the gitkeeps and per-tool commands and skills, and nothing is written outside the repo.',
+      // MV-147, measured on openspec 1.13.2 for all eight keys, one fresh
+      // repo each with HOME isolated: every entry an integration init wrote
+      // outside `openspec/` is named `openspec-*` (the skills), `.openspec-*`
+      // (the `.openspec-target` marker beside `.agents/skills/`), `opsx` (the
+      // command directory) or `opsx-*` (a command or prompt file), one or two
+      // levels under a directory above. `codex` wrote `.codex/skills` on 1.7.0
+      // and `.agents/skills` from 1.8.0, so `.codex` is recorded here and not
+      // in its integration. Names, not files: which workflows an init writes
+      // is the vendor's to change, and the names held for claude, codex and
+      // github-copilot on 1.10.0 and 1.13.0 as well.
+      bodies: { names: ['openspec-*', '.openspec-*', 'opsx', 'opsx-*'], dirs: ['.codex'] },
+      note: '`--tools none` writes openspec/config.yaml and the two gitkeeps and nothing outside `openspec/`, whatever the doors (1.13.2).',
     },
     // MV-135. OpenSpec's project context, not a constitution: `openspec init`
     // (1.13.0) writes `openspec/config.yaml` with `context:` commented out,
@@ -600,52 +674,132 @@ const sdd: Record<string, AdapterSpec> = {
         reportOnly: { key: 'context', limit: 51200 },
       },
     ],
+    // MV-147, measured 2026-09-28 on openspec 1.13.2: `new change` refused
+    // `Fix_Auth` ("Change name must be lowercase (use kebab-case)"), `a--b`
+    // ("Change name cannot contain consecutive hyphens"), `a.b`, `a_b`, `Ab`,
+    // `a-b-` and `-ab`, and accepted `ab-c`, `1ab`, `a1` and `x`. In a brain
+    // the scaffold made, which holds openspec/changes/archive/.gitkeep, `new
+    // change archive` exits 1 "Change 'archive' already exists", and `status
+    // --change archive` refuses "'archive' is reserved for archived changes".
+    // The printed `new` step's first command would fail on either, so the
+    // slug is refused before the change is opened, not after.
+    slug: {
+      pattern: '^[a-z0-9]+(-[a-z0-9]+)*$',
+      reserved: ['archive'],
+      why: "openspec 1.13.2's `new change` takes lowercase letters and digits in runs joined by single hyphens, and reserves `archive`",
+    },
+    // MV-147, measured 2026-09-28 on openspec 1.13.2, stdin closed: each step
+    // is the vendor's own terminal verbs — `new change`, `status`,
+    // `instructions` and `archive`, each listed by `openspec --help` — which
+    // every harness runs alike. A step name is never a verb: `openspec
+    // propose` and `openspec apply` exit 1, `unknown command`. `status` is
+    // printed in text, the rest in `--json`, for their fields and codes. Each
+    // `run` is one double-quoted line, so the flag leg reads it whole.
     steps: [
       {
         at: 'new',
-        run: 'run /opsx:propose <slug> in your agent — it loops openspec\'s own artifact DAG (proposal → spec deltas → design → tasks)',
+        run: "in the brain checkout run `openspec new change <slug> --json`, then write each artifact `openspec status --change <slug>` marks `[ ]` from `openspec instructions <id> --change <slug> --json`; a material ambiguity is the human's question",
+        // MV-147, read on openspec 1.13.2 with HOME isolated. Its
+        // `.claude/commands/opsx/propose.md` — a body an init installed, which
+        // no printed step names now — asked the human, before creating, about
+        // ambiguity that would change scope, observable behaviour,
+        // compatibility or acceptance (step 1, :42–:51; Guardrails, :168),
+        // surfaced a conflict with an existing spec rather than deciding it
+        // (:119), asked whether to continue a change of that name that already
+        // exists (:169), and never created the root as a side effect (:36) —
+        // which `new change --json` run outside any root does, reporting
+        // `root.source` `implicit`. Its writing rules (`resolvedOutputPath`,
+        // `template`, `instruction`; `context` and `rules` never copied in,
+        // :110–:126) ride here too. `new change --json` and
+        // `resolvedOutputPath` ship in 1.4.0, `archive --json` in 1.5.0.
+        // Whether the agent asked is ungateable (MV-95).
+        guide: "`already exists` for a change you did not open in this run is the human's question; otherwise go on. A `root.source` of `implicit` means you ran outside the brain checkout: delete the openspec/ it made. Write the file each instruction's `resolvedOutputPath` names from its `instruction` and `template`; its `context` and `rules` bind you and are never copied in. Before the proposal, ask the human about any ambiguity that would change scope, observable behaviour, compatibility or acceptance, and about any conflict with a main spec; assume and record the rest. `unknown option '--json'`: openspec is older than the 1.5.0 this flow needs — upgrade it",
         artifact: 'openspec/changes/<slug>/proposal.md',
         gate: 'plan',
       },
       {
         at: 'plan',
-        run: 'keep /opsx:propose <slug> going until its task list is written — openspec\'s own applyRequires is ["tasks"]',
+        run: "keep writing each artifact `openspec status --change <slug>` marks `[ ]` from `openspec instructions <id> --change <slug> --json` until tasks.md is written",
+        // MV-147, measured on openspec 1.13.2: with design left unwritten,
+        // text `status` shows `[ ] design` and `[-] tasks (blocked by:
+        // design)`, while `instructions tasks --change <slug> --json` exits 0
+        // and serves the tasks template. `status` ends on a `Next:` line (1.13.1
+        // on) that, once planning is complete, names `instructions apply` —
+        // `change apply`'s point, not this one's.
+        guide: "design is optional where its instruction says so; skipped, write tasks from `openspec instructions tasks --change <slug> --json` though status marks it `[-]`. Its `Next:` apply is not yours before `change apply`",
         artifact: 'openspec/changes/<slug>/tasks.md',
         gate: 'apply',
         // OpenSpec's own definition of a well-formed change: delta headers,
         // one scenario per requirement, no conflict with the main specs.
         // Reimplementing it here would guarantee drift.
         validate: 'openspec validate <slug> --json --no-interactive',
+        // MV-147, measured on openspec 1.13.2: a MODIFIED delta whose header
+        // the main spec lacks validates with exit 0, `valid: true`, and one
+        // INFO issue, "Archive would refuse this delta: … - not found". The
+        // archive then fails only after the human's yes, so the gate prints
+        // it where the delta can still be fixed, and still passes: the tool
+        // itself calls the change valid.
+        validateNotes: '^Archive would refuse',
       },
       {
         at: 'apply',
-        run: 'run /opsx:apply <slug> in your agent to implement the tasks',
+        run: "where openspec/changes/<slug>/ is (the brain's change worktree once `change apply` carried it there), run `openspec instructions apply --change <slug> --json` before the first task and after the last; tick `- [x]` only what is fully built, until its `state` is `all_done`; scope beyond the spec is the human's question",
+        // MV-147, read on openspec 1.13.2. Its
+        // `.claude/commands/opsx/apply.md` paused for the human on an unclear
+        // task, a design issue the implementation reveals, work beyond what
+        // the spec and tasks describe or a task narrowed, deferred or dropped
+        // to make it fit ("do not absorb it silently"), and a blocker
+        // (:110–:115). `instructions apply --json` at `all_done` says "All
+        // tasks are complete! This change is ready to be archived." — the
+        // archive is `change land`'s, after the merge, not the next thing here.
+        guide: "an unclear task, a design issue the work reveals, work beyond the spec and tasks, a task you would narrow, defer or drop to make it fit, and a blocker are each the human's question, never absorbed silently. Its \"ready to be archived\" is `change land`'s, after the merge",
         ungateable:
           'apply leaves no artifact of its own — its only trace is `- [x]` in tasks.md, a character the agent types about its own work; nothing links a checkbox to a commit, a test, or a line of code',
       },
       {
         at: 'land',
-        run: 'run /opsx:archive <slug> in your agent to merge the spec deltas into openspec/specs/ and archive the change',
+        run: "after the merge, in the brain checkout (never a change worktree), run `openspec archive <slug> --json` to merge the deltas into openspec/specs/ and archive the change; `archive_confirmation_required` is the human's question, and a flag its `fix` names is never yours",
+        // MV-147, measured 2026-09-28 on openspec 1.13.2, stdin closed:
+        // `archive <slug> --json` never reads stdin (1.5.0 on). On a change
+        // carrying deltas it exits 1 with `archive_confirmation_required`,
+        // "Updating N spec(s) requires confirmation", and writes nothing; the
+        // same code says "Skipping validation requires confirmation" only
+        // after `--no-validate`, which no line lets the agent pass — and were
+        // it passed, the run still makes the code the human's question.
+        // `show <slug> --json --deltas-only` (1.3.0 on) previews the deltas
+        // and writes nothing either. The three answers are the tool's own: its
+        // interactive prompt archives without merging on `n`, which
+        // `--skip-specs` is.
+        guide: "`archive_confirmation_required` saying `Updating`: nothing was written; show the human the deltas from `openspec show <slug> --json --deltas-only`, which writes nothing either — yes: `openspec archive <slug> --json --yes`, then relay its `warnings`; archive without merging: `openspec archive <slug> --json --skip-specs`; anything else: stop. `archive_tasks_incomplete`: finish them where apply ran, or the human drops them from tasks.md; never tick to pass. Any other code: fix what it names and re-run with no flag, never `--no-validate`. `unknown option '--json'`: openspec is older than 1.5.0 — upgrade it",
         artifact: 'openspec/changes/archive/<n>-<n>-<n>-<slug>',
         gate: 'close',
         // `openspec archive --yes` prints `Warning: N incomplete task(s)
-        // found. Continuing due to --yes flag.` and archives regardless. The
-        // archived directory therefore proves the archive ran and nothing
-        // else, so close reads the task list openspec itself just moved.
+        // found. Continuing due to --yes flag.` in text mode, and `archive
+        // <slug> --json --yes` archives over open tasks with exit 0 and no
+        // warning at all (1.5.0 through 1.13.2, MV-147). The printed archive
+        // carries no `--yes`, so openspec itself refuses open tasks first
+        // (`archive_tasks_incomplete`); a human's `--yes` still archives them
+        // open. The archived directory therefore proves the archive ran and
+        // nothing else, so close reads the task list openspec itself just moved.
         unfinished: {
           artifact: 'openspec/changes/archive/<n>-<n>-<n>-<slug>/tasks.md',
           pattern: '^\\s*- \\[ \\]',
-          why: 'openspec archived this change with tasks still unchecked — `--yes` continues over its own warning',
+          why: 'openspec archived this change with tasks still unchecked — `--yes` archives over its own refusal, and under `--json` says nothing',
           gate: 'close',
         },
         // MV-146, measured 2026-09-28 on openspec 1.13.2: `openspec archive
         // <slug> --yes` moved openspec/changes/<slug>/ to the dated archive and
         // merged each specs/<cap>/spec.md delta into openspec/specs/<cap>/,
-        // creating the capability when it was new.
-        merges: { from: 'specs', into: 'openspec/specs' },
+        // creating the capability when it was new. MV-147: only `spec.md` —
+        // findSpecUpdates merges each capability's `spec.md` (discoverSpecFiles:
+        // never one at the root of specs/, never under a dot-directory), and a
+        // notes.md beside it stays where it was, unmerged.
+        merges: { from: 'specs', into: 'openspec/specs', file: 'spec.md' },
       },
     ],
-    note: 'Propose, apply and archive are the /opsx: commands your agent runs in chat; the one terminal command multivac runs is `openspec validate`, and the vendor\'s own terminal CLI is larger than any list worth copying here. Network, read from openspec 1.13.0\'s source: every command, the `openspec validate` the gates run included, sends anonymous PostHog telemetry to edge.openspec.dev by default, and `openspec update` also checks registry.npmjs.org for a newer version. The vendor\'s opt-outs are OPENSPEC_TELEMETRY=0 or DO_NOT_TRACK=1 in the environment; this entry\'s `env` sets both on every run multivac makes (MV-124), and a run by hand is yours. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool\'s own escape hatches — multivac gates on what landed on disk, not on how it got there.',
+    // MV-147: disclosed by version, as measured (MV-121). No command prints
+    // this; the tests read it and the site says the same in its own words.
+    note: "The steps are openspec's own terminal verbs, run by the agent: `new change`, `status`, `instructions` and `archive`, each listed by `openspec --help` 1.13.2 and run there with stdin closed. The printed flow needs 1.5.0 or later (`archive --json`; `new change --json` and `resolvedOutputPath` ship in 1.4.0), the scaffold 1.7.0 (`--no-animation`). multivac itself runs only `openspec validate` and the scaffold, each with this entry's `env`. Network, measured with a fetch recorder and HOME isolated: 1.4.1 through 1.13.0 send one anonymous PostHog event to edge.openspec.dev from every command, `--json` included; 1.13.1 and 1.13.2 send nothing until a run without `--json` and without an opt-out shows the first-run notice, which writes ~/.config/openspec/config.json and sends, and every command from then on sends — the printed text `openspec status` is the first printed call that can. The agent's calls — 15 per change as printed, plus the `openspec list`, `openspec show` and `openspec validate` openspec's own output names — carry none of `env`: the opt-outs that reach them are OPENSPEC_TELEMETRY=0 or DO_NOT_TRACK=1 in the agent's own environment, either alone (measured 1.4.1 through 1.13.2), or `openspec config set telemetry.enabled false` from 1.10.0. A text-mode call whose stderr is a terminal writes `completionTipSeen` to ~/.config/openspec/config.json whatever the opt-outs (1.10.0 on), which OPENSPEC_NO_COMPLETIONS=1 stops. `openspec init` or `openspec update` run over installed workflow files writes that file too, and `openspec update` also checks registry.npmjs.org; the scaffold runs only where openspec/config.yaml is missing, and there it wrote nothing to HOME. Archive names its directory `YYYY-MM-DD-<slug>`, so the gate matches the slug suffix. `--yes`, `--skip-specs` and `skip_specs: true` are the tool's own escape hatches, which the human chooses: the printed archive carries none, and multivac gates on what landed on disk, not on how it got there.",
     source: 'https://github.com/Fission-AI/OpenSpec',
   },
   speckit: {
@@ -997,7 +1151,7 @@ const knownGraphers: Record<string, GrapherEntry> = {
           'symbol search by name — `--kind function|class` narrows it, `--limit N` bounds it, `--json` makes it machine-readable',
       },
     ],
-    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — 1.6.0\'s README says it collects which tools and commands get used and which languages get indexed, and never any code, paths, file or symbol names, queries, or IP addresses. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or CODEGRAPH_TELEMETRY=0, or DO_NOT_TRACK=1) is half of what makes the contract above literally true. The other half is the npm shim: when the platform bundle its optional dependency should carry is missing, it falls back to downloading that bundle from GitHub Releases, and CODEGRAPH_NO_DOWNLOAD=1 turns the fallback off. This entry\'s `env` sets all three on every run multivac makes and in the post-edit hook (MV-124). It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP. That server, which multivac never starts, checks GitHub releases for a newer version in the background on 1.6.0, and CODEGRAPH_NO_UPDATE_CHECK or DO_NOT_TRACK turns the check off.',
+    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — 1.6.0\'s README says it collects which tools and commands get used and which languages get indexed, and never any code, paths, file or symbol names, queries, or IP addresses. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or CODEGRAPH_TELEMETRY=0, or DO_NOT_TRACK=1) is half of what makes the contract above literally true. The other half is the npm shim: when the platform bundle its optional dependency should carry is missing, it falls back to downloading that bundle from GitHub Releases, and CODEGRAPH_NO_DOWNLOAD=1 turns the fallback off. This entry\'s `env` sets all three on every run multivac makes and in the post-edit hook (MV-124). The `codegraph query` a door prints runs in the agent\'s own environment and carries none of that `env`: the opt-outs above reach it only when set there (MV-147). It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP. That server, which multivac never starts, checks GitHub releases for a newer version in the background on 1.6.0, and CODEGRAPH_NO_UPDATE_CHECK or DO_NOT_TRACK turns the check off.',
     source: 'https://github.com/colbymchenry/codegraph',
   },
 };

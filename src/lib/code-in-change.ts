@@ -15,7 +15,7 @@ import { join } from 'node:path';
 import picomatch from 'picomatch';
 import type { Config } from '../types.js';
 import { changesDir, parseChange, type ChangeFile } from '../change/file.js';
-import { adapterFor, sddGoverning } from '../adapters/detect.js';
+import { adapterFor, bodyGlobs, sddGoverning } from '../adapters/detect.js';
 import { doorTargets, grapherSpec, sddNames, sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { CHANGES_DIR } from './config.js';
 import { dim, red } from './out.js';
@@ -34,11 +34,12 @@ export interface CodeLine {
  * and project documents are not code in the brain only; in a code repo a
  * `specs/` tree is no SDD's and is judged as code. Every KNOWN SDD's vendor
  * state — its install directory, shared and local paths, and the harness
- * directories its init writes for the declared doors — stays not code in
- * every repo, whichever SDD the brain declares, so removing an install an
- * earlier release left in a code repo is free. opsx's artifact paths are
- * exact strings that match no file below them, which is why the install
- * directory itself is taken.
+ * directories its init writes for the declared doors, and (MV-147) the
+ * entries its integration inits write under any integration's directory —
+ * stays not code in every repo, whichever SDD the brain declares, so removing
+ * an install an earlier release left in a code repo is free. opsx's artifact
+ * paths are exact strings that match no file below them, which is why the
+ * install directory itself is taken.
  */
 export function nonCodeGlobs(cfg: Config, repoKey?: string): string[] {
   // MV-142: `.gitignore` too. `init`, the SDD and the grapher write their
@@ -70,14 +71,17 @@ export function nonCodeGlobs(cfg: Config, repoKey?: string): string[] {
     if (spec.graphignoreFile) out.add(spec.graphignoreFile);
     for (const f of spec.harness?.hookFiles ?? []) harness(f);
     for (const pl of Object.values(spec.harness?.platforms ?? {})) harness(pl.probe);
-    // MV-142 as amended by MV-144: where a declared scaffold's own integrations
-    // install their commands and skills. Derived from the integrations the
-    // DECLARED doors resolve to, plus the fallback when no declared door maps to
-    // one — the resolution the scaffold itself uses (MV-130) — because a fixed
-    // list was wrong twice: openspec's `codex` writes `.agents/` and its
-    // `windsurf` writes `.devin/`. Without this a brain declaring openspec and
-    // no grapher is refused its own first commit over a directory it was told to
-    // create.
+    // MV-142 as amended by MV-144: the directories the integrations of the
+    // DECLARED doors write, plus the fallback when no declared door maps to one
+    // — spec-kit's scaffold resolves its install the same way (MV-130) —
+    // because a fixed list was wrong twice: openspec's `codex` writes
+    // `.agents/` and its `windsurf` writes `.devin/`. Without this a brain
+    // declaring openspec and no grapher was refused its own first commit over a
+    // directory its scaffold had just created. MV-147: opsx's scaffold is
+    // `--tools none` now and creates nothing outside `openspec/`, so for opsx
+    // these are the measured record of what a human's `openspec init --tools
+    // <key>`, or an earlier multivac's init, wrote there — still not code
+    // (MV-144), beside the entries `bodyGlobs` names under every directory.
     const scaffold = spec.scaffold;
     if (scaffold) {
       const named = cfg.doors.filter((d) => scaffold.integrations[d]);
@@ -87,6 +91,15 @@ export function nonCodeGlobs(cfg: Config, repoKey?: string): string[] {
         if (fb) chosen.push(fb);
       }
       for (const integration of chosen) for (const d of integration.dirs) out.add(`${d}/**`);
+      // MV-147: the entries the vendor's integration inits write, under every
+      // integration's directories and those an earlier version wrote, declared
+      // door or not. The scaffold installs none now, so what is left is an
+      // earlier init's — `doctor` prints its removal, and that commit is not
+      // code: not for `.codex/`, which 1.7.0's codex wrote and no integration
+      // records, nor for a door no longer declared. By name only, so the rest
+      // of such a directory (`.codex/config.toml`, `.github/workflows/`) stays
+      // code.
+      for (const g of bodyGlobs(scaffold)) out.add(g);
     }
   };
   for (const name of sddNames) vendor(sddSpec(name)!);

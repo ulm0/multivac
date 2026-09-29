@@ -12,8 +12,9 @@ keeping a second one (MV-78).
 
 ## Unreleased
 
-One behaviour changed in a way that can newly refuse a brain that was loading.
-Read the first item before upgrading.
+Two behaviours changed in a way that can newly refuse what used to pass: a
+brain that was loading, and an opsx brain's slugs and archives. Read the first
+two items before upgrading.
 
 **Changed — read before upgrading**
 
@@ -55,6 +56,52 @@ Read the first item before upgrading.
     pass `--no-sdd`.
   - An older multivac keeps cascading the SDD against this config. Set
     `requires:` to the release carrying this change to have it say so (MV-86).
+- **opsx runs through openspec's own CLI (MV-147).** Its steps printed chat
+  commands spelled as only two harnesses spell them, and the scaffold installed
+  a command body per workflow per door — 19 files, about 270 KB, for
+  `doors: [agents, claude]` — whose propose body told the agent to stop after
+  planning and whose archive body merged by hand. The steps are now
+  openspec's own terminal verbs, which every harness runs alike: `openspec new
+  change <slug> --json` and the `status` / `instructions` loop at `new` and
+  `plan`, `openspec instructions apply --change <slug> --json` at `apply`, and
+  `openspec archive <slug> --json` after the merge. They need openspec 1.5.0 or
+  later, the scaffold 1.7.0.
+  - **No command body is installed.** The scaffold is `openspec init --tools
+    none --no-animation .`, which writes `openspec/config.yaml` and two
+    `.gitkeep`s whatever the doors. In a brain scaffolded earlier, `doctor`
+    names the bodies that init left, with the `git rm -r` that removes them;
+    that removal is not code, so it commits with no change open.
+  - **The archive's question goes to you.** The printed archive carries no
+    `--yes`, `--skip-specs` or `--no-validate`, so on a change with spec deltas
+    openspec answers `archive_confirmation_required` and writes nothing; the
+    guide printed under the step has the agent show you the deltas and offer
+    openspec's own answers. Each step's line names the question the removed
+    bodies asked on it, and a guide under it at its point carries the rest,
+    never in the door.
+  - **A slug openspec refuses is refused first.** `change new` (exit 1) and
+    `roadmap add` (exit 2) refuse a slug outside openspec's grammar —
+    lowercase letters and digits in runs joined by single hyphens — or the
+    reserved `archive`, whatever `sdd_auto` and `--no-sdd` say. `Fix_Auth` used
+    to open a change whose first printed command failed.
+  - **A land step's proof is read in the brain checkout alone.** An archive run
+    in the change's worktree after the merge used to pass `change close` and
+    never reach the brain; it is now refused by name.
+  - **Close stages a merged main spec only when it carries the merge.** A spec
+    under `openspec/specs/` is staged when it holds, whole and under the same
+    name, every ADDED and MODIFIED requirement block of the archived delta,
+    both read as openspec reads them, fenced examples included; one that does
+    not — after an archive made without merging, or a draft of yours — is named
+    dirty and left out of close's commit. Only `spec.md` is merged, so a file
+    kept beside a delta never stages yours.
+  - **The ledger's reason is true under `--json`**: `--yes` archives over the
+    tool's own refusal, and under `--json` says nothing. `change apply` prints
+    openspec's "Archive would refuse this delta" note from a passing validator,
+    and still passes.
+  - **What the agent's own openspec calls send and write is disclosed by
+    version.** The entry's opt-outs reach only the two commands multivac runs,
+    the validator and the scaffold; the calls the agent makes follow the
+    agent's own environment, where `OPENSPEC_TELEMETRY=0` or `DO_NOT_TRACK=1`
+    stops them sending.
 
 **Fixed**
 

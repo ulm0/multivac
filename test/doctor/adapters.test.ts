@@ -2,7 +2,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -27,6 +27,8 @@ import {
   sddRoots,
 } from '../../src/adapters/detect.js';
 import { loadConfig } from '../../src/lib/config.js';
+import { parseAnchors } from '../../src/anchor/parse.js';
+import { compileAnchorRegex } from '../../src/lib/regex.js';
 import { initState } from '../../src/lib/init-state.js';
 
 const tmp = mkdtempSync(join(tmpdir(), 'mvac-adapters-'));
@@ -270,17 +272,35 @@ test('codegraph names its telemetry, because the refresh runs on every edit', ()
 });
 
 test('opsx names its telemetry, because the gates run openspec validate', () => {
-  // Principle V covers every entry, not only graphers: openspec 1.13.0 reports
-  // every command to PostHog by default, the validator the gates spawn
-  // included, and `update` asks the npm registry for a newer version.
+  // Principle V covers every entry, not only graphers. MV-147: disclosed by
+  // version, as measured with a fetch recorder and HOME isolated — what the
+  // two runs multivac makes send (none, under the entry's `env`), and what the
+  // agent's own calls send and write, which that `env` never reaches.
   const note = sddSpec('opsx')!.note ?? '';
-  assert.match(note, /edge\.openspec\.dev/);
-  assert.match(note, /openspec validate/);
-  assert.match(note, /registry\.npmjs\.org/);
-  assert.match(note, /OPENSPEC_TELEMETRY=0/);
-  assert.match(note, /DO_NOT_TRACK=1/);
-  // Applied, not only disclosed (MV-124): the note says the entry's `env` sets them.
-  assert.match(note, /`env` sets/);
+  for (const fact of [
+    // The floors: the printed flow, its fields, the scaffold.
+    '1.4.0', '1.5.0', '1.7.0',
+    // The network, by version, and the first-run notice that starts it.
+    'edge.openspec.dev', '1.13.1', 'first-run notice', 'registry.npmjs.org',
+    // What a terminal call writes under HOME whatever the opt-outs, and what stops it.
+    'completionTipSeen', 'OPENSPEC_NO_COMPLETIONS=1',
+    // The opt-outs, and that the agent's calls carry none of the entry's.
+    'OPENSPEC_TELEMETRY=0', 'DO_NOT_TRACK=1', 'carry none of `env`',
+    'openspec validate',
+  ]) assert.ok(note.includes(fact), fact);
+  // Applied, not only disclosed (MV-124): the runs multivac makes carry the entry's `env`.
+  assert.match(note, /each with this entry's `env`/);
+  // The disclosure says nothing the law has retired: none of the phrases
+  // MV-121's and MV-124's `absent` legs forbid, read from the law itself.
+  const law = readFileSync(join(import.meta.dirname, '../../../.multivac/invariants.md'), 'utf8');
+  const legs = parseAnchors(law, '.multivac/invariants.md').anchors.filter(
+    (a) => (a.claimId === 'MV-121' || a.claimId === 'MV-124') && a.mode === 'absent',
+  );
+  // Eight today; none found would pass vacuously.
+  assert.ok(legs.length >= 8, `found ${legs.length} absent legs`);
+  for (const leg of legs) {
+    assert.doesNotMatch(note, compileAnchorRegex(leg.regexSource, leg.regexFlags), `${leg.claimId} line ${leg.line}`);
+  }
 });
 
 test('graphify itself is stated, not derived — the npm line was wrong', () => {
@@ -574,4 +594,7 @@ test('the telemetry notes say the entry applies the opt-outs, and still name eac
   for (const note of [opsxNote, cgNote]) assert.doesNotMatch(note, /nothing here sets/);
   for (const v of ['OPENSPEC_TELEMETRY=0', 'DO_NOT_TRACK=1']) assert.ok(opsxNote.includes(v), v);
   for (const v of ['CODEGRAPH_TELEMETRY=0', 'DO_NOT_TRACK=1', 'CODEGRAPH_NO_DOWNLOAD=1']) assert.ok(cgNote.includes(v), v);
+  // MV-121 as amended by MV-147: an entry also says its `env` does not reach
+  // what it PRINTS for the agent to run.
+  assert.match(cgNote, /`codegraph query` a door prints runs in the agent's own environment and carries none of that `env`/);
 });

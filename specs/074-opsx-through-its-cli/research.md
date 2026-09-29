@@ -89,7 +89,7 @@ agent needs a second text. Measured with the texts of contracts/cli-output.md (p
 | --- | --- | --- | --- |
 | brain door, opsx step lines | 646 B | 1,220 B | every session |
 | lifecycle lines, four points, slug `add-greeting` | 1,657 B | 4,077 B | once per change |
-| `doctor`'s four flow lines | 987 B | 1,579 B | per `doctor` run |
+| `doctor`'s four flow lines | 987 B | 1,561 B (1,579 B with the plan-time runs; measured again after review, at the walk) | per `doctor` run |
 
 **Decision**: `SddStep.guide?: string`. `stepLines` prints it under its step as
 `sdd <tool>:   <guide>` (three spaces, #3's stray-line form); each refusal that re-prints a
@@ -110,7 +110,7 @@ and the vendor's own `fix` says `--yes` (R4); so the run itself names the questi
 
 `openspec init --tools none --no-animation .` on 1.13.2 wrote `openspec/config.yaml`,
 `openspec/specs/.gitkeep` and `openspec/changes/archive/.gitkeep` and nothing else, for any
-doors, and nothing under `HOME` (plan). 1.7.0 is the first with `--no-animation` (synth).
+doors, and nothing under `HOME` (plan). 1.7.0 is the first with `--no-animation` (synth); the cached dist source lists `--tools none` from 1.4.0, so the scaffold's floor is 1.7.0 (plan, read not run below 1.13.2).
 `openspec update` in such a brain prints `No configured tools found. Run "openspec init" to
 set up tools.`, exits 0 and writes nothing (critic, plan).
 
@@ -143,7 +143,12 @@ through 1.13.2). On the two-capability change (plan):
 exit 1, `git status --porcelain` empty afterwards. With open tasks it answers
 `archive_tasks_incomplete`, and `--json --yes` archives over open tasks with exit 0 and no
 warning (inv). The same code also covers skipping validation, which is not the merge
-question (inv). The preview: `openspec show <slug> --json --deltas-only` exits 0 with the
+question (inv): measured at implement, `archive <slug> --json --no-validate` answers
+`archive_confirmation_required` with "Skipping validation requires confirmation: rerun with
+--yes." and `fix` `openspec archive <change-name> --json --no-validate --yes`. No line lets the
+agent pass `--no-validate`, and were it passed, the run still names the code the human's
+question and its `fix` flags never the agent's, so the guide adds no clause for it (analyze
+F3). The preview: `openspec show <slug> --json --deltas-only` exits 0 with the
 deltas (1,806 B for add-greeting, 1,830 B for a MODIFIED + ADDED fixture) and leaves `git
 status` unchanged; text `show --deltas-only` prints only the proposal (274 B); `show --json
 --deltas-only` is present from 1.3.0 (critic; the 1.13.2 figures are plan's). `openspec archive <slug> </dev/null`
@@ -197,7 +202,10 @@ archive merged. Measured (synth m1, m3, m4; critic `merge-variants.sh`):
 | `--json --yes`, ADDED into a new capability | created | verbatim |
 | `--json --skip-specs` | unchanged (`grep -c "due in 30 days"` → 0), a human's uncommitted note kept | none |
 | `--json --yes`, delta with CRLF endings | merged, written LF | none byte-exact; all after CRLF→LF |
-| `--json --yes`, trailing spaces / extra whitespace in a header | merged | verbatim or unparsed |
+| `--json --yes`, extra whitespace in a `### Requirement:` header, ADDED or MODIFIED | merged | verbatim, header included (implement, 1.13.2) |
+| `--json --yes`, a CRLF delta with trailing spaces | merged, written LF | trailing spaces kept; all after CRLF→LF and trailing whitespace stripped (implement) |
+| `--json --yes`, a run of blank lines inside a block | merged | the run collapsed to one blank line; all after the same collapse (implement) |
+| `--json --yes`, `## Added Requirements` (the title in another case) | merged | verbatim (implement) |
 
 A `--skip-specs` next to an untracked human draft of the capability's main spec: an
 "absent from HEAD means the merge created it" shortcut would stage the draft (critic).
@@ -206,9 +214,28 @@ A `--skip-specs` next to an untracked human draft of the capability's main spec:
 `### Requirement:` block under `## ADDED Requirements` or `## MODIFIED Requirements`
 (today's staging kept, REMOVED/RENAMED-only deltas included); otherwise true only when every
 such block, trailing blank lines trimmed, is a substring of the target, both sides with CRLF
-turned to LF and trailing whitespace stripped per line — tracked or untracked alike. A target
-that does not carry it is not staged and is named by the existing `is dirty and was not
-staged` line, untracked included.
+turned to LF, trailing whitespace stripped per line and each run of blank lines collapsed to
+one — tracked or untracked alike. Section titles fold case and the requirement header is read
+as openspec's reader reads it (`^###\s*Requirement:`, any case), so a block the archive
+merged is never taken for no block. A target that does not carry it is not staged and is
+named by the existing `is dirty and was not staged` line, untracked included. Every row of
+the table above carries by this rule, and the `--skip-specs` row does not (measured at
+implement against the real 1.13.2 archives).
+
+**Corrected at review** (measured against the real 1.13.2, whose validator passed every
+delta below): the substring test called carried a MODIFIED block that only drops the end of
+a line — it is a substring of the requirement it replaces — so a `--skip-specs` archive
+staged a human's edit; a reader ending a block at any `### ` line or at a fenced `## ` line
+compared only the block's unchanged head; a reader blind to fences took a fenced `## ADDED
+Requirements` example under REMOVED for a block to carry, naming a real merge dirty; and
+mapping every file under the archived `specs/` staged a human's untracked `notes.md` beside a
+merged `spec.md`, which the archive never writes. The rule is now openspec's own reader,
+ported, not approximated: its fence mask (parsers/code-fence.js), its sections and blocks
+(parsers/requirement-blocks.js: a block runs to the next unfenced requirement header or
+`## ` line, keeping other `### ` lines), and each delta block equal, whole, to the block of
+the same name in the target's `## Requirements` section — still no merge reimplemented. The
+step records only the file the tool merges (`merges.file`, `spec.md`, found as
+discoverSpecFiles finds it).
 
 **Rationale**: an archive the human chose to make without merging never stages somebody's
 edit, and #3's guarantee holds for Windows line endings.
@@ -254,7 +281,10 @@ spelling (FR-017). The propose body's planning boundary goes with the body.
 exit 1 `no_openspec_root`) — one more call per change, and the run is already told to be
 in the brain checkout; the guide names the symptom instead. Carrying the bodies' softer
 advice (inspect the project first, re-read what an artifact depends on) — not a question,
-stated as not carried.
+stated as not carried. Two asks sit inside that inspection (propose.md :118, 1.13.2): a
+target project that is unclear, and unavailable source that materially affects the plan;
+the change's declared repos name its targets and `repos sync` clones them, so MV-147's
+ceilings name both as not carried (found at review).
 
 ## R9. Bodies an earlier init left: named by `doctor`, and not code
 
@@ -397,13 +427,20 @@ instructions apply --change <slug> --json`, speckit's page is byte-identical.
   entry's `leftover` removal for code repos (src/lib/repo-state.ts:136, doctor.ts:319–325)
   are unchanged; `leftoverBodies` is the brain's own, beside them.
 - The SDD is brain-only: consumer doors print no step, so none changes.
+- `change plan`'s "its steps run from the brain checkout" line (src/commands/change.ts:985–997)
+  is said at `plan`, of the steps printed there, which run in the brain checkout before
+  `change apply` carries the slug's directory; opsx's apply run names where it runs. The
+  line is left as it is, so speckit's output stays byte-identical (SC-005), and MV-146's
+  note by MV-147 says so.
 - MV-142 (the map and its non-code set stay; its test keeps the title its leg reads), MV-55
   (`guide` is optional; order and the door's projection unchanged) and MV-137 (`nonCodeGlobs`
   stays the one derivation; the added globs make its "removing a leftover install of any known
   SDD is free" truer) take no note.
 - Out of scope, with owners: graphify's ignore of `.agents/` and a code-less brain's grapher
-  (graph-answers-where-asked); the grapher queries' opt-outs (codegraph-worktrees-and-verbs);
-  claims citing IDs (change-file-cites); `verify`'s root (verify-rooted-and-quiet); trimming
+  (graph-answers-where-asked); measuring what the grapher queries a door prints send, and
+  their opt-outs (codegraph-worktrees-and-verbs) — that the codegraph entry's `env` never
+  reaches its printed `codegraph query` is said here, since MV-121's note covers what every
+  entry prints; claims citing IDs (change-file-cites); `verify`'s root (verify-rooted-and-quiet); trimming
   the multivac skill beyond the false sentences (skill-cites-references).
 
 ## R15. Legs
@@ -412,14 +449,14 @@ Dialect: POSIX ERE through `git grep`, `[[:space:]]` for `\s`
 (skills/multivac/references/anchors.md). `present` is the default mode; `absent`, `count`
 and `each` block.
 
-**Dry-run today** (plan): the retired-phrase regex over the leg's glob matches 27 lines in
+**Dry-run today** (plan; recounted through picomatch at `7b849fa` and `6e2a265` by the walk): the retired-phrase regex over the leg's glob matches 28 lines in
 10 files — src/adapters/registry.ts 5, src/adapters/sdd.ts 1, src/commands/change.ts 2,
 test/change/sdd-gates.test.ts 5, test/doors/doors.test.ts 3, test/doctor/doctor.test.ts 2,
-test/change/lifecycle-polish.test.ts 1, site/content/docs/reference/graphers-and-sdd.md 6,
+test/change/lifecycle-polish.test.ts 1, site/content/docs/reference/graphers-and-sdd.md 7,
 skills/multivac/references/change.md 1, .claude/skills/multivac/references/change.md 1; 0
 after. No `run:` line carries a flag today.
 
-**New legs, MV-147** (written with the row, T004):
+**New legs, MV-147** (written at T059, once every task they read has landed; a proposed row's legs never block, src/commands/verify.ts:844):
 
 ```text
 <!-- @anchor MV-147 brain:src/adapters/registry.ts /guide\?: string;/ unique -->
@@ -453,7 +490,7 @@ after. No `run:` line carries a flag today.
 <!-- @anchor MV-147 brain:src/lib/repo-state.ts /export async function leftoverBodies\(/ unique -->
 <!-- @anchor MV-147 brain:src/commands/doctor.ts /await leftoverBodies\(/ unique -->
 <!-- @anchor MV-147 brain:src/commands/{change,roadmap}.ts /the brain's SDD takes no such slug/ each -->
-<!-- @anchor MV-147 brain:{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/multivac/**} !CHANGELOG.md /\/opsx:|would silently (skip|do nothing)|steps are chat commands the agent runs/ absent -->
+<!-- @anchor MV-147 brain:{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/multivac/**} !CHANGELOG.md /\/opsx:|would silently (skip|do nothing)|chat commands the agent runs/ absent -->
 <!-- @anchor MV-147 brain:test/change/sdd-gates.test.ts /opsx: multivac spawns only the scaffold and the validator, new to close/ unique -->
 <!-- @anchor MV-147 brain:test/change/sdd-gates.test.ts /opsx: land prints the archive with no flag, and the question under it/ unique -->
 <!-- @anchor MV-147 brain:test/change/sdd-gates.test.ts /opsx: a land proof found only in the change's worktree is refused/ unique -->
@@ -469,8 +506,15 @@ after. No `run:` line carries a flag today.
 <!-- @anchor MV-147 brain:test/doctor/doctor.test.ts /doctor names opsx bodies an earlier init left in the brain/ unique -->
 <!-- @anchor MV-147 brain:test/verify/code-in-change.test.ts /the bodies an openspec init writes are not code under any integration's directory/ unique -->
 <!-- @anchor MV-147 brain:site/content/docs/reference/graphers-and-sdd.md /^### The question openspec asks at archive$/ unique -->
-<!-- @anchor MV-147 brain:.multivac/invariants.md /Amended [0-9]{4}-[0-9]{2}-[0-9]{2} by MV-147/ count=11 -->
+<!-- @anchor MV-147 brain:.multivac/invariants.md /Amended [0-9]{4}-[0-9]{2}-[0-9]{2} by MV-147/ count=12 -->
 ```
+
+At review: the retired-phrase alternative widened from `steps are chat commands the agent
+runs` to `chat commands the agent runs`, since the site's retired sentence bolded it; the
+count is twelve with MV-142's note; two carry test legs added (`carriesMerge compares whole
+blocks, read as openspec reads them, fences included`, `closeOwnedDirs maps only the file
+openspec merges`); MV-51's `new prints propose` moved to `new prints openspec new change`
+with the renamed test; MV-146's `merges:` leg reads the record's `file: 'spec\.md'` too.
 
 Notes: the flag leg needs each `run` on one source line, as registry.ts writes them; a
 guide names the flags on a `guide:` line, which it does not read. The retired-phrase leg
@@ -479,7 +523,7 @@ carry the literal, and no regex literal starts with `opsx:` (its source would re
 `/opsx:`); the titles `'opsx: …'` are quoted strings and do not match. The runs and guides hold apostrophes, so they are double-quoted TS
 strings; no leg anchors on the quote.
 
-**Legs that move** (T004, with the code that makes the old one false):
+**Legs that move** (each by the task whose code makes the old one false: T004, T054, T030, T018):
 
 | Row | Old | New | Why |
 | --- | --- | --- | --- |
@@ -531,8 +575,8 @@ asked, ticked only what it built or added a flag unasked is ungateable (MV-95, M
 scaffolded before this row keeps its bodies, and the propose body's stop, until removed; the
 bodies' softer advice is not carried; nothing re-measures an upgrade (MV-121).
 
-**The eleven notes**, each `**Amended <date> by MV-147**: …` at the end of its row's
-statement cell, `<date>` the day the law commit is made:
+**The twelve notes** (MV-142's added at review), each `**Amended <date> by MV-147**: …` at the end of its row's
+statement cell, `<date>` the day the commit writing it is made (2026-09-28 for eleven, 2026-09-29 for MV-142's):
 
 | Row | What the note says |
 | --- | --- |
@@ -541,14 +585,15 @@ statement cell, `<date>` the day the law commit is made:
 | MV-63 | the example is text mode's: `openspec archive --json --yes` archives over open tasks with exit 0 and no warning (1.5.0–1.13.2); the printed archive carries no `--yes`, so openspec refuses open tasks itself with `archive_tasks_incomplete`; the ledger at close is the only check that sees tasks a human's `--yes` archived open, and its reason says `--yes` archives over the tool's own refusal. |
 | MV-75 | the deadlock is spec-kit's: opsx's steps are terminal verbs present wherever the binary is, and `new change` creates a root where none resolves (1.13.2); its scaffold still runs where `openspec/config.yaml` is missing, so the brain gets the vendor's own `config.yaml` and the probe reads an init, not a side effect. |
 | MV-95 | for opsx, "a question the tool itself raises" is printed with the step it comes from: openspec 1.13.2's bodies asked, and the lines now carry — before a proposal, an ambiguity that would change scope, observable behaviour, compatibility or acceptance, or a conflict with a main spec; `already exists` for a change not opened in this run; an unclear task, a design issue the work reveals, work beyond the spec and tasks, a task narrowed, deferred or dropped, a blocker; a task ticked only when fully built; "ready to be archived" is `change land`'s. `archive_confirmation_required` saying `Updating` goes to the human with `openspec show <slug> --json --deltas-only` and the tool's own answers; the same code about skipping validation, and every other code, is not that question and never gets a flag from the agent. The bodies' planning boundary (stop after planning) is a "may I continue" stop this row rejects, and goes with them. The continue instruction follows the point's last step and the guide under it. |
-| MV-121 | the disclosure also covers what an entry PRINTS for the agent to run, and says the entry's `env` does not reach it: R12's table by version — 1.4.1–1.13.0 one event per command; 1.13.1–1.13.2 nothing until a run without `--json` and without an opt-out shows the notice, writing `~/.config/openspec/config.json`, every later command sending, the printed text `status` the first printed call that can; `completionTipSeen` on a terminal stderr whatever the opt-outs (1.10.0 on), stopped by `OPENSPEC_NO_COMPLETIONS=1`; `init` or `update` over installed workflow files writes the same file; a `--tools none` init where `config.yaml` is missing writes nothing there; the grapher queries a door prints are codegraph-worktrees-and-verbs'. |
+| MV-121 | the disclosure also covers what an entry PRINTS for the agent to run, and says the entry's `env` does not reach it: R12's table by version — 1.4.1–1.13.0 one event per command; 1.13.1–1.13.2 nothing until a run without `--json` and without an opt-out shows the notice, writing `~/.config/openspec/config.json`, every later command sending, the printed text `status` the first printed call that can; `completionTipSeen` on a terminal stderr whatever the opt-outs (1.10.0 on), stopped by `OPENSPEC_NO_COMPLETIONS=1`; `init` or `update` over installed workflow files writes the same file; a `--tools none` init where `config.yaml` is missing writes nothing there; the codegraph entry now says its `env` does not reach the `codegraph query` a door prints (the amendment covers every entry's printed commands), and measuring what those queries send is codegraph-worktrees-and-verbs'. |
 | MV-124 | the entry's `env` applies to every run multivac makes and to none of the commands it prints; "whether a vendor honours its opt-out was read, not measured" no longer holds for openspec: either variable alone left zero requests on every version measured, 1.4.1–1.13.2. |
 | MV-130 | "installs the integration each declared door uses" is WITHDRAWN for opsx: its scaffold is `openspec init --tools none --no-animation .`, writing `openspec/config.yaml` and two gitkeeps whatever the doors (1.13.2); `scaffoldCommands` returns a run with no placeholder as written and names no gap; the map stays as the record of what `--tools <key>` writes; spec-kit's is unchanged. |
-| MV-133 | a step printed at `land` runs after every stage has merged, so its proofs, ledger included, are read in the checkout alone; one found only in the change's worktree never reached the brain and is refused by name. |
+| MV-133 | a step printed at `land` runs after every stage has merged, so its proofs, ledger included, are read in the checkout alone: a proof found only in the change's worktree, once or more, never reached the brain and is refused by name, and its ledger is not read from there. |
+| MV-142 | (added at review) "a declared SDD installs its own commands and skills elsewhere" holds for spec-kit alone: opsx's `--tools none` scaffold installs none, so its integrations' directories exempt what a human's `openspec init --tools <key>`, or an earlier init, installed there, beside the entries openspec's inits write under every integration's directory and `.codex/`. |
 | MV-144 | opsx's integration `dirs` now record what a key writes when a human installs its bodies by hand, or what an earlier multivac's init left; the code gate still reads them, and also reads as not code the entries openspec's inits write under every integration's directory and `.codex/`, declared door or not, so removing what `doctor` names is not code. |
-| MV-146 | "a step's proof is looked for in the brain and in the change's worktree" holds for every point but `land` (MV-133's note); a main spec file a merging step records is staged only when it carries the merge — LF endings and trailing whitespace normalised on both sides, it holds every `### Requirement:` block under the archived delta's ADDED and MODIFIED sections, tracked or untracked alike — and is named dirty otherwise; a delta with no such block is staged as before. |
+| MV-146 | "a step's proof is looked for in the brain and in the change's worktree" holds for every point but `land` (MV-133's note); a main spec file a merging step records is staged only when it carries the merge — LF endings, trailing whitespace and blank-line runs normalised on both sides, it holds every `### Requirement:` block under the archived delta's ADDED and MODIFIED sections, tracked or untracked alike — and is named dirty otherwise; a delta with no such block is staged as before. |
 
-`change.invariants.touches` already lists exactly these eleven, `adds: [MV-147]`,
+`change.invariants.touches` lists these twelve (MV-142 added at review), `adds: [MV-147]`,
 `retires: []` (.multivac/changes/opsx-through-its-cli.md, 6e2a265).
 
 ## R17. Ceilings, stated
@@ -557,8 +602,12 @@ Nothing re-measures openspec on upgrade (MV-121); the printed wording is true of
 through 1.13.2, the scaffold of 1.7.0 on. The agent's calls carry none of the entry's
 opt-outs. Whether the agent asked, ticked only what it built, or added a flag unasked leaves
 nothing on disk: only the human's answer and the ledger do. A delta of REMOVED or RENAMED
-blocks only is staged as today; a human's edit to a spec the archive really merged into
+blocks only is staged as today; a human's edit beside the blocks the archive really merged
 lands with the merge. An untracked leftover body is named, and its removal is the
-operator's. `openspec new change` run outside the brain creates a root there, which the
+operator's; a body is matched by the names openspec's inits give, so a human's own entry
+under such a name is named with them (data-model.md, `leftoverBodies`). A merge target
+holding only some of the delta's blocks — a human's edit inside a merged block — is named
+dirty and left out of close's commit (a header with extra whitespace is written verbatim,
+measured at implement, R6). `openspec new change` run outside the brain creates a root there, which the
 guide says to delete. A binary only in `node_modules/.bin` is not on the agent's PATH, and
 each call may ask permission in Claude Code, where no allow-rule is written.

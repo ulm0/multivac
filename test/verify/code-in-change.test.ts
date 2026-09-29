@@ -308,6 +308,40 @@ test('the directories a declared integration installs into are not code — MV-1
   assert.ok(!nonCode('src/cli.ts'), 'code is still code');
 });
 
+/**
+ * MV-147: the scaffold installs no command body, so the ones in a brain are an
+ * earlier init's, and `doctor` prints their removal. That commit is not code
+ * under any integration's directory, declared door or not, nor under
+ * `.codex/`, which openspec 1.7.0's codex wrote — by the entry names openspec's
+ * inits write, so the rest of those directories stays code.
+ */
+test("the bodies an openspec init writes are not code under any integration's directory, declared or not", async () => {
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-bodies-')), 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [claude]\nsdd: opsx\nrepos:\n  brain: .\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  const nonCode = picomatch(nonCodeGlobs(await loadConfig(b)), { dot: true });
+  for (const p of [
+    '.devin/skills/openspec-propose/SKILL.md',
+    '.codex/skills/openspec-explore/SKILL.md',
+    '.github/prompts/opsx-apply.prompt.md',
+    '.agents/skills/.openspec-target',
+    '.gemini/commands/opsx/propose.toml',
+    '.cursor/commands/opsx-apply.md',
+  ]) {
+    assert.ok(nonCode(p), `${p} is an init's body`);
+  }
+  for (const p of ['.devin/skills/openspec/SKILL.md', '.codex/config.toml', '.github/workflows/ci.yml', 'src/cli.ts']) {
+    assert.ok(!nonCode(p), `${p} is code`);
+  }
+  // In a code repo too: a body is the vendor's wherever an earlier init left it.
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [claude]\nsdd: opsx\nrepos:\n  brain: .\n  api: ../api\n');
+  const inApi = picomatch(nonCodeGlobs(await loadConfig(b), 'api'), { dot: true });
+  assert.ok(inApi('.codex/skills/openspec-explore/SKILL.md'));
+  assert.ok(!inApi('.codex/config.toml'));
+});
+
 // --- MV-146: the SDD runs in the brain alone, and governs every code repo's code ---
 
 const LAW = '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n';

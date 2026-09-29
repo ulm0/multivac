@@ -8,7 +8,7 @@
 import { access, readdir, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
-import { doorTargets, sddNames, sddSpec, type AdapterSpec } from './registry.js';
+import { doorTargets, sddNames, sddSpec, type AdapterSpec, type SddScaffold } from './registry.js';
 import { isShallow, run as gitRun } from '../lib/git.js';
 import type { Config, RepoEntry } from '../types.js';
 
@@ -189,6 +189,22 @@ export function adaptersByRoot(cfg: AdapterDecls, kind: 'sdd' | 'grapher'): Map<
     if (name !== undefined) groups.set(name, [...(groups.get(name) ?? []), root]);
   }
   return groups;
+}
+
+/**
+ * MV-147. Where the entries a vendor's integration inits write can sit: for
+ * each directory in any integration's `dirs` or in `bodies.dirs`, and each
+ * name in `bodies.names`, the entry one or two levels below it — `<d>/<n>`
+ * and `<d>/<sub>/<n>` — each with and without `/**`. `[]` for a scaffold that
+ * records no `bodies`. Pure and derived once, so the code gate (every repo,
+ * declared door or not) and `doctor`'s leftover line (the brain) never
+ * disagree on what a body is.
+ */
+export function bodyGlobs(scaffold: SddScaffold | undefined): string[] {
+  const bodies = scaffold?.bodies;
+  if (!scaffold || !bodies) return [];
+  const dirs = [...new Set([...Object.values(scaffold.integrations).flatMap((i) => i.dirs), ...bodies.dirs])];
+  return dirs.flatMap((d) => bodies.names.flatMap((n) => [`${d}/${n}`, `${d}/${n}/**`, `${d}/*/${n}`, `${d}/*/${n}/**`]));
 }
 
 /**

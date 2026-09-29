@@ -40,6 +40,7 @@ import {
   updateIssue,
 } from '../adapters/tracker.js';
 import { say, warn } from '../lib/out.js';
+import { sddSlugWhy } from '../adapters/sdd.js';
 import { commitBookkeeping } from './change.js';
 import type { Command, Config } from '../types.js';
 
@@ -116,6 +117,21 @@ function list(planned: Entry[], open: string[]): void {
       ? 'in flight: no open change'
       : `in flight: ${open.length} open change${open.length > 1 ? 's' : ''} — ${open.join(', ')}`,
   );
+}
+
+/**
+ * The brain's config for the slug check, or null. `add` never needed one and
+ * never gates, so a config that cannot be read leaves the grammar unknown, as
+ * it always was, instead of failing a command that used to pass. A refused SDD
+ * declaration (MV-146) is reported, not thrown: it names the code repo that
+ * declares one, and the brain's own SDD, whose grammar this asks, stands.
+ */
+async function brainConfig(brain: string): Promise<Config | null> {
+  try {
+    return await loadConfig(brain, { sddDeclaration: 'report' });
+  } catch {
+    return null;
+  }
 }
 
 /** Record an intention. One file, one commit, no id, no branch, no law lock. */
@@ -342,6 +358,15 @@ export const roadmap: Command = {
     }
     if (pos.length > 3) {
       warn(`roadmap: unexpected argument "${pos[3]}" — ${USAGE}`);
+      return 2;
+    }
+    // MV-147: the slug an intention is recorded under is the one `change new`
+    // opens it with, and that refuses a slug the brain's SDD cannot create.
+    // Refused here, as a malformed slug is, before anything is recorded.
+    const cfg = await brainConfig(brain);
+    const unfit = cfg ? sddSlugWhy(cfg, slug) : null;
+    if (unfit !== null) {
+      warn(`roadmap add: \`${slug}\`: the brain's SDD takes no such slug — ${unfit}`);
       return 2;
     }
     return await add(brain, slug, title, horizon);

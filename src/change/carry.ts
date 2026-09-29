@@ -197,6 +197,162 @@ export async function featureHome(
 }
 
 /**
+ * A text as the merge check compares it: a leading BOM dropped, CRLF (or a
+ * lone CR) turned to LF, trailing whitespace stripped per line, and runs of
+ * blank lines collapsed to one — what openspec 1.13.2 does to a block it
+ * writes into a main spec, except that it keeps trailing whitespace, which is
+ * stripped here on both sides so the two cannot disagree over it.
+ */
+const settled = (text: string): string =>
+  text
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((l) => l.replace(/\s+$/, ''))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n');
+
+/** The two delta sections an archive merges from, their titles folded as openspec 1.13.2 folds them. */
+const MERGED_SECTIONS = new Set(['added requirements', 'modified requirements']);
+/** openspec 1.13.2's requirement header (parsers/requirement-blocks.js), any case. */
+const REQUIREMENT = /^###\s*Requirement:\s*(.+)\s*$/i;
+const SECTION = /^##\s+(.+)$/;
+
+/**
+ * Which lines sit in a fenced code block, fence lines included — openspec
+ * 1.13.2's `buildCodeFenceMask` (parsers/code-fence.js): three or more
+ * backticks or tildes, indented or not, open a fence that only a bare run of
+ * the same character, at least as long, closes. A header inside one is an
+ * example, never a section or a requirement, to the archive and so to this.
+ */
+function fenceMask(lines: string[]): boolean[] {
+  const mask = new Array<boolean>(lines.length).fill(false);
+  let open: { marker: string; length: number } | null = null;
+  for (let i = 0; i < lines.length; i++) {
+    if (!open) {
+      const m = /^\s*(`{3,}|~{3,})/.exec(lines[i]);
+      if (m) {
+        open = { marker: m[1][0], length: m[1].length };
+        mask[i] = true;
+      }
+      continue;
+    }
+    mask[i] = true;
+    const close = /^\s*(`{3,}|~{3,})\s*$/.exec(lines[i]);
+    if (close && close[1][0] === open.marker && close[1].length >= open.length) open = null;
+  }
+  return mask;
+}
+
+interface RequirementBlock {
+  name: string;
+  raw: string;
+}
+
+/**
+ * The requirement blocks of `lines[from, to)` — a section's body, which holds
+ * no unfenced `## ` line — read as openspec 1.13.2 reads them: each runs from
+ * an unfenced `### Requirement:` line to the next one, trailing whitespace
+ * trimmed, and keeps any other `### ` line inside it; its name loses a closing
+ * run of `#`s. A delta's block is written into the main spec whole, so it is
+ * compared whole.
+ */
+function blocksIn(lines: string[], mask: boolean[], from: number, to: number): RequirementBlock[] {
+  const blocks: RequirementBlock[] = [];
+  let block: { name: string; lines: string[] } | null = null;
+  const end = (): void => {
+    if (block) blocks.push({ name: block.name, raw: block.lines.join('\n').trimEnd() });
+    block = null;
+  };
+  for (let i = from; i < to; i++) {
+    const header = mask[i] ? null : REQUIREMENT.exec(lines[i]);
+    if (header) {
+      end();
+      block = { name: header[1].replace(/[ \t]+#+[ \t]*$/, '').trim(), lines: [lines[i]] };
+      continue;
+    }
+    block?.lines.push(lines[i]);
+  }
+  end();
+  return blocks;
+}
+
+/**
+ * Each requirement block under a delta's ADDED and MODIFIED sections, every
+ * copy of either header included, as `parseDeltaSpec` finds them: sections
+ * split at unfenced `## ` lines, titles folding case (`## Added Requirements`
+ * is merged too), so a block the archive merged is never mistaken for no
+ * block, and a header inside a fenced example is never taken for one.
+ */
+function deltaBlocks(text: string): RequirementBlock[] {
+  const lines = text.split('\n');
+  const mask = fenceMask(lines);
+  const heads: { title: string; at: number }[] = [];
+  lines.forEach((l, i) => {
+    const m = mask[i] ? null : SECTION.exec(l);
+    if (m) heads.push({ title: m[1].trim().toLowerCase(), at: i });
+  });
+  return heads.flatMap((h, k) =>
+    MERGED_SECTIONS.has(h.title) ? blocksIn(lines, mask, h.at + 1, heads[k + 1]?.at ?? lines.length) : [],
+  );
+}
+
+/**
+ * The requirement blocks of a main spec's `## Requirements` section, as
+ * `extractRequirementsSection` finds them — the section the archive rebuilds;
+ * none when it has no such section.
+ */
+function specBlocks(text: string): RequirementBlock[] {
+  const lines = text.split('\n');
+  const mask = fenceMask(lines);
+  const start = lines.findIndex((l, i) => !mask[i] && /^##\s+Requirements\s*$/i.test(l));
+  if (start < 0) return [];
+  let end = start + 1;
+  while (end < lines.length && (mask[end] || !/^##\s+/.test(lines[end]))) end++;
+  return blocksIn(lines, mask, start + 1, end);
+}
+
+/**
+ * MV-147. Whether the main spec `target` carries the merge of the archived
+ * `delta` (both relative to `brainDir`): every requirement block under the
+ * delta's ADDED and MODIFIED sections is, whole, a block of the same name in
+ * the target's `## Requirements` section, both texts `settled` and both read
+ * as openspec 1.13.2 reads them. A delta with no such block — REMOVED or
+ * RENAMED only, or none at all — carries trivially, and is staged as MV-146
+ * staged it. An unreadable file carries nothing: it is named, never staged on
+ * a guess.
+ *
+ * Whole blocks, never a substring: a MODIFIED block that only drops the end
+ * of a line is a substring of the requirement it replaces, so after a
+ * `--skip-specs` archive the unmerged spec read as carrying it and close
+ * staged a human's edit beside it. Found at review, with openspec 1.13.2's
+ * validator passing each delta: that one; a block holding a fenced `## `
+ * sample, or a `### ` line that is not a requirement, which a reader stopping
+ * at either compared by its unchanged head; and a fenced `## ADDED
+ * Requirements` example under REMOVED, which a reader blind to fences took
+ * for a block to carry, naming a real merge dirty.
+ *
+ * Measured on openspec 1.13.2: `archive --json --yes` writes each block
+ * verbatim, CRLF turned to LF, a run of blank lines collapsed to one;
+ * `--json --skip-specs` moves the change and leaves the main specs as they
+ * were, a human's uncommitted edit included. Staging every target, as MV-146
+ * did, swept that edit into the archive commit; staging a target that is new
+ * to HEAD would sweep a human's untracked draft of it the same way, so
+ * tracked and untracked are asked alike. Reading `specsUpdated` instead would
+ * mean keeping output nobody kept: close reads the disk.
+ */
+export async function carriesMerge(brainDir: string, delta: string, target: string): Promise<boolean> {
+  const text = await readFile(join(brainDir, delta), 'utf8').catch(() => null);
+  if (text === null) return false;
+  const blocks = deltaBlocks(settled(text));
+  if (blocks.length === 0) return true;
+  const into = await readFile(join(brainDir, target), 'utf8').catch(() => null);
+  if (into === null) return false;
+  const held = specBlocks(settled(into));
+  return blocks.every((b) => held.some((h) => h.name === b.name && h.raw === b.raw));
+}
+
+/**
  * MV-146. Every directory `change close` stages for this slug in the brain,
  * whatever `sdd_auto` or `--no-sdd` say: the slug's artifact directories on
  * disk (MV-144's one derivation), each slug-literal one git reports a
@@ -205,9 +361,19 @@ export async function featureHome(
  * spec file it merged into. Measured on openspec 1.13.2: after `openspec
  * archive`, close left the moved-from `openspec/changes/<slug>/` and the merged
  * `openspec/specs/<cap>/spec.md` out of its commit and named them dirty.
+ *
+ * MV-147: a main spec file is in `dirs` only when it carries the merge
+ * (`carriesMerge`); one the archive did not merge into — `--skip-specs`, or a
+ * human's edit over the merge — is in `uncarried`, for close to name and
+ * leave out.
  */
-export async function closeOwnedDirs(brainDir: string, spec: AdapterSpec, slug: string): Promise<string[]> {
+export async function closeOwnedDirs(
+  brainDir: string,
+  spec: AdapterSpec,
+  slug: string,
+): Promise<{ dirs: string[]; uncarried: string[] }> {
   const dirs = new Set(await slugArtifactDirs(brainDir, spec, slug));
+  const uncarried = new Set<string>();
   const literal = new Set<string>();
   for (const step of spec.steps ?? []) {
     if (!step.artifact?.includes('<slug>')) continue;
@@ -220,11 +386,23 @@ export async function closeOwnedDirs(brainDir: string, spec: AdapterSpec, slug: 
     // its capability's directory — the archive merges `<cap>/spec.md`, and a
     // human's edit beside it in `<into>/<cap>/` is named dirty, never staged
     // (MV-46).
+    //
+    // MV-147: only the file the tool merges, found where the tool looks for
+    // it — in a capability's directory, never at the root of `from` and never
+    // under a dot-directory, as openspec 1.13.2's discoverSpecFiles walks.
+    // Mapping every file there staged a human's untracked notes.md beside a
+    // merged spec.md, a file no archive writes.
     for (const hit of await artifactHit(brainDir, top.join('/'))) {
       const from = join(brainDir, hit, step.merges.from);
       const held = await readdir(from, { recursive: true, withFileTypes: true }).catch(() => []);
       for (const f of held) {
-        if (f.isFile()) dirs.add(`${step.merges.into}/${relative(from, join(f.parentPath, f.name)).split(sep).join('/')}`);
+        if (!f.isFile() || f.name !== step.merges.file) continue;
+        const rel = relative(from, join(f.parentPath, f.name)).split(sep).join('/');
+        const segs = rel.split('/');
+        if (segs.length < 2 || segs.some((s) => s.startsWith('.'))) continue;
+        const target = `${step.merges.into}/${rel}`;
+        if (await carriesMerge(brainDir, `${hit}/${step.merges.from}/${rel}`, target)) dirs.add(target);
+        else uncarried.add(target);
       }
     }
   }
@@ -241,5 +419,6 @@ export async function closeOwnedDirs(brainDir: string, spec: AdapterSpec, slug: 
       for (const d of gone) if (entry.slice(3).startsWith(`${d}/`)) dirs.add(d);
     }
   }
-  return [...dirs];
+  // Two archives of one slug can name one target; carried by either, it is staged.
+  return { dirs: [...dirs], uncarried: [...uncarried].filter((p) => !dirs.has(p)) };
 }

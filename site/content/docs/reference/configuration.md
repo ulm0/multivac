@@ -112,8 +112,9 @@ doors      nope: unknown target — known: agents, claude, cursor, opencode, cod
 | default | unset |
 | example | `sdd: opsx` |
 
-Selects the spec-driven-development adapter whose `propose` / `apply` /
-`archive` steps run inside the change lifecycle. See
+Selects the spec-driven-development adapter whose own steps run inside the
+change lifecycle — for OpenSpec, `openspec new change`, the `status` and
+`instructions` loop, `instructions apply` and `archive`. See
 [Graphers and SDD](../graphers-and-sdd). It runs in the brain alone — it is
 installed there and its steps print there — and it governs the code of every
 declared repo that does not say `sdd: none` (see
@@ -563,7 +564,8 @@ repos:
 ```
 
 **`sdd:` per repo.** The SDD lives in the brain alone: it is installed there,
-its steps print there, and its gates read the brain and the change's worktrees.
+its steps print there, and its gates read the brain and the change's worktrees —
+the brain checkout alone for a step printed at `change land`.
 No code repo is scaffolded, gated on a project document, or given the SDD's
 steps in its door. What the brain's SDD does reach is every declared repo's
 CODE: it lands only on the branch of an open change (see

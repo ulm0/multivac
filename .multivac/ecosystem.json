@@ -1720,6 +1720,13 @@
    "repo": "brain"
   },
   {
+   "id": "glob:brain:src/commands/{change,roadmap}.ts",
+   "label": "brain:src/commands/{change,roadmap}.ts",
+   "file_type": "anchor",
+   "source_file": "src/commands/{change,roadmap}.ts",
+   "repo": "brain"
+  },
+  {
    "id": "glob:brain:src/commands/{doctor,doors,repos}.ts",
    "label": "brain:src/commands/{doctor,doors,repos}.ts",
    "file_type": "anchor",
@@ -2529,6 +2536,13 @@
    "label": "brain:{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/**}",
    "file_type": "anchor",
    "source_file": "{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/**}",
+   "repo": "brain"
+  },
+  {
+   "id": "glob:brain:{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/multivac/**}",
+   "label": "brain:{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/multivac/**}",
+   "file_type": "anchor",
+   "source_file": "{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/multivac/**}",
    "repo": "brain"
   },
   {
@@ -5281,6 +5295,12 @@
   },
   {
    "source": "change:opsx-through-its-cli",
+   "target": "law:MV-142",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:opsx-through-its-cli",
    "target": "law:MV-144",
    "relation": "touches",
    "confidence": "EXTRACTED"
@@ -7692,7 +7712,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 15
+   "legs": 16
   },
   {
    "source": "glob:brain:.multivac/projected.yml",
@@ -7838,7 +7858,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 18
+   "legs": 19
   },
   {
    "source": "glob:brain:site/content/docs/reference/hooks.md",
@@ -7942,7 +7962,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 13
+   "legs": 14
   },
   {
    "source": "glob:brain:src/adapters/equip.ts",
@@ -7970,14 +7990,14 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 57
+   "legs": 74
   },
   {
    "source": "glob:brain:src/adapters/sdd.ts",
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 37
+   "legs": 43
   },
   {
    "source": "glob:brain:src/adapters/tracked.ts",
@@ -8045,7 +8065,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 7
+   "legs": 9
   },
   {
    "source": "glob:brain:src/change/cite.ts",
@@ -8100,7 +8120,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 41
+   "legs": 42
   },
   {
    "source": "glob:brain:src/commands/doors.ts",
@@ -8156,6 +8176,12 @@
    "relation": "in_repo",
    "confidence": "EXTRACTED",
    "legs": 54
+  },
+  {
+   "source": "glob:brain:src/commands/{change,roadmap}.ts",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "glob:brain:src/commands/{doctor,doors,repos}.ts",
@@ -8227,7 +8253,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 6
+   "legs": 7
   },
   {
    "source": "glob:brain:src/doors/link.ts",
@@ -8279,7 +8305,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 11
+   "legs": 12
   },
   {
    "source": "glob:brain:src/lib/config.ts",
@@ -8333,7 +8359,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 5
+   "legs": 6
   },
   {
    "source": "glob:brain:src/lib/ritual.ts",
@@ -8471,7 +8497,8 @@
    "source": "glob:brain:test/change/carry.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
-   "confidence": "EXTRACTED"
+   "confidence": "EXTRACTED",
+   "legs": 3
   },
   {
    "source": "glob:brain:test/change/concurrency.test.ts",
@@ -8537,7 +8564,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 10
+   "legs": 11
   },
   {
    "source": "glob:brain:test/change/piped-reservation.test.ts",
@@ -8556,14 +8583,15 @@
    "source": "glob:brain:test/change/roadmap.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
-   "confidence": "EXTRACTED"
+   "confidence": "EXTRACTED",
+   "legs": 2
   },
   {
    "source": "glob:brain:test/change/sdd-gates.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 23
+   "legs": 28
   },
   {
    "source": "glob:brain:test/change/staleness-at-start.test.ts",
@@ -8637,7 +8665,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 7
+   "legs": 8
   },
   {
    "source": "glob:brain:test/doctor/law-exit.test.ts",
@@ -8650,7 +8678,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 8
+   "legs": 9
   },
   {
    "source": "glob:brain:test/doors/ecosystem-graph.test.ts",
@@ -8668,7 +8696,8 @@
    "source": "glob:brain:test/doors/flow.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
-   "confidence": "EXTRACTED"
+   "confidence": "EXTRACTED",
+   "legs": 2
   },
   {
    "source": "glob:brain:test/doors/graph-navigation.test.ts",
@@ -8694,7 +8723,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 5
+   "legs": 7
   },
   {
    "source": "glob:brain:test/doors/settings.test.ts",
@@ -8735,7 +8764,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 2
+   "legs": 3
   },
   {
    "source": "glob:brain:test/init/hook-shim.test.ts",
@@ -8854,7 +8883,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 7
+   "legs": 8
   },
   {
    "source": "glob:brain:test/verify/config-gate.test.ts",
@@ -8923,6 +8952,12 @@
    "relation": "in_repo",
    "confidence": "EXTRACTED",
    "legs": 9
+  },
+  {
+   "source": "glob:brain:{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/multivac/**}",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "glob:brain:{CONTRIBUTING.md,DESIGN.md}",
@@ -12381,6 +12416,210 @@
    "confidence": "EXTRACTED"
   },
   {
+   "source": "law:MV-147",
+   "target": "glob:brain:.multivac/invariants.md",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "count",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1339"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:site/content/docs/reference/graphers-and-sdd.md",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1338"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/adapters/detect.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1313"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/adapters/registry.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1290",
+   "legs": 17
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/adapters/sdd.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1307",
+   "legs": 6
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/change/carry.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1315",
+   "legs": 2
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/commands/doctor.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1319"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/commands/{change,roadmap}.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "each",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1320"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/doors/flow.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1317"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/lib/code-in-change.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1314"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:src/lib/repo-state.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1318"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/change/carry.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1328",
+   "legs": 2
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/change/lifecycle-polish.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1327"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/change/roadmap.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1330"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/change/sdd-gates.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1322",
+   "legs": 5
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/doctor/doctor.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1336"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/doors/doors.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1331"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/doors/flow.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1332"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/doors/registry.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1333",
+   "legs": 2
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/init/equip.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1335"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:test/verify/code-in-change.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1337"
+  },
+  {
+   "source": "law:MV-147",
+   "target": "glob:brain:{*.md,src/**,test/**,site/content/**,skills/**,.claude/skills/multivac/**}",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "absent",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1321"
+  },
+  {
    "source": "law:MV-15",
    "target": "glob:brain:src/change/file.ts",
    "relation": "anchors",
@@ -13740,7 +13979,7 @@
    "target": "glob:brain:site/content/docs/reference/graphers-and-sdd.md",
    "relation": "anchors",
    "confidence": "EXTRACTED",
-   "mode": "present",
+   "mode": "unique",
    "source_file": ".multivac/invariants.md",
    "source_location": "L313",
    "legs": 2
@@ -13759,7 +13998,7 @@
    "target": "glob:brain:src/adapters/registry.ts",
    "relation": "anchors",
    "confidence": "EXTRACTED",
-   "mode": "present",
+   "mode": "unique",
    "source_file": ".multivac/invariants.md",
    "source_location": "L302",
    "legs": 2

@@ -1202,9 +1202,10 @@ offline probe now reads each entry's state file — spec-kit's
 database — and answers installed, missing, partial or unevaluable. The scaffold
 runs only where missing, a partial root is warned rather than re-initialised,
 and a graph is rebuilt wherever it is not installed. Each entry also declares
-its shared and local paths and its opt-out environment, which every vendor run
-carries; codegraph's database is local, so the tracked gate, which reads HEAD,
-never asks for it.
+its shared and local paths and its opt-out environment, which every run
+multivac makes carries and none of the commands it prints (MV-147) — the
+agent runs those in its own environment; codegraph's database is local, so the
+tracked gate, which reads HEAD, never asks for it.
 
 If you cloned the repo, the adapter works even with the tool not installed.
 The binary is only needed to **invoke** (`graphify update`, `openspec
@@ -1287,14 +1288,20 @@ committed the vendor's files onto each code repo's branch (MV-146).
   prints the refusal instead, gating only under `--strict`: a mount can lag its
   brain, and the config is its owner's to fix.
 - **Where the proofs are.** A step's artifact is looked for in the brain and in
-  the change's worktree the brain's own entry names. A match left in a code repo
+  the change's worktree the brain's own entry names — but a step printed at
+  `land` runs after every stage has merged, so its proof is read in the brain
+  checkout alone, and one found only in the worktree is refused by name
+  (MV-147). A match left in a code repo
   by habit is named in the refusal, never read. spec-kit keeps one feature
   pointer per checkout, so `change plan` and `change apply` point it at the
   slug's directory and say when it named another: two changes in one checkout
   otherwise planned into each other's directory.
-- **Where the code goes.** The steps run from the brain checkout, which holds no
-  code of a change naming a code repo; `change plan` says so, and code is
-  written only in the change's worktrees, where the code gate reads it.
+- **Where the code goes.** The steps `change plan` names run from the brain
+  checkout before `change apply` carries the slug's directory; that checkout
+  holds no code of a change naming a code repo, `change plan` says so, and code
+  is written only in the change's worktrees, where the code gate reads it.
+  opsx's apply step runs where `openspec/changes/<slug>/` is, which its line
+  names (MV-147).
 - **Written once.** A fresh spec-kit scaffold writes skeleton templates to
   `.specify/templates/overrides/`, the directory every spec-kit resolver reads
   first — only when it is absent, only from the version measured on, and never
@@ -1304,8 +1311,9 @@ committed the vendor's files onto each code repo's branch (MV-146).
 - **Printed once, cited once.** Each lifecycle point prints its steps and then,
   once, the instruction to run them through. `change close`, whatever
   `sdd_auto` and `--no-sdd` say, stages the brain's slug directories — deletions
-  and an archive's merged main specs included — and appends the one line citing
-  the directory (see *The tool owns the frontmatter*).
+  included, and each main spec an archive merged into that carries the merge;
+  one that does not is named dirty and left out (MV-147) — and appends the one
+  line citing the directory (see *The tool owns the frontmatter*).
 
 An install an earlier release left in a code repo is reported by `doctor` and
 `repos check`, with its removal, and never fails either. Every known SDD's
@@ -1342,15 +1350,16 @@ multivac may write in (not `managed: false`, not a shallow clone, MV-125):
   refusal naming the exact agent command, the path it looked for and where
   it looked — the brain and the change's worktree its own entry names, since
   the SDD lives in the brain alone (MV-146), with a match left in a code repo
-  named and never read — while a pass names where the artifact was found. Three
+  named and never read, and a land step's proof read in the brain checkout
+  alone (MV-147) — while a pass names where the artifact was found. Three
   rules keep it honest: a step whose tool leaves nothing behind
   (`/speckit.analyze` writes zero bytes by design; a clean `/speckit.converge`
   is forbidden to touch `tasks.md`) is declared **ungateable** with its reason
   and is never gated, and a lifecycle point no step can prove **says so**
   instead of passing quietly; where a tool ships its own validator its
   **verdict is reused** (`openspec validate --json`), never reimplemented —
-  the lifecycle shells out for validation only, never to fake an agent-run
-  step; and the project-level document is **gated on existing, never on its
+  the lifecycle shells out for its validator and its scaffold only, never to
+  fake an agent-run step; and the project-level document is **gated on existing, never on its
   content** (owner decision, 2026-08-16) — `doctor` calls it missing, present,
   or STALE against the law's newest row, and **`change plan` refuses while it
   is missing or unreadable, empty, or still carrying the tool's own template

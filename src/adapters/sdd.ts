@@ -2,8 +2,9 @@
 // those steps really produce.
 //
 // Two halves, deliberately separate. PRINTING is what the lifecycle has always
-// done — the steps are chat commands the agent runs, never subcommands
-// multivac could spawn. GATING is the half that makes the printing mean
+// done — the steps are what the agent runs: chat commands for spec-kit, and
+// openspec's own terminal verbs for opsx (MV-147), each a call the agent makes
+// and multivac never spawns. GATING is the half that makes the printing mean
 // something: a step declares the artifact that PROVES it happened, and the
 // next lifecycle command refuses while that path is missing. A step whose tool
 // leaves nothing behind is declared `ungateable` with its reason and is never
@@ -29,6 +30,7 @@ import {
   type SddScaffold,
 } from './registry.js';
 import {
+  adapterFor,
   adaptersByRoot,
   artifactHit,
   findBinary,
@@ -112,6 +114,24 @@ export const stepsGating = (spec: AdapterSpec, gate: GatePoint): SddStep[] =>
 export const stepsLedgered = (spec: AdapterSpec, gate: GatePoint): SddStep[] =>
   (spec.steps ?? []).filter((s) => s.unfinished?.gate === gate);
 
+/**
+ * MV-147. Why the brain's SDD cannot create a change named `slug`, or null.
+ *
+ * The slug outlives every switch: it names the change file, the branch and the
+ * tool's own change directory, and the printed `new` step's first command is
+ * the tool's create. A slug the tool refuses opens a change whose first step
+ * fails, so `change new` and `roadmap add` ask here first, whatever `sdd_auto`
+ * and `--no-sdd` say. No SDD, or one that records no grammar: null, and both
+ * accept what they always did. Pure — the grammar is the entry's, measured.
+ */
+export function sddSlugWhy(cfg: Config, slug: string): string | null {
+  const name = adapterFor(cfg, 'brain', 'sdd');
+  const grammar = name ? sddSpec(name)?.slug : undefined;
+  if (!grammar) return null;
+  if (!new RegExp(grammar.pattern).test(slug) || grammar.reserved.includes(slug)) return grammar.why;
+  return null;
+}
+
 /** What a step leaves behind, or why it can never leave anything. */
 export function proofOf(step: SddStep, slug = '<slug>'): string {
   if (step.artifact) {
@@ -132,8 +152,12 @@ export interface GateResult {
 }
 
 type Verdict =
-  /** The tool ran and was satisfied. */
-  | { kind: 'ok' }
+  /**
+   * The tool ran and was satisfied. `notes`: the messages of its passing
+   * output that the step's `validateNotes` names (MV-147), each printed and
+   * none refusing.
+   */
+  | { kind: 'ok'; notes: string[] }
   /** A required binary is not found for this root, so the gate has nothing to ask. */
   | { kind: 'missing'; bins: string[] }
   /** The tool ran and objected, in its own words. */
@@ -155,8 +179,15 @@ type Verdict =
  * project's own tooling — and what runs is the path it found, so the copy on
  * PATH wins where both exist. Every `required` binary must be found, and so
  * must the command's own first word.
+ *
+ * MV-147: `notes`, an ERE, is read over the issue messages of a PASSING run's
+ * JSON. openspec 1.13.2 validates a delta its own archive will refuse with
+ * exit 0 and an INFO issue saying so; the pass stays a pass. Parsed inside a
+ * try, because a pass owes the gate no output: empty, whitespace or anything
+ * not JSON is a pass with no note — the suite's stubs print only a newline.
+ * The scaffold's calls pass none.
  */
-async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise<Verdict> {
+async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string, notes?: string): Promise<Verdict> {
   const [bin, ...args] = cmd.split(' ');
   const bins = await missingRequired(spec, cwd);
   const exe = await findBinary(bin, cwd);
@@ -164,8 +195,8 @@ async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise
   if (exe === null || bins.length > 0) return { kind: 'missing', bins };
   try {
     // MV-124: the entry's opt-outs over whatever the parent had, the command untouched.
-    await execFileP(exe, args, { cwd, env: { ...process.env, ...spec.env } });
-    return { kind: 'ok' };
+    const { stdout } = await execFileP(exe, args, { cwd, env: { ...process.env, ...spec.env } });
+    return { kind: 'ok', notes: notes ? passingNotes(stdout, notes) : [] };
   } catch (e) {
     const err = e as { stdout?: string; stderr?: string; message: string };
     const raw = `${err.stdout ?? ''}${err.stderr ?? ''}`.trim();
@@ -188,6 +219,26 @@ async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise
 }
 
 /**
+ * The issue messages of a passing validator's JSON that `pattern` matches, in
+ * the tool's order; none when the output is not the vendor's JSON. A note is
+ * never a reason to refuse, so nothing here can fail the gate.
+ */
+function passingNotes(stdout: string, pattern: string): string[] {
+  try {
+    const parsed = JSON.parse(stdout) as {
+      items?: Array<{ issues?: Array<{ message?: unknown }> }>;
+    };
+    const re = new RegExp(pattern);
+    return (parsed?.items ?? [])
+      .flatMap((i) => i?.issues ?? [])
+      .map((i) => i?.message)
+      .filter((m): m is string => typeof m === 'string' && re.test(m));
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Run the declared tool's OWN init, once, when it has never run here.
  *
  * Printing is this module's rule, and this is its second exception:
@@ -195,16 +246,21 @@ async function toolVerdict(spec: AdapterSpec, cmd: string, cwd: string): Promise
  * multivac spawns on the tool's behalf besides the tool's own validator.
  *
  * Declaring
- * an SDD in a repo where it has never run used to be a deadlock: `plan` refuses
- * without an artifact, that artifact comes from a chat command, and the chat
- * command does not exist until the tool's init has run — so the only exits were
- * `--no-sdd` and `sdd_auto: false`, each turning the gate off to fix the very
- * absence that fired it.
+ * spec-kit in a repo where it has never run used to be a deadlock: `plan`
+ * refuses without an artifact, that artifact comes from a chat command, and the
+ * chat command does not exist until the tool's init has run — so the only exits
+ * were `--no-sdd` and `sdd_auto: false`, each turning the gate off to fix the
+ * very absence that fired it. The deadlock is spec-kit's (MV-147): opsx's steps
+ * are openspec's own terminal verbs, there wherever the binary is, and
+ * `openspec new change` creates a root where none resolves (1.13.2). Its
+ * scaffold still runs where `openspec/config.yaml` is missing, so the brain gets
+ * the vendor's own `config.yaml` and the probe reads an init, not a side effect
+ * of the first step.
  *
- * This changes nothing about MV-51. The STEPS stay chat commands the agent
- * runs; the scaffold is a terminal command with a vendor behind it, declared in
- * the registry and quoted verbatim. It never satisfies a step and is never
- * printed as one.
+ * This changes nothing about MV-51. The STEPS stay what the agent runs; the
+ * scaffold is a terminal command with a vendor behind it, declared in the
+ * registry and quoted verbatim. It never satisfies a step and is never printed
+ * as one.
  *
  * Every outcome said out loud, and all of them PER ROOT (MV-87), on the state
  * `initState` reads from the vendor's own files (MV-124):
@@ -247,6 +303,12 @@ export function scaffoldCommands(
   scaffold: SddScaffold,
   doors: string[],
 ): { commands: string[]; gaps: string[] } {
+  // MV-147: a run with no placeholder installs no door's integration, so it
+  // is run as written whatever the doors, none included, and no door is a
+  // gap — opsx's `--tools none` scaffold, whose steps no harness file serves.
+  if (!scaffold.run.includes('{key}') && !scaffold.run.includes('{keys}')) {
+    return { commands: [scaffold.run], gaps: [] };
+  }
   const mapped = doors.filter((d) => scaffold.integrations[d]);
   const gaps = doors
     .filter((d) => d !== 'agents' && !scaffold.integrations[d])
@@ -412,7 +474,7 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
         `there: \`${commands.join(' && ')}\`` +
         (sk ? `, then multivac writes its skeleton templates to ${sk.dir}` : ''),
     );
-    let verdict: Verdict = { kind: 'ok' };
+    let verdict: Verdict = { kind: 'ok', notes: [] };
     for (const cmd of commands) {
       verdict = await toolVerdict(spec, cmd, root.dir);
       if (verdict.kind !== 'ok') break;
@@ -464,6 +526,10 @@ export async function runScaffold(brain: string, cfg: Config, noSdd: boolean): P
  * entry keyed `core` has scope `brain` and its worktree at `…/<slug>/core`, so
  * joining the scope looked in a directory that never exists, found no task
  * list, and let `close` pass over an open task.
+ *
+ * MV-147: every point but `land`. A step printed there runs after the merge,
+ * so `judgeSdd` refuses a hit this hands back from the worktree for it, and
+ * reads no ledger from one.
  */
 async function slugHits(brain: string, root: SddRoot, slug: string, want: string): Promise<{ root: SddRoot; hits: string[] }> {
   const hits = await artifactHit(root.dir, want);
@@ -607,33 +673,51 @@ async function judgeSdd(
   const where = roots.map((r) => r.scope).join(', ');
   for (const step of gating) {
     const want = withSlug(step.artifact!, slug);
-    let found: { root: SddRoot; rel: string } | null = null;
+    // `asked` is the root the hits were asked through: when `root.dir` is not
+    // its dir, they came from the change's worktree (MV-133's fallback).
     // MV-113: several directories proving one step is not a choice this probe
     // may make. Taking the first in sort order let an older foreign directory
     // shadow the right one, silently — so a clash is refused by name, in the
     // root where it collides. The first declared root holding ANY hit decides:
     // a single hit wins there, several refuse there, and a later root is never
     // consulted, which is the same root that decided under the old code.
-    let clash: { root: SddRoot; rels: string[] } | null = null;
+    let hit: { root: SddRoot; rels: string[]; asked: SddRoot } | null = null;
     for (const r of roots) {
       const { root, hits } = await slugHits(brain, r, slug, want);
-      if (hits.length > 1) {
-        clash = { root, rels: hits };
-        break;
-      }
-      if (hits.length === 1) {
-        found = { root, rel: hits[0] };
+      if (hits.length > 0) {
+        hit = { root, rels: hits, asked: r };
         break;
       }
     }
-    if (clash) {
+    // MV-147. A step printed at `land` runs after every stage has merged, in
+    // the brain checkout, which is the only place its proof counts. Measured
+    // in a brain==code change: `openspec archive` run in the change's worktree
+    // after the merge let close pass while the checkout kept the change open
+    // and `openspec/specs/` empty — the worktree's archive never reaches main.
+    // Before the merge the fallback is right (MV-133), so only `land` is held.
+    // Asked before the clash: two archives there are two that never reach the
+    // checkout, not a clash in it.
+    if (hit && step.at === 'land' && hit.root.dir !== hit.asked.dir) {
+      ok = false;
+      const wt = hit.root.dir;
+      const paths = hit.rels.map((rel) => relative(brain, join(wt, rel))).join(', ');
+      lines.push(
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${want} is only in the change's worktree, ${paths}, which never reaches the brain checkout`,
+      );
+      lines.push(`  ${withSlug(step.run, slug)}`);
+      if (step.guide) lines.push(`    ${withSlug(step.guide, slug)}`);
+      lines.push(`  then re-run: multivac change ${gate} ${slug}`);
+      continue;
+    }
+    if (hit && hit.rels.length > 1) {
       ok = false;
       lines.push(
-        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${want} matches more than one place in ${clash.root.scope}: ${clash.rels.join(', ')} — one feature directory per slug; remove or renumber the strays`,
+        `sdd ${name}: \`change ${gate} ${slug}\` refused — ${want} matches more than one place in ${hit.root.scope}: ${hit.rels.join(', ')} — one feature directory per slug; remove or renumber the strays`,
       );
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
     }
+    const found = hit && { root: hit.root, rel: hit.rels[0] };
     if (!found) {
       ok = false;
       lines.push(
@@ -641,6 +725,9 @@ async function judgeSdd(
       );
       lines.push(...(await strayLines(brain, name, others, slug, want)));
       lines.push(`  ${withSlug(step.run, slug)}`);
+      // MV-147: a refusal re-prints the step, so it re-prints its guide too,
+      // four spaces in under the run — the step comes up here again.
+      if (step.guide) lines.push(`    ${withSlug(step.guide, slug)}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
     }
@@ -658,6 +745,7 @@ async function judgeSdd(
         `sdd ${name}: \`change ${gate} ${slug}\` refused — ${found.root.scope}:${found.rel} is empty`,
       );
       lines.push(`  ${withSlug(step.run, slug)}`);
+      if (step.guide) lines.push(`    ${withSlug(step.guide, slug)}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
     }
@@ -670,12 +758,13 @@ async function judgeSdd(
         `sdd ${name}: \`change ${gate} ${slug}\` refused — ${found.root.scope}:${found.rel} is byte-identical to ${from}: the scaffolding wrote it, nobody has`,
       );
       lines.push(`  ${withSlug(step.run, slug)}`);
+      if (step.guide) lines.push(`    ${withSlug(step.guide, slug)}`);
       lines.push(`  then re-run: multivac change ${gate} ${slug}`);
       continue;
     }
     lines.push(`sdd ${name}: ${found.root.scope}: ${found.rel} ok`);
     if (!step.validate) continue;
-    const verdict = await toolVerdict(spec, withSlug(step.validate, slug), found.root.dir);
+    const verdict = await toolVerdict(spec, withSlug(step.validate, slug), found.root.dir, step.validateNotes);
     if (verdict.kind === 'missing') {
       // Not a pass. The artifact is on disk and the tool that judges it is
       // not here, so the strongest half of this gate cannot run — say which
@@ -697,6 +786,16 @@ async function judgeSdd(
         `sdd ${name}: \`change ${gate} ${slug}\` refused — \`${withSlug(step.validate, slug)}\` says: ${verdict.message}`,
       );
       lines.push(`  fix it in the tool, then re-run: multivac change ${gate} ${slug}`);
+    } else {
+      // MV-147: the tool passed the artifact and, in the same output, named
+      // what a later step of its own will refuse. Printed after the artifact
+      // line and refusing nothing — stricter than the vendor would be a gate
+      // the vendor does not define.
+      for (const n of verdict.notes) {
+        lines.push(
+          `sdd ${name}: \`${withSlug(step.validate, slug)}\` passes and notes: ${n} — fix the delta before \`change land\``,
+        );
+      }
     }
   }
   // The ledger pass. Separate from the artifact loop on purpose: these steps
@@ -714,6 +813,10 @@ async function judgeSdd(
     let clash: { root: SddRoot; rels: string[] } | null = null;
     for (const r of roots) {
       const { root, hits } = await slugHits(brain, r, slug, want);
+      // MV-147: a land step's book is read in the checkout alone. Found only
+      // in the change's worktree, once or more, it is neither read nor a
+      // clash, and says nothing: a proof found there was refused by name above.
+      if (hits.length > 0 && step.at === 'land' && root.dir !== r.dir) break;
       if (hits.length > 1) {
         clash = { root, rels: hits };
         break;
@@ -908,5 +1011,14 @@ function stepLines(tag: string, name: string, at: LifecyclePoint, slug: string):
   if (steps.length === 0) {
     return { lines: [`${tag}: ${at} — this tool has no agent-run ${at} step; nothing to run`], ran: false };
   }
-  return { lines: steps.map((s) => `${tag}: ${withSlug(s.run, slug)} [${proofOf(s, slug)}]`), ran: true };
+  // MV-147: a step's guide goes on the line under it, three spaces after the
+  // tag — the rest of what the vendor's own command body said, printed where
+  // the step comes up and nowhere else — so the caller's instruction, spliced
+  // in after the point's last line, stays last.
+  const lines: string[] = [];
+  for (const s of steps) {
+    lines.push(`${tag}: ${withSlug(s.run, slug)} [${proofOf(s, slug)}]`);
+    if (s.guide) lines.push(`${tag}:   ${withSlug(s.guide, slug)}`);
+  }
+  return { lines, ran: true };
 }

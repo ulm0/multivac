@@ -103,7 +103,7 @@ async function walk(where: Placement) {
     'AGENTS.md': '# door\n',
     '.multivac/config.yml': 'doors: [agents, claude]\nsdd: opsx\ngrapher: graphify\nrepos:\n  brain: .\n',
     // Installed: this walks the binary lookup across surfaces, and since
-    // MV-130 an opsx that is missing runs `openspec init` first.
+    // MV-130 an opsx that is missing runs `openspec init --tools none` first.
     'openspec/config.yaml': 'schema: spec-driven\n',
     '.multivac/invariants.md':
       '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',

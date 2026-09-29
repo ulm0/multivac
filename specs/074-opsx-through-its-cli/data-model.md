@@ -23,6 +23,12 @@ interface SddStep {
    * same output, what a later step of its own will refuse.
    */
   validateNotes?: string;
+  /**
+   * MV-146, with `file` added by MV-147 at review: the one name the tool merges, so a
+   * file kept beside a delta maps to no main spec. opsx: `{ from: 'specs', into:
+   * 'openspec/specs', file: 'spec.md' }`.
+   */
+  merges?: { from: string; into: string; file: string };
 }
 
 interface SddScaffold {
@@ -50,8 +56,9 @@ interface AdapterSpec {
 ```
 
 Doc comments reworded (their sentences become false): `AdapterSpec.steps` (what the AGENT
-runs — chat commands for spec-kit, the vendor's own terminal verbs for opsx — which the
-lifecycle prints and gates on, and never spawns); `SddScaffold` (every `SddStep` is run by
+runs — chat commands for spec-kit, the vendor's own terminal verbs for opsx — holding, on one
+physical line, the text MV-51's moved leg reads: `the lifecycle prints them and gates on what
+they leave behind, and never spawns one`); `SddScaffold` (every `SddStep` is run by
 the agent and only printed here; the deadlock is spec-kit's); `SddScaffold.run` (a
 `{key}`/`{keys}` placeholder when present; a run with neither is run as written and names no
 door as a gap); `SddScaffold.integrations` (a door missing here is a gap only for a run with
@@ -76,7 +83,7 @@ is text mode's; under `--json` `--yes` says nothing).
 Unchanged: `artifacts`, `state`, `shared`, `local`, `leftover` (code repos, MV-146), `ignore`,
 `env`, `binaries`, `required`, `installHint`, `automation`, `projectSteps`, every step's `at`,
 `artifact`, `gate`, `validate`, `ungateable`, `unfinished.artifact`, `unfinished.pattern`,
-`unfinished.gate` and `merges`. The speckit entry is untouched: no `guide`, no
+`unfinished.gate` and `merges.from`/`merges.into`. The speckit entry is untouched: no `guide`, no
 `validateNotes`, no `slug`, no `bodies`.
 
 Validation (tests): no step's `run` in any entry matches `--(yes|skip-specs|no-validate)`; a
@@ -105,7 +112,7 @@ scaffold calls it without `notes`.
 | --- | --- | --- |
 | `bodyGlobs(scaffold): string[]` | src/adapters/detect.ts | for each `d` in the union of every integration's `dirs` and `bodies.dirs`, and each `n` in `bodies.names`: `d/n`, `d/n/**`, `d/*/n`, `d/*/n/**`; `[]` without `bodies`. Pure. |
 | `sddSlugWhy(cfg, slug): string \| null` | src/adapters/sdd.ts | the brain's SDD (`adapterFor(cfg, 'brain', 'sdd')`), then its `slug`: the `why` when `slug` misses `pattern` or is in `reserved`, else null; null with no SDD or no grammar. Pure. |
-| `leftoverBodies(dir, spec): Promise<Body[]>` | src/lib/repo-state.ts | `Body = { path: string; tracked: boolean }`: every file `git ls-files -z --cached` and `git ls-files -z --others --exclude-standard` report under `bodyGlobs(spec.scaffold)`, reduced to its entry (`d[/<sub>]/<name>`), siblings under one parent sharing `openspec-` or `opsx-` collapsed to `<parent>/openspec-*` / `<parent>/opsx-*`, `tracked` when git tracks every file under it (a mixed group splits). `[]` without `bodies`. |
+| `leftoverBodies(dir, spec): Promise<Body[]>` | src/lib/repo-state.ts | `Body = { path: string; tracked: boolean }`: every file `git ls-files -z --cached` and `git ls-files -z --others --exclude-standard` report under `bodyGlobs(spec.scaffold)`, reduced to its entry (`d[/<sub>]/<name>`), two or more siblings under one parent sharing a prefix `bodies.names` records as `<prefix>*` collapsed to `<parent>/<prefix>*` — for opsx `openspec-`, `.openspec-` and `opsx-`, derived from the entry, never written in repo-state.ts (converge, T066) — (a single one is named as it is) — and only when every entry that glob reaches is in the same list, so a shell expanding it hands `git rm -r` nothing untracked — `tracked` when git tracks every file under it (a mixed group splits). `[]` without `bodies`, or when git cannot answer. |
 | `nonCodeGlobs(cfg, repoKey)` | src/lib/code-in-change.ts | as today, plus `bodyGlobs(scaffold)` for every known SDD's scaffold, in every repo |
 
 ## Close's staging (src/change/carry.ts, src/commands/change.ts)
@@ -115,15 +122,26 @@ carriesMerge(brainDir: string, delta: string, target: string): Promise<boolean>
 closeOwnedDirs(brainDir, spec, slug): Promise<{ dirs: string[]; uncarried: string[] }>
 ```
 
-`carriesMerge` (paths relative to `brainDir`): split the delta into `## ` sections; in
-`## ADDED Requirements` and `## MODIFIED Requirements`, each block runs from a
-`### Requirement:` line to the next `## ` or `### ` line, trailing blank lines trimmed. No
-such block → true. Otherwise both texts are normalised (CRLF → LF, trailing whitespace
-stripped per line) and every block must be a substring of the target; an unreadable target
-→ false.
+`carriesMerge` (paths relative to `brainDir`): both texts are normalised first (a leading
+BOM dropped, CRLF → LF, trailing whitespace stripped per line, each run of blank lines
+collapsed to one — the archive writes a block with its blank runs collapsed), then read as
+openspec 1.13.2 reads them. A fence mask comes first (`buildCodeFenceMask`: three or more
+backticks or tildes open a fence that only a bare run of the same character, at least as
+long, closes); a fenced line is never a header. The delta splits into sections at unfenced
+`## ` lines; in every `## ADDED Requirements` and `## MODIFIED Requirements` (titles
+case-folded, as openspec folds them) each block runs from an unfenced
+`^###\s*Requirement:\s*(.+)` line (any case) to the next one or the section's end, trailing
+whitespace trimmed, keeping any other `### ` line; its name loses a closing run of `#`s. No
+such block → true. Otherwise every block must equal, whole, a block of the same name in the
+target's `## Requirements` section (first unfenced `^##\s+Requirements\s*$`, to the next
+unfenced `## `), read the same way; an unreadable delta or target → false. (Review: the
+first cut compared substrings and stopped a block at any `### ` or fenced `## ` line, blind
+to fences — each case called a `--skip-specs` target carried or a real merge uncarried.)
 
 `closeOwnedDirs` keeps its derivation (slug directories, slug-literal deletions, each merge
-target FILE `into/<rel>` for every `<archive>/<from>/<rel>`), and routes each merge target
+target FILE `into/<rel>` for every `<archive>/<from>/<rel>` named `merges.file` — `spec.md`
+for opsx, in a capability's directory, never at the root of `<from>` or under a
+dot-directory, as openspec's discoverSpecFiles finds them), and routes each merge target
 through `carriesMerge(brainDir, <archive>/<from>/<rel>, <into>/<rel>)`: carried → `dirs`,
 otherwise → `uncarried`.
 
@@ -137,7 +155,7 @@ modified or untracked — through its one `is dirty and was not staged` line (MV
 | --- | --- | --- |
 | `plan`, `apply`, `close` for a non-land step | brain checkout, or the change's worktree (MV-133) | read there, as today |
 | `close` for a step with `at: 'land'` | brain checkout | read there |
-| `close` for a step with `at: 'land'` | only the change's worktree | refused: "is only in the change's worktree, <path>, which never reaches the brain checkout"; that step's ledger is not read from the worktree |
+| `close` for a step with `at: 'land'` | only the change's worktree, once or more | refused: "is only in the change's worktree, <path>[, <path>…], which never reaches the brain checkout", before any clash; that step's ledger is neither read nor a clash there |
 | any, validator passes | — | `ok`, plus one note per `validateNotes` match |
 
 ## Slug checks
@@ -145,4 +163,4 @@ modified or untracked — through its one `is dirty and was not staged` line (MV
 | Command | Order | Refusal | Exit |
 | --- | --- | --- | --- |
 | `change new` | the argument parser's format check (exit 2, unchanged), then `sddSlugWhy` first in `cmdNew`, before the archived and promotion checks, whatever `sdd_auto`/`--no-sdd` | contracts/cli-output.md | 1, nothing written |
-| `roadmap add` | the format check (exit 2, unchanged), then the config is loaded and `sddSlugWhy` asked, before the planned/open/archived checks | contracts/cli-output.md | 2, nothing recorded |
+| `roadmap add` | the format check (exit 2, unchanged), then the config is loaded (a refused SDD declaration reported, not thrown; a config that cannot be read is no grammar, as before — analysis C5) and `sddSlugWhy` asked, before the planned/open/archived checks | contracts/cli-output.md | 2, nothing recorded |

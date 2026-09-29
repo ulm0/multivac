@@ -227,13 +227,20 @@ file records a query.
 
 When the brain door declares an SDD (`sdd:` in the config), features gate
 through **that tool's own workflow, in that tool's own shape** — not through a
-fixed propose/apply/archive triple. The steps are **chat commands you run in
-the agent**, not terminal subcommands multivac could shell out, so the
-lifecycle prints each one at its own moment and running it is your job.
+fixed propose/apply/archive triple. The steps are **commands you run in the
+agent** — chat commands for spec-kit, openspec's own terminal verbs for opsx
+(MV-147) — never subcommands multivac shells out, so the lifecycle prints each
+one at its own moment and running it is your job. An opsx step's line names the
+human's question on it, and the guide printed under it carries the rest: ask
+that question, never answer it with a flag. The archive's
+`archive_confirmation_required` is the human's; no printed step carries
+`--yes`, `--skip-specs` or `--no-validate`.
 
 The SDD lives in the brain alone (MV-146): run its steps from the brain
 checkout, whichever repos the change names — code goes only into the change's
-worktrees. The why, the design and the tasks go into the SDD's files; the
+worktrees. opsx's apply step runs where `openspec/changes/<slug>/` is, the
+brain's change worktree once `change apply` carried it there; its archive runs
+after the merge, in the brain checkout. The why, the design and the tasks go into the SDD's files; the
 change body keeps what it held while planned, or one sentence, and `change
 close` appends the one line citing the spec directory. Do not cite it yourself.
 
@@ -253,8 +260,8 @@ is well-formed, multivac does not re-litigate its rules.
 
 Some steps cannot be proven and are never gated — they say so instead:
 
-- `/opsx:apply` leaves only `- [x]` in tasks.md, typed by the agent about its
-  own work;
+- `openspec instructions apply` leaves only `- [x]` in tasks.md, typed by the
+  agent about its own work;
 - `/speckit.analyze` is read-only by design and writes zero bytes;
 - a clean `/speckit.converge` is forbidden to touch tasks.md.
 

@@ -160,15 +160,30 @@ export function vendorPath(
       `printf '{"nodes":[],"links":[]}\\n' > graphify-out/graph.json\n` +
       `printf 'x\\n' > graphify-out/cache/entry\n`,
   );
-  // MV-144: openspec's own init installs each declared tool's commands and
-  // skills outside its store. Measured on 1.13.2, the `agents` integration
-  // writes `.agents/`, which is what makes a fresh opsx brain's step zero a
-  // code-in-change question.
+  // MV-144, MV-147: `openspec init` as 1.13.2 runs it. Whatever `--tools`
+  // says it writes `openspec/config.yaml` and two gitkeeps; outside its store
+  // it writes only what each named tool's integration does — `agents` and
+  // `codex` a skill under `.agents/skills/` beside the `.openspec-target`
+  // marker, `claude` a command body under `.claude/commands/opsx/` and a skill
+  // under `.claude/skills/` — so `--tools none` writes nothing outside
+  // `openspec/`. One body per tool stands for the six each writes. Any other
+  // verb writes nothing.
   stub(
     'openspec',
-    `mkdir -p openspec/specs .agents/skills/openspec\n` +
-      `printf 'schema: spec-driven\\n' > openspec/config.yaml\n` +
-      `printf 'openspec skill\\n' > .agents/skills/openspec/SKILL.md\n`,
+    `if [ "$1" = init ]; then\n` +
+      `  tools=""; prev=""; for a; do [ "$prev" = --tools ] && tools="$a"; prev="$a"; done\n` +
+      `  mkdir -p openspec/specs openspec/changes/archive\n` +
+      `  printf 'schema: spec-driven\\n' > openspec/config.yaml\n` +
+      `  : > openspec/specs/.gitkeep; : > openspec/changes/archive/.gitkeep\n` +
+      `  case ",$tools," in *,agents,*|*,codex,*)\n` +
+      `    mkdir -p .agents/skills/openspec-propose\n` +
+      `    printf 'openspec skill\\n' > .agents/skills/openspec-propose/SKILL.md\n` +
+      `    printf 'agents\\n' > .agents/skills/.openspec-target;; esac\n` +
+      `  case ",$tools," in *,claude,*)\n` +
+      `    mkdir -p .claude/commands/opsx .claude/skills/openspec-propose\n` +
+      `    printf 'openspec command\\n' > .claude/commands/opsx/propose.md\n` +
+      `    printf 'openspec skill\\n' > .claude/skills/openspec-propose/SKILL.md;; esac\n` +
+      `fi\n`,
   );
   // node only, never its directory: that is where a global `mvac` lives, and a
   // hook in the scratch repo would run the host's multivac instead of none.

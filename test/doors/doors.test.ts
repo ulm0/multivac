@@ -21,6 +21,7 @@ import { doorsCommand, installSkill } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
 import { countActiveInvariants, renderBrainDoor } from '../../src/doors/brain.js';
 import { renderConsumerDoor } from '../../src/doors/consumer.js';
+import { sddSpec } from '../../src/adapters/registry.js';
 import type { Config } from '../../src/types.js';
 
 const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-')));
@@ -236,11 +237,11 @@ test('brain door carries the SDD flow when one is declared', () => {
   // Every step: what to run, and what will PROVE it ran — the path alone, or
   // `[ungateable]` (MV-146): the reason is the lifecycle's, doctor's and
   // flow.md's to print whole, where the step comes up.
-  assert.match(door, /^ {2}- `change new` → run \/opsx:propose <slug> in your agent .*\[proof: openspec\/changes\/<slug>\/proposal\.md\]$/m);
-  assert.match(door, /^ {2}- `change apply` → run \/opsx:apply <slug> in your agent to implement the tasks \[ungateable\]$/m);
+  assert.match(door, /^ {2}- `change new` → in the brain checkout run `openspec new change <slug> --json`, .*\[proof: openspec\/changes\/<slug>\/proposal\.md\]$/m);
+  assert.match(door, /^ {2}- `change apply` → where openspec\/changes\/<slug>\/ is .*run `openspec instructions apply --change <slug> --json` .*\[ungateable\]$/m);
   assert.doesNotMatch(door, /ungateable: apply leaves no artifact of its own/);
   // The archive-equivalent is printed a step BEFORE the gate that needs it.
-  assert.match(door, /^ {2}- `change land` → run \/opsx:archive <slug> in your agent .*\[proof: openspec\/changes\/archive\/<n>-<n>-<n>-<slug>\]$/m);
+  assert.match(door, /^ {2}- `change land` → after the merge, in the brain checkout .*run `openspec archive <slug> --json` to merge .*\[proof: openspec\/changes\/archive\/<n>-<n>-<n>-<slug>\]$/m);
   assert.doesNotMatch(door, /refuses without it/);
   // OpenSpec has no project-level document; that gap is stated, not invented.
   assert.match(door, /project context `openspec\/config\.yaml` `context:` — .*Optional: reported, never gated\./);
@@ -302,6 +303,55 @@ test('under sdd_auto: false the brain door claims no refusal, and still says to 
 });
 
 /**
+ * MV-147. The door is the one surface every session reads, and under
+ * `sdd_auto: false`, `--no-sdd` or after a context reset the only one: it
+ * carries each opsx step's run — openspec's own verb, `<slug>` literal, the
+ * human's question on it — and never a guide, which the lifecycle prints where
+ * the step comes up.
+ */
+test('the door carries each opsx command and no guide', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sdd: 'opsx',
+    sddAuto: true,
+    grapherAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    graphers: {},
+    repos: {},
+  };
+  const door = renderBrainDoor(cfg, 1);
+  const steps = door.split('\n').filter((l) => /^ {2}- `change \w+` → /.test(l));
+  assert.deepEqual(steps, [
+    "  - `change new` → in the brain checkout run `openspec new change <slug> --json`, then write each artifact `openspec status --change <slug>` marks `[ ]` from `openspec instructions <id> --change <slug> --json`; a material ambiguity is the human's question [proof: openspec/changes/<slug>/proposal.md]",
+    '  - `change plan` → keep writing each artifact `openspec status --change <slug>` marks `[ ]` from `openspec instructions <id> --change <slug> --json` until tasks.md is written [proof: openspec/changes/<slug>/tasks.md]',
+    "  - `change apply` → where openspec/changes/<slug>/ is (the brain's change worktree once `change apply` carried it there), run `openspec instructions apply --change <slug> --json` before the first task and after the last; tick `- [x]` only what is fully built, until its `state` is `all_done`; scope beyond the spec is the human's question [ungateable]",
+    "  - `change land` → after the merge, in the brain checkout (never a change worktree), run `openspec archive <slug> --json` to merge the deltas into openspec/specs/ and archive the change; `archive_confirmation_required` is the human's question, and a flag its `fix` names is never yours [proof: openspec/changes/archive/<n>-<n>-<n>-<slug>]",
+  ]);
+  assert.ok(
+    steps.reduce((n, l) => n + Buffer.byteLength(`${l}\n`), 0) <= 1300,
+    `${steps.join('\n')}: over 1,300 bytes`,
+  );
+  // No guide, whichever steps carry one: the lifecycle prints it at the step.
+  const guides = (sddSpec('opsx')!.steps ?? []).flatMap((s) => (s.guide ? [s.guide] : []));
+  assert.ok(guides.length > 0, 'opsx carries at least one guide');
+  for (const g of guides) assert.ok(!door.includes(g), `the door carries a guide: ${g}`);
+  assert.doesNotMatch(door, /opsx[:]/);
+  // Under `sdd_auto: false` the lifecycle prints nothing at its points, so the
+  // door is the only surface left: the runs still name the human's question.
+  const off = renderBrainDoor({ ...cfg, sddAuto: false }, 1);
+  const offSteps = off.split('\n').filter((l) => /^ {2}- `change \w+` → /.test(l));
+  assert.equal(offSteps.length, 4, off);
+  for (const at of ['new', 'apply', 'land']) {
+    const l = offSteps.find((s) => s.startsWith(`  - \`change ${at}\` → `));
+    assert.ok(l && l.includes("the human's question"), `${at}: ${l}`);
+  }
+});
+
+/**
  * MV-146's budgets, so they cannot regress silently: the brain door's step
  * lines were 1,654 bytes for spec-kit and 951 for openspec, each restating an
  * ungateable reason the lifecycle prints where the step comes up; a code
@@ -321,7 +371,10 @@ test('the doors keep the SDD within its measured byte budgets', () => {
     repos: { api: { path: '../acme-api' }, web: { path: '../acme-web', sdd: 'none' } },
   };
   const bytes = (lines: string[]): number => lines.reduce((n, l) => n + Buffer.byteLength(`${l}\n`), 0);
-  for (const [sdd, budget] of [['speckit', 910], ['opsx', 650]] as const) {
+  // MV-147: opsx's four runs grew from 646 to 1,220 bytes when they became
+  // openspec's own verbs with the human's question on each — still under the
+  // 2,335 bytes of command-body listing they replace in a claude session.
+  for (const [sdd, budget] of [['speckit', 910], ['opsx', 1300]] as const) {
     const steps = renderBrainDoor({ ...cfg, sdd }, 1).split('\n').filter((l) => /^ {2}- `change \w+` → /.test(l));
     assert.ok(steps.length > 0, sdd);
     assert.ok(bytes(steps) <= budget, `${sdd}: ${bytes(steps)} bytes of step lines, budget ${budget}`);

@@ -144,7 +144,7 @@ test('opsx specs without its config are partial: warned with the install line, a
   await inEnv(b.bin, async () => {
     const c = await capture(() => change.run(['new', 'half', 'Half'], b.ctx));
     assert.deepEqual(lines(b.marker), []);
-    assert.match(c.out, /sdd opsx: brain is partial — openspec is there and openspec\/config\.yaml or openspec\/config\.yml is not — the init is not run over it.*run `openspec init --tools agents --no-animation \.` in brain yourself/);
+    assert.match(c.out, /sdd opsx: brain is partial — openspec is there and openspec\/config\.yaml or openspec\/config\.yml is not — the init is not run over it.*run `openspec init --tools none --no-animation \.` in brain yourself/);
   });
 });
 

@@ -4,10 +4,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeScratchEcosystem } from '../helpers/fixture.js';
+import { initRepo, makeScratchEcosystem } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { roadmap } from '../../src/commands/roadmap.js';
 import { verify } from '../../src/commands/verify.js';
+import { loadConfig } from '../../src/lib/config.js';
 import {
   loadChange,
   parseChange,
@@ -280,6 +281,64 @@ test('roadmap add refuses a slug that is already archived, and says where it is'
   assert.match(c.out, /was-closed is already archived at \.multivac\/changes\/archive\/was-closed\.md/);
   assert.match(c.out, /start a new one with a new slug/);
   assert.equal(existsSync(changeFile('was-closed')), false);
+});
+
+test("roadmap add refuses a slug the brain's SDD refuses", async () => {
+  // MV-147: an intention is opened later under the slug it is recorded with,
+  // and `change new` refuses one the brain's SDD cannot create (openspec
+  // 1.13.2: `Fix_Auth`, and `archive`, which it reserves). Refused at the
+  // record, as a malformed slug is, before anything is written.
+  const brainWith = (dir: string, sdd: string, repos = ''): string => {
+    const b = join(tmp, dir);
+    initRepo(b, {
+      'AGENTS.md': '# door\n',
+      '.multivac/config.yml': `doors: [agents]\nsdd: ${sdd}\nrepos:\n  brain: .\n${repos}`,
+      '.multivac/invariants.md': '# Invariants\n',
+    });
+    return b;
+  };
+  const opsx = brainWith('roadmap-opsx', 'opsx');
+  const head = gitOut(opsx, 'rev-parse', 'HEAD');
+  for (const slug of ['Fix_Auth', 'archive']) {
+    const c = await capture(() => roadmap.run(['add', slug, 'x'], { cwd: opsx }));
+    assert.equal(c.code, 2, c.out);
+    assert.equal(
+      c.out,
+      `roadmap add: \`${slug}\`: the brain's SDD takes no such slug — openspec 1.13.2's \`new change\` takes lowercase letters and digits in runs joined by single hyphens, and reserves \`archive\``,
+    );
+  }
+  assert.equal(existsSync(join(opsx, '.multivac/changes')), false);
+  assert.equal(gitOut(opsx, 'rev-parse', 'HEAD'), head);
+  assert.equal(gitOut(opsx, 'status', '--porcelain'), '');
+
+  // A code repo that also declares an SDD is refused at load (MV-146): that
+  // refusal is reported, not thrown, so the brain's own grammar still stands.
+  const declared = brainWith('roadmap-opsx-declared', 'opsx', '  api:\n    path: ../api\n    sdd: opsx\n');
+  const refused = await capture(() => roadmap.run(['add', 'Fix_Auth', 'x'], { cwd: declared }));
+  assert.equal(refused.code, 2, refused.out);
+  assert.match(refused.out, /^roadmap add: `Fix_Auth`: the brain's SDD takes no such slug — /m);
+  assert.equal(existsSync(join(declared, '.multivac/changes')), false);
+
+  // spec-kit records no grammar: it records the slug it always recorded.
+  const sk = brainWith('roadmap-speckit', 'speckit');
+  assert.equal(await roadmap.run(['add', 'Fix_Auth', 'x'], { cwd: sk }), 0);
+  assert.equal((await loadChange(sk, 'Fix_Auth')).change.status, 'planned');
+
+  // A config that cannot be read is no grammar, as before: `add` never needed
+  // one, so a brain whose config.yml names opsx but does not parse still
+  // records the slug, and no SDD refusal is printed.
+  const unread = join(tmp, 'roadmap-opsx-unparsed');
+  initRepo(unread, {
+    'AGENTS.md': '# door\n',
+    '.multivac/config.yml': 'doors: [agents\nsdd: opsx\nrepos:\n  brain: .\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  await assert.rejects(loadConfig(unread));
+  const kept = await capture(() => roadmap.run(['add', 'Fix_Auth', 'x'], { cwd: unread }));
+  assert.equal(kept.code, 0, kept.out);
+  assert.doesNotMatch(kept.out, /the brain's SDD takes no such slug/);
+  assert.equal(existsSync(join(unread, '.multivac/changes/Fix_Auth.md')), true);
+  assert.equal((await loadChange(unread, 'Fix_Auth')).change.status, 'planned');
 });
 
 test('the roadmap command reaches no network', () => {

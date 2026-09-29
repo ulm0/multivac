@@ -18,17 +18,17 @@ and `doctor` names the bodies an earlier init left, with a `git rm -r` the code 
 accepts. The archive is printed with no flag: `archive_confirmation_required` goes to the
 human with `openspec show <slug> --json --deltas-only`, and the answers are the tool's own.
 A land step is proved in the brain checkout alone; `close` stages a merged main spec only
-when it carries the merge (LF and trailing whitespace normalised, tracked or untracked);
+when it carries the merge (LF, trailing whitespace and blank-line runs normalised, tracked or untracked);
 `change new` and `roadmap add` refuse a slug openspec refuses; the apply gate prints
 openspec's "Archive would refuse" as a note; the note discloses by version what the
-agent's own calls send and write. MV-147 is added and eleven rows amended, law first.
+agent's own calls send and write. MV-147 is added and twelve rows amended, law first (MV-142's note added at review).
 Research and measurements: [research.md](./research.md).
 
 ## Technical Context
 
 **Language/Version**: TypeScript on Node 24, ES modules, compiled to `dist/` | **Primary Dependencies**: picomatch, yaml, citty — no new dependency (MV-02) | **Storage**: files; git through src/lib/git.ts only (MV-03)
 **Testing**: `node --test "dist-test/**/*.test.js"` (node:test, `test/helpers/`), vendor binaries stubbed through `vendorPath` and per-test stubs; the real openspec 1.13.2 only in quickstart.md | **Target Platform**: developer machines and CI, POSIX and win32 shells (no printed command needs a POSIX redirection or an env prefix) | **Project Type**: single CLI package, brain==code
-**Performance Goals**: `verify` stays sub-second: the code gate gains registry-derived globs only, no filesystem walk; `doctor` gains two `git ls-files` reads in the brain | **Constraints**: multivac spawns only the validator and the scaffold (MV-51); `verify`, `doctor` and `doors` run no vendor (MV-75, Principle IV); legs of rows NOT touched stay green (MV-133's `count=2` on `slugHits`, MV-130's `scaffoldCommands(sc, cfg.doors)` `count=2`, MV-144's `dirs: ['.agents']` `count=3`, MV-95's `run the chain through without asking to continue` unique in sdd.ts, MV-121's and MV-124's retired-phrase `absent` legs); a speckit brain's door, flow.md, `doctor` and lifecycle output byte-identical | **Scale/Scope**: one SDD entry rewritten, four new registry fields, one new row, eleven amendment notes, about ten source files, about sixteen test files, the site's SDD reference and the pages that repeat it
+**Performance Goals**: `verify` stays sub-second: the code gate gains registry-derived globs only, no filesystem walk; `doctor` gains two `git ls-files` reads in the brain | **Constraints**: multivac spawns only the validator and the scaffold (MV-51); `verify`, `doctor` and `doors` run no vendor (MV-75, Principle IV); legs of rows NOT touched stay green (MV-133's `count=2` on `slugHits`, MV-130's `scaffoldCommands(sc, cfg.doors)` `count=2`, MV-144's `dirs: ['.agents']` `count=3`, MV-95's `run the chain through without asking to continue` unique in sdd.ts, MV-121's and MV-124's retired-phrase `absent` legs); a speckit brain's door, flow.md, `doctor` and lifecycle output byte-identical | **Scale/Scope**: one SDD entry rewritten, four new registry fields, one new row, twelve amendment notes (MV-142's added at review), about ten source files, about sixteen test files, the site's SDD reference and the pages that repeat it
 
 No NEEDS CLARIFICATION remains: every unknown the design carried was measured (research.md
 R1–R13) or taken at the spec's stated default (spec Assumptions).
@@ -42,8 +42,8 @@ R1–R13) or taken at the spec's stated default (spec Assumptions).
 record comment, the guide printers, the worktree-only refusal, the validator note,
 `carriesMerge` and its call, the flow.md verb, `leftoverBodies` and its call, the slug
 refusal), an `absent` leg on any flag in a `run`, an `absent` leg on the retired phrases at
-every copy (27 matches in 10 files today, 0 after), test-title legs per story, a site leg,
-and a `count=11` on the dated notes. Every leg an amended row loses is moved in the same
+every copy (28 matches in 10 files today, through picomatch; 0 after), test-title legs per story, a site leg,
+and a `count=12` on the dated notes (MV-142's added at review). Every leg an amended row loses is moved in the same
 change (research.md R15).
 
 **II. The Tool Never Claims More Than It Checked** — whether the agent asked a question,
@@ -55,7 +55,7 @@ is reported, never failed, and its printed removal is one that works as printed 
 write rather than claiming the entry's `env` covers them. Only the validator and the
 scaffold are spawned — pinned by a logging-stub test over a whole change.
 
-**III. The Law Changes Before The Code** — MV-147's row and the eleven notes are the first
+**III. The Law Changes Before The Code** — MV-147's row and the notes (eleven, then MV-142's at review) are the first
 task (T002–T004); the row is filed `proposed`, the ID was allocated by `change new`
 (f171b86), and only a human enacts it.
 
@@ -96,16 +96,16 @@ specs/074-opsx-through-its-cli/
 ### Source Code (repository root)
 
 ```text
-.multivac/invariants.md        # MV-147 row + eleven dated notes + legs — FIRST
+.multivac/invariants.md        # MV-147 row + twelve dated notes (MV-142's at review) + legs — FIRST
 .multivac/changes/opsx-through-its-cli.md  # body: the quickstart record (frontmatter already declared, 6e2a265)
-src/adapters/registry.ts       # SddStep.guide, SddStep.validateNotes, SddScaffold.bodies, AdapterSpec.slug; the opsx entry: runs, guides, vendor citations, scaffold run, integrations record comment, bodies, validateNotes, unfinished.why, slug, note, refresh fact; the false doc comments
+src/adapters/registry.ts       # SddStep.guide, SddStep.validateNotes, SddScaffold.bodies, AdapterSpec.slug; the opsx entry: runs, guides, vendor citations, scaffold run, integrations record comment, bodies, validateNotes, unfinished.why, slug, note, refresh fact; the false doc comments; the codegraph entry's note says its `env` never reaches the `codegraph query` a door prints (MV-121's note covers what every entry prints; measuring what that query sends stays codegraph-worktrees-and-verbs')
 src/adapters/sdd.ts            # header; runScaffold doc; scaffoldCommands placeholder-free return; toolVerdict notes; judgeSdd guide on refusals, land worktree-only refusal, ledger skip, validator note; stepLines guide line; sddSlugWhy
 src/adapters/detect.ts         # bodyGlobs(scaffold) — the one derivation doctor and the code gate share
 src/change/carry.ts            # carriesMerge; closeOwnedDirs returns { dirs, uncarried }
 src/commands/change.ts         # runSdd comment; the :891 comment; cmdNew slug refusal; sddPathsToLand names uncarried targets dirty
 src/commands/roadmap.ts        # roadmap add loads the config and refuses a slug the brain's SDD refuses
 src/doors/flow.ts              # the ungateable verb: first backticked command of a required binary
-src/lib/repo-state.ts          # leftoverBodies(dir, spec)
+src/lib/repo-state.ts          # leftoverBodies(dir, spec): its collapse prefixes derived from the entry's bodies.names, no vendor name written there
 src/commands/doctor.ts         # the leftover-bodies line after the brain's install line
 src/lib/code-in-change.ts      # nonCodeGlobs adds bodyGlobs for every known SDD scaffold
 test/**                        # see tasks.md

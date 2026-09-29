@@ -39,7 +39,7 @@ import {
   sddRoots,
 } from '../adapters/detect.js';
 import { flowLines, proofOf, scaffoldCommands, stepsGating } from '../adapters/sdd.js';
-import { cloneFix, cloneState, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
+import { cloneFix, cloneState, leftoverBodies, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
 import { graphScopes } from '../adapters/refresh.js';
 import { readLaw } from '../change/reserve.js';
 import {
@@ -252,7 +252,8 @@ async function presetLines(rootDir: string, spec: AdapterSpec): Promise<string[]
  * governs and those exempt by `sdd: none`, and a writable one still holding
  * an install from an earlier release gets a leftover line — a report, with the
  * removal, never a failure. A read-only repo is never named (MV-125). With no
- * SDD in the brain there is no line at all, as before.
+ * SDD in the brain there is no line at all, as before. MV-147: the command
+ * bodies an earlier init left in the brain itself get one such line too.
  */
 async function sddLines(brain: string, cfg: Config): Promise<string[]> {
   const roots = await sddRoots(brain, cfg);
@@ -298,6 +299,22 @@ async function sddLines(brain: string, cfg: Config): Promise<string[]> {
   }
   const bin = missing.length === 0 ? 'binary ok' : `binary missing → ${binaryMissing(name, spec, missing, root.scope)}`;
   out.push(label('sdd') + `${name} @ ${root.scope}: ${state} · ${bin} · ${auto}`);
+  // MV-147: the command bodies an earlier init left in the brain, once the
+  // scaffold installs none. Nothing prints them any more, and a harness still
+  // lists them every session, so the operator is told they are there and how
+  // they go. A report, never a failure; no law ID, since the site shows the
+  // line; `git rm -r` for tracked entries only, since it refuses a pathspec
+  // matching no tracked file.
+  const bodies = sc?.bodies ? await leftoverBodies(root.dir, spec) : [];
+  if (bodies.length > 0) {
+    const tracked = bodies.filter((b) => b.tracked).map((b) => b.path);
+    const untracked = bodies.filter((b) => !b.tracked).map((b) => b.path);
+    const notCode = 'they are not code, so the commit needs no open change';
+    const rm = `\`git rm -r ${tracked.join(' ')}\` removes them`;
+    const del = `${untracked.join(' ')} are untracked: delete them`;
+    const how = untracked.length === 0 ? `${rm}; ${notCode}` : tracked.length === 0 ? del : `${rm}, and ${del}; ${notCode}`;
+    out.push(label('sdd') + `${name} @ ${root.scope}: an earlier init left command bodies no printed step names — ${how}`);
+  }
   // Whose code it governs, only where there is a code repo to name — a brain
   // that is its own only repo has nothing to add here — and only with the
   // automation on: under `sdd_auto: false` the code gate is off (MV-137), so

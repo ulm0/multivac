@@ -5,11 +5,12 @@
 // plain directory and a repo with no commit both read as `present`.
 
 import { createHash } from 'node:crypto';
-import { readFile, realpath, stat } from 'node:fs/promises';
+import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import picomatch from 'picomatch';
 import { parse } from 'yaml';
-import { pathExists } from '../adapters/detect.js';
-import { sddNames, sddSpec, type SddProjectStep } from '../adapters/registry.js';
+import { bodyGlobs, pathExists } from '../adapters/detect.js';
+import { sddNames, sddSpec, type AdapterSpec, type SddProjectStep } from '../adapters/registry.js';
 import { initState } from './init-state.js';
 import { inHead, normUrl, run as git } from './git.js';
 import type { RepoEntry } from '../types.js';
@@ -148,4 +149,120 @@ export async function leftoverSdds(dir: string): Promise<Leftover[]> {
     out.push({ sdd, file, tracked: await inHead(dir, file) });
   }
   return out;
+}
+
+/** A vendor's command body an earlier init left in the brain (MV-147). */
+export interface Body {
+  /** The entry, repo-relative: `<dir>[/<sub>]/<name>`, or `<parent>/openspec-*` for collapsed siblings. */
+  path: string;
+  /**
+   * true: the files under it that git tracks, removed by `git rm -r`; false:
+   * the untracked ones, removed by a delete. An entry holding both is listed
+   * once as each.
+   */
+  tracked: boolean;
+}
+
+/**
+ * MV-147. The command bodies and skills a vendor's integration init wrote in
+ * `dir` — the brain — once its scaffold installs none: every file git lists
+ * there, tracked or untracked and not ignored, matching `bodyGlobs`, reduced to
+ * the entry that holds it (the shortest leading path a body glob names). A
+ * brain an earlier multivac scaffolded keeps them, and nothing prints them any
+ * more, so `doctor` names them — and naming by the recorded names is all it
+ * does: which of them a human put there on purpose is not on disk.
+ *
+ * Tracked and untracked are told apart because the removal differs: `git rm -r`
+ * refuses a pathspec that matches no tracked file, so an entry holding both
+ * is listed once as each. Two or more siblings under one parent sharing a
+ * prefix the scaffold's `bodies.names` records as `<prefix>*` (opsx's
+ * `openspec-`, `.openspec-` and `opsx-`) collapse to `<parent>/<prefix>*` —
+ * the registry entry's names, so no vendor's naming lives here — but only
+ * when every entry that glob reaches is in the same list: a shell
+ * expanding it must hand `git rm -r` nothing untracked. What the glob reaches
+ * is read off the disk, where the shell reads it: git lists neither an ignored
+ * sibling nor an empty directory, and one of them in the expansion failed
+ * `git rm -r` as a whole, removing nothing. Sorted, so the line is stable.
+ * Files only, git's own answers and one directory listing, no vendor run
+ * (MV-75); `[]` for a scaffold recording no `bodies`, and when git cannot
+ * answer.
+ */
+export async function leftoverBodies(dir: string, spec: AdapterSpec): Promise<Body[]> {
+  const globs = bodyGlobs(spec.scaffold);
+  if (globs.length === 0) return [];
+  // The collapse prefixes: each recorded name that ends in `-*`, less the
+  // `*`, longest first, so a name takes the most specific one that fits.
+  const prefixes = (spec.scaffold?.bodies?.names ?? [])
+    .filter((n) => n.endsWith('-*'))
+    .map((n) => n.slice(0, -1))
+    .sort((a, b) => b.length - a.length);
+  // The literal directories the globs sit under, so git lists only those.
+  const literal = (g: string): string => {
+    const segs = g.split('/');
+    const wild = segs.findIndex((x) => /[*?[{]/.test(x));
+    return segs.slice(0, wild < 0 ? segs.length : wild).join('/');
+  };
+  const roots = [...new Set(globs.map(literal))];
+  const list = async (args: string[]): Promise<string[]> =>
+    (await git(dir, ['ls-files', '-z', ...args, '--', ...roots])).split('\0').filter(Boolean);
+  let tracked: string[];
+  let untracked: string[];
+  try {
+    [tracked, untracked] = await Promise.all([list(['--cached']), list(['--others', '--exclude-standard'])]);
+  } catch {
+    return [];
+  }
+  const isBody = picomatch(globs, { dot: true });
+  const isEntry = picomatch(globs.filter((g) => !g.endsWith('/**')), { dot: true });
+  const entryOf = (file: string): string | null => {
+    const segs = file.split('/');
+    for (let k = 1; k <= segs.length; k++) {
+      const p = segs.slice(0, k).join('/');
+      if (isEntry(p)) return p;
+    }
+    return null;
+  };
+  // entry -> [has a tracked file, has an untracked file]
+  const seen = new Map<string, [boolean, boolean]>();
+  const note = (files: string[], i: 0 | 1): void => {
+    for (const f of files) {
+      if (!isBody(f)) continue;
+      const e = entryOf(f);
+      if (e === null) continue;
+      const s = seen.get(e) ?? [false, false];
+      s[i] = true;
+      seen.set(e, s);
+    }
+  };
+  note(tracked, 0);
+  note(untracked, 1);
+  const parentOf = (e: string): string => e.slice(0, e.lastIndexOf('/'));
+  const nameOf = (e: string): string => e.slice(e.lastIndexOf('/') + 1);
+  const out: Body[] = [];
+  for (const [i, inGit] of [[0, true], [1, false]] as const) {
+    const group = [...seen].filter(([, s]) => s[i]).map(([e]) => e);
+    const inGroup = new Set(group);
+    const done = new Set<string>();
+    for (const e of group) {
+      if (done.has(e)) continue;
+      const parent = parentOf(e);
+      const prefix = prefixes.find((x) => nameOf(e).startsWith(x));
+      // Every entry the collapsed glob would reach, in either list — and on
+      // disk, where the shell expands it, no other name.
+      const siblings = prefix ? [...seen.keys()].filter((o) => parentOf(o) === parent && nameOf(o).startsWith(prefix)) : [];
+      const reached =
+        prefix && siblings.length >= 2
+          ? ((await readdir(join(dir, parent)).catch(() => null)) ?? []).filter((n) => n.startsWith(prefix))
+          : [];
+      const exact = reached.length === siblings.length && reached.every((n) => siblings.includes(`${parent}/${n}`));
+      if (siblings.length >= 2 && exact && siblings.every((o) => inGroup.has(o))) {
+        for (const o of siblings) done.add(o);
+        out.push({ path: `${parent}/${prefix}*`, tracked: inGit });
+      } else {
+        done.add(e);
+        out.push({ path: e, tracked: inGit });
+      }
+    }
+  }
+  return out.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : Number(b.tracked) - Number(a.tracked)));
 }

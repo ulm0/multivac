@@ -27,7 +27,7 @@ import { writeEcosystem } from '../doors/ecosystem.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { grapherSpec, sddSpec, type AdapterSpec, type GatePoint, type LifecyclePoint } from '../adapters/registry.js';
-import { sddGate, sddInstructions } from '../adapters/sdd.js';
+import { sddGate, sddInstructions, sddSlugWhy } from '../adapters/sdd.js';
 import { graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
 import { equip, missingTools } from '../adapters/equip.js';
 import { projectDocLines } from '../adapters/project-doc.js';
@@ -111,9 +111,10 @@ export async function commitBookkeeping(
 
 /**
  * The steps this lifecycle point owns: INSTRUCT the agent, never shell out.
- * They are chat commands (for OpenSpec the `/opsx:` ones, not `openspec`
- * subcommands — invoking the binary with a step name would silently skip), and
- * the registry carries each tool's OWN ordered flow, not a fixed triple.
+ * They are what the agent runs — chat commands for spec-kit, openspec's own
+ * terminal verbs for opsx (MV-147), each one the tool ships: `openspec propose`
+ * exits 1, `unknown command` (1.13.2) — and the registry carries each tool's
+ * OWN ordered flow, not a fixed triple.
  * Each printed line also names what will PROVE the step ran, or says plainly
  * that nothing can.
  */
@@ -656,9 +657,14 @@ const bump = (cur: RepoStatus, min: RepoStatus): RepoStatus =>
  * be off under `sdd_auto: false` or `--no-sdd`, so `close --no-sdd` left the
  * brain's `specs/<n>-<slug>/` untracked: the flags skip the steps and their
  * gates, they never meant "leave what was written uncommitted". What it stages
- * is `closeOwnedDirs` — deletions and an archive's merged main specs included —
- * and nothing under those is ever named dirty. With no SDD the pathspec is
- * exactly what it was before this rule.
+ * is `closeOwnedDirs` — deletions and each main spec file that carries the
+ * merge included — and nothing under those is ever named dirty. With no SDD the
+ * pathspec is exactly what it was before this rule.
+ *
+ * MV-147: a main spec the archive recorded but did not merge into — a
+ * `--skip-specs` archive beside a human's edit, or an untracked draft of a new
+ * capability — is named through the one dirty line, modified or untracked,
+ * and never staged.
  */
 async function sddPathsToLand(
   brain: string,
@@ -669,7 +675,7 @@ async function sddPathsToLand(
   const name = adapterFor(cfg, 'brain', 'sdd');
   const spec = name ? sddSpec(name) : null;
   if (!spec) return out;
-  const dirs = await closeOwnedDirs(brain, spec, slug);
+  const { dirs, uncarried } = await closeOwnedDirs(brain, spec, slug);
   const status = await gitRun(brain, ['status', '--porcelain=v1', '-z', '--untracked-files=all']).catch(
     () => '',
   );
@@ -684,14 +690,15 @@ async function sddPathsToLand(
     // A rename's second NUL field is its old path, not an entry of its own.
     if (entry[0] === 'R' || entry[0] === 'C') i++;
     if (dirs.some((d) => path === d || path.startsWith(`${d}/`))) owned.push(path);
-    else if (entry[0] !== '?' && shared(path)) dirty.push(path);
+    else if (uncarried.includes(path) || (entry[0] !== '?' && shared(path))) dirty.push(path);
   }
   // Deduplicate to the directories themselves where every hit is inside one:
   // `git add -- specs/070-slug` is the same commit and a readable command.
   out.paths = dirs.filter((d) => owned.some((p) => p === d || p.startsWith(`${d}/`)));
   for (const p of owned) if (!out.paths.some((d) => p === d || p.startsWith(`${d}/`))) out.paths.push(p);
   // MV-46: a tracked file of the tool's that this change did not write is named,
-  // never staged on somebody's behalf.
+  // never staged on somebody's behalf — and so is a main spec that does not
+  // carry the merge, untracked included (MV-147).
   for (const p of dirty) {
     out.notices.push(`sdd ${name}: ${p} is dirty and was not staged — it is not this change's to commit`);
   }
@@ -777,7 +784,25 @@ async function cmdNew(
   slug: string,
   title: string,
   noSdd: boolean,
+  derived = false,
 ): Promise<number> {
+  // MV-147: first, before anything is checked or written, and whatever `sdd_auto`
+  // and `--no-sdd` say — the slug outlives both switches, and the printed `new`
+  // step's first command is the tool's own create, which would refuse it
+  // (measured on openspec 1.13.2: `Fix_Auth`, `a--b`, and `archive`). A slug
+  // derived from the title is already in the grammar, so it misses only on a
+  // reserved name, and deriving again would give the same one back: that
+  // refusal asks for a slug instead.
+  const unfit = sddSlugWhy(cfg, slug);
+  if (unfit !== null) {
+    warn(
+      `\`${slug}\`: the brain's SDD takes no such slug — ${unfit}; ` +
+        (derived
+          ? `name one yourself: \`multivac change new <slug> "${title}"\``
+          : '`multivac change new "<title>"` derives one'),
+    );
+    return 1;
+  }
   // BEFORE the bookkeeping commit below, deliberately: that commit moves the
   // brain, so reporting afterwards would name a pin the tool itself had just
   // put one behind. The operator is told the state they ARRIVED in.
@@ -888,7 +913,7 @@ async function cmdNew(
   say(`  3. claims: [{ id: ${reserved?.id ?? '<ID>'}, statement: "..." }]  # what close verifies`);
   // The first moment the tool's steps are printed is the first moment they
   // have to be runnable: scaffold before printing, so the lines below name
-  // chat commands that exist. A new change names no repo yet, so the graph
+  // steps that can run. A new change names no repo yet, so the graph
   // work stays in the brain (MV-134).
   await equip(brain, cfg, noSdd, []);
   if (cfg.sddAuto && !noSdd) for (const l of await projectDocLines(brain, cfg)) say(l);
@@ -987,7 +1012,11 @@ async function cmdPlan(
   // the design is about to be written, instead of left to be inferred, and
   // only with the steps it is about. Every repo the change names is listed,
   // the brain's own entry too: in brain==code its code is written in its
-  // worktree, never in the checkout the steps run from.
+  // worktree, never in the checkout the steps run from. The line is said at
+  // `plan`, of the steps printed here, which run in the brain checkout before
+  // `change apply` carries the slug's directory; opsx's apply run names where
+  // it runs itself — where openspec/changes/<slug>/ is (MV-147) — so this line
+  // stays as it is and a speckit brain prints what it printed before.
   const sdd = adapterFor(cfg, 'brain', 'sdd');
   const code = keys.filter((k) => k !== 'brain' && !cfg.repos[k]?.isBrain);
   if (cfg.sddAuto && !noSdd && sdd && code.length > 0) {
@@ -1563,7 +1592,8 @@ export const change: Command = {
       usage();
       return 2;
     }
-    if (sub === 'new' && slug && title === undefined) {
+    const derived = sub === 'new' && !!slug && title === undefined;
+    if (derived) {
       // canonical form: multivac change new "<title>" — derive the slug
       title = slug;
       slug = slugify(title);
@@ -1581,7 +1611,7 @@ export const change: Command = {
     try {
       switch (sub) {
         case 'new':
-          return await cmdNew(brain, cfg, slug, title, noSdd);
+          return await cmdNew(brain, cfg, slug, title, noSdd, derived);
         case 'plan':
           return await cmdPlan(brain, cfg, slug, noSdd);
         case 'apply':

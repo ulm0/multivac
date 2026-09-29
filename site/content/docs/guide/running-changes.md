@@ -167,8 +167,10 @@ to run in your agent, and names the artifact that will prove it ran — it invok
 nothing itself. See [Graphers and SDD](../../reference/graphers-and-sdd).
 `--no-sdd` skips the printing and the later gate, once.
 
-The SDD lives in the brain, so its steps run in the brain checkout and write
-the change's specs there, whichever repos the change names. The why, the design
+The SDD lives in the brain, so its steps start in the brain checkout and write
+the change's specs there, whichever repos the change names; once `apply` has
+carried them onto the change's branch, OpenSpec's apply step runs where they
+now are, and its line says so. The why, the design
 and the tasks go into those files, not into the change file's body: the body
 keeps what it held while planned, or one sentence, and `close` adds the line
 that points at the spec directory.
@@ -250,7 +252,11 @@ brain: specs/004-points-expire/tasks.md is tracked and modified here — commit 
 ```
 
 For spec-kit, the worktree also gets its own `.specify/feature.json`, so
-`/speckit.implement` run there finds the feature.
+`/speckit.implement` run there finds the feature. For OpenSpec, `openspec
+instructions apply` runs where `openspec/changes/<slug>/` now is — the brain's
+change worktree — and the archive runs after the merge, in the brain checkout,
+never in the worktree: an archive left only there never reaches the brain, and
+`close` refuses it by name.
 
 A brain with no code of its own has no branch to carry them to: the spec
 directory stays in the brain checkout, and `close` commits it. The steps still

@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { loadConfig, FLOW_PATH } from '../../src/lib/config.js';
 import { renderFlow } from '../../src/doors/flow.js';
+import { sddSpec } from '../../src/adapters/registry.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 
 const quiet = async (fn: () => Promise<number>): Promise<number> => {
@@ -100,6 +101,31 @@ test("an unprovable step carries the adapter's own reason, verbatim", async () =
   assert.match(page, /STRICTLY READ-ONLY by its own spec/);
   assert.match(page, /the agent grading its own homework/);
   assert.match(page, /invisible to the filesystem/);
+});
+
+// MV-147: an ungateable row leads with the command the step runs. opsx's apply
+// run names `change apply` first and openspec's own verb after it, so the row
+// takes the first backticked command whose first word is a required binary;
+// spec-kit's runs hold no backtick and keep their chat command.
+test('the ungateable verb is the first backticked command of a required binary', async () => {
+  const { cfg } = await eco(DECLARED);
+  const yours = (page: string): string => page.slice(page.indexOf('## Yours'));
+  const opsx = yours(renderFlow({ ...cfg, sdd: 'opsx' }));
+  assert.match(
+    opsx,
+    /^- `openspec instructions apply --change <slug> --json` — apply leaves no artifact of its own — its only trace is `- \[x\]` in tasks\.md/m,
+  );
+  assert.doesNotMatch(opsx, /^- `change apply` — /m);
+  // A step's guide is the lifecycle's, printed where the step comes up; the
+  // page carries none (MV-147).
+  const page = renderFlow({ ...cfg, sdd: 'opsx' });
+  const guides = (sddSpec('opsx')!.steps ?? []).flatMap((s) => (s.guide ? [s.guide] : []));
+  assert.ok(guides.length > 0, 'opsx carries at least one guide');
+  for (const g of guides) assert.ok(!page.includes(g), `flow.md carries a guide: ${g}`);
+  const speckit = yours(renderFlow(cfg));
+  for (const verb of ['/speckit.analyze', '/speckit.implement', '/speckit.converge']) {
+    assert.ok(speckit.includes(`\n- \`${verb}\` — `), `${verb} names its row`);
+  }
 });
 
 test('a brain with nothing declared still gets a useful page', async () => {

@@ -8,7 +8,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
-import { sddInstructions } from '../../src/adapters/sdd.js';
+import { proofOf, sddInstructions, stepsAt, withSlug } from '../../src/adapters/sdd.js';
+import { sddSpec } from '../../src/adapters/registry.js';
 import { loadConfig } from '../../src/lib/config.js';
 
 for (const [k, v] of Object.entries({
@@ -105,6 +106,27 @@ test("each lifecycle point's steps carry the instruction once, after the last st
     const lines = sddInstructions(cfg, at, 'points-expire', false);
     assert.deepEqual(lines, [`sdd speckit: ${at} — this tool has no agent-run ${at} step; nothing to run`]);
   }
+
+  // MV-147: a step's guide rides on the line under it, three spaces after the
+  // tag, and the clause still comes once, last and unindented.
+  const opsx = await cfgWith(['doors: [agents]', 'sdd: opsx', 'repos:', '  api: ../acme-api']);
+  const spec = sddSpec('opsx')!;
+  for (const at of ['new', 'plan', 'apply', 'land'] as const) {
+    const want: string[] = [];
+    for (const s of stepsAt(spec, at)) {
+      want.push(`sdd opsx: ${withSlug(s.run, 'points-expire')} [${proofOf(s, 'points-expire')}]`);
+      if (s.guide) want.push(`sdd opsx:   ${withSlug(s.guide, 'points-expire')}`);
+    }
+    assert.ok(want.length > 0, `${at}: opsx prints a step`);
+    const lines = sddInstructions(opsx, at, 'points-expire', false);
+    assert.deepEqual(lines.slice(0, -1), want, `${at}: each step, then its guide`);
+    assert.equal(lines.filter(isClause).length, 1, `${at}: one clause`);
+    assert.match(lines[lines.length - 1], /^sdd opsx: run the chain through without asking to continue — /);
+  }
+  assert.ok(
+    (spec.steps ?? []).some((s) => s.guide),
+    'at least one opsx step carries a guide, or the loop above proves nothing about one',
+  );
 });
 
 test('with the automation off, neither the steps nor the clause print', async () => {

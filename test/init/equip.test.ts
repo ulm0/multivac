@@ -6,11 +6,13 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { init } from '../../src/commands/init.js';
+import { change } from '../../src/commands/change.js';
+import { doctorReport } from '../../src/commands/doctor.js';
 import { gitInit, initRepo, vendorPath } from '../helpers/fixture.js';
 
 const vendors = vendorPath();
@@ -170,13 +172,26 @@ test('a rule that already ignores the shared graph is named, and left alone — 
 test("a fresh opsx brain's step zero passes its own gate — MV-142, MV-144", async () => {
   const dir = tmp();
   initRepo(dir, { 'src/app.py': 'print(1)\n' });
-  // openspec, no grapher: the shape that was refused. Its init writes
+  // openspec, no grapher: the shape that was refused. Its init wrote
   // `.agents/`, a directory no door of multivac's projects, so the gate called it
-  // code landing outside a change.
+  // code landing outside a change. MV-147: the init is `--tools none` now and
+  // writes nothing outside `openspec/`, so step zero has no body to commit.
   const { code, out } = await run(['--sdd', 'opsx'], dir);
   assert.equal(code, 0, out);
   const zero = out.split('\n').find((l) => /0\. commit what was just written/.test(l)) ?? '';
-  assert.match(zero, /\s\.agents(\s|$)/, 'the tool wrote it, so step zero commits it');
+  assert.match(zero, /\sopenspec(\s|$)/, 'the tool wrote it, so step zero commits it');
+  assert.doesNotMatch(zero, /\.agents/);
+  const walk = (d: string): string[] =>
+    readdirSync(join(dir, d), { withFileTypes: true }).flatMap((e) =>
+      e.name === '.git' && d === '' ? [] : e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)],
+    );
+  const files = walk('');
+  assert.deepEqual(files.filter((f) => /openspec-|opsx/.test(f)), [], 'no command body, no skill');
+  assert.deepEqual(files.filter((f) => f.startsWith('openspec/')).sort(), [
+    'openspec/changes/archive/.gitkeep',
+    'openspec/config.yaml',
+    'openspec/specs/.gitkeep',
+  ]);
   const cmd = zero.replace(/^.*?0\. commit what was just written: /, '');
   const hookBin = mkdtempSync(join(tmpdir(), 'mvac-hookbin-opsx-'));
   writeFileSync(join(hookBin, 'mvac'), `#!/bin/sh\nexec '${process.execPath}' '${join(process.cwd(), 'dist/cli.js')}' "$@"\n`, { mode: 0o755 });
@@ -186,5 +201,91 @@ test("a fresh opsx brain's step zero passes its own gate — MV-142, MV-144", as
     env: { ...process.env, PATH: [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':') },
   });
   const status = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: dir, encoding: 'utf8' });
-  assert.doesNotMatch(status, /\.agents|openspec|\.multivac|AGENTS\.md/, 'all of it committed');
+  assert.equal(status, '', 'all of it committed');
+});
+
+/**
+ * MV-147. A brain an earlier multivac scaffolded holds the command bodies its
+ * `openspec init --tools <keys>` wrote — here the stub's, as 1.13.2 writes them
+ * for `agents,claude`, beside the `.codex/skills/` 1.7.0's codex wrote. The
+ * removal `doctor` prints commits through the hooks `init` installed with no
+ * change open, because a body is not code under any integration's directory,
+ * `.codex/` included (MV-142, MV-144); and the lifecycle there, with the
+ * bodies still committed as after their removal, prints what it prints in a
+ * fresh brain, running no init, since the probe reads the root as installed.
+ */
+test('bodies an earlier init left leave through any commit — MV-142, MV-144, MV-147', async () => {
+  const dir = tmp();
+  initRepo(dir, { 'src/app.py': 'print(1)\n' });
+  const { code, out } = await run(['--sdd', 'opsx'], dir);
+  assert.equal(code, 0, out);
+  // Every commit below goes through the hooks init installed, run by THIS
+  // build's multivac and never the host's.
+  const hookBin = mkdtempSync(join(tmpdir(), 'mvac-hookbin-bodies-'));
+  writeFileSync(join(hookBin, 'mvac'), `#!/bin/sh\nexec '${process.execPath}' '${join(process.cwd(), 'dist/cli.js')}' "$@"\n`, { mode: 0o755 });
+  const hooked = [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':');
+  const sh = (cmd: string, path = hooked): void => {
+    execFileSync('sh', ['-c', cmd], { cwd: dir, stdio: 'pipe', env: { ...process.env, PATH: path } });
+  };
+  const zero = out.split('\n').find((l) => /0\. commit what was just written/.test(l)) ?? '';
+  sh(zero.replace(/^.*?0\. commit what was just written: /, ''));
+  assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }), '', 'step zero committed');
+
+  // What an earlier multivac's init left, committed on main with no change open.
+  sh('openspec init --tools agents,claude --no-animation .', vendors.path);
+  mkdirSync(join(dir, '.codex/skills/openspec-propose'), { recursive: true });
+  writeFileSync(join(dir, '.codex/skills/openspec-propose/SKILL.md'), 'openspec skill\n');
+  sh('git add .agents .claude .codex openspec && git commit -qm "an earlier init"');
+
+  // The lifecycle prints the step lines of a fresh brain, and runs no init.
+  const lifecycle = async (cwd: string): Promise<void> => {
+    const inits = runsOf('openspec');
+    const lines: string[] = [];
+    const orig = { log: console.log, error: console.error, path: process.env.PATH };
+    console.log = console.error = (...a: unknown[]) => {
+      lines.push(a.map(String).join(' '));
+    };
+    process.env.PATH = vendors.path;
+    let newCode: number;
+    try {
+      newCode = await change.run(['new', 'probe', 'Probe'], { cwd });
+    } finally {
+      console.log = orig.log;
+      console.error = orig.error;
+      process.env.PATH = orig.path;
+    }
+    const said = lines.join('\n');
+    assert.equal(newCode, 0, said);
+    assert.match(said, /^sdd opsx: in the brain checkout run `openspec new change probe --json`/m);
+    assert.doesNotMatch(said, /running the tool's own init|scaffolded —/);
+    assert.equal(runsOf('openspec'), inits, 'no init ran');
+  };
+  // With the bodies still there (US4-AS4) — asked in a copy, so the removal
+  // below still commits with no change open.
+  const held = join(mkdtempSync(join(tmpdir(), 'mvac-bodies-held-')), 'brain');
+  cpSync(dir, held, { recursive: true });
+  await lifecycle(held);
+
+  const report = await doctorReport(dir);
+  assert.equal(report.exit, 0, report.lines.join('\n'));
+  const left = report.lines.find((l) => l.includes('an earlier init left command bodies')) ?? '';
+  const rm = /`(git rm -r [^`]+)`/.exec(left)?.[1];
+  assert.equal(
+    rm,
+    'git rm -r .agents/skills/.openspec-target .agents/skills/openspec-propose .claude/commands/opsx .claude/skills/openspec-propose .codex/skills/openspec-propose',
+    report.lines.join('\n'),
+  );
+  // The removal as printed, committed through the same hooks, still with no change open.
+  sh(`${rm} -q && git commit -qm "drop openspec bodies"`);
+  assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' }), '');
+  const strict = spawnSync(process.execPath, [join(process.cwd(), 'dist/cli.js'), 'verify', '--strict'], {
+    cwd: dir,
+    encoding: 'utf8',
+    env: { ...process.env, PATH: hooked },
+  });
+  assert.equal(strict.status, 0, `${strict.stdout}${strict.stderr}`);
+  assert.ok(!(await doctorReport(dir)).lines.some((l) => l.includes('an earlier init left')), 'none left, no line');
+
+  // …and with them gone.
+  await lifecycle(dir);
 });

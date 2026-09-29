@@ -871,7 +871,7 @@ untracked  nothing build-critical untracked
 | line | reports |
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
-| `sdd` | the brain's SDD, which runs nowhere else: the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on. When a code repo is declared and `sdd_auto` is on, one line names the repos whose code it governs and those exempt by `sdd: none`. A writable code repo still holding an install of any known SDD from an earlier release gets a `leftover` line — its state file, whether `HEAD` tracks it, and the removal — and never fails `doctor`. An enabled spec-kit preset that multivac's skeleton templates outrank is named, with the override to delete. Then: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what — or `not gated` under `sdd_auto: false` — and `project law @ brain:` for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when the brain resolves no `sdd`**: a code repo's own install of a tool the brain declares nowhere is that team's, not a leftover |
+| `sdd` | the brain's SDD, which runs nowhere else: the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on. When a code repo is declared and `sdd_auto` is on, one line names the repos whose code it governs and those exempt by `sdd: none`. A writable code repo still holding an install of any known SDD from an earlier release gets a `leftover` line — its state file, whether `HEAD` tracks it, and the removal — and never fails `doctor`. In an OpenSpec brain, the command bodies an earlier init left there are named on one line after the install line, with the `git rm -r` that removes the tracked ones and the untracked ones to delete, and never fail `doctor` (see [Command bodies an earlier init left](../graphers-and-sdd#command-bodies-an-earlier-init-left)). An enabled spec-kit preset that multivac's skeleton templates outrank is named, with the override to delete. Then: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what — or `not gated` under `sdd_auto: false` — and `project law @ brain:` for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when the brain resolves no `sdd`**: a code repo's own install of a tool the brain declares nowhere is that team's, not a leftover |
 | `grapher` | one line per scope (brain + each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** |
 | `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `grapher` line says `out of scope, not a gap` in place of a state |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
@@ -1149,6 +1149,14 @@ mvac: <slug> is already archived at .multivac/changes/archive/<slug>.md — this
 mvac: unknown horizon "someday" — use now, next, later
 ```
 
+A brain whose SDD takes a narrower slug refuses the rest with exit **2**,
+recording nothing — for OpenSpec, where the printed line also names the
+release it was measured on:
+
+```txt
+roadmap add: `Fix_Auth`: the brain's SDD takes no such slug — openspec … `new change` takes lowercase letters and digits in runs joined by single hyphens, and reserves `archive`
+```
+
 ### `sync`
 
 Projects the change files to the declared tracker. **One way, always**: the
@@ -1222,7 +1230,17 @@ The second line is `change land <slug> api`, meaning `--landed api`. It used to
 exit **0** having recorded nothing.
 
 A slug must be letters, digits, dots or dashes. `change new "points expire"`
-derives `points-expire`.
+derives `points-expire`. A brain whose SDD takes a narrower slug refuses the
+rest before anything is written, whatever `sdd_auto` and `--no-sdd` say, since
+the change outlives both — `change new` with exit 1, `roadmap add` with exit 2.
+OpenSpec takes lowercase letters and digits in runs joined by single hyphens,
+and reserves `archive`; the printed line names the openspec release it was
+measured on where this page writes `…`, since the site's pages carry no version
+string:
+
+```txt
+`Fix_Auth`: the brain's SDD takes no such slug — openspec … `new change` takes lowercase letters and digits in runs joined by single hyphens, and reserves `archive`; `multivac change new "<title>"` derives one
+```
 
 ### `new`
 
@@ -1326,7 +1344,8 @@ artifacts, then prints the `plan` point's steps. For spec-kit it first points
 `.specify/feature.json` at this slug's directory — the tool keeps one pointer
 per checkout, and two open changes would otherwise plan into each other's — and
 says so when it named another. For a change that names a code repo it says
-where the code goes:
+where the code goes — said of the steps printed at `plan`, which run in the
+brain checkout before `apply` carries the slug's directory:
 
 ```txt
 sdd speckit: .specify/feature.json named specs/002-beta; it names specs/001-points-expire now
@@ -1407,8 +1426,12 @@ For spec-kit it writes the worktree's own `.specify/feature.json`; where the
 directory stayed in the checkout — a brain with no code — it points the
 checkout's instead, and says so when it named another. The gates of `plan`,
 `apply` and `close` look for the SDD's artifacts in the brain checkout, then in
-the change's worktree named after the brain's own entry. In a brain with no
-code, the spec directory stays in the checkout until `close` commits it.
+the change's worktree named after the brain's own entry — except a step printed
+at `land`, which runs after the merge, so its proof is read in the brain
+checkout alone and one found only in the worktree is refused by name. In a
+brain with no code, the spec directory stays in the checkout until `close`
+commits it. OpenSpec's apply step runs where `openspec/changes/<slug>/` now is,
+which its printed line says.
 
 An existing branch is reused, not a failure:
 
@@ -1638,8 +1661,9 @@ The printed commit — closing or abandoning — is **scoped to the closing
 change's paths**: the archived file, the old change path, the law table when a
 reservation was released, the graphs, and what the declared SDD wrote in the
 brain for this slug, whatever `sdd_auto` and `--no-sdd` say: the spec, the
-plan, the task list, an archived proposal, deletions included, and the main
-specs an archive merged into. Every gate in the lifecycle demanded one of those
+plan, the task list, an archived proposal, deletions included, and each main
+spec an archive merged into that carries the merge — one that does not, such as
+after an archive made without merging, is named dirty and not staged. Every gate in the lifecycle demanded one of those
 files, so leaving them untracked would be asking for proof and then dropping
 it; the switches skip steps and gates, never what was already written. A dirty
 file of the tool's that this change did not write — a project document, the

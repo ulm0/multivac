@@ -504,55 +504,129 @@ test('a close that finds no directory says it cited nothing, and only with the s
   assert.doesNotMatch(skipped.out, /nothing cited/);
 });
 
-test('an opsx archive lands with the specs it merged and the directory it moved', async () => {
+/** Requirement blocks as `openspec instructions` guides a delta to carry them. */
+const WEEKLY = [
+  '### Requirement: Billing cadence',
+  'The system SHALL bill weekly.',
+  '',
+  '#### Scenario: Weekly bill',
+  '- **WHEN** a week ends',
+  '- **THEN** one bill is sent',
+].join('\n');
+const REFUND = [
+  '### Requirement: Refund window',
+  'The system SHALL refund within 30 days.',
+  '',
+  '#### Scenario: Refund',
+  '- **WHEN** a customer asks within 30 days',
+  '- **THEN** the payment is refunded',
+].join('\n');
+
+/**
+ * An opsx brain==code brain whose change `slug` is proposed, committed and
+ * landed: a MODIFIED delta for `billing`, whose main spec exists, and an ADDED
+ * one for the new capability `refunds`, each written with `eol`.
+ */
+async function opsxProposed(slug: string, eol = '\n'): Promise<{ b: string; arch: string; moved: string }> {
   const b = brain();
   writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\nsdd: opsx\nrepos:\n  brain: .\n');
   mkdirSync(join(b, 'openspec/specs/billing'), { recursive: true });
   writeFileSync(join(b, 'openspec/config.yaml'), 'schema: spec-driven\n');
-  writeFileSync(join(b, 'openspec/specs/billing/spec.md'), '# billing\n');
+  writeFileSync(
+    join(b, 'openspec/specs/billing/spec.md'),
+    '# billing Specification\n\n## Requirements\n\n### Requirement: Billing cadence\nThe system SHALL bill monthly.\n',
+  );
   git(b, 'add', '-A');
   git(b, 'commit', '-q', '-m', 'opsx installed, one main spec');
-  await declare(b, 'bill-weekly');
-  // The change as /opsx:propose wrote it, committed — the way brain==code lands
-  // it through the change's branch.
-  const change_ = join(b, 'openspec/changes/bill-weekly');
+  await declare(b, slug);
+  // The change as `openspec instructions` guided it, committed — the way
+  // brain==code lands it through the change's branch.
+  const moved = join(b, 'openspec/changes', slug);
   for (const [f, body] of [
     ['proposal.md', '# Bill weekly\n'],
     ['tasks.md', '- [x] 1.1 bill weekly\n'],
-    ['specs/billing/spec.md', '## MODIFIED Requirements\n'],
-    ['specs/refunds/spec.md', '## ADDED Requirements\n'],
+    ['specs/billing/spec.md', `## MODIFIED Requirements\n\n${WEEKLY}\n`],
+    ['specs/refunds/spec.md', `## ADDED Requirements\n\n${REFUND}\n`],
   ]) {
-    mkdirSync(join(change_, f, '..'), { recursive: true });
-    writeFileSync(join(change_, f), body);
+    mkdirSync(join(moved, f, '..'), { recursive: true });
+    writeFileSync(join(moved, f), body.split('\n').join(eol));
   }
   git(b, 'add', '-A');
   git(b, 'commit', '-q', '-m', 'the change, proposed');
-  assert.equal(await change.run(['land', 'bill-weekly', '--landed', 'brain', '--no-sdd'], { cwd: b }), 0);
-  // What `openspec archive bill-weekly --yes` does, measured on 1.13.2: the
-  // directory moves under a dated archive, and each capability delta is merged
-  // into the main specs — an existing one changed, a new one created.
-  const arch = 'openspec/changes/archive/2026-09-28-bill-weekly';
+  assert.equal(await change.run(['land', slug, '--landed', 'brain', '--no-sdd'], { cwd: b }), 0);
+  // Every archive moves the directory under a dated one, merged or not.
+  const arch = `openspec/changes/archive/2026-09-28-${slug}`;
   mkdirSync(join(b, 'openspec/changes/archive'), { recursive: true });
-  execFileSync('mv', [change_, join(b, arch)]);
-  writeFileSync(join(b, 'openspec/specs/billing/spec.md'), '# billing\n\nWeekly, merged.\n');
-  mkdirSync(join(b, 'openspec/specs/refunds'), { recursive: true });
-  writeFileSync(join(b, 'openspec/specs/refunds/spec.md'), '# refunds\n');
+  execFileSync('mv', [moved, join(b, arch)]);
+  return { b, arch, moved: `openspec/changes/${slug}` };
+}
 
-  const { code, out } = await capture(() => change.run(['close', 'bill-weekly'], { cwd: b }));
-  assert.equal(code, 0, out);
-  assert.doesNotMatch(out, /is dirty and was not staged/);
-  const pathspec = runPrintedAdd(b, out);
-  // Each merged main spec by its file: the archive merged `<cap>/spec.md`, and
-  // nothing else in the capability's directory is this close's.
-  for (const p of [arch, 'openspec/changes/bill-weekly', 'openspec/specs/billing/spec.md', 'openspec/specs/refunds/spec.md']) {
-    assert.ok(pathspec.includes(p), `${p} in ${pathspec.join(' ')}`);
+test('an opsx archive lands with the specs it merged and the directory it moved', async () => {
+  // A CRLF twin too: openspec 1.13.2 merges a CRLF delta and writes it LF,
+  // so no block is in the main spec byte for byte, and the merge still lands.
+  for (const eol of ['\n', '\r\n']) {
+    const { b, arch, moved } = await opsxProposed('bill-weekly', eol);
+    // What `openspec archive bill-weekly --json --yes` does, measured on 1.13.2:
+    // each capability delta is merged into the main specs, block by block —
+    // an existing one changed, a new one created — and written LF.
+    writeFileSync(
+      join(b, 'openspec/specs/billing/spec.md'),
+      `# billing Specification\n\n## Requirements\n\n${WEEKLY}\n`,
+    );
+    mkdirSync(join(b, 'openspec/specs/refunds'), { recursive: true });
+    writeFileSync(
+      join(b, 'openspec/specs/refunds/spec.md'),
+      `# refunds Specification\n\n## Purpose\nTBD - created by archiving change bill-weekly. Update Purpose after archive.\n\n## Requirements\n\n${REFUND}\n`,
+    );
+
+    const { code, out } = await capture(() => change.run(['close', 'bill-weekly'], { cwd: b }));
+    assert.equal(code, 0, out);
+    assert.doesNotMatch(out, /is dirty and was not staged/, JSON.stringify(eol));
+    const pathspec = runPrintedAdd(b, out);
+    // Each merged main spec by its file: the archive merged `<cap>/spec.md`, and
+    // nothing else in the capability's directory is this close's.
+    for (const p of [arch, moved, 'openspec/specs/billing/spec.md', 'openspec/specs/refunds/spec.md']) {
+      assert.ok(pathspec.includes(p), `${JSON.stringify(eol)}: ${p} in ${pathspec.join(' ')}`);
+    }
+    // After the printed add, nothing of the change is left out of the commit.
+    for (const under of ['bill-weekly', 'openspec/specs/']) assert.deepEqual(unstaged(b, under), [], under);
+    assert.match(
+      readFileSync(join(b, '.multivac/changes/archive/bill-weekly.md'), 'utf8'),
+      /\nSpecified in `openspec\/changes\/archive\/2026-09-28-bill-weekly\/` \(opsx\)\.\n$/,
+    );
   }
-  // After the printed add, nothing of the change is left out of the commit.
-  for (const under of ['bill-weekly', 'openspec/specs/']) assert.deepEqual(unstaged(b, under), [], under);
-  assert.match(
-    readFileSync(join(b, '.multivac/changes/archive/bill-weekly.md'), 'utf8'),
-    /\nSpecified in `openspec\/changes\/archive\/2026-09-28-bill-weekly\/` \(opsx\)\.\n$/,
-  );
+});
+
+test('a main spec the archive did not merge into is named, not staged', async () => {
+  // MV-147: `openspec archive <slug> --json --skip-specs` moves the change and
+  // leaves every main spec as it was (1.13.2) — a human's uncommitted line in
+  // one, and a human's untracked draft of the new capability, are theirs. A
+  // CRLF delta is read as the merge reads it, never as a delta with no block.
+  for (const eol of ['\n', '\r\n']) {
+    const { b, arch, moved } = await opsxProposed('bill-skip', eol);
+    writeFileSync(
+      join(b, 'openspec/specs/billing/spec.md'),
+      '# billing Specification\n\n## Requirements\n\n### Requirement: Billing cadence\nThe system SHALL bill monthly.\n\nA human note, uncommitted.\n',
+    );
+    mkdirSync(join(b, 'openspec/specs/refunds'), { recursive: true });
+    writeFileSync(join(b, 'openspec/specs/refunds/spec.md'), '# refunds, a draft by a human\n');
+
+    const { code, out } = await capture(() => change.run(['close', 'bill-skip'], { cwd: b }));
+    assert.equal(code, 0, out);
+    for (const p of ['openspec/specs/billing/spec.md', 'openspec/specs/refunds/spec.md']) {
+      assert.match(
+        out,
+        new RegExp(`^sdd opsx: ${p.replace(/[./]/g, '\\$&')} is dirty and was not staged — it is not this change's to commit$`, 'm'),
+        JSON.stringify(eol),
+      );
+    }
+    const pathspec = runPrintedAdd(b, out);
+    assert.ok(!pathspec.some((p) => p.startsWith('openspec/specs')), pathspec.join(' '));
+    // The archive and the directory it moved still land.
+    for (const p of [arch, moved]) assert.ok(pathspec.includes(p), `${p} in ${pathspec.join(' ')}`);
+    assert.match(git(b, 'status', '--porcelain', '-uall'), /^ M openspec\/specs\/billing\/spec\.md$/m);
+    assert.match(git(b, 'status', '--porcelain', '-uall'), /^\?\? openspec\/specs\/refunds\/spec\.md$/m);
+  }
 });
 
 test('--abandon stages the slug\'s directory and cites it too', async () => {

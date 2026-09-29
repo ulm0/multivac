@@ -82,7 +82,8 @@ sdd opsx: `change plan add-greeting` refused — openspec/changes/add-greeting/p
 ```
 A step with no guide (every speckit step) prints exactly what it printed before.
 
-A land step's proof found only in the change's worktree (`change close`):
+A land step's proof found only in the change's worktree (`change close`) — two or more there
+are named in one line, comma-separated, and are no clash:
 ```
 sdd opsx: `change close add-greeting` refused — openspec/changes/archive/<n>-<n>-<n>-add-greeting is only in the change's worktree, .multivac/worktrees/add-greeting/brain/openspec/changes/archive/2026-09-28-add-greeting, which never reaches the brain checkout
   after the merge, in the brain checkout (never a change worktree), run `openspec archive add-greeting --json` …
@@ -98,7 +99,10 @@ The ledger refusal (MV-63), reason changed:
 sdd opsx: `change close add-greeting` refused — brain:openspec/changes/archive/2026-09-28-add-greeting/tasks.md has 1 open item(s) — openspec archived this change with tasks still unchecked — `--yes` archives over its own refusal, and under `--json` says nothing
     - [ ] 1.2 Say farewell
   finish them in the tool, then re-run: multivac change close add-greeting
+  (`--no-sdd` skips the SDD gates for one run; `sdd_auto: false` in .multivac/config.yml turns them off)
 ```
+The last line is every SDD refusal's, printed before this change (src/adapters/sdd.ts);
+only the reason changed.
 
 ## The validator note (`change apply`)
 
@@ -124,6 +128,12 @@ A target that carries it is staged as #3 stages it; no line.
 `change new` (exit 1, nothing written, whatever `sdd_auto` and `--no-sdd` say):
 ```
 `Fix_Auth`: the brain's SDD takes no such slug — openspec 1.13.2's `new change` takes lowercase letters and digits in runs joined by single hyphens, and reserves `archive`; `multivac change new "<title>"` derives one
+```
+A slug derived from the title (`multivac change new "Archive"`) is already in the grammar
+and misses only on a reserved name, which deriving again would give back, so its refusal
+asks for one instead (analysis C1):
+```
+`archive`: the brain's SDD takes no such slug — openspec 1.13.2's `new change` takes lowercase letters and digits in runs joined by single hyphens, and reserves `archive`; name one yourself: `multivac change new <slug> "Archive"`
 ```
 `roadmap add` (exit 2, nothing recorded):
 ```
@@ -176,8 +186,10 @@ All untracked: `` — <untracked> are untracked: delete them ``. None left: no l
 
 No command prints an adapter's `note` today, `doctor` included (no reader of the field in
 `src/`); the tests read `sddSpec('opsx').note`, and the site's reference page carries the
-same facts in its own words (spec US5 AS5 reads "when `doctor` prints the opsx note": see
-tasks.md, Notes).
+same facts in its own words (spec US5-AS5; see tasks.md, Notes), with no version string —
+MV-84 keeps every one off the site's pages — so it names the floors by what the release must
+take (`archive --json`, `init --no-animation`) and points to the note for the numbers. The
+site's copy of the slug refusal writes `openspec …` where the line prints `openspec 1.13.2's`.
 
 > The steps are openspec's own terminal verbs, run by the agent: `new change`, `status`,
 > `instructions` and `archive`, each listed by `openspec --help` 1.13.2 and run there with
