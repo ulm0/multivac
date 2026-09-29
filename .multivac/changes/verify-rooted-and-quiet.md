@@ -2,22 +2,25 @@
 slug: verify-rooted-and-quiet
 status: open
 horizon: later
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: planned
+landing_order:
+  - - brain
 invariants:
-  touches: []
+  touches:
+    - MV-53
+    - MV-112
+    - MV-127
+    - MV-138
+    - MV-150
   adds:
     - MV-151
   retires: []
-claims: []
+claims:
+  - MV-151
 ---
 
 # verify finds its root and speaks only when something is off
 
-Why this matters, written while you still remember. This file is the change
-it will become: starting it keeps this prose and adds the branch, the reserved
-invariant id and the rest of the frontmatter.
-
-    multivac change new verify-rooted-and-quiet
-
-Until then it reserves nothing and blocks nothing.
+verify read whatever directory it was run from and printed its full report on every clean run, including after every edit an agent made.
