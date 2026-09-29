@@ -167,8 +167,8 @@
    "id": "change:codegraph-worktrees-and-verbs",
    "label": "codegraph-worktrees-and-verbs",
    "file_type": "change",
-   "source_file": ".multivac/changes/codegraph-worktrees-and-verbs.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/codegraph-worktrees-and-verbs.md",
+   "status": "archived",
    "horizon": "next",
    "issue": null
   },

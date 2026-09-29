@@ -144,7 +144,7 @@ freshness predicate US1 and US2 share.
 - [X] T075 Run `multivac doors`: AGENTS.md (and CLAUDE.md through the link) byte-identical to before, .multivac/flow.md and .multivac/ecosystem.json regenerated (flow.md unchanged: this brain's grapher is graphify), .claude/skills/multivac/ re-projected from T061/T070, `.claude/settings.json` changed only by T079's exit in its refresh hook (492 → 500 B) and byte-identical on a second `doors`; no `.codegraph/` or `codegraph.json` in this repository (FR-032; SC-024)
 - [X] T076 Build and run the full suite (`corepack pnpm test`, against T001's counts); `multivac verify` reports every claim anchored and 0 blocking; `grep -c 'Amended [0-9-]* by MV-149' .multivac/invariants.md` is 10 (SC-025)
 - [X] T077 Walk quickstart.md A–J in scratch with codegraph 1.6.0 and graphify 0.9.29, `HOME` isolated, each `cd` and mutating command in one `&&` chain, never inside `/home/user/multivac`; re-run research.md R1's `delta.py` comparison on #4's branch for SC-008; record the results in .multivac/changes/codegraph-worktrees-and-verbs.md's body (SC-001–SC-020, SC-024)
-- [ ] T078 Run `graphify update .` so graphify-out/graph.json matches the change; `change land` commits it on the change branch
+- [X] T078 Run `graphify update .` so graphify-out/graph.json matches the change; `change land` commits it on the change branch (verified at close: a fresh refresh of the landed tree leaves graph.json byte-identical)
 
 ## Dependencies & Execution Order
 

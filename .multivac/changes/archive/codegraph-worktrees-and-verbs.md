@@ -1,6 +1,6 @@
 ---
 slug: codegraph-worktrees-and-verbs
-status: open
+status: archived
 horizon: next
 repos:
   brain:
@@ -100,3 +100,5 @@ and the tests pin what this build prints for them.
   path where several graphers are in play now says, of a local index, that `change apply` builds
   it (FR-011); closed-stdin `init` took 851 to 1,368 ms over five runs, so the site says "about a
   second".
+
+Specified in `specs/076-codegraph-worktrees-and-verbs/` (speckit).
