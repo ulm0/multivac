@@ -82,7 +82,8 @@ EOF
 ```
 
 1. `mkdir -p $SCR/p1 && cd $SCR/p1 && git init -q && tar -xf $SCR/src.tar && ls .git/hooks | grep -vc sample; node $SCR/run.mjs $SCR/p1 close && ls .git/hooks | grep -vc sample`
-   — `closed: rc=0 in ~851 ms`, 0 hooks before and after (**measured**, synth).
+   — `closed: rc=0` in about a second (851 ms in research, 1,192 to 1,368 ms over the walk's four
+   runs), 0 hooks before and after (**measured**, synth).
 2. `mkdir -p $SCR/p2 && cd $SCR/p2 && git init -q && tar -xf $SCR/src.tar && node $SCR/run.mjs $SCR/p2 open`
    — `open: KILLED(timeout) in ~12015 ms` (**measured**, synth; 30 s+ through multivac's runner,
    ver-X W). Kill the orphan `codegraph init` it leaves: `pkill -f 'codegraph init'`.
@@ -114,7 +115,8 @@ EOF
    `cd $SCR/eco/brain && $MV change apply tot | grep -c 'info/exclude'` — 0 (**expected**).
 5. Land, merge, close: commit a change in each worktree; `cd $SCR/eco/brain && $MV change land tot`;
    the worktrees' porcelain is still empty (**expected**; critic gap 1); merge each branch in its
-   repo; `cd $SCR/eco/brain && $MV change land tot --landed web --landed api && $MV change close tot`
+   repo; `cd $SCR/eco/brain && $MV change land tot --landed web && $MV change land tot --landed api && $MV change close tot`
+   (`--landed` records one repo a call; given twice in one call, only the last is recorded)
    — `web: worktree removed (…)`, `api: worktree removed (…)`, plain removals (today the worktree is
    kept with a `--force` line, **measured** ver-G W).
 6. Land builds where apply could not (SC-007): open `late` naming web, apply with
@@ -137,8 +139,9 @@ EOF
    `cd $SCR/mix/web && printf 'export function zetaWeb() { return 1; }\n' >> src/util.ts && cd $SCR/mix/brain && hookcmd .claude/settings.json | while read -r H; do echo '{"tool_name":"Edit","tool_input":{"file_path":"'$SCR'/mix/web/src/util.ts"}}' | sh -c "$H"; done; waitlock $SCR/mix/web`
    — web's `graph.json` gains `zetaWeb`, and no `$SCR/mix/web/.codegraph` appears; the same with
    `$SCR/mix/api/src/index.ts` and `zetaApi` — `cd $SCR/mix/api && codegraph query zetaApi --json | wc -c`
-   non-empty, no `$SCR/mix/api/graphify-out`; a payload naming `$SCR/mix/brain/AGENTS.md` leaves no
-   `.multivac/cache` in the brain; every exit 0 (**measured** with the two follow strings, inv K
+   non-empty, no `$SCR/mix/api/graphify-out`; a payload naming `$SCR/mix/brain/AGENTS.md` runs no
+   grapher and leaves no `graph-refresh.lock` under the brain's `.multivac/cache` (which `init` and
+   `doors` already made, empty); every exit 0 (**measured** with the two follow strings, inv K
    and ver-M K).
 3. `cd $SCR/mix/brain && $MV doctor | grep 'refresh path'` — `post-edit hooks follow your edits —
    graphify's and codegraph's` (**expected**); `grep -c 'after each edit through the harness hook' .multivac/flow.md`
@@ -150,9 +153,9 @@ EOF
 ## Walk E — a graphify brain that holds code, with a codegraph sibling (US2)
 
 1. A brain==code graphify brain `$SCR/gb` (`repos: { brain: ., api: ../api }`, api on codegraph);
-   `cd $SCR/gb && $MV doors && hookcmd .claude/settings.json | wc -c` — the brain's own 492 B hook,
-   byte-identical to `$BASE`'s, plus api's 606 B follow hook with its `env` export (**expected**;
-   SC-011).
+   `cd $SCR/gb && $MV doors && hookcmd .claude/settings.json | wc -c` — the brain's own 500 B hook,
+   `$BASE`'s 492 B with FR-034's exit, plus api's 606 B follow hook with its `env` export
+   (**expected**; SC-011).
 2. Open `mx` naming api, apply (api's worktree indexed), add `mixedProbe` in api's worktree, pipe the
    payload to both hooks, wait for both locks:
    `cd $SCR/gb && codegraph query mixedProbe -p $SCR/gb/.multivac/worktrees/mx/api --json | wc -c`
@@ -167,12 +170,15 @@ EOF
 
 1. Today (**measured**, ver-M K): a consumer `shop` with this brain mounted,
    `cd $SCR/shop && git submodule add -q $REPO .brain && codegraph init . </dev/null && python3 $SCR/count.py .`
-   — `nodes=2254 mount=2247`; `codegraph callers add` — both callers from `.brain/`.
+   — `nodes=2254 mount=2247` in research's measurement (`nodes=2429 mount=2421` at the walk, the
+   mount at 7620178: the count follows the brain's commit); `codegraph callers add` — every caller
+   from `.brain/`.
 2. `cd $SCR/shop && printf '{\n  "exclude": [\n    "/.brain/"\n  ]\n}\n' > codegraph.json && wc -c codegraph.json && codegraph sync </dev/null && python3 $SCR/count.py .`
-   — 38 B; `nodes=7 mount=0` ('Removed: 148', no rebuild, **measured** ver-M K).
+   — 38 B; `mount=0` and only shop's own nodes (7 in research's fixture, 8 in the walk's;
+   'Removed: 148' there, 152 at the walk; no rebuild, **measured** ver-M K).
 3. With `$MV`: a brain==code brain declaring `shop` (codegraph) as a consumer,
    `cd <that brain> && $MV repos sync` — `graph codegraph @ shop: wrote codegraph.json (+1) and .gitignore (+1) before the first build`,
-   the 38 B file, `nodes=7 mount=0` (**expected**; SC-014); a `.gitignore` line instead would make a
+   the 38 B file, `mount=0` and only shop's own nodes (**expected**; SC-014); a `.gitignore` line instead would make a
    later `git submodule add` of the mount exit 128 (**measured**, ver-M K).
 4. `mount: ./.brain` in the brain's config: `codegraph.json` and `.graphifyignore` both say
    `/.brain/` (today `/./.brain/` leaves 10 of 12 nodes from the mount, **measured** ver-X K; SC-018).
@@ -191,7 +197,8 @@ EOF
    (**measured** on the splice, 13 of 13 cases, ver-G K; SC-015).
 2. `cd $SCR/shop && printf '{"deprioritize":[".brain/"]}\n' > codegraph.json && md5sum codegraph.json > $SCR/d.md5`,
    land — `md5sum -c $SCR/d.md5` OK, and the line `/.brain/ not added to codegraph.json — its "deprioritize" names it, which is yours`
-   (**expected**); the naive append would have dropped the human's 2,247 mount nodes to 0
+   (**expected**); the naive append would have dropped the human's mount nodes (2,247 in research's
+   measurement) to 0
    (**measured**, ver-G K; SC-019).
 3. `{"exclude": "dist/"}` (not a list): left byte-identical, the malformed line (**expected**).
 4. `cd $SCR/shop && $MV doctor | grep codegraph.json` from its brain — the facts of the contract,
@@ -204,12 +211,17 @@ In a scratch clone of this repository at 92c4c08, indexed there (never in `/home
 1. `cd $SCR/mvc && codegraph callers adapterFor | head -1` — `(20)`; `--limit 500` — `(36)`
    (**measured**, inv V).
 2. `cd $SCR/mvc && codegraph node grapherLines | wc -c` — "2 definitions named", 10,399 B;
-   `-f src/doors/brain.ts` 3,537 B; `-f ../web/src/x.ts` — "No indexed file matches", rc=0
-   (**measured**, inv V, ver-X V).
+   `-f src/doors/brain.ts`, `-f brain.ts` and `-f doors` 3,537 B each; `-f ./src/doors/brain.ts`
+   and `-f ../web/src/x.ts` 10,399 B, byte for byte the answer with no `-f`, rc=0 and no warning;
+   `codegraph node -f ../web/src/x.ts` (no symbol) — "No indexed file matches", rc=0 (**measured**,
+   inv V, ver-X V; the miss's silence measured by the walk, T077).
 3. `cd $SCR/mvc && codegraph query "where is the door rendered" | wc -c` — name matches for the
-   sentence's words, 1,435 B for the sentence inv V measured (**measured**).
+   sentence's words (**measured**: 1,150 B at the walk; inv V's own sentence gave 1,435 B — the bytes
+   follow the sentence and the commit).
 4. With `$MV`: a codegraph consumer's door, `sed -n '/kept fresh for you by `codegraph`/,/^- [^ ]/p' AGENTS.md | head -6 | wc -c`
-   — 982 with a post-edit door, 1,001 without (449 / 468 with `$BASE`) (**expected**; SC-020).
+   — 982 with a post-edit door, 1,001 without (**expected**; SC-020). With `$BASE` the range runs
+   into the 22 B `<!-- multivac:end -->` line of its one-verb block: 471 / 490, which is 449 / 468
+   for the block itself.
 
 ## Walk I — what the agent's calls send (US4)
 
@@ -224,10 +236,17 @@ In a scratch clone of this repository at 92c4c08, indexed there (never in `/home
 ## Walk J — twins that must not move
 
 1. This repository, in a scratch clone at the change's head: `cd $SCR/self && cp AGENTS.md $SCR/a.md && cp .claude/settings.json $SCR/s.json && $MV doors && cmp AGENTS.md $SCR/a.md && cmp .claude/settings.json $SCR/s.json && ls .codegraph codegraph.json 2>&1 | grep -c 'No such'`
-   — identical, identical, 2 (**expected**; SC-024).
-2. A single-grapher codegraph brain and a graphify consumer: `settings.json` byte-identical between
-   `$BASE doors` and `$MV doors` (**expected**; SC-011).
+   — identical, identical, 2 (**expected**; SC-024: the clone's tracked `settings.json` already
+   carries T075's re-render, FR-034's exit included; against `$BASE`'s it differs by that exit
+   alone, 8 B).
+2. A single-grapher codegraph brain and a graphify consumer: `settings.json` between `$BASE doors`
+   and `$MV doors` differs only by FR-034's exit (`[ -n "$t" ] && ` → `[ -n "$t" ] || exit 0; `),
+   and a second `$MV doors` changes no byte (**expected**; SC-011).
 3. A graphify brain whose doors cite no section (`doors: [agents]`): the door is 6 B shorter, the
    header line only (**expected**; SC-020).
+4. An edit outside every repository: with a stub graphify logging its runs on PATH, `mkdir -p
+   $SCR/norepo && cd $SCR/gb && echo '{"tool_name":"Write","tool_input":{"file_path":"'$SCR'/norepo/x.ts"}}' | sh -c "$(hookcmd .claude/settings.json | head -n 1)"; echo $?; ls .multivac/cache`
+   — exit 0, the stub's log empty, no lock; the same payload through `$BASE`'s hook ran the stub in
+   `$SCR/gb` (**expected**; SC-026).
 
 Record every result in `.multivac/changes/codegraph-worktrees-and-verbs.md`'s body (T077).

@@ -903,7 +903,7 @@ untracked  nothing build-critical untracked
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
 | `sdd` | the brain's SDD, which runs nowhere else: the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on. When a code repo is declared and `sdd_auto` is on, one line names the repos whose code it governs and those exempt by `sdd: none`. A writable code repo still holding an install of any known SDD from an earlier release gets a `leftover` line — its state file, whether `HEAD` tracks it, and the removal — and never fails `doctor`. In an OpenSpec brain, the command bodies an earlier init left there are named on one line after the install line, with the `git rm -r` that removes the tracked ones and the untracked ones to delete, and never fail `doctor` (see [Command bodies an earlier init left](../graphers-and-sdd#command-bodies-an-earlier-init-left)). An enabled spec-kit preset that multivac's skeleton templates outrank is named, with the override to delete. Then: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what — or `not gated` under `sdd_auto: false` — and `project law @ brain:` for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when the brain resolves no `sdd`**: a code repo's own install of a tool the brain declares nowhere is that team's, not a leftover |
-| `grapher` | one line per scope (the brain where it holds code, plus each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. An installed root's line also names, reading only, the ignore lines multivac keeps out of the graph that its ignore file lacks, an ignore file not committed, and nodes the graph still holds under the file's lines, with the rebuild to run there. A brain that holds no code gets one line saying so and how to declare it code, and a `leftover` line with its removal for each install an earlier release left there — never a refresh or an install (see [A brain that holds no code](../graphers-and-sdd#a-brain-that-holds-no-code)). Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, and in a brain that holds no code whether it follows your edits into the code repos, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher, none is asked from the brain and none is left there** |
+| `grapher` | one line per scope (the brain where it holds code, plus each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. An installed root's line also names, reading only, the ignore lines multivac keeps out of the graph that its ignore file lacks, an ignore file not committed, and nodes the graph still holds under the file's lines, with the rebuild to run there — for codegraph, one of four facts about `codegraph.json`: that it does not parse to an object with an `exclude` list, that git ignores it, with the command that shows the rule, since land writes nothing there, that it is not committed, so a clone or worktree with its mount initialised indexes the mount, or the lines it lacks, which the next `change land` naming that repo adds. A writable repo still holding the artifact of a grapher it does not resolve, while that grapher's post-edit hook is wired and reaches it there, is named with the removal: that hook refreshes it on every edit there (see [One post-edit hook per grapher](../graphers-and-sdd#one-post-edit-hook-per-grapher)). A brain that holds no code gets one line saying so and how to declare it code, and a `leftover` line with its removal for each install an earlier release left there — never a refresh or an install (see [A brain that holds no code](../graphers-and-sdd#a-brain-that-holds-no-code)). Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, one per grapher the brain's session refreshes, and in a brain that holds no code whether it follows your edits into the code repos; what `change land` does with each grapher's artifact, committing a shared graph and syncing an index built in each checkout; `change close` as the net; and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher, none is asked from the brain and none is left there** |
 | `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `grapher` line says `out of scope, not a gap` in place of a state |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is. A mount that is staged and not yet committed says so, instead of calling itself missing. A read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write |
@@ -1435,10 +1435,32 @@ Under each checkout, one line names what reaches its graph from the brain: the
 flag at the worktree's own graph; else the repo checkout's, which answers for
 the base without this branch's edits; else that there is none yet and `change
 land` builds and commits one. Each says where its answers' paths are placed.
-A codegraph worktree has no index, so it is given the repo checkout's `-p` for
-the base, never `-p <worktree>`. A checkout whose grapher is `none` gets no
-line, and neither does the brain's own main checkout. See
+A checkout whose grapher is `none` gets no line, and neither does the brain's
+own main checkout. See
 [Where to ask the graph](../graphers-and-sdd#where-to-ask-the-graph).
+
+For a repo on codegraph, whose index is built in each checkout and never
+committed, apply builds the one in each checkout it hands out, or syncs it when
+apply runs again, and names it:
+
+```txt
+web: worktree /home/you/brain/.multivac/worktrees/points-expire/web
+web: .codegraph/ added to /home/you/web/.git/info/exclude — git ignored no index here, and that file is never committed
+graph codegraph @ web worktree: built (`codegraph init`) — local artifact, never committed
+work here — one checkout per repo, nobody else's tree moves:
+  web: /home/you/brain/.multivac/worktrees/points-expire/web
+    its index: -p /home/you/brain/.multivac/worktrees/points-expire/web — refreshed after your edits; paths in its answers are relative to this checkout
+```
+
+The `info/exclude` line appears only when git did not already ignore the index
+there: that file is read by every worktree of the repository and never
+committed. `refreshed after your edits` holds where a declared harness has a
+post-edit hook and the brain's session refreshes codegraph; otherwise the line
+says the index is as of this apply and refreshed again at `change land`. Where
+apply could not build it — the binary not found from the worktree, which it
+names once — the line falls back to the repo checkout's index, for the base.
+See [A change's own codegraph
+index](../graphers-and-sdd#a-changes-own-codegraph-index).
 
 The branch under it is based on the **newer of the default branch and
 its remote-tracking ref** — decided offline, by ancestry, from refs git
@@ -1537,6 +1559,24 @@ graph lands alone), and rebuilds while the graph holds nodes under a line it
 recorded —
 see [the ignore lines](../graphers-and-sdd#automatic-refresh). In a brain that
 holds no code, it commits no brain graph.
+
+A repo on codegraph lands no index: land syncs it in the checkout holding the
+change's branch — or builds it there, where apply could not — after the same
+`info/exclude` step as apply, and commits none of it; a detached HEAD or
+another branch passes it by. Where land added lines to `codegraph.json`, which
+keeps the brain's mount out of the index, it commits that file alone, after the
+sync. The copy the first build wrote in a repo's own checkout is yours to
+commit: land writes nothing beside it while it is uncommitted, and `doctor`
+names it:
+
+```txt
+graph codegraph @ web: wrote codegraph.json (+1) before the refresh at `change land`
+graph codegraph @ web: refreshed (`codegraph sync`) — local artifact, never committed
+committed: graph: points-expire — codegraph keeps /.brain/ out of its index
+```
+
+A `codegraph.json` git ignores there is named, with the command that shows the
+rule, and nothing is written; land goes on.
 
 ```txt
 $ mvac change land points-expire

@@ -14,14 +14,15 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmdirSync,
   statSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { initRepo } from '../helpers/fixture.js';
+import { dirname, join } from 'node:path';
+import { initRepo, vendorPath } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { reposCommand } from '../../src/commands/repos.js';
 import { doorsCommand } from '../../src/commands/doors.js';
@@ -163,6 +164,158 @@ test('land refreshes the graph on the change branch and commits it there, before
   assert.equal(git(wt, 'status', '--porcelain'), '');
   assert.equal(git(brain, 'rev-parse', 'HEAD'), mainHead, 'the checkout is not touched');
   assert.doesNotMatch(git(brain, 'status', '--porcelain'), /fakegraph-out/);
+});
+
+test('land syncs a local index in the branch checkout and commits none — MV-149', async () => {
+  // A brain that holds code on codegraph: apply built its worktree's index,
+  // and land syncs it there after the agent's last edits. Nothing of it is
+  // committed, so a detached HEAD there is passed over, not refused, and a
+  // binary not found there says nothing: apply named it.
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-graph-land-local-')));
+  const brain = join(tmp, 'acme-brain');
+  initRepo(brain, {
+    'AGENTS.md': '# door\n',
+    '.gitignore': '.codegraph/\n',
+    '.multivac/config.yml': 'doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n',
+    '.multivac/invariants.md':
+      '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
+    'src/app.ts': 'export const app = 1;\n',
+  });
+  const { runs } = vendorPath(['codegraph']);
+  const bin = dirname(runs);
+  const logged = (): string[] => readFileSync(runs, 'utf8').split('\n').filter(Boolean);
+  let wt = '';
+  let applied = '';
+  await withPath(bin, async () => {
+    applied = (await capture(async () => { wt = await appliedChange(brain, 'idx-land'); return 0; })).out;
+  });
+  assert.ok(existsSync(join(wt, '.codegraph/codegraph.db')), 'apply built the worktree index');
+  // US1 AS-1: the build line before where to work, and under the brain's
+  // worktree its own index — as of this apply: `doors: [agents]` has no
+  // post-edit hook.
+  const lines = applied.split('\n');
+  const built = lines.indexOf('graph codegraph @ brain worktree: built (`codegraph init`) — local artifact, never committed');
+  assert.ok(built >= 0 && built < lines.findIndex((l) => l.startsWith('work here')), applied);
+  const at = lines.indexOf(`  brain: ${wt}`);
+  assert.ok(at >= 0, applied);
+  assert.equal(
+    lines[at + 1],
+    `    its index: -p ${wt} — as of this apply, refreshed again at \`change land\`; paths in its answers are relative to this checkout`,
+  );
+  writeFileSync(join(wt, 'src/n.ts'), 'export const n = 2;\n');
+  git(wt, 'add', 'src/n.ts');
+  git(wt, 'commit', '-qm', 'n');
+  const base = git(brain, 'rev-parse', '--abbrev-ref', 'HEAD');
+
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() => change.run(['land', 'idx-land'], { cwd: brain }));
+    assert.equal(code, 0, out);
+    assert.match(out, /^graph codegraph @ brain: refreshed \(`codegraph sync`\) — local artifact, never committed$/m);
+    assert.doesNotMatch(out, /committed: graph:/);
+  });
+  assert.ok(
+    logged().includes(`codegraph sync cwd=${wt} DO_NOT_TRACK=1 CODEGRAPH_TELEMETRY=0 CODEGRAPH_NO_DOWNLOAD=1`),
+    logged().join('\n'),
+  );
+  assert.doesNotMatch(git(wt, 'log', '--name-only', '--format=', `${base}..idx-land`), /\.codegraph/);
+  assert.equal(git(wt, 'status', '--porcelain'), '');
+
+  // No binary where land runs: nothing about codegraph, and land goes on.
+  const bare = mkdtempSync(join(tmpdir(), 'mvac-graph-land-bare-'));
+  const syncs = logged().length;
+  await withPath(bare, async () => {
+    const { code, out } = await capture(() => change.run(['land', 'idx-land'], { cwd: brain }));
+    assert.equal(code, 0, out);
+    assert.doesNotMatch(out, /codegraph/);
+  });
+  assert.equal(logged().length, syncs);
+
+  // A detached HEAD in the worktree: no refusal, and nothing about codegraph.
+  git(wt, 'checkout', '-q', '--detach');
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() => change.run(['land', 'idx-land'], { cwd: brain }));
+    assert.equal(code, 0, out);
+    assert.doesNotMatch(out, /codegraph|cannot land/);
+  });
+  assert.equal(logged().length, syncs, 'nothing ran on a detached HEAD');
+});
+
+test('land commits codegraph.json alone for a consumer of a brain==code brain — MV-149', async () => {
+  // Three consumers of a brain that holds code, each keeping the mount out of
+  // its codegraph index: web commits a codegraph.json lacking the line; api
+  // keeps an untracked one in its own checkout, which land may not write
+  // beside; ops ignores the file, which no land could commit.
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-cgjson-land-')));
+  const brain = join(tmp, 'acme-brain');
+  const repo = (k: string): string => join(tmp, `acme-${k}`);
+  initRepo(brain, {
+    'AGENTS.md': '# door\n',
+    '.gitignore': '.codegraph/\n',
+    '.multivac/config.yml':
+      'doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n  web: ../acme-web\n  api: ../acme-api\n  ops: ../acme-ops\n',
+    '.multivac/invariants.md':
+      '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
+    'src/app.ts': 'export const app = 1;\n',
+  });
+  initRepo(repo('web'), { 'src/w.ts': 'export const w = 1;\n', 'codegraph.json': '{"exclude":["dist/"]}\n' });
+  initRepo(repo('api'), { 'src/a.ts': 'export const a = 1;\n' });
+  writeFileSync(join(repo('api'), 'codegraph.json'), '{"exclude":["tmp/"]}\n');
+  initRepo(repo('ops'), { 'src/o.ts': 'export const o = 1;\n', '.gitignore': 'codegraph.json\n' });
+  const { runs } = vendorPath(['codegraph']);
+  const bin = dirname(runs);
+  const slug = 'cg-json';
+  const wt = (k: string): string => join(brain, '.multivac/worktrees', slug, k);
+  const ctx = { cwd: brain };
+  await withPath(bin, async () => {
+    assert.equal((await capture(() => change.run(['new', slug, 'Codegraph json'], ctx))).code, 0);
+    const parsed = await loadChange(brain, slug);
+    parsed.change.repos = { web: { status: 'planned' }, api: { status: 'planned' }, ops: { status: 'planned' } };
+    parsed.change.landing_order = [['web', 'api', 'ops']];
+    parsed.change.invariants.adds = [];
+    await saveChange(brain, parsed);
+    const applied = await capture(() => change.run(['apply', slug], ctx));
+    assert.equal(applied.code, 0, applied.out);
+  });
+  for (const k of ['web', 'api', 'ops']) assert.ok(existsSync(join(wt(k), '.codegraph/codegraph.db')), k);
+
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() => change.run(['land', slug], ctx));
+    assert.equal(code, 0, out);
+    const lines = out.split('\n');
+    const wrote = lines.indexOf('graph codegraph @ web: wrote codegraph.json (+1) before the refresh at `change land`');
+    const synced = lines.indexOf('graph codegraph @ web: refreshed (`codegraph sync`) — local artifact, never committed');
+    const subject = `graph: ${slug} — codegraph keeps /.brain/ out of its index`;
+    const committed = lines.indexOf(`committed: ${subject}`);
+    assert.ok(wrote >= 0 && synced > wrote && committed > synced, out);
+    assert.equal(Buffer.byteLength(`${subject}\n`), 60 + slug.length - '<slug>'.length);
+    // api: the rule lets land write nothing, and a local index says nothing.
+    assert.doesNotMatch(out, /^api: .*codegraph\.json/m);
+    assert.doesNotMatch(out, /codegraph @ api: wrote/);
+    // ops: named, with the command that shows the rule; land goes on.
+    const ignored =
+      `ops: codegraph.json is ignored in ${wt('ops')} — ` +
+      `\`git -C ${wt('ops')} check-ignore -v codegraph.json\` names the rule; nothing was written`;
+    assert.ok(lines.includes(ignored), out);
+    assert.equal(Buffer.byteLength(`${ignored.replaceAll(wt('ops'), '/srv/eco/web').replace('ops:', '<k>:')}\n`), 140);
+    assert.ok(lines.includes('graph codegraph @ ops: refreshed (`codegraph sync`) — local artifact, never committed'), out);
+  });
+  assert.equal(git(wt('web'), 'log', '-1', '--format=%s'), `graph: ${slug} — codegraph keeps /.brain/ out of its index`);
+  assert.equal(git(wt('web'), 'show', '--name-only', '--format=', 'HEAD'), 'codegraph.json');
+  assert.equal(git(wt('web'), 'show', 'HEAD:codegraph.json'), '{"exclude":["dist/", "/.brain/"]}');
+  assert.equal(existsSync(join(wt('api'), 'codegraph.json')), false, 'nothing created beside an untracked copy');
+  assert.equal(readFileSync(join(repo('api'), 'codegraph.json'), 'utf8').includes('"tmp/"'), true);
+  assert.equal(existsSync(join(wt('ops'), 'codegraph.json')), false, 'nothing written where it is ignored');
+  for (const k of ['web', 'api', 'ops']) assert.equal(git(wt(k), 'status', '--porcelain'), '', `${k} worktree clean`);
+
+  // A second land commits nothing.
+  const head = git(wt('web'), 'rev-parse', 'HEAD');
+  await withPath(bin, async () => {
+    const { code, out } = await capture(() => change.run(['land', slug], ctx));
+    assert.equal(code, 0, out);
+    assert.doesNotMatch(out, /codegraph keeps|wrote codegraph\.json/);
+  });
+  assert.equal(git(wt('web'), 'rev-parse', 'HEAD'), head);
+  for (const k of ['web', 'api', 'ops']) assert.equal(git(wt(k), 'status', '--porcelain'), '', `${k} worktree clean`);
 });
 
 test('land refuses a graph it cannot commit on the branch: ignored, or a detached HEAD — MV-134', async () => {

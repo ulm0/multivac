@@ -224,6 +224,25 @@ paths are relative to the checkout that flag names — `src/server.ts` in web's
 worktree is not the brain's. See
 [Where to ask the graph](../../reference/graphers-and-sdd/#where-to-ask-the-graph).
 
+A repo on codegraph is different: its index is built in each checkout and never
+committed, so `apply` builds one in the worktree it hands out, and names it.
+Were web on codegraph, its lines would read:
+
+```txt
+web: worktree ~/eco/brain/.multivac/worktrees/points-expire/web
+web: .codegraph/ added to ~/eco/acme-web/.git/info/exclude — git ignored no index here, and that file is never committed
+graph codegraph @ web worktree: built (`codegraph init`) — local artifact, never committed
+work here — one checkout per repo, nobody else's tree moves:
+  web: ~/eco/brain/.multivac/worktrees/points-expire/web
+    its index: -p ~/eco/brain/.multivac/worktrees/points-expire/web — as of this apply, refreshed again at `change land`; paths in its answers are relative to this checkout
+```
+
+The `info/exclude` line keeps the index out of `git status` in every checkout
+of that repository, and is never committed. Where a declared harness has a
+post-edit hook that refreshes codegraph, the last line says `refreshed after
+your edits` instead. See
+[A change's own codegraph index](../../reference/graphers-and-sdd/#a-changes-own-codegraph-index).
+
 Each present repo gets its own git worktree for this change, branched after
 the slug. **Write the feature in the printed paths**, not in the shared
 checkout: another agent may be running another change in the same repo, and a
@@ -299,7 +318,14 @@ blocked behind an earlier stage. Before each push line it refreshes that repo's
 code graph in the change's worktree and commits it on the branch, so the merge
 carries a graph of the merged tree. Where the repo's `.graphifyignore` lacks
 lines multivac keeps out of the graph, land appends them first and commits the
-file with the graph.
+file with the graph. A repo on codegraph lands no index: land syncs the one in
+the change's worktree and never commits it, where graphify's graph is
+committed. Where land adds a line to `codegraph.json` — the brain's mount, in
+an ecosystem whose brain holds code — it commits that file alone:
+
+```txt
+graph codegraph @ web: refreshed (`codegraph sync`) — local artifact, never committed
+```
 
 The code you push is judged too. Where an SDD is declared, a commit or a merge
 of code that is not on the branch of an open change declaring the repo is

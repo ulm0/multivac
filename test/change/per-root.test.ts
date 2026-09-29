@@ -287,7 +287,8 @@ test("the brain's own grapher wins over the ecosystem's everywhere the brain is 
   assert.match(door, /^ {2}- `graphify` at `graphify-out\/graph\.json` \(api: `\.\.\/acme-api`\)/m);
 
   const page = renderFlow(cfg);
-  assert.match(page, /no `\.codegraph\/codegraph\.db`, refreshed .*at `change close`, in brain$/m);
+  // MV-149: a local index is also built in each change worktree at apply.
+  assert.match(page, /no `\.codegraph\/codegraph\.db`, and in each change worktree at `change apply`, refreshed .*at `change close`, in brain$/m);
   assert.match(page, /no `graphify-out\/graph\.json`, refreshed .*at `change close`, in api$/m);
 
   const { doctorReport } = await import('../../src/commands/doctor.js');

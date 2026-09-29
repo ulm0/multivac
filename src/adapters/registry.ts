@@ -334,7 +334,12 @@ export interface SddScaffold {
  * common one: `graphify query` takes a question in words and walks outward
  * from the nodes matching it, while `codegraph query` is a symbol lookup by
  * name. A door telling an agent to "query the graph" without naming the tool
- * would be wrong for at least one of them.
+ * would be wrong for at least one of them. codegraph's verbs each take a
+ * symbol: a sentence gets name matches for its words, not an answer (MV-149).
+ *
+ * A verb enters because it was run on the recorded version, and its `answers`
+ * say what it misses as well as what it gives — a count it caps, symbols it
+ * merges, calls it cannot see — never that it beats a search (MV-149).
  *
  * A tool with no query verb carries no `queries`, and the door says so. That
  * is a real state — an artifact nothing reads back — not a gap to paper over.
@@ -391,9 +396,27 @@ export interface AdapterSpec {
    * Grapher only: the file the tool reads its ignore rules from, in the root.
    * MV-148: multivac appends the root's derived lines there (`graphIgnoreLines`
    * — never a list here) under a `# multivac:` record, before the first build
-   * and at `change land`.
+   * and at `change land`. MV-149: a JSON file, where `graphignoreJson` says
+   * so, gets them spliced into one of its lists instead, with no record line.
    */
   graphignoreFile?: string;
+  /**
+   * MV-149. Grapher only: the ignore file is a JSON object and the lines go
+   * into `key`'s array, spliced into its text, never re-serialised
+   * (`spliceJsonList`). `reads` are every pattern list the tool defines; any of
+   * them naming a line makes it the human's, and the line is skipped: a
+   * human's `deprioritize` of the mount was overridden by a naive append to
+   * `exclude`, which wins over it.
+   */
+  graphignoreJson?: { key: string; reads: string[] };
+  /**
+   * MV-149. Grapher only: `'structure'` writes only the lines that change what
+   * the tool indexes — the mount in a code repo whose brain holds code, and
+   * the declared repos nested inside the root. Absent: MV-148's full derived
+   * set, which a tool indexing no Markdown takes as inert lines in a file
+   * every repo would then carry.
+   */
+  graphignoreScope?: 'structure';
   /**
    * MV-148. Grapher only: measured to index source files alone, no Markdown,
    * so the law, the changes and their specs stay out of its graph with no
@@ -1228,22 +1251,39 @@ const knownGraphers: Record<string, GrapherEntry> = {
     source: 'https://github.com/Graphify-Labs/graphify',
   },
   codegraph: {
-    // The SQLite database, not the directory: 1.6.0 writes `.codegraph/` with
-    // its own `.gitignore`, so a clone holds the directory and no graph.
+    // The SQLite database, not the directory. Measured 2026-09-28 on 1.6.0:
+    // `init` writes `.codegraph/codegraph.db` in WAL mode, so `-wal` and
+    // `-shm` files may sit beside it, and a `.codegraph/.gitignore` of `*` and
+    // `!.gitignore` — which un-ignores itself, so git lists `.codegraph/`
+    // wherever nothing else ignores that line, and a clone holds the
+    // directory and no graph. The paths in the index are relative to the
+    // checkout. `init` in a change's worktree wrote nothing outside it (a
+    // listing before and after), and `change apply` builds one in each change
+    // worktree (MV-149). With no index in the checkout asked, `query` answers
+    // from the nearest index above it, silently, while `status` warns.
     artifacts: ['.codegraph/codegraph.db'],
     state: { dir: '.codegraph', files: ['.codegraph/codegraph.db'], check: 'file' },
     artifactKind: 'local',
     shared: [],
     local: ['.codegraph/**'],
     ignore: ['.codegraph/'],
-    // No `graphignoreFile`, so no ignore lines (MV-148). Measured 2026-09-28 on
-    // codegraph 1.6.0: it indexes no Markdown, so 0 of its nodes came from
-    // `.specify`, `specs`, `.claude`, `.agents` or `.multivac`; it honours
-    // `.gitignore` through git; and `codegraph.json`'s `exclude` is applied by
-    // `sync`. A consumer of a brain that holds code indexes the mount (93.3% of
-    // its nodes), and a `.gitignore` mount line made a later `git submodule
-    // add` exit 128 — the fix is a merge into `codegraph.json`, a writer of its
-    // own, not a line here. A brain that holds no code adds 0 nodes there.
+    // MV-149, measured on codegraph 1.6.0. `codegraph.json` sits at the
+    // project root and its `exclude` holds gitignore-style patterns; `exclude`
+    // wins over `include` and `deprioritize`, for tracked paths and inside
+    // submodules too; `sync` purges newly excluded files, no rebuild needed; a
+    // malformed `exclude`, invalid JSON or a BOM is ignored with a warning;
+    // `init` never creates the file, and `init` plus `sync` leave it byte for
+    // byte; `.gitignore` is honoured, `.git/info/exclude` is not. It indexes
+    // no Markdown, so 0 of its nodes came from `.specify`, `specs`, `.claude`,
+    // `.agents` or `.multivac`, and only the structural lines are written: a
+    // consumer of a brain that holds code, mounted at `.brain`, went from
+    // 2,254 nodes (2,247 under the mount) to 7 with `{"exclude":["/.brain/"]}`,
+    // while a brain that holds no code adds 0 nodes there. A `.gitignore`
+    // mount line is not the route: it is git-wide, and a later `git submodule
+    // add` of the mount exited 128.
+    graphignoreFile: 'codegraph.json',
+    graphignoreJson: { key: 'exclude', reads: ['exclude', 'include', 'includeIgnored', 'deprioritize'] },
+    graphignoreScope: 'structure',
     codeOnly: true,
     env: { DO_NOT_TRACK: '1', CODEGRAPH_TELEMETRY: '0', CODEGRAPH_NO_DOWNLOAD: '1' },
     binaries: ['codegraph'],
@@ -1253,25 +1293,72 @@ const knownGraphers: Record<string, GrapherEntry> = {
     // rebuild. The hook wants the cheap one — it fires on every edit.
     refresh: 'codegraph sync',
     create: 'codegraph init',
-    // Symbol lookup, NOT a question. Handing this a sentence returns nothing
-    // useful, which is exactly why the door names the tool's own verb instead
-    // of telling the agent to "query the graph".
+    // Symbol lookups, NOT questions: each verb takes a name. Handed a sentence,
+    // `query` returns name matches for its words (1,435 B for one), not an
+    // answer — which is why the door names the tool's own verbs instead of
+    // telling the agent to "query the graph".
+    // MV-149, measured 2026-09-29 on codegraph 1.6.0 over this repository's
+    // `src/` and `test/` (141 files), each of its 318 top-level functions asked
+    // against what an agent runs instead. Where X is defined: `query` printed
+    // more than a narrowed definition grep for 311 of 318 (median 3.43×); it
+    // stays for the signature it adds and because MV-61 pins it. Who calls X:
+    // `callers --limit 500` printed less than `grep -rn 'X('` for 316 of 318
+    // (median 2.01× less) and names the calling function; its header counts
+    // what it lists, 20 unless `--limit N` (20 of 36 for `adapterFor`). What
+    // breaks if X changes: `impact` printed less than a one-level grep for 182
+    // of 318 (median 1.10×); its worth is reach, two calls and the tests, and
+    // it is a lower bound. X's body: `node` printed less than a definition grep
+    // plus a 60-line Read for 235 of 318 (median 2.07×), and it does not
+    // replace the Read an Edit needs. `callers` and `impact` merge same-named
+    // symbols and miss calls made through an aliased import (`run` imported as
+    // `git` in seven files). `node` prints every same-named definition (10,399 B
+    // for the two named `grapherLines`, 3,537 B with `-f src/doors/brain.ts`).
+    // Asked with a symbol, `-f` keeps the definitions whose printed path holds
+    // the text, in any case: the path, a suffix (`brain.ts`), a directory
+    // (`doors`) or a fragment all narrowed it. A text no printed path holds —
+    // a `./` prefix, an absolute path, one outside the repo — printed every
+    // definition, byte for byte what no `-f` prints, with exit 0 and no
+    // warning; "No indexed file matches" came only from `node -f <path>` with
+    // no symbol. The answer below keeps the spelling that always narrows. Each
+    // call took 250–410 ms, against under 10 ms for grep. Run and left out:
+    // `explore` (15.7–17.2 KB a call), `context` (the expected symbol for 2 of
+    // 5 sentences), `files` (what a glob does), `affected` (not a navigation
+    // question), `callees` (`node`'s trail again) and `node -f <file>
+    // --symbols-only` (larger than `grep -n '^export'` for 52 of 52 files).
+    // `--limit 1` hides a second definition and is never printed; `--kind` and
+    // `--json` stay in the tool's own `--help`.
     queries: [
       {
         run: 'codegraph query <symbol>',
         answers:
-          'symbol search by name — `--kind function|class` narrows it, `--limit N` bounds it, `--json` makes it machine-readable',
+          "a name's definitions and imports, each with kind, file:line and signature, best 10 first (`--limit N`)",
+      },
+      {
+        run: 'codegraph callers <symbol>',
+        answers:
+          'the functions calling it, with file:line, module-level callers as their file — 20 unless `--limit N`, counted as listed; aliased imports missed, same-named symbols merged',
+      },
+      {
+        run: 'codegraph impact <symbol>',
+        answers:
+          'what may break if it changes: symbols and tests within two calls, by file — a lower bound; aliased imports missed, same-named symbols merged',
+      },
+      {
+        run: 'codegraph node <symbol>',
+        answers:
+          'its body with line numbers, what it calls and its callers; `-f <file>`, spelled as answers print it, picks one of several same-named',
       },
     ],
     // MV-148, measured 2026-09-28 on codegraph 1.6.0: `-p <path>` answered byte
     // for byte as from inside that checkout; with no index at the path it
     // answered from the nearest index above it with exit 0, or exited 1 where
-    // there was none. A change's worktree holds no index, so it is never
-    // paired with this flag: the repo checkout is.
+    // there was none. MV-149: `change apply` builds each change worktree's
+    // index and prints this flag at it; where it could not, it prints the repo
+    // checkout's, for the base.
     askAt: '-p {checkout}',
     // MV-148, 1.6.0: without `--force`, `uninit` prompts and removes nothing.
     remove: 'codegraph uninit --force',
-    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — 1.6.0\'s README says it collects which tools and commands get used and which languages get indexed, and never any code, paths, file or symbol names, queries, or IP addresses. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or CODEGRAPH_TELEMETRY=0, or DO_NOT_TRACK=1) is half of what makes the contract above literally true. The other half is the npm shim: when the platform bundle its optional dependency should carry is missing, it falls back to downloading that bundle from GitHub Releases, and CODEGRAPH_NO_DOWNLOAD=1 turns the fallback off. This entry\'s `env` sets all three on every run multivac makes and in the post-edit hook (MV-124). The `codegraph query` a door prints runs in the agent\'s own environment and carries none of that `env`: the opt-outs above reach it only when set there (MV-147). It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP. That server, which multivac never starts, checks GitHub releases for a newer version in the background on 1.6.0, and CODEGRAPH_NO_UPDATE_CHECK or DO_NOT_TRACK turns the check off.',
+    note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — 1.6.0\'s README says it collects which tools and commands get used and which languages get indexed, and never any code, paths, file or symbol names, queries, or IP addresses. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or CODEGRAPH_TELEMETRY=0, or DO_NOT_TRACK=1) is half of what makes the contract above literally true. The other half is the npm shim: when the platform bundle its optional dependency should carry is missing, it falls back to downloading that bundle from GitHub Releases, and CODEGRAPH_NO_DOWNLOAD=1 turns the fallback off. This entry\'s `env` sets all three on every run multivac makes and in the post-edit hook (MV-124). The verbs the door prints, and the `codegraph init` and `codegraph uninit --force` that `doctor` and the graph gate print for a human, run outside multivac, and this entry\'s `env` reaches none of them. Measured 2026-09-29 on 1.6.0 with HOME isolated, a local recorder as its telemetry endpoint and strace, and read from its dist: where npm installed the platform bundle, `query`, `callers`, `impact` and `node` open no socket, and each appends one count per command name and UTC day to ~/.codegraph/telemetry-queue.jsonl. That queue is sent to telemetry.getcodegraph.com, with a machine id minted then, the version, OS, architecture, Node major and a CI flag, by the first `init`, `uninit`, `index`, `sync` or `upgrade` run without an opt-out once its day is past, by `codegraph install`, and by the MCP server it registers, at start and every six hours. `init` and `index` also send an `index` event (languages and coarse file-count and duration buckets) at once, and `uninit` an `uninstall` event. Where npm did not deliver the platform bundle, the npm shim downloads it from GitHub Releases into ~/.codegraph/bundles on any command, these verbs included, whatever DO_NOT_TRACK or CODEGRAPH_TELEMETRY say; CODEGRAPH_NO_DOWNLOAD=1 where the agent runs turns that off. multivac\'s own runs carry `env`, so they record and send nothing and leave the queue as it is. DO_NOT_TRACK=1 or CODEGRAPH_TELEMETRY=0 where the agent runs records nothing. It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP. That server, which multivac never starts, checks GitHub releases for a newer version in the background on 1.6.0, and CODEGRAPH_NO_UPDATE_CHECK or DO_NOT_TRACK turns the check off.',
     source: 'https://github.com/colbymchenry/codegraph',
   },
 };

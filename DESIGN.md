@@ -1384,11 +1384,13 @@ multivac may write in (not `managed: false`, not a shallow clone, MV-125):
   declared and its binary found — on PATH or in that repo's
   `node_modules/.bin`, the one lookup of MV-123 — `doors` installs it as the **harness's
   post-edit hook** — for a harness that has one — fire-and-forget, coalesced
-  behind a lock, never failing an edit and never adding latency to it. In a
-  brain that holds no code the hook only follows: it runs the one grapher the
-  code repos resolve, in the edited file's repo when that repo holds the graph
-  and is not a checkout of the brain, and otherwise exits having run nothing
-  (MV-148).
+  behind a lock, never failing an edit and never adding latency to it. There
+  is one post-edit hook per grapher, each keyed by the artifact its toplevel
+  test names: the brain's own where it holds code, and a hook that only
+  follows for each other grapher the code repos resolve, running in the edited
+  file's repo when that repo holds its artifact and is not a checkout of the
+  brain, and otherwise exiting having run nothing (MV-148, MV-149). No hook
+  refreshes anything for a file in no repository.
   `change close` runs the same refresh as the **safety net**, for edits made
   outside a harness. **Git hooks never refresh**: the shims run `verify` only,
   because an ergonomic convenience does not belong on a gate. Nothing is ever

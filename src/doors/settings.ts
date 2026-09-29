@@ -7,6 +7,11 @@
 // gate — it is the agent's navigation aid, so it follows the agent's edits
 // rather than the commit: fire-and-forget, output discarded, exit 0 whatever
 // the tool did.
+//
+// MV-149: one refresh hook per grapher the brain's session refreshes. A hook
+// is ours by its head (`REFRESH_HEAD`) and a grapher's by the artifact its
+// toplevel test names (`refreshKey`), so the merge rewrites each grapher's own
+// hook in place and never takes a command a human typed.
 
 /** The gate's engine — both gate commands below run exactly this. */
 const VERIFY = 'mvac verify';
@@ -45,7 +50,7 @@ const EDIT_GATE = `${VERIFY} >&2 || exit 2`;
 const EDIT_TOOLS = 'Edit|Write|MultiEdit';
 
 /**
- * Coalescing lock, under the gitignored cache. Also identifies our entry.
+ * Coalescing lock, under the gitignored cache. Also identifies our hooks.
  * Repo-relative on purpose: it is the lock for THAT checkout, and
  * `refreshGraph` takes the very same path so the hook and `change close`
  * cannot run a grapher over each other (src/adapters/refresh.ts).
@@ -87,11 +92,12 @@ type Json = Record<string, unknown>;
  *   the first word MV-115's lookup reads. Empty exports nothing, so a hook for
  *   an entry declaring none keeps its bytes. The values are bare words (a test
  *   holds that), so nothing is quoted.
- * - `follow` (MV-148) is the hook of a brain that holds no code: it runs only
- *   in the checkout holding the edited file, and only when that checkout holds
- *   the artifact and is no checkout of a brain; otherwise it exits 0 having run
- *   nothing. Without it the bytes are the ones a brain that holds code and a
- *   consumer have always had.
+ * - `follow` (MV-148) is a follow hook of the brain: it runs only in the
+ *   checkout holding the edited file, and only when that checkout holds the
+ *   artifact and is no checkout of a brain; otherwise it exits 0 having run
+ *   nothing. Without it, the hook of a brain's own grapher and a consumer's:
+ *   the bytes they have always had, but for MV-149's exit when the edited file
+ *   is in no repository.
  */
 export function refreshHookCmd(
   refresh: string,
@@ -104,7 +110,13 @@ export function refreshHookCmd(
   // The hook ran in the session's directory, so an edit inside a named
   // sibling's worktree refreshed the brain's graph and left the sibling's
   // stale. The harness hands the payload on stdin; `file_path` is read in the
-  // foreground, before the refresh is detached. Anything else stays where it was.
+  // foreground, before the refresh is detached.
+  //
+  // MV-149: a file in no repository refreshes nothing. This form fell back to
+  // the session's directory there, so every write of a scratch file outside
+  // every checkout refreshed the session's graph. A payload naming no file
+  // (`${f:-.}` is the session's directory) and a repository without the
+  // artifact still stay where they were: stated ceilings.
   //
   // MV-148: in a brain that holds no code, "where it was" is the brain, and one
   // edit of a brain file built a graph there again after a human had removed
@@ -119,7 +131,7 @@ export function refreshHookCmd(
       `t=$(git -C "$(dirname "\${f:-.}")" rev-parse --show-toplevel 2>/dev/null); ` +
       (follow
         ? `[ -n "$t" ] && [ ! -e "$t/.multivac/config.yml" ] && [ -e "$t/${artifact}" ] && cd "$t" || exit 0; `
-        : `[ -n "$t" ] && [ -e "$t/${artifact}" ] && cd "$t"; `)
+        : `[ -n "$t" ] || exit 0; [ -e "$t/${artifact}" ] && cd "$t"; `)
     : '';
   return (
     `${REFRESH_HEAD} ${here}PATH="$PATH:$PWD/node_modules/.bin"; ${exported ? `export ${exported}; ` : ''}` +
@@ -148,8 +160,27 @@ const ownsVerify: Owns = (c) => c === VERIFY || c === SESSION_GATE || c === EDIT
  * The refresh: its tail carries the declared grapher's own command, which is
  * exactly what an update has to be able to change, so identity is the head
  * this module generates — a path under multivac's cache that nobody types.
+ * Which grapher a hook of ours is for is a second question, `refreshKey`'s:
+ * a command a human typed is never ours, whatever grapher or artifact it names.
  */
 const ownsRefresh: Owns = (c) => c.startsWith(REFRESH_HEAD);
+
+/** MV-140's toplevel test, `[ -e "$t/<artifact>" ]`, in every form `refreshHookCmd` writes. */
+const ARTIFACT_TEST = /\[ -e "\$t\/([^"]+)" \]/;
+
+/**
+ * MV-149. The grapher a refresh hook is for: the artifact its toplevel test
+ * names, written into every hook since MV-140, the follow form included. The
+ * follow form's brain guard, `[ ! -e "$t/.multivac/config.yml" ]`, is not one:
+ * its `!` keeps it from matching. `undefined` for a hook written before that
+ * test existed, which names no grapher. It adds no byte to any hook.
+ */
+export function refreshKey(command: string): string | undefined {
+  return ARTIFACT_TEST.exec(command)?.[1];
+}
+
+/** MV-149. One wanted refresh hook: `refreshHookCmd`'s arguments, which `doors` builds per grapher. */
+export type RefreshHook = { refresh: string; env: Record<string, string>; artifact?: string; follow?: boolean };
 
 /** One hook object of ours, with the entry and the array that hold it. */
 type Owned = { entry: Json; hooks: unknown[]; hook: Json };
@@ -197,6 +228,74 @@ function drop(arr: unknown[], value: unknown): void {
 }
 
 /**
+ * Rewrite one hook of ours in place, and nothing else. Sibling commands stay,
+ * fields we do not write (a `timeout`) stay, and the matcher is never
+ * rewritten: it is written once, on an entry this module creates, and belongs
+ * to whoever holds it. `command` carries the refresh, whose tail is the
+ * grapher's own command. `type` is a field we DO write, so a hook of ours that
+ * was hand-typed without it gets completed rather than left malformed: the
+ * harness runs no hook whose type is missing. The gate and every refresh hook
+ * are rewritten here (MV-74).
+ */
+function rewrite(m: Owned, command: string): void {
+  m.hook.command = command;
+  m.hook.type = 'command';
+}
+
+/**
+ * MV-149. Keep one refresh hook per wanted grapher in an event's list, each
+ * identified by the artifact its toplevel test names (`refreshKey`):
+ *
+ * 1. every hook of ours naming a wanted artifact is rewritten in place,
+ *    copies included;
+ * 2. a wanted grapher with no hook yet takes over, in place inside its entry,
+ *    the first hook of ours naming no wanted artifact or none — its matcher,
+ *    a `timeout` and the commands beside it kept;
+ * 3. a wanted grapher still without one gets a new entry on `matcher`;
+ * 4. every other hook of ours is removed, its entry only when that leaves it
+ *    empty.
+ *
+ * An empty `wanted` removes every hook of ours: a hook pointing at a missing
+ * tool is worse than no hook. Two keyless copies of ours, written before
+ * MV-140's test, become one: step 2 takes the first, step 4 removes the other.
+ * A second wanted hook naming an artifact already wanted is dropped — the
+ * resolver lists one grapher per artifact, and two hooks with one key would
+ * trade places on every run.
+ */
+function ensureRefreshes(list: unknown[], wanted: RefreshHook[], matcher: string): void {
+  const ours = ourHooks(list, ownsRefresh);
+  const keyOf = new Map(ours.map((m) => [m, refreshKey(m.hook.command as string)]));
+  const want = wanted.filter((w, i) => wanted.findIndex((x) => x.artifact === w.artifact) === i);
+  const keys = new Set(want.map((w) => w.artifact));
+  const command = (w: RefreshHook): string => refreshHookCmd(w.refresh, w.env, w.artifact, w.follow);
+  const kept = new Set<Owned>();
+  const without: RefreshHook[] = [];
+  for (const w of want) {
+    const own = ours.filter((m) => keyOf.get(m) === w.artifact);
+    for (const m of own) {
+      rewrite(m, command(w));
+      kept.add(m);
+    }
+    if (own.length === 0) without.push(w);
+  }
+  for (const w of without) {
+    const free = ours.find((m) => !kept.has(m) && !keys.has(keyOf.get(m)));
+    if (free) {
+      rewrite(free, command(w));
+      kept.add(free);
+      continue;
+    }
+    // `hooks` before `matcher`: the key order every entry of ours was written in.
+    list.push({ hooks: [{ type: 'command', command: command(w) }], matcher });
+  }
+  for (const m of ours) {
+    if (kept.has(m)) continue;
+    drop(m.hooks, m.hook);
+    if (m.hooks.length === 0) drop(list, m.entry);
+  }
+}
+
+/**
  * Add (or update in place) one multivac hook; foreign entries never move.
  * Returns a notice when it had to add a copy beside one that already exists.
  *
@@ -217,18 +316,9 @@ function ensureEvent(
   const { matcher, gate } = opts;
   const list = eventList(hooks, event);
   const mine = ourHooks(list, owns);
-  for (const m of mine) {
-    // Ours already: rewrite THIS hook and nothing else. Sibling commands stay,
-    // fields we do not write (a `timeout`) stay, and the matcher is never
-    // rewritten: it is written once, on the entry we create below, and belongs
-    // to whoever holds it. `command` is a no-op on the gate — there identity IS
-    // the whole command — and carries the refresh, whose tail is the grapher's
-    // own command. `type` is a field we DO write, so a hook of ours that was
-    // hand-typed without it gets completed rather than left malformed: the
-    // harness runs no hook whose type is missing.
-    m.hook.command = command;
-    m.hook.type = 'command';
-  }
+  // Ours already: rewrite THIS hook and nothing else (`rewrite`). `command`
+  // is a no-op on the gate — there identity IS the whole command.
+  for (const m of mine) rewrite(m, command);
   const covers = mine.some((m) => m.entry.matcher === matcher);
   if (mine.length > 0 && (!gate || covers)) return null;
   const entry: Json = { hooks: [{ type: 'command', command }] };
@@ -271,15 +361,19 @@ function duplicateNotice(hooks: Json, event: string): string | null {
  * only a human can settle. raw === null (absent file) starts from {}. Invalid
  * JSON throws — the caller notices and skips rather than clobbering a user file.
  *
- * `refresh` is the declared grapher's refresh command, and only when its
- * binary is present; null/undefined writes no refresh entry at all. `env` is
- * that grapher's opt-out environment, which the hook exports (MV-124).
- * `follow` gives a brain that holds no code the hook that follows edits into
- * the code repos and never runs in a checkout of the brain (MV-148).
+ * `refreshes` are the refresh hooks wanted, one per grapher, each only when
+ * its binary is present (MV-149); none wanted removes every refresh hook of
+ * ours. `refresh`, `env`, `artifact` and `follow` are one such hook, for a
+ * caller wanting at most one: `refresh` the declared grapher's refresh command
+ * (null/undefined wants none), `env` its opt-out environment, which the hook
+ * exports (MV-124), `artifact` the one its toplevel test names (MV-140), and
+ * `follow` a follow hook of the brain (MV-148). `refreshes` wins where both
+ * are given.
  */
 export function mergeClaudeSettings(
   raw: string | null,
   opts: {
+    refreshes?: RefreshHook[];
     refresh?: string | null;
     matcher?: string;
     env?: Record<string, string>;
@@ -321,22 +415,9 @@ export function mergeClaudeSettings(
   ]) {
     if (added) notices.push(added);
   }
-  if (opts.refresh) {
-    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh, opts.env, opts.artifact, opts.follow), {
-      matcher,
-    });
-  } else {
-    // No grapher declared, or its binary is gone: our hook goes with it —
-    // a hook pointing at a missing tool is worse than no hook. Every match is
-    // machine-generated and provably ours, so all of them go; the entry goes
-    // only if we leave it with nothing.
-    const list = (hooks as Json).PostToolUse;
-    if (Array.isArray(list)) {
-      for (const { entry, hooks: hs, hook } of ourHooks(list, ownsRefresh)) {
-        drop(hs, hook);
-        if (hs.length === 0) drop(list, entry);
-      }
-    }
-  }
+  const wanted =
+    opts.refreshes ??
+    (opts.refresh ? [{ refresh: opts.refresh, env: opts.env ?? {}, artifact: opts.artifact, follow: opts.follow }] : []);
+  ensureRefreshes(eventList(hooks as Json, 'PostToolUse'), wanted, matcher);
   return { text: JSON.stringify(settings, null, 2) + '\n', notices };
 }

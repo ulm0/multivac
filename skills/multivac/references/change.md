@@ -134,6 +134,13 @@ The file also carries per-repo status
   from the checkout (MV-133). In a brain with no code they stay in the checkout
   until `close` commits them (MV-146). Write the code in the worktree; a commit
   of code anywhere else is refused (MV-137).
+  Under each checkout apply prints the flag that reaches its graph from the
+  brain (MV-148). A local index — codegraph's — is built or synced by apply in
+  each checkout it hands out, `.codegraph/` appended to the repository's common
+  `info/exclude` first when git would list it, and named `its index: -p
+  <worktree>`; where apply printed no such line, `-p` at the worktree answers
+  from the nearest index above it — the base's, without the branch's edits.
+  Never run the `codegraph init` its notices suggest: re-run `apply` (MV-149).
 - **land** prints the landing plan in graph order — roots first, an edge's
   target only after its source lands, parallel where no edge says otherwise —
   and for each ready repo hands you the push and the MR to open. It opens
@@ -150,7 +157,13 @@ The file also carries per-repo status
   branch — is named and the graph lands alone; a rebuild that leaves nodes under
   the new lines restores the file, and the next `land` appends them again. In a brain that
   holds no code it commits no brain graph, even for a change naming `brain`. A
-  detached HEAD or an ignored graph is refused by name. In CI, the merge request
+  detached HEAD or an ignored graph is refused by name. A local index is synced
+  there instead — built where apply could not, after the same `info/exclude`
+  step — and **never committed**; `codegraph.json`, where land added the lines
+  that keep the brain's mount out, is committed alone, and a detached HEAD
+  passes it by (MV-149). The copy the first build wrote in a repo's own
+  checkout is the human's to commit: land says nothing beside it, `doctor`
+  names it. In CI, the merge request
   pipeline runs `verify --strict --range <base>..<head> --branch <name>`, which
   refuses code outside a change's branch even when a hook was skipped.
 
@@ -170,7 +183,9 @@ get past a root you could simply graph. `--abandon` is exempt.
 
 A shared graph must also be in each root's committed HEAD, not only staged
 (MV-103): close names the add and the commit, and runs neither. codegraph's
-database is local, built in each checkout and never committed.
+database is local, built in each checkout and never committed — each change
+worktree's by `change apply`, which prints `its index: -p <worktree>`, synced at
+`land` and removed with the worktree at `close` (MV-149).
 
 The refresh that follows covers the brain where it holds code and the repos
 this change names. It runs before the archive commit is printed, and a brain
@@ -221,15 +236,19 @@ refresh into your harness's **post-edit hook**, so the map is current for the
 next question you ask it. It is backgrounded and silent: it never delays an
 edit, never fails one, and skips when a refresh is already running. It refreshes
 the repository of the file you edited, when that repository holds a graph, so an
-edit in a sibling's worktree refreshes that sibling (MV-140). In a brain that
-holds no code the hook only follows: it runs the one grapher the code repos
-resolve, wired only when its binary is found on PATH or in each of those repos,
-and only in the edited file's repo when that repo holds the graph and is not a
-checkout of the brain — otherwise nothing runs (MV-52, MV-148). Where the code
-repos resolve several graphers, or the binary is not reachable from each, no
-hook is wired and `doors` says so; their graphs are then refreshed at `change
-land` and `change close` only. `change land`
-refreshes and commits the graph on the branch, and `change close` runs the
+edit in a sibling's worktree refreshes that sibling (MV-140); an edit of a file
+in no repository refreshes nothing (MV-149). There is **one post-edit hook per
+grapher** the brain's session edits code for: the brain's own where it holds
+code, and a following hook for each other grapher its writable code repos
+resolve, each wired only when its binary is found on PATH or in each of those
+repos. A following hook runs only in the edited file's repo when that repo
+holds its artifact and is not a checkout of the brain — otherwise nothing runs
+(MV-52, MV-148, MV-149). A grapher whose binary is not reachable from each of
+its repos, or that writes the artifact another one writes, gets no hook and
+`doors` says so; its graphs are then refreshed at `change land` and `change
+close` only. `change land`
+refreshes and commits a shared graph on the branch, and syncs a local index
+without committing it; `change close` runs the
 refresh as the **safety net** for edits made outside a harness, taking the same
 lock but waiting on it rather than skipping.
 

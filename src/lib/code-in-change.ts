@@ -11,11 +11,11 @@
 // branch makes the range reader binding, and that is not on disk (`doctor`).
 
 import { readFileSync } from 'node:fs';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import picomatch from 'picomatch';
 import type { Config } from '../types.js';
 import { changesDir, parseChange, type ChangeFile } from '../change/file.js';
-import { adapterFor, bodyGlobs, sddGoverning } from '../adapters/detect.js';
+import { adapterFor, bodyGlobs, brainHoldsCode, sddGoverning } from '../adapters/detect.js';
 import { doorTargets, grapherNames, grapherSpec, sddNames, sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { CHANGES_DIR } from './config.js';
 import { dim, red } from './out.js';
@@ -156,20 +156,31 @@ export function nonCodeGlobs(cfg: Config, repoKey?: string): string[] {
  * them, the brain (MV-146). Directories only, so a root's own Markdown and
  * documentation directories stay in its graph. `[]` for a grapher with no
  * ignore file.
+ *
+ * MV-149. A grapher whose entry says `graphignoreScope: 'structure'` gets only
+ * the lines that change what it indexes: the mount, in a code repo whose brain
+ * holds code, and the nested declared repos. codegraph 1.6.0 indexes no
+ * Markdown, so the rest gave the same node counts as the mount line alone, and
+ * a brain that holds no code adds 0 of its nodes there; the full set would
+ * have put an untracked file into every codegraph repo. The mount is written
+ * as git records it (`mountDir`), for every grapher.
  */
 export function graphIgnoreLines(cfg: Config, brain: string, scope: string, spec: AdapterSpec): string[] {
   if (!spec.graphignoreFile) return [];
   const inBrain = scope === 'brain' || cfg.repos[scope]?.isBrain === true;
-  const skip = new Set<string>([cfg.mount]);
-  for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
-    for (const p of grapherSpec(name, cfg.graphers)?.local ?? []) skip.add(p.split('/')[0]!);
-  }
+  const mount = mountDir(cfg);
   const out = new Set<string>();
-  for (const g of nonCodeGlobs(cfg, scope)) {
-    const dir = /^([^/*?[\]{}!]+)\/\*\*$/.exec(g)?.[1];
-    if (dir !== undefined && !skip.has(dir)) out.add(`/${dir}/`);
+  if (spec.graphignoreScope !== 'structure') {
+    const skip = new Set<string>(mount === undefined ? [] : [mount]);
+    for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
+      for (const p of grapherSpec(name, cfg.graphers)?.local ?? []) skip.add(p.split('/')[0]!);
+    }
+    for (const g of nonCodeGlobs(cfg, scope)) {
+      const dir = /^([^/*?[\]{}!]+)\/\*\*$/.exec(g)?.[1];
+      if (dir !== undefined && !skip.has(dir)) out.add(`/${dir}/`);
+    }
   }
-  if (!inBrain) out.add(`/${cfg.mount}/`);
+  if (!inBrain && mount !== undefined && (spec.graphignoreScope !== 'structure' || brainHoldsCode(cfg))) out.add(`/${mount}/`);
   const root = resolve(brain, inBrain ? '.' : (cfg.repos[scope]?.path ?? '.'));
   for (const e of Object.values(cfg.repos)) {
     const rel = relative(root, resolve(brain, e.path));
@@ -178,6 +189,20 @@ export function graphIgnoreLines(cfg: Config, brain: string, scope: string, spec
     out.add(`/${rel.split(sep).join('/')}/`);
   }
   return [...out].sort();
+}
+
+/**
+ * MV-149. The mount as git records it — `path = .brain` for a submodule added
+ * at `./.brain` — so an ignore line names the directory the tool sees:
+ * `/./.brain/`, `./.brain/` and `/.brain//` each left the mount indexed, for
+ * codegraph and graphify alike (12 nodes, 10 of them the mount's, against 2).
+ * Normalised, a leading `./` and a trailing `/` stripped; undefined for an
+ * absolute mount or one outside the root, which gets no line.
+ */
+export function mountDir(cfg: Pick<Config, 'mount'>): string | undefined {
+  const m = posix.normalize(cfg.mount).replace(/^(\.\/)+/, '').replace(/\/+$/, '');
+  if (m === '' || m === '.' || posix.isAbsolute(m) || m === '..' || m.startsWith('../')) return undefined;
+  return m;
 }
 
 async function readChange(brainDir: string, slug: string, rev: string | null, dir = CHANGES_DIR): Promise<ChangeFile | null> {

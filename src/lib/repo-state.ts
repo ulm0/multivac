@@ -9,7 +9,7 @@ import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import picomatch from 'picomatch';
 import { parse } from 'yaml';
-import { bodyGlobs, brainHoldsCode, pathExists } from '../adapters/detect.js';
+import { adapterFor, bodyGlobs, brainHoldsCode, pathExists } from '../adapters/detect.js';
 import { grapherNames, grapherSpec, sddNames, sddSpec, type AdapterSpec, type SddProjectStep } from '../adapters/registry.js';
 import { initState } from './init-state.js';
 import { inHead, normUrl, run as git } from './git.js';
@@ -151,7 +151,7 @@ export async function leftoverSdds(dir: string): Promise<Leftover[]> {
   return out;
 }
 
-/** A grapher's install an earlier release left in a brain that holds no code (MV-148). */
+/** A grapher's install an earlier release left in a brain that holds no code (MV-148), or, in a code repo, the artifact of a grapher it does not resolve (MV-149). */
 export interface LeftoverGraph {
   /** The grapher: a known one, or a key of `graphers:`. */
   name: string;
@@ -187,24 +187,53 @@ export const leftoverNoun = (l: Pick<LeftoverGraph, 'kind'>): 'index' | 'graph' 
  * states it, and the door says it holds no code.
  *
  * Every KNOWN grapher and every one declared under `graphers:`, each probed at
- * its artifact, the top directory of its `local` globs, its ignore file and
- * every harness platform's probe, declared door or not — no config key chooses
+ * its artifact, the top directory of its `local` globs, its ignore file — only
+ * beside one of those two (MV-149) — and every harness platform's probe,
+ * declared door or not — no config key chooses
  * among them, since the one that chose is what the brain no longer resolves.
  * Files only, and one `git ls-files` for tracked: no vendor is run (MV-129).
  * `[]` where the brain holds code: its graph is its own.
+ *
+ * MV-149. Asked of a code repo (`key`, its config key), the same probe answers
+ * which graphers' artifacts it holds that it does not resolve: a repo that
+ * moved from one grapher to another, or was built by hand, where each
+ * grapher's own post-edit hook passes its toplevel test and refreshes it on
+ * an edit there. The artifact alone counts, by file existence — no platform,
+ * no ignore file — and one written by the grapher the repo resolves is its
+ * own. Whether that grapher's hook is wired is `doctor`'s to ask, so this
+ * stays offline.
  */
-export async function leftoverGraphs(cfg: Config, dir: string): Promise<LeftoverGraph[]> {
-  if (brainHoldsCode(cfg)) return [];
+export async function leftoverGraphs(cfg: Config, dir: string, key = 'brain'): Promise<LeftoverGraph[]> {
+  const repo = key !== 'brain';
+  if (!repo && brainHoldsCode(cfg)) return [];
+  const resolved = repo ? adapterFor(cfg, key, 'grapher') : undefined;
+  const ownArt = resolved === undefined ? undefined : grapherSpec(resolved, cfg.graphers)?.artifacts[0];
   const out: LeftoverGraph[] = [];
   for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
     const spec = grapherSpec(name, cfg.graphers);
-    if (spec === null) continue;
+    if (spec === null || name === resolved || (repo && spec.artifacts[0] === ownArt)) continue;
     const here = async (p: string | undefined): Promise<string | undefined> =>
       p !== undefined && (await pathExists(join(dir, p))) ? p : undefined;
     const artifact = await here(spec.artifacts[0]);
+    if (repo) {
+      if (!artifact) continue;
+      const listed = await git(dir, ['ls-files', '-z', '--', artifact]).catch(() => '');
+      out.push({
+        name,
+        kind: grapherNames.includes(name) ? (spec.artifactKind ?? 'shared') : 'declared',
+        artifact,
+        tracked: listed.length > 0,
+        platforms: [],
+      });
+      continue;
+    }
     const top = spec.local.map((g) => g.split('/')[0]).find((t) => !/[*?[{]/.test(t));
     const stateDir = await here(top);
-    const ignoreFile = await here(spec.graphignoreFile);
+    // MV-149: the ignore file only beside the grapher's artifact or its state
+    // directory. Alone it is the human's: `codegraph.json` is codegraph's
+    // config as much as its ignore file, and one kept for another checkout's
+    // index is not a leftover of this brain.
+    const ignoreFile = artifact || stateDir ? await here(spec.graphignoreFile) : undefined;
     const found = Object.values(spec.harness?.platforms ?? {});
     const platforms: string[] = [];
     for (const p of [...found.filter((p) => p.uninstallFirst), ...found.filter((p) => !p.uninstallFirst)]) {

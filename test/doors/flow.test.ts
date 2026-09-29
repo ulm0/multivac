@@ -192,9 +192,10 @@ test('an unverified adapter is named as declared-but-unknown, never guessed', as
   );
 });
 
-// The brain's one post-edit hook runs one grapher: the page says "after each
-// edit" of that one, and of none when the code repos resolve two.
-test("the refresh row promises an edit refresh only for the grapher the brain's hook runs", async () => {
+// MV-149: one post-edit hook per grapher the brain's session refreshes, so the
+// page says "after each edit" of each — #5's one hook ran one grapher, and the
+// page said it of none when the code repos resolved two.
+test("the refresh row promises an edit refresh for each grapher a hook of the brain runs", async () => {
   const edit = /after each edit through the harness hook/;
   const row = (page: string, artifact: string): string =>
     page.split('\n').find((l) => l.startsWith('- the code graph is built') && l.includes(`\`${artifact}\``)) ?? '';
@@ -207,13 +208,48 @@ test("the refresh row promises an edit refresh only for the grapher the brain's 
   );
   for (const artifact of ['graphify-out/graph.json', '.codegraph/codegraph.db']) {
     assert.ok(row(mixed, artifact), `no refresh row for ${artifact}:\n${mixed}`);
-    assert.doesNotMatch(row(mixed, artifact), edit, artifact);
+    assert.match(row(mixed, artifact), edit, artifact);
   }
+  // The same repos with no post-edit door: neither row promises an edit refresh.
+  const bare = renderFlow(
+    (await eco([
+      'doors: [agents]', 'repos:',
+      '  web:', '    path: ../acme-web', '    grapher: graphify',
+      '  api:', '    path: ../acme-api', '    grapher: codegraph',
+    ])).cfg,
+  );
+  for (const artifact of ['graphify-out/graph.json', '.codegraph/codegraph.db']) assert.doesNotMatch(row(bare, artifact), edit, artifact);
   const one = renderFlow((await eco(['doors: [agents, claude]', 'grapher: graphify', 'repos:', '  api: ../acme-api'])).cfg);
   assert.match(row(one, 'graphify-out/graph.json'), edit);
   // No post-edit harness, no promise, as before.
   const none = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api: ../acme-api'])).cfg);
   assert.doesNotMatch(row(none, 'graphify-out/graph.json'), edit);
+});
+
+test('a local index is built at apply and synced at land, never committed', async () => {
+  // MV-149: the page said land committed a local index, which it never did.
+  const row = (page: string, artifact: string): string =>
+    page.split('\n').find((l) => l.startsWith('- the code graph is built') && l.includes(`\`${artifact}\``)) ?? '';
+  const brain = renderFlow((await eco([
+    'doors: [agents, claude]', 'grapher: codegraph', 'repos:', '  brain: .',
+    '  api:', '    path: ../acme-api', '    grapher: none',
+  ])).cfg);
+  assert.equal(
+    row(brain, '.codegraph/codegraph.db'),
+    '- the code graph is built where `multivac repos sync` or a change reaches a repo with no `.codegraph/codegraph.db`, and in each change worktree at `change apply`, refreshed after each edit through the harness hook, and at `change land`, where it is synced and never committed, and at `change close`, in brain',
+  );
+  const siblings = renderFlow((await eco([
+    'doors: [agents]', 'repos:',
+    '  web:', '    path: ../acme-web', '    grapher: graphify',
+    '  api:', '    path: ../acme-api', '    grapher: codegraph',
+  ])).cfg);
+  const local = row(siblings, '.codegraph/codegraph.db');
+  assert.match(local, /, and in each change worktree at `change apply`, refreshed at `change land`, where it is synced and never committed, and at `change close`, in api$/);
+  assert.doesNotMatch(local, /where it is committed on the change branch/);
+  // A shared artifact keeps its row.
+  const shared = row(siblings, 'graphify-out/graph.json');
+  assert.match(shared, /no `graphify-out\/graph\.json`, refreshed at `change land`, where it is committed on the change branch, and at `change close`, in web$/);
+  assert.doesNotMatch(shared, /change apply|never committed/);
 });
 
 // --- US2: derived, and saying so ---

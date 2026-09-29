@@ -6,9 +6,10 @@ holds one refresh hook per grapher. Two registry fields and one module are added
 replaces #5's; one predicate, one merge step, one splice and one normaliser are added. The names
 graph-answers-where-asked (#5) defines — `askAt`, `whereLines`, `graphPointer`, `freshness`,
 `refreshHookCmd(…, follow)`, `installHookConfig`, `projectInto`, `brainRefreshGrapher`,
+`brainHook(cfg, brain)` and its `BrainHook` kinds, `noRefreshNotice`,
 `graphIgnoreLines(cfg, brain, scope, spec)`, `writeIgnores(name, spec, dir, scope, lines, opts?)`,
-`holdsIgnored`, land's ignore step, `leftoverGraphs`, the forced worktree removal — are used as
-#5's artifacts write them (research.md R0).
+`holdsIgnored`, land's ignore step (`landIgnores`), `leftoverGraphs`, the forced worktree
+removal — are used as #5's code, merged at 5ff5a7a, spells them (research.md R0, *#5 as landed*).
 
 ## Registry (src/adapters/registry.ts)
 
@@ -49,7 +50,7 @@ full derived set.
 
 ```ts
 export type SpliceResult =
-  | { ok: true; text: string; added: string[] }          // text === raw when added is empty
+  | { ok: true; text: string; added: string[]; skipped: { line: string; list: string }[] } // text === raw when added is empty
   | { ok: false; why: string };                          // raw left as it is
 export function spliceJsonList(raw: string, json: { key: string; reads: string[] }, lines: string[]): SpliceResult;
 export function namedBy(parsed: unknown, reads: string[], line: string): string | undefined; // the list naming it, if any
@@ -61,10 +62,10 @@ export function namedBy(parsed: unknown, reads: string[], line: string): string 
 | not JSON, comments, a BOM, a top-level array, `exclude` not an array, a non-string element | `{ ok: false, why }` |
 | object, key absent | `"exclude": [<lines>]` inserted after the last top-level member, or into `{}`, at the top-level members' indentation |
 | object, key an empty array | `"<line>"` inserted |
-| inline array | `, "<line>"` before `]` |
+| inline array | `, "<line>"` after its last element |
 | multi-line array | `,` + the file's EOL + the previous element's indentation + the quoted line |
 | duplicate top-level key | the LAST occurrence (what JSON.parse and codegraph keep) |
-| a line some `reads` list names (R15 spellings, negated, or a path under it) | not inserted; the caller reports the list |
+| a line some `reads` list names (R15 spellings, negated, or a path under it) | not inserted; the key list's own silently, another list's in `skipped`, which the caller reports |
 
 Invariants: output with the inserted spans removed equals the input; the output parses; a second
 call adds nothing; a line is quoted with `JSON.stringify(line)`; no object is serialised (the
@@ -97,9 +98,12 @@ non-`key` list names, `say` the skip line; write only when `added` is non-empty;
 `wrote codegraph.json (+N)[ and .gitignore (+M)] before <before>`. The `.gitignore` half is
 unchanged (`opts.gitignore !== false`). No record line (JSON holds none). No git.
 
-`readIgnoreLines(spec, dir): { lines: string[]; malformed?: string } ` — exported, the one reader
-`doctor` and land use: branches on `graphignoreJson` (the four lists, spellings normalised as
-R15) or #5's text file (lines, negations, records).
+`readIgnoreLines(spec, dir, lines): Promise<{ exists: boolean; lacking: string[]; malformed?: string }>`
+— exported, the one reader `doctor` and land use: what the file at `dir` lacks of `lines`, which
+is what the next write there adds — the splice's `added` where `graphignoreJson` is set (the four
+lists, spellings as R15), #5's `ignoreLinesToAdd` over the text file otherwise — or, for a JSON
+file that does not parse to an object with its list, `malformed` and nothing lacking. `exists`
+says whether the file is there. Files only; whether it is committed is the caller's HEAD read.
 
 `holdsIgnored(spec, dir)` (#5's): returns `false` first unless `spec.rebuild` is declared.
 
@@ -109,10 +113,11 @@ R15) or #5's text file (lines, negations, records).
 
 | Function | Answers | Rule |
 | --- | --- | --- |
-| `brainRefreshGraphers(cfg): { name: string; follow: boolean }[]` (replaces #5's `brainRefreshGrapher`) | which graphers the brain's session refreshes | brain holds code: `adapterFor(cfg, 'brain', 'grapher')` with `follow: false` if any; then, in config order, each distinct grapher the non-brain repos not marked `managed: false` resolve, `follow: true`. Code-less: those alone. A name with no registry or config entry is skipped (unverified); a grapher whose `artifacts[0]` equals one already listed is dropped and reported by `doors` |
-| `hookRefreshes(cfg, name): boolean` | whether "after your edits" is true of `name` | `cfg.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit) && brainRefreshGraphers(cfg).some((g) => g.name === name)`. Introduced over #5's `brainRefreshGrapher(cfg) === name` first (byte-neutral), then over the list |
+| `brainRefreshGraphers(cfg): { name: string; follow: boolean }[]` (replaces #5's `brainRefreshGrapher`) | which graphers the brain's session refreshes | brain holds code: `adapterFor(cfg, 'brain', 'grapher')` with `follow: false` if any; then, in config order, each distinct grapher the non-brain repos not marked `managed: false` resolve, `follow: true`. Code-less: those alone. A name with no registry or config entry is skipped (unverified). Graphers sharing an `artifacts[0]` (the hook's key): a follow grapher writing the brain's own grapher's artifact is dropped, the own kept; follow graphers sharing one are all dropped (the row: "graphers declaring one artifact get no follow hook"); `refreshClashes(cfg)` lists each such set for `doors`' notice |
+| `hookRefreshes(cfg, name): boolean` | whether "after your edits" is true of `name` — declared, never probed (MV-93) | `cfg.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit) && brainRefreshGraphers(cfg).some((g) => g.name === name)`. Introduced over #5's `brainRefreshGrapher(cfg) === name` first (byte-neutral: `whereLines` and flow.md's row compared exactly that), then over the list |
+| `brainHooks(cfg, brain): Promise<BrainHook[]>` (replaces #5's `brainHook`) | which follow hooks this machine can wire, and why not the others | one answer per grapher `brainRefreshGraphers(cfg)` lists with `follow: true`, in its order: #5's `follow` (`name`, `dirs`, `local`) where MV-123's lookup finds every `required` binary from each writable code repo resolving it, else #5's `unreachable` (`name`, `bin`); #5's `unresolved` alone where the brain holds no code, a grapher is declared and no writable code repo resolves one; #5's `mixed` goes. Where the brain holds no code, an unverified name the repos resolve is answered as #5 answered it (`follow`, no lookup), so `doors` prints what to declare and `doctor` says nothing runs it. `[]` where nothing follows — a brain that holds code with no sibling on another grapher keeps its own hook, wired by `missingRequired(spec, dir)` as before. `doors` wires each `follow` answer and prints `noRefreshNotice` for each other; `doctor`'s refresh path reads the same list, so the two cannot disagree |
 
-Both read the top level only through `ownDecl` (MV-122's and #3's legs stay at 0), synchronously;
+`brainRefreshGraphers` and `hookRefreshes` read the top level only through `ownDecl` (MV-122's and #3's legs stay at 0), synchronously;
 a shallow or unsynced clone is still listed; `doors` never projects into one (MV-125).
 
 ## The hook merge (src/doors/settings.ts)
@@ -141,6 +146,14 @@ function ensureRefreshes(hooks: Entry[], wanted: RefreshHook[], matcher: string)
 A command not starting with `REFRESH_HEAD` is never ours, whatever it names. Two keyless copies
 of ours: step 2 takes the first, step 4 removes the second.
 
+`refreshHookCmd(refresh, env, artifact, follow)` (#5's), after T079 (FR-034): the non-follow
+form's toplevel segment is `[ -n "$t" ] || exit 0; [ -e "$t/<artifact>" ] && cd "$t"; ` in place
+of `[ -n "$t" ] && [ -e "$t/<artifact>" ] && cd "$t"; ` — the hook exits 0, having run nothing and
+taken no lock, when the edited file resolves to no repository; +8 bytes (graphify 492 → 500,
+codegraph 558 → 566). The follow form, which already exits there, keeps its 540/606 bytes. A
+payload with no `file_path` (`${f:-.}`) and a toplevel without the artifact still leave the
+non-follow form in the session's directory (ceilings). `ARTIFACT_TEST` reads both forms alike.
+
 ## Wiring (src/commands/doors.ts)
 
 ```ts
@@ -156,13 +169,13 @@ async function installHookConfig(dir: string, hookConfig: HookConfig, refreshes:
 | brain that holds code | `brainRefreshGraphers(cfg)` — its own (`follow: false`) + others (`follow: true`) | own: `missingRequired(spec, dir)` empty; follow: `missingRequired(spec, root.dir)` empty for every writable code repo resolving it (#5's rule) |
 | code-less brain | `brainRefreshGraphers(cfg)`, all `follow: true` | as the follow row |
 | consumer | its own grapher, `follow: false` | `missingRequired(spec, dir)` empty, as today |
-| two graphers, one artifact | the first listed only | the notice of contracts/cli-output.md |
+| two graphers, one artifact | none of the follow graphers; the brain's own, where it is one of them, keeps its hook | `clashSentence`, printed by `doors` and `doctor` (contracts/cli-output.md) |
 
-#5's "one hook runs one command" notice is removed; #5's unreachable notice stays, per grapher.
+#5's "one hook runs" notice is removed; #5's unreachable notice stays, per grapher, its head naming the grapher where the brain's session refreshes several.
 
 ## Apply (src/commands/change.ts)
 
-`indexWorktree(brain, cfg, key, ws, abs)`, called once in `cmdApply`'s workspace loop after
+`indexWorktree(cfg, key, ws, abs)`, called once in `cmdApply`'s workspace loop after
 `ensureWorkspace` and the carry, before `work here`:
 
 1. `name = adapterFor(cfg, key, 'grapher')`, `spec = grapherSpec(name, cfg.graphers)`; return
@@ -205,9 +218,11 @@ It never calls `writeIgnores`.
 | shared | any | #5's path, unchanged (detached HEAD refused; ignored artifact refused; `[art, file]` staged) |
 | local | read-only | `true`, nothing (existing check) |
 | local | detached HEAD, or another branch | `true`, silent |
-| local | the change's branch | #5's ignore step (one `writeIgnores(…, { gitignore: false, before: 'the refresh at \`change land\`' })` call, shared with the shared path) and the alone commit below; lookup miss → `true`, silent; else `excludeLocalOutputs(dir, spec, key)` and `refreshGraph(name, dir, key, cfg.graphers)`; commit no index |
-| local, the step would write | `codegraph.json` committed at HEAD, or absent there and in the repo's own checkout | `check-ignore -q codegraph.json` hits → the refusal line (a warning), nothing written, land goes on — no index waits on it; else append; appended → `commitBookkeeping(dir, ['codegraph.json'], 'graph: <slug> — codegraph keeps <lines> out of its index')` |
-| local, the step may not write | untracked in the repo's own checkout, or untracked at the branch checkout | nothing written, nothing said (`doctor` names it) |
+| local | the change's branch | #5's ignore step (`landIgnores`: one `writeIgnores(…, { gitignore: false, before: 'the refresh at \`change land\`' })` call, shared with the shared path); lookup miss → nothing run, silent; else `excludeLocalOutputs(dir, spec, key)` and `refreshGraph(name, dir, key, cfg.graphers)`; commit no index; then, whatever the lookup answered, the alone commit below when the step appended |
+| local, an empty line set | any | `landIgnores` returns before any check: nothing written, nothing said |
+| local, the file ignored there | not tracked at HEAD and `landIgnores`' one `ignoredPaths` check hits — asked first for a local artifact, since the first build's copy in the repo's own checkout is untracked too | the refusal line (a warning), nothing written, land goes on — no index waits on it |
+| local, the step would write | `codegraph.json` committed at HEAD with no uncommitted edit, or absent there and in the repo's own checkout | append; appended → `commitBookkeeping(dir, ['codegraph.json'], 'graph: <slug> — codegraph keeps <lines> out of its index')`, `<lines>` from `readIgnoreLines` |
+| local, the step may not write | untracked in the repo's own checkout or at the branch checkout, committed on the repo's branch after the change's was cut, or with uncommitted edits | nothing written, nothing said: #5's lines for these are the shared path's (`doctor` names an uncommitted file) |
 
 ## Close (src/commands/change.ts `removeWorktrees`)
 
@@ -224,10 +239,10 @@ path under `local` globs) stays as the second defence.
 
 ## Doctor (src/commands/doctor.ts) and leftovers (src/lib/repo-state.ts)
 
-- Refresh path (FR-016, FR-011): per grapher `hookRefreshes` lists, and, for a local artifact, apply builds / land syncs / never committed (contracts).
+- Refresh path (FR-016, FR-011): per grapher `hookRefreshes` lists, from `brainHooks`' answers where the brain holds no code or a sibling follows (#5's `local` and unreachable clauses per grapher), and, for a local artifact, apply builds / land syncs / never committed (contracts). `doctor` reads this machine; the door, flow.md and the pointer read declarations.
 - `leftoverGraphs(cfg, dir, key = 'brain')` (#5's, one more argument): `key === 'brain'` → #5's semantics (`[]` when the brain holds code). Another key → the known graphers other than the one that key resolves, whose artifact is present in `dir` (file existence only). A `graphignoreFile` alone counts only beside the grapher's artifact or state directory (FR-024).
-- The two-artifact fact (FR-017): for each writable root, each entry of `leftoverGraphs(cfg, root.dir, root.key)` whose grapher `hookRefreshes(cfg, g.name)` → the appended fact with #5's removal; computed in doctor.ts, repo-state.ts stays offline.
-- The `codegraph.json` facts (FR-023): per writable root whose grapher has `graphignoreJson`, from `readIgnoreLines` and `graphIgnoreLines`, and one git read of whether the file is tracked at HEAD (in doctor.ts, never refresh.ts).
+- The two-artifact fact (FR-017): for each writable root, each entry of `leftoverGraphs(cfg, root.dir, root.key)` whose grapher's hook is wired — `hookRefreshes(cfg, g.name)` and, for a follow hook, `brainHooks` answering `follow` for it (for the brain's own, MV-123's lookup in the brain) — and whose binary MV-123's lookup finds from that root, where the hook looks once it has moved in → the appended fact with the entry's `remove` where it declares one, else #5's derived removal (`removalOf`, shared with the leftover line); computed in doctor.ts, repo-state.ts stays offline. `brainHooks` is read once per `doctor` for this and the refresh path.
+- The `codegraph.json` facts (FR-023): per writable, installed root whose grapher has `graphignoreJson` and whose `graphIgnoreLines` set is non-empty, from `readIgnoreLines`, and one git read of whether the file is tracked at HEAD (in doctor.ts, `jsonIgnoreFacts`, never refresh.ts): malformed, else present and not committed, else the lines it lacks — one of the three.
 
 ## States of a worktree index
 

@@ -300,16 +300,26 @@ individual command, not the entry around it. An entry is your grouping — your
 matcher, your list of commands — so:
 
 - Identity is exact. `mvac verify` is multivac's; `mvac verify --strict` is
-  yours and is never claimed. The refresh command is recognised by the lock
-  preamble multivac generates, which nothing else writes.
+  yours and is never claimed. A refresh command is recognised by the lock
+  preamble multivac generates, which nothing else writes, and which grapher it
+  refreshes by the artifact its test names, `[ -e "$t/<artifact>" ]`. There is
+  one per grapher the session refreshes, so a `graphify update .` or
+  `codegraph sync` you typed is never multivac's, whichever grapher it runs.
 - An update rewrites one command in place, and fills in the `type` multivac
   itself writes if the hook was typed by hand without it — a hook missing
   `type` never runs. Commands you added beside it stay, in order, and fields
   multivac does not write — a `timeout`, say — stay with them.
 - A matcher is written once, when multivac creates its own entry, and is never
   rewritten afterwards. The matcher on an entry is yours.
-- Dropping the grapher removes multivac's refresh command, not the entry: an
-  entry you share with it survives, carrying your commands.
+- Each grapher's refresh command is rewritten in place, and one of multivac's
+  naming an artifact no longer wanted, or none — a command written before the
+  refresh named its artifact — is taken over in place by a grapher still
+  without one, so the entry, its matcher and your commands in it stay. Two such
+  unnamed copies, which earlier releases kept side by side, become one.
+- Dropping a grapher removes its refresh command, not the entry: an entry you
+  share with it survives, carrying your commands. Dropping every grapher
+  removes every refresh command multivac wrote, and only the entries that
+  leaves empty.
 
 Owning a command is not the same as covering an event. If the only
 `mvac verify` in `PostToolUse` sits in an entry of yours on another matcher —

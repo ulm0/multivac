@@ -74,22 +74,29 @@ without saying that would be selling you a hole.
 ## Why a grapher helps
 
 An agent that does not know a graph exists will grep, and grep is the wrong
-instrument for "what reaches this" — it finds strings, not paths. One graph
-query answers in a single call what a search takes many, and the answer is a
-subgraph rather than a pile of line hits.
+instrument for "what reaches this" — it finds strings, not paths. What a graph
+gives is reach and relationships: who calls a function, what may break if it
+changes, how one symbol reaches another — a subgraph or a list of callers
+rather than a pile of line hits. It is not a byte saving. Measured on
+multivac's own code, a definition looked up in the graph printed more than a
+narrowed search for almost every function, while a list of callers usually
+printed less than the search for call sites; each tool's verbs, and what each
+one misses, are in [Graphers and SDD](../../reference/graphers-and-sdd/#what-the-graph-answers).
 
 The reason it stays current is that the refresh follows **your edits, not your
 commits**: `doors` wires it into the harness's post-edit hook, backgrounded and
 coalesced behind a lock, so the map is fresh for the next question you ask it.
 From a brain whose code lives in other repos, that hook follows your edits into
-the repo you edited, and `doors` wires it only where one grapher's binary is
-reachable from every code repo that resolves it.
+the repo you edited, and `doors` wires one hook per grapher, each only where
+that grapher's binary is reachable from every code repo that resolves it.
 `change close` runs the same refresh as a safety net for edits made outside a
 harness. Git hooks never refresh — they run `verify` only.
 
 Two constraints keep this honest. The refresh module never invokes git:
-`change land` commits the graph on the change's branch, so it merges with the
-code it describes. And a grapher multivac has not
+`change land` commits a shared graph (graphify's) on the change's branch, so it
+merges with the code it describes, and syncs a local index (codegraph's) in the
+change's worktree without committing it — `change apply` built it there. And a
+grapher multivac has not
 verified gets no derived paths and no invented verbs — it is reported
 UNVERIFIED until its contract is declared, which any project can do in its own
 config without a merge request against multivac.

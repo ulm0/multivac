@@ -9,7 +9,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, rmdir, writeFile } from 'node:fs/promises';
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
-import { join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import type { Command, Config, VerifyReport } from '../types.js';
 import {
   CHANGES_DIR,
@@ -28,7 +28,7 @@ import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { grapherSpec, sddSpec, type AdapterSpec, type GatePoint, type LifecyclePoint } from '../adapters/registry.js';
 import { sddGate, sddInstructions, sddSlugWhy } from '../adapters/sdd.js';
-import { graphGate, graphScopes, ignoreLinesToAdd, nodesUnder, refreshGraph, writeIgnores } from '../adapters/refresh.js';
+import { graphGate, graphScopes, nodesUnder, readIgnoreLines, refreshGraph, writeIgnores } from '../adapters/refresh.js';
 import { graphIgnoreLines } from '../lib/code-in-change.js';
 import { equip, missingTools } from '../adapters/equip.js';
 import { projectDocLines } from '../adapters/project-doc.js';
@@ -46,7 +46,7 @@ import {
 import { citeLine, citeSpec } from '../change/cite.js';
 import picomatch from 'picomatch';
 import { graphTrackedGate } from '../adapters/tracked.js';
-import { adapterFor, adaptersByRoot, askedGraphers, brainHoldsCode, readOnly } from '../adapters/detect.js';
+import { adapterFor, adaptersByRoot, askedGraphers, brainHoldsCode, hookRefreshes, missingRequired, readOnly } from '../adapters/detect.js';
 import { evaluate, fmtAge, stalenessLines } from './verify.js';
 import {
   ChangeError,
@@ -426,23 +426,44 @@ function sharedGraph(cfg: Config, key: string): string | undefined {
  * MV-148: the grapher's ignore file lands in the same commit, its missing
  * lines appended first (`landIgnores`), unless the rebuild still left nodes
  * under them.
+ * MV-149: a local index is synced there too — or built, where `change apply`
+ * could not — after the same exclude step as apply's, and no index is
+ * committed: only the grapher's own ignore file, alone, when the step
+ * appended to it. Nothing of the index is committed, so a detached HEAD or
+ * another branch passes it by in silence instead of refusing land, and a
+ * binary not found there says nothing more: `change apply` named it.
  * Returns false, naming why, when the graph cannot be committed there.
  */
 async function commitGraph(brain: string, cfg: Config, key: string, slug: string): Promise<boolean> {
   const art = sharedGraph(cfg, key);
+  const name = adapterFor(cfg, key, 'grapher');
+  const spec = name === undefined ? null : grapherSpec(name, cfg.graphers);
+  const local = spec?.artifactKind === 'local';
   const repo = repoAbs(brain, cfg, key);
-  if (!art || !repo || !existsSync(repo) || (await readOnly(cfg, key, repo))) return true;
+  if ((!art && !local) || !repo || !existsSync(repo) || (await readOnly(cfg, key, repo))) return true;
   const wt = worktreePath(brain, slug, key);
   const dir = existsSync(join(wt, '.git')) ? wt : repo;
   const branch = await currentBranch(dir);
+  if (!art && branch !== slug) return true; // a local index: nothing of it would be committed
   if (branch === null) {
     warn(`${key}: the graph cannot land with ${slug} — ${dir} is on a detached HEAD; \`git -C ${dir} switch ${slug}\`, then re-run land`);
     return false;
   }
   if (branch !== slug) return true; // the change's branch is not checked out here
-  const name = adapterFor(cfg, key, 'grapher')!;
-  const ignores = await landIgnores(brain, cfg, key, slug, name, dir, repo);
-  await refreshGraph(name, dir, key, cfg.graphers);
+  const ignores = await landIgnores(brain, cfg, key, slug, name!, dir, repo);
+  if (!art) {
+    // A local index: the guard above lets nothing else through.
+    if ((await missingRequired(spec!, dir)).length === 0) {
+      // Before the build or sync: an index apply could not build, built here
+      // without the line, was listed in the worktree and close kept it.
+      await excludeLocalOutputs(dir, spec!, key);
+      await refreshGraph(name!, dir, key, cfg.graphers);
+    }
+    // After the sync, which read the file this commits.
+    if (ignores === null) return true;
+    return commitBookkeeping(dir, [ignores.file], `graph: ${slug} — ${name} keeps ${ignores.lines.join(' ')} out of its index`);
+  }
+  await refreshGraph(name!, dir, key, cfg.graphers);
   if (!existsSync(join(dir, art))) {
     await ignores?.restore(); // not built: the refresh said why
     return true;
@@ -497,6 +518,12 @@ async function commitGraph(brain: string, cfg: Config, key: string, slug: string
  *
  * The HEAD read is here, never in refresh.ts, which touches no git (MV-50,
  * MV-103). Returns what was appended and how to take it back, or null.
+ *
+ * MV-149. For a local index no graph lands, and the index built in a change's
+ * worktree is the same with or without the file — the mount is empty there —
+ * so where the rule lets land write nothing, it says nothing, and `doctor`
+ * names the file. One case is said: a file git ignores, which no land could
+ * ever commit, is refused by name with the command that shows the rule.
  */
 async function landIgnores(
   brain: string,
@@ -506,51 +533,64 @@ async function landIgnores(
   name: string,
   dir: string,
   repo: string,
-): Promise<{ spec: AdapterSpec; file: string; dirs: string[]; restore: () => Promise<void> } | null> {
+): Promise<{ spec: AdapterSpec; file: string; lines: string[]; dirs: string[]; restore: () => Promise<void> } | null> {
   const spec = grapherSpec(name, cfg.graphers);
   const file = spec?.graphignoreFile;
   if (!spec || !file) return null;
+  const local = spec.artifactKind === 'local';
+  const lines = graphIgnoreLines(cfg, brain, key, spec);
+  if (local && lines.length === 0) return null; // nothing to keep out: nothing to say
+  const tell = local ? (): void => {} : say;
   const tracked = await inHead(dir, file);
   const here = existsSync(join(dir, file));
+  const ignored = !tracked && (await ignoredPaths(dir, [file])).length > 0;
+  if (ignored && local) {
+    // First: the copy the first build wrote in the repo's own checkout is
+    // untracked too, and would pass below in silence.
+    warn(`${key}: ${file} is ignored in ${dir} — \`git -C ${dir} check-ignore -v ${file}\` names the rule; nothing was written`);
+    return null;
+  }
   if (!tracked && !here && existsSync(join(repo, file)) && (await inHead(repo, file))) {
     // Committed on the repo's own branch after this one was cut: the file is
     // not missing, the branch is behind it.
-    say(
+    tell(
       `${key}: ${file} is committed in ${repo} but not on ${slug} — the graph on ${slug} is built without it; ` +
         `merge that commit into ${slug}, or rebase ${slug} onto it, then re-run land`,
     );
     return null;
   }
   if (!tracked && (here || existsSync(join(repo, file)))) {
-    say(
+    tell(
       `${key}: ${file} in ${here ? dir : repo} is not committed — the graph on ${slug} is built without it; ` +
         'commit it there the way that repo lands work',
     );
     return null;
   }
   if (tracked && (await gitRun(dir, ['status', '--porcelain', '--', file]).catch(() => '')).trim() !== '') {
-    say(
+    tell(
       `${key}: ${file} in ${dir} has uncommitted edits — multivac appends nothing over them, and the graph lands without it; ` +
         'commit or discard them there, then re-run land',
     );
     return null;
   }
-  if (!tracked && (await ignoredPaths(dir, [file])).length > 0) {
+  if (ignored) {
     say(
       `${key}: ${file} is ignored in ${dir} — the graph lands without it; ` +
         `\`git -C ${dir} check-ignore -v ${file}\` names the rule: remove it to land the lines multivac keeps out`,
     );
     return null;
   }
-  const lines = graphIgnoreLines(cfg, brain, key, spec);
   const before = await readFile(join(dir, file), 'utf8').catch(() => '');
-  const add = ignoreLinesToAdd(before, lines);
+  // What the write below adds, by the file's own rule: a JSON list's splice,
+  // or MV-148's text append.
+  const add = (await readIgnoreLines(spec, dir, lines)).lacking;
   if (!(await writeIgnores(name, spec, dir, key, lines, { gitignore: false, before: 'the refresh at `change land`' }))) {
     return null;
   }
   return {
     spec,
     file,
+    lines: add,
     dirs: add.map((l) => l.replace(/^\/+|\/+$/g, '')),
     // The bytes it held — HEAD's copy, the only one ever appended to — or,
     // created here, gone again.
@@ -1187,11 +1227,17 @@ const typed = (dir: string): string => (/[\s'"]/.test(dir) ? `'${dir.replace(/'/
  * the repo checkout's for the base where it is not, or that there is none yet
  * and what builds one.
  *
- * A local index is built in each checkout and never committed, so a change's
- * worktree has none, and asked there it answers from the nearest index above
- * it — the checkout's, or the brain's — with exit 0, or fails: its flag is
- * named at the repo checkout only, and a worktree's own `.codegraph/` is never
- * probed. Every line that offers a flag says the
+ * A local index is built in each checkout and never committed. MV-149: apply
+ * has just built or synced it in the checkout it hands out (`indexWorktree`),
+ * so where the probe finds it installed there the line names that checkout,
+ * with how fresh it stays — "after your edits" only where the one question
+ * says a hook refreshes it (`hookRefreshes`), else as of this apply until
+ * land. Where it is not — the binary was not found, or the build failed — a
+ * worktree asked for it answers from the nearest index above it, the
+ * checkout's or the brain's, with exit 0, or fails: the line names the repo
+ * checkout for the base, never the worktree. A worktree whose committed
+ * `.codegraph/.gitignore` reads partial is not named as broken: it is not
+ * built. Every line that offers a flag says the
  * answers' paths are relative to the checkout it names. Nothing for a grapher
  * that is none, unverified or records no flag, nor for the brain's own main
  * checkout, which the door's bare verbs already ask.
@@ -1207,15 +1253,24 @@ async function graphPointer(cfg: Config, key: string, ws: string, abs: string): 
   const flag = askAt.split(' ')[0];
   const at = (dir: string): string => askAt.replace('{checkout}', typed(dir));
   const relative = 'paths in its answers are relative to';
+  // MV-149: a local index is as fresh as the last run that touched it — the
+  // hook's after each edit, where one is wired, else this apply until land.
+  // A quoted string, so the leg reading it matches the source as written.
+  const fresh = !local
+    ? ''
+    : `${hookRefreshes(cfg, name!) ? 'refreshed after your edits' : 'as of this apply, refreshed again at `change land`'}; `;
+  const installed = `its ${what}: ${at(ws)} — ${fresh}${relative} this checkout`;
   if (!local || ws === abs) {
     const here = await initState(spec, ws);
     if (here.state === 'partial' || here.state === 'unevaluable') return `its ${what} cannot be pointed at — ${here.reason}`;
-    if (here.state === 'installed') return `its ${what}: ${at(ws)} — ${relative} this checkout`;
+    if (here.state === 'installed') return installed;
     if (ws === abs) {
       return local
         ? `no ${name} index here yet — ${flag} here answers from the nearest index above it, or fails`
         : 'no graph here yet — `change land` builds and commits one here';
     }
+  } else if ((await initState(spec, ws)).state === 'installed') {
+    return installed; // MV-149: the worktree's own, built or synced by this apply
   }
   const base = await initState(spec, abs);
   if (base.state === 'partial' || base.state === 'unevaluable') {
@@ -1229,6 +1284,103 @@ async function graphPointer(cfg: Config, key: string, ws: string, abs: string): 
   return local
     ? `no ${name} index here or in ${typed(abs)} yet — ${flag} at either answers from the nearest index above it, or fails`
     : `no graph here or in ${typed(abs)} yet — \`change land\` builds and commits one here`;
+}
+
+/**
+ * MV-149. The lines of `lines` git ignores in `dir`, each asked as git walks
+ * the tree: a line naming a directory (`.codegraph/`) is ignored only where
+ * git never descends into that directory, so the directory itself is asked,
+ * as a directory. Asked of the line's text, `check-ignore` answered "ignored"
+ * for a repo's `.codegraph/*`, `.codegraph/**`, `/.codegraph/*` and
+ * `**\/.codegraph/*`, which ignore what is below and let codegraph's own
+ * `!.gitignore` back in — the worktree listed `?? .codegraph/` and `git add -A`
+ * staged that file — and, once codegraph's `.gitignore` stood there, its `*`
+ * answered "ignored" for every spelling, `*.db` and none included. git judges
+ * a path as a directory only where one stands: one is made for the question
+ * where missing, and removed again, empty as it was made.
+ */
+async function ignoredAsWalked(dir: string, lines: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const line of lines) {
+    const path = line.replace(/^\/+|\/+$/g, '');
+    const abs = join(dir, path);
+    const made = line.endsWith('/') && !existsSync(abs) ? await mkdir(abs, { recursive: true }) : undefined;
+    try {
+      if ((await ignoredPaths(dir, [path])).length > 0) out.push(line);
+    } finally {
+      // Innermost first, up to the first directory made: `rmdir` takes only
+      // an empty one, so nothing another process wrote meanwhile goes.
+      for (let d = abs; made !== undefined; d = dirname(d)) {
+        await rmdir(d).catch(() => {});
+        if (d === made) break;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * MV-149. Before a local index is built or synced in `dir`, each line of the
+ * entry's `ignore` that git does not ignore there — asked of the line itself,
+ * as git walks it (`ignoredAsWalked`), never of the artifact: codegraph 1.6.0
+ * writes a `.codegraph/.gitignore` of `*` and `!.gitignore`, so where a repo's
+ * `.gitignore` holds only `*.db` git ignored the database and still listed
+ * `?? .codegraph/` — goes into the repository's common `info/exclude`, created
+ * where missing. Never a tracked file: where a repo's `.codegraph/` line sat
+ * in an uncommitted `.gitignore`, a worktree index showed `?? .codegraph/`,
+ * `git add -A` staged codegraph's own `.gitignore` onto the branch, and
+ * `change close` kept the worktree as holding uncommitted work. The common
+ * file, because git 2.43 never read a worktree's own `info/exclude`. Said
+ * once, only when it appended. The git reads and the write are here, never in
+ * refresh.ts, which runs no git (MV-50); warned, never thrown, like every
+ * grapher step (MV-50).
+ */
+async function excludeLocalOutputs(dir: string, spec: AdapterSpec, key: string): Promise<void> {
+  const ignored = await ignoredAsWalked(dir, spec.ignore);
+  const missing = spec.ignore.filter((line) => !ignored.includes(line));
+  if (missing.length === 0) return;
+  try {
+    const common = resolve(dir, (await gitRun(dir, ['rev-parse', '--git-common-dir'])).trim());
+    const file = join(common, 'info', 'exclude');
+    const text = await readFile(file, 'utf8').catch(() => '');
+    const held = new Set(text.split('\n').map((l) => l.trim()));
+    const add = missing.filter((line) => !held.has(line));
+    if (add.length === 0) return;
+    await mkdir(dirname(file), { recursive: true });
+    await writeFile(file, `${text}${text === '' || text.endsWith('\n') ? '' : '\n'}${add.join('\n')}\n`);
+    say(`${key}: ${add.join(' ')} added to ${typed(file)} — git ignored no index here, and that file is never committed`);
+  } catch (e) {
+    warn(`${key}: ${missing.join(' ')} not added to the repository's info/exclude (${(e as Error).message.split('\n')[0]}) — git may list the index in ${typed(dir)}`);
+  }
+}
+
+/**
+ * MV-149. A local index in the checkout `change apply` hands out — the
+ * change's worktree, or the repo branched in place — built where none is
+ * installed and synced where one is, every apply: skipping an installed one
+ * froze it at the first apply while the pointer read as fresh. Asked there,
+ * the trunk's index lacked 19 of a branch's own symbols and put 24 of 192
+ * moved ones more than 60 lines off, and a sibling's worktree nested in a
+ * codegraph brain answered with the brain's code. Through `refreshGraph`, so
+ * MV-123's lookup in that checkout, the entry's `env` (MV-124), the lock
+ * (MV-58), a closed stdin and warn-never-throw (MV-50) all hold. A shared
+ * artifact gets nothing: the branch carries its committed graph.
+ *
+ * The lookup is asked in the checkout, which holds no `node_modules`: a
+ * binary found only in the repo's own is named once there by `refreshGraph`
+ * — unless the repo's own checkout is still unindexed after `equip`, whose
+ * build already named it. The exclude step runs only where a build or sync
+ * follows. It never writes the grapher's ignore file or `.gitignore`: an
+ * untracked one in a change's checkout would keep the worktree at close.
+ */
+async function indexWorktree(cfg: Config, key: string, ws: string, abs: string): Promise<void> {
+  const name = adapterFor(cfg, key, 'grapher');
+  const spec = name === undefined ? null : grapherSpec(name, cfg.graphers);
+  if (!spec || spec.artifactKind !== 'local') return;
+  const missing = (await missingRequired(spec, ws)).length > 0;
+  if (missing && (await initState(spec, abs)).state !== 'installed') return; // `equip` named it for this repo
+  if (!missing) await excludeLocalOutputs(ws, spec, key);
+  await refreshGraph(name!, ws, ws === abs ? key : `${key} worktree`, cfg.graphers);
 }
 
 async function cmdApply(
@@ -1317,6 +1469,8 @@ async function cmdApply(
       const n = await doCarry(abs, wt, slug, plan, sddName);
       if (n > 0) say(`${key}: carried ${n} ${sddName} file${n === 1 ? '' : 's'} onto ${slug} and committed them there`);
     }
+    // MV-149: after the carry, so the index holds what the branch holds.
+    await indexWorktree(cfg, key, wt, abs);
   }
   // MV-146: the directory the carry did not move — a code-less brain's, which
   // stays in the checkout until close — is where the apply steps write.

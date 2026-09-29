@@ -16,6 +16,7 @@ import { ignoredPaths } from '../lib/git.js';
 import { adapterFor, adaptersByRoot, localBin, missingRequired, pathExists, readOnly, type ReadOnly } from './detect.js';
 import { initState } from '../lib/init-state.js';
 import { graphIgnoreLines } from '../lib/code-in-change.js';
+import { spliceJsonList } from '../lib/json-splice.js';
 import { GRAPH_LOCK } from '../doors/settings.js';
 import { CONFIG_PATH } from '../lib/config.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
@@ -71,12 +72,21 @@ async function takeLock(dir: string, label: string): Promise<(() => Promise<void
  * The one way a grapher's declared command runs: through a shell (MV-115), in
  * the root, with the entry's opt-outs over the inherited environment (MV-124)
  * and the root's node_modules/.bin reachable after PATH (MV-123).
+ *
+ * MV-149: its stdin is closed as soon as it is spawned, so a vendor prompt
+ * reads end-of-file instead of waiting. codegraph 1.6.0's `init` prompts with
+ * its file watcher off (`CODEGRAPH_NO_WATCH=1`, or WSL on a `/mnt` path): with
+ * stdin left open it had not returned after 30 s, and closed it exited 0 in
+ * 851 to 1,368 ms over five runs and wrote no git hook. `-y` is not the
+ * answer — it installs three git hooks into the shared `.git/hooks`.
  */
 async function runDeclared(spec: AdapterSpec, run: string, dir: string): Promise<void> {
-  await execFileP('sh', ['-c', run], {
+  const p = execFileP('sh', ['-c', run], {
     cwd: dir,
     env: { ...process.env, ...spec.env, PATH: [process.env.PATH, localBin(dir)].filter(Boolean).join(delimiter) },
   });
+  p.child.stdin?.end();
+  await p;
 }
 
 /**
@@ -299,7 +309,9 @@ export async function nodesUnder(spec: AdapterSpec, dir: string, dirs: string[])
  * Files only (MV-50, MV-52).
  */
 export async function holdsIgnored(spec: AdapterSpec, dir: string): Promise<boolean> {
-  if (!spec.graphignoreFile) return false;
+  // MV-149: only where the entry records a rebuild — the one use of the
+  // answer — so a local database is never read as a graph, whoever asks.
+  if (spec.rebuild === undefined || !spec.graphignoreFile) return false;
   const text = await readFile(join(dir, spec.graphignoreFile), 'utf8').catch(() => '');
   return (await nodesUnder(spec, dir, ignoredDirs(text, true))) > 0;
 }
@@ -325,6 +337,13 @@ export async function holdsIgnored(spec: AdapterSpec, dir: string): Promise<bool
  * artifact — `graphify-out/` ignores the directory, and git cannot re-include
  * a file under an excluded directory — so that is said, never fixed by editing
  * their line. Land refuses such a graph by name itself.
+ *
+ * MV-149. A JSON ignore file (`graphignoreJson`) gets the lines spliced into
+ * its list (`spliceJsonList`) — every other byte kept, no record line, since
+ * JSON holds none — and is written only when a line was added: an empty line
+ * set creates no file. A line another of its lists names is the human's and
+ * is said, with the list; a file that does not parse to an object with that
+ * list is left as it is, and said, with the lines to add by hand.
  */
 export async function writeIgnores(
   name: string,
@@ -345,7 +364,27 @@ export async function writeIgnores(
     await writeFile(path, `${text}${sep}${tail.join('\n')}\n`);
     wrote.push(`${file} (+${add.length})`);
   };
-  if (spec.graphignoreFile) {
+  const json = spec.graphignoreJson;
+  if (spec.graphignoreFile && json) {
+    const file = spec.graphignoreFile;
+    const path = join(dir, file);
+    const r = lines.length === 0 ? null : spliceJsonList(await readFile(path, 'utf8').catch(() => ''), json, lines);
+    if (r && !r.ok) {
+      warn(
+        `graph ${name} @ ${scope}: ${file} does not parse to an object with an ${JSON.stringify(json.key)} list — ` +
+          `left as it is; add ${lines.join(' ')} to its ${JSON.stringify(json.key)} by hand`,
+      );
+    } else if (r) {
+      for (const k of r.skipped) {
+        say(`graph ${name} @ ${scope}: ${k.line} not added to ${file} — its ${JSON.stringify(k.list)} names it, which is yours`);
+      }
+      if (r.added.length > 0) {
+        await writeFile(path, r.text);
+        wrote.push(`${file} (+${r.added.length})`);
+        appended = true;
+      }
+    }
+  } else if (spec.graphignoreFile) {
     const text = await readFile(join(dir, spec.graphignoreFile), 'utf8').catch(() => '');
     const add = ignoreLinesToAdd(text, lines);
     await append(spec.graphignoreFile, add, true);
@@ -367,6 +406,28 @@ export async function writeIgnores(
   return appended;
 }
 
+
+/**
+ * MV-149. What the grapher's ignore file at `dir` lacks of `lines` — what the
+ * next write there would add, a line another list names aside — for `doctor`,
+ * which only reads, and for land, which names what it wrote. The JSON splice's
+ * answer, or MV-148's text rule; `malformed` where a JSON file does not parse
+ * to an object with its list, and nothing would be added. `exists` says
+ * whether the file is there. Files only: whether it is committed is the
+ * caller's to ask, never this module's (MV-50, MV-103).
+ */
+export async function readIgnoreLines(
+  spec: AdapterSpec,
+  dir: string,
+  lines: string[],
+): Promise<{ exists: boolean; lacking: string[]; malformed?: string }> {
+  if (!spec.graphignoreFile) return { exists: false, lacking: [] };
+  const text = await readFile(join(dir, spec.graphignoreFile), 'utf8').catch(() => null);
+  const exists = text !== null;
+  if (!spec.graphignoreJson) return { exists, lacking: ignoreLinesToAdd(text ?? '', lines) };
+  const r = spliceJsonList(text ?? '', spec.graphignoreJson, lines);
+  return r.ok ? { exists, lacking: r.added } : { exists, lacking: [], malformed: r.why };
+}
 
 /**
  * MV-131. Absolute paths to `bin` in hook commands, rewritten to the bare name.

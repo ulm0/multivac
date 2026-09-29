@@ -634,12 +634,30 @@ test("doctor: a code-less brain's refresh path says where its hook follows edits
   const net = ' (installed when the binary is present) · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh';
 
   assert.equal(await refreshPath(two, [binDir]), `refresh path: claude post-edit hook follows your edits into the code repos' checkouts${net}`);
+  // MV-149: two graphers over the code repos, one hook each — the line names
+  // each one wired, and per grapher why one is not; none found, neither is.
+  const mixed = 'doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n';
+  const unreachable = (b: string): string => `\`${b}\` is not reachable from every code repo that resolves ${b} (PATH, or each one's node_modules/.bin)`;
   assert.equal(
-    await refreshPath(
-      'doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n',
-      [],
-    ),
-    "refresh path: `change land` and `change close` only — the code repos resolve graphify and codegraph, and the brain's one post-edit hook runs one command · git hooks never refresh",
+    await refreshPath(mixed, []),
+    `refresh path: \`change land\` and \`change close\` only — ${unreachable('graphify')}; ${unreachable('codegraph')} · git hooks never refresh`,
+  );
+  const both = join(eco.brain, '..', 'bothbin');
+  mkdirSync(both, { recursive: true });
+  for (const b of ['graphify', 'codegraph']) {
+    writeFileSync(join(both, b), '#!/bin/sh\nexit 0\n');
+    chmodSync(join(both, b), 0o755);
+  }
+  const land = ' · `change land` commits graphify\'s graph on the change branch and syncs codegraph\'s index, which `change apply` builds in each change worktree, never committed · `change close` is the net · git hooks never refresh';
+  const several = await refreshPath(mixed, [both]);
+  assert.equal(several, `refresh path: claude post-edit hooks follow your edits — graphify's and codegraph's (each installed when its binary is present)${land}`);
+  assert.equal(Buffer.byteLength(`grapher    ${several}\n`), 358);
+  // codegraph found from neither repo: graphify's hook is wired, codegraph's
+  // is not, and the line says which, in `doors`' words.
+  rmSync(join(both, 'codegraph'));
+  assert.equal(
+    await refreshPath(mixed, [both]),
+    `refresh path: claude post-edit hook follows your edits — graphify's (installed when the binary is present) · no hook for codegraph: ${unreachable('codegraph')}${land}`,
   );
   // In one of the two repos' node_modules/.bin: the hook, moved into the other, finds none.
   mkdirSync(join(eco.repos.web, 'node_modules', '.bin'), { recursive: true });
@@ -685,6 +703,233 @@ test("doctor: a code-less brain's refresh path says where its hook follows edits
     await refreshPath(`doors: [agents]\ngrapher: acmegraph\n${decl}repos:\n  api: ../acme-api\n`, [binDir]),
     'refresh path: `change land` and `change close` only — no declared harness has a post-edit hook · git hooks never refresh',
   );
+});
+
+// MV-149. What land does with the graph, by the artifact's kind: a local
+// index is built in each change worktree at apply and synced at land, never
+// committed, where a shared graph is committed on the change branch.
+test('the refresh path of a local index says apply builds it and land syncs it', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-local-')), { brainIsCode: true });
+  const binDir = join(eco.brain, '..', 'fakebin');
+  mkdirSync(binDir, { recursive: true });
+  for (const b of ['codegraph', 'graphify']) {
+    writeFileSync(join(binDir, b), '#!/bin/sh\nexit 0\n');
+    chmodSync(join(binDir, b), 0o755);
+  }
+  const refreshPath = async (config: string): Promise<string> => {
+    writeFileSync(join(eco.brain, '.multivac/config.yml'), config);
+    const old = process.env.PATH;
+    process.env.PATH = [binDir, '/usr/bin', '/bin'].join(delimiter);
+    try {
+      const l = (await doctorReport(eco.brain)).lines.filter((x) => x.startsWith('grapher    refresh path: '));
+      assert.equal(l.length, 1, l.join('\n'));
+      return l[0];
+    } finally {
+      process.env.PATH = old;
+    }
+  };
+  const local = '`change apply` builds the index in each change worktree and `change land` syncs it, never committed';
+  const own = await refreshPath('doors: [agents, claude]\ngrapher: codegraph\nrepos:\n  brain: .\n');
+  assert.equal(
+    own,
+    `grapher    refresh path: claude post-edit hook (installed when the binary is present) · ${local} · \`change close\` is the net · git hooks never refresh`,
+  );
+  assert.equal(Buffer.byteLength(`${own}\n`), 245);
+  // A code-less brain's follow hook: its head kept, the land clause by kind.
+  assert.equal(
+    await refreshPath('doors: [agents, claude]\ngrapher: codegraph\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n'),
+    `grapher    refresh path: claude post-edit hook follows your edits into the code repos' checkouts (installed when the binary is present) · ${local} · \`change close\` is the net · git hooks never refresh`,
+  );
+  // A shared graph is committed on the change branch, as before.
+  const shared = await refreshPath('doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n');
+  assert.match(shared, / · `change land` commits it on the change branch · /);
+  assert.doesNotMatch(shared, /change apply/);
+});
+
+// MV-149. doctor's refresh path names each grapher's own hook in every brain
+// shape — a brain that holds code with a sibling on another grapher included —
+// per grapher where one does not reach, and, in the words `doors` prints,
+// graphers one hook cannot tell apart.
+test("doctor's refresh path names each grapher's hook, where one does not reach, and graphers sharing one artifact", async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-several-')), { brainIsCode: true });
+  const binDir = join(eco.brain, '..', 'fakebin');
+  mkdirSync(binDir, { recursive: true });
+  const put = (dir: string, b: string): void => {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, b), '#!/bin/sh\nexit 0\n');
+    chmodSync(join(dir, b), 0o755);
+  };
+  const refreshPath = async (config: string, path: string[]): Promise<string> => {
+    writeFileSync(join(eco.brain, '.multivac/config.yml'), config);
+    const old = process.env.PATH;
+    process.env.PATH = [...path, '/usr/bin', '/bin'].join(delimiter);
+    try {
+      const l = (await doctorReport(eco.brain)).lines.filter((x) => x.startsWith('grapher    refresh path: '));
+      assert.equal(l.length, 1, l.join('\n'));
+      return l[0].slice('grapher    '.length);
+    } finally {
+      process.env.PATH = old;
+    }
+  };
+  const land = " · `change land` commits graphify's graph on the change branch and syncs codegraph's index, which `change apply` builds in each change worktree, never committed · `change close` is the net · git hooks never refresh";
+
+  // A graphify brain that holds code, api on codegraph: the brain's own hook
+  // and api's follow hook, both named.
+  put(binDir, 'graphify');
+  put(binDir, 'codegraph');
+  const mixed = 'doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n  api:\n    path: ../acme-api\n    grapher: codegraph\n';
+  assert.equal(
+    await refreshPath(mixed, [binDir]),
+    `refresh path: claude post-edit hooks follow your edits — graphify's and codegraph's (each installed when its binary is present)${land}`,
+  );
+
+  // A code-less brain, codegraph reachable only in api's node_modules/.bin:
+  // wired, and not into api's change worktrees, said of codegraph's hook.
+  const pathOnly = join(eco.brain, '..', 'graphifybin');
+  put(pathOnly, 'graphify');
+  put(join(eco.repos.api, 'node_modules', '.bin'), 'codegraph');
+  assert.equal(
+    await refreshPath('doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n', [pathOnly]),
+    "refresh path: claude post-edit hooks follow your edits — graphify's and codegraph's (each installed when its binary is present)" +
+      " · codegraph's hook: not into the change worktrees of api: they reach codegraph only in their own node_modules/.bin, which a worktree does not hold" +
+      land,
+  );
+
+  // Two graphers writing one artifact, in `doors`' words: neither the brain's,
+  // and no hook; the brain's own, and its hook runs in the other's repos too.
+  const decl = 'graphers:\n  outgraph:\n    artifact: graphify-out/graph.json\n    refresh: outgraph update .\n';
+  put(binDir, 'outgraph');
+  assert.equal(
+    await refreshPath(`doors: [agents, claude]\n${decl}repos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: outgraph\n`, [binDir]),
+    'refresh path: no post-edit hook — graphify and outgraph both write graphify-out/graph.json, so one hook cannot tell their repos apart — neither is wired; `change land` and `change close` refresh them · git hooks never refresh',
+  );
+  const own = "graphify and outgraph both write graphify-out/graph.json, so one hook cannot tell their repos apart — graphify is wired, and an edit in outgraph's repos runs graphify there; `change land` and `change close` refresh outgraph";
+  assert.equal(
+    await refreshPath(`doors: [agents, claude]\ngrapher: graphify\n${decl}repos:\n  brain: .\n  api:\n    path: ../acme-api\n    grapher: outgraph\n`, [binDir]),
+    `refresh path: claude post-edit hook (installed when the binary is present) · ${own} · \`change land\` commits it on the change branch · \`change close\` is the net · git hooks never refresh`,
+  );
+  // Beside another grapher's follow hook, the clash is still named.
+  assert.equal(
+    await refreshPath(
+      `doors: [agents, claude]\ngrapher: graphify\n${decl}repos:\n  brain: .\n  api:\n    path: ../acme-api\n    grapher: outgraph\n  web:\n    path: ../acme-web\n    grapher: codegraph\n`,
+      [binDir],
+    ),
+    `refresh path: claude post-edit hooks follow your edits — graphify's and codegraph's (each installed when its binary is present) · ${own}${land}`,
+  );
+});
+
+// MV-149. Every hook of ours passes its toplevel test in any repo holding its
+// artifact, so a repo holding the artifact of a grapher it does not resolve is
+// refreshed by that grapher's hook too, racing its own for the one lock. doctor
+// names it, with its removal, only while that hook is wired; it gates nothing.
+test("a repo holding a grapher's artifact it does not resolve is named while that grapher's hook is wired", async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-foreign-')));
+  const binDir = join(eco.brain, '..', 'fakebin');
+  mkdirSync(binDir, { recursive: true });
+  for (const b of ['graphify', 'codegraph']) {
+    writeFileSync(join(binDir, b), '#!/bin/sh\nexit 0\n');
+    chmodSync(join(binDir, b), 0o755);
+  }
+  mkdirSync(join(eco.repos.api, 'graphify-out'), { recursive: true });
+  writeFileSync(join(eco.repos.api, 'graphify-out/graph.json'), '{}\n');
+  const report = async (doors: string, path: string[]): Promise<{ api: string; exit: number }> => {
+    writeFileSync(
+      join(eco.brain, '.multivac/config.yml'),
+      `doors: [${doors}]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n`,
+    );
+    const old = process.env.PATH;
+    process.env.PATH = [...path, '/usr/bin', '/bin'].join(delimiter);
+    try {
+      const { lines, exit } = await doctorReport(eco.brain);
+      return { api: lines.find((l) => l.startsWith('grapher    codegraph @ api: ')) ?? '', exit };
+    } finally {
+      process.env.PATH = old;
+    }
+  };
+  const fact =
+    ` · also holds graphify-out/graph.json of graphify, which it does not resolve — graphify's post-edit hook refreshes it there; ` +
+    `remove it: cd ${eco.repos.api} && git rm -q --ignore-unmatch -- graphify-out/graph.json .graphifyignore && rm -rf graphify-out .graphifyignore`;
+  const wired = await report('agents, claude', [binDir]);
+  assert.ok(wired.api.endsWith(fact), wired.api);
+  assert.equal(Buffer.byteLength(`${fact.replace(eco.repos.api, '/srv/eco/api')}\n`), 267);
+  // Not wired — no declared door has the hook, or graphify is found from
+  // neither code repo — and nothing is said; the exit code never moves.
+  const bare = await report('agents', [binDir]);
+  assert.ok(bare.api.startsWith('grapher    codegraph @ api: '), bare.api);
+  assert.doesNotMatch(bare.api, /which it does not resolve/);
+  const unreached = await report('agents, claude', []);
+  assert.doesNotMatch(unreached.api, /which it does not resolve/);
+  assert.equal(wired.exit, bare.exit);
+  assert.equal(wired.exit, unreached.exit);
+  // The repo's own grapher's artifact is never foreign: web holds graphify's.
+  mkdirSync(join(eco.repos.web, 'graphify-out'), { recursive: true });
+  writeFileSync(join(eco.repos.web, 'graphify-out/graph.json'), '{}\n');
+  const { lines } = await (async () => {
+    const old = process.env.PATH;
+    process.env.PATH = [binDir, '/usr/bin', '/bin'].join(delimiter);
+    try {
+      return await doctorReport(eco.brain);
+    } finally {
+      process.env.PATH = old;
+    }
+  })();
+  assert.doesNotMatch(lines.find((l) => l.startsWith('grapher    graphify @ web: ')) ?? '', /which it does not resolve/);
+
+  // A follow hook wired through web's own node_modules/.bin alone: moved
+  // into api, the hook finds no graphify, so api holding its artifact is no
+  // fact — the lookup is asked from the repo itself.
+  const cgOnly = join(eco.brain, '..', 'cgbin');
+  mkdirSync(cgOnly, { recursive: true });
+  writeFileSync(join(cgOnly, 'codegraph'), '#!/bin/sh\nexit 0\n');
+  chmodSync(join(cgOnly, 'codegraph'), 0o755);
+  mkdirSync(join(eco.repos.web, 'node_modules', '.bin'), { recursive: true });
+  writeFileSync(join(eco.repos.web, 'node_modules', '.bin', 'graphify'), '#!/bin/sh\nexit 0\n');
+  chmodSync(join(eco.repos.web, 'node_modules', '.bin', 'graphify'), 0o755);
+  const webOnly = await report('agents, claude', [cgOnly]);
+  assert.ok(webOnly.api.startsWith('grapher    codegraph @ api: '), webOnly.api);
+  assert.doesNotMatch(webOnly.api, /which it does not resolve/);
+});
+
+// MV-149. The brain's own hook — no follow hook — moves into any repo holding
+// its artifact too: in a graphify brain that holds code, api on codegraph
+// holding a graphify graph is named while that hook is wired, which `doors`
+// decides by the lookup in the brain.
+test("a sibling holding the brain grapher's artifact is named while the brain's own hook is wired", async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-foreign-own-')), { brainIsCode: true });
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n  api:\n    path: ../acme-api\n    grapher: codegraph\n',
+  );
+  mkdirSync(join(eco.repos.api, 'graphify-out'), { recursive: true });
+  writeFileSync(join(eco.repos.api, 'graphify-out/graph.json'), '{}\n');
+  const bin = (name: string, ...tools: string[]): string => {
+    const dir = join(eco.brain, '..', name);
+    mkdirSync(dir, { recursive: true });
+    for (const t of tools) {
+      writeFileSync(join(dir, t), '#!/bin/sh\nexit 0\n');
+      chmodSync(join(dir, t), 0o755);
+    }
+    return dir;
+  };
+  const api = async (path: string[]): Promise<string> => {
+    const old = process.env.PATH;
+    process.env.PATH = [...path, '/usr/bin', '/bin'].join(delimiter);
+    try {
+      return (await doctorReport(eco.brain)).lines.find((l) => l.startsWith('grapher    codegraph @ api: ')) ?? '';
+    } finally {
+      process.env.PATH = old;
+    }
+  };
+  const fact = ` · also holds graphify-out/graph.json of graphify, which it does not resolve — graphify's post-edit hook refreshes it there; remove it: cd ${eco.repos.api} && `;
+  assert.ok((await api([bin('both', 'graphify', 'codegraph')])).includes(fact));
+  // graphify found from api alone, never from the brain: `doors` wires no
+  // brain hook, so nothing refreshes api's copy and nothing is said.
+  mkdirSync(join(eco.repos.api, 'node_modules', '.bin'), { recursive: true });
+  writeFileSync(join(eco.repos.api, 'node_modules', '.bin', 'graphify'), '#!/bin/sh\nexit 0\n');
+  chmodSync(join(eco.repos.api, 'node_modules', '.bin', 'graphify'), 0o755);
+  const unwired = await api([bin('cg', 'codegraph')]);
+  assert.ok(unwired.startsWith('grapher    codegraph @ api: '), unwired);
+  assert.doesNotMatch(unwired, /which it does not resolve/);
 });
 
 // MV-148. A brain no repos entry declares holds no code and resolves no
@@ -961,6 +1206,128 @@ test("doctor: the ignore file's missing lines, its commit and the nodes under it
   );
   assert.doesNotMatch(bare!, /is not committed|node\(s\) under/);
   assert.equal(existsSync(apiIgnore), false);
+});
+
+// MV-149. codegraph's ignore file is its codegraph.json: doctor names what it
+// lacks, a copy never committed and one that does not parse, reading only.
+test("doctor: codegraph.json's missing lines, its commit and its parse are facts, never writes", async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-cgjson-')), { brainIsCode: true });
+  const b = eco.brain;
+  const { api, web } = eco.repos;
+  writeFileSync(
+    join(b, '.multivac/config.yml'),
+    'doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n  api: ../acme-api\n  web:\n    path: ../acme-web\n    managed: false\n',
+  );
+  const git = (dir: string, ...a: string[]): void => {
+    execFileSync('git', ['-C', dir, ...a], { stdio: 'ignore' });
+  };
+  // Each root built: the database is what the probe reads.
+  for (const dir of [b, api, web]) {
+    mkdirSync(join(dir, '.codegraph'), { recursive: true });
+    writeFileSync(join(dir, '.codegraph/codegraph.db'), 'SQLite format 3\0');
+  }
+  const file = join(api, 'codegraph.json');
+  const at = async (scope: string): Promise<string> => {
+    const l = (await doctorReport(b)).lines.find((x) => x.startsWith(`grapher    codegraph @ ${scope}: `));
+    assert.ok(l, `no ${scope} line`);
+    return l;
+  };
+  const lacks = ' · codegraph.json lacks 1 line(s) multivac keeps out of the index (/.brain/) — the next `change land` naming api adds them';
+  const uncommitted = ' · codegraph.json is not committed — a clone or worktree with its mount initialised indexes the mount';
+  const malformed = ' · codegraph.json does not parse to an object with an "exclude" list — codegraph ignores it too; add /.brain/ by hand';
+  assert.deepEqual([lacks, uncommitted, malformed].map((f) => Buffer.byteLength(`${f}\n`)), [126, 105, 121]);
+
+  // Committed, lacking the mount: the next land adds it.
+  writeFileSync(file, '{"exclude":["dist/"]}\n');
+  git(api, 'add', 'codegraph.json');
+  git(api, 'commit', '-qm', 'codegraph.json');
+  utimesSync(file, new Date(1000), new Date(1000));
+  assert.ok((await at('api')).endsWith(lacks), await at('api'));
+  assert.equal(readFileSync(file, 'utf8'), '{"exclude":["dist/"]}\n');
+  assert.equal(statSync(file).mtimeMs, 1000);
+  // Absent: every line lacking, nothing to commit, and none written.
+  git(api, 'rm', '-q', 'codegraph.json');
+  git(api, 'commit', '-qm', 'no codegraph.json');
+  assert.ok((await at('api')).endsWith(lacks), await at('api'));
+  assert.equal(existsSync(file), false);
+  // Holding the line, never committed: a clone indexes the mount.
+  writeFileSync(file, '{\n  "exclude": [\n    "/.brain/"\n  ]\n}\n');
+  assert.ok((await at('api')).endsWith(uncommitted), await at('api'));
+  // Committed with the line: no fact.
+  git(api, 'add', 'codegraph.json');
+  git(api, 'commit', '-qm', 'codegraph.json');
+  assert.doesNotMatch(await at('api'), /codegraph\.json/);
+  // Not an object with an "exclude" list: said, and left as it is.
+  writeFileSync(file, '{"exclude":"dist/"}\n');
+  assert.ok((await at('api')).endsWith(malformed), await at('api'));
+  assert.equal(readFileSync(file, 'utf8'), '{"exclude":"dist/"}\n');
+  // A read-only root: the same state, no fact (MV-125). The brain that holds
+  // code and nests no repo keeps nothing out: no fact either.
+  writeFileSync(join(web, 'codegraph.json'), '{"exclude":["dist/"]}\n');
+  const webLine = (await doctorReport(b)).lines.find((l) => l.startsWith('grapher') && /\bweb\b/.test(l));
+  assert.ok(webLine, 'a grapher line for web');
+  assert.doesNotMatch(webLine, /codegraph\.json/);
+  assert.doesNotMatch((await at('brain')), /codegraph\.json/);
+  assert.equal(readFileSync(join(web, 'codegraph.json'), 'utf8'), '{"exclude":["dist/"]}\n');
+  assert.equal(existsSync(join(b, 'codegraph.json')), false);
+
+  // Ignored by git, and absent: land would refuse it by name and write
+  // nothing, so doctor names the rule instead of promising the lines.
+  git(api, 'rm', '-qf', 'codegraph.json');
+  writeFileSync(join(api, '.gitignore'), 'codegraph.json\n');
+  git(api, 'add', '.gitignore');
+  git(api, 'commit', '-qm', 'ignore codegraph.json');
+  const ignored = ` · codegraph.json is ignored in ${api} — \`git -C ${api} check-ignore -v codegraph.json\` names the rule; \`change land\` writes nothing while it is`;
+  assert.ok((await at('api')).endsWith(ignored), await at('api'));
+  assert.equal(Buffer.byteLength(`${ignored.replaceAll(api, '/srv/eco/api')}\n`), 160);
+  assert.doesNotMatch(await at('api'), /lacks 1 line/);
+  assert.equal(existsSync(file), false);
+  // Present and ignored: the rule still, never "not committed".
+  writeFileSync(file, '{"exclude":["dist/"]}\n');
+  assert.ok((await at('api')).endsWith(ignored), await at('api'));
+
+  // A brain that holds code and nests a declared repo keeps that repo out,
+  // no mount: an uncommitted file says what a clone indexes.
+  writeFileSync(
+    join(b, '.multivac/config.yml'),
+    'doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n  inner: packages/inner\n',
+  );
+  writeFileSync(join(b, 'codegraph.json'), '{\n  "exclude": [\n    "/packages/inner/"\n  ]\n}\n');
+  assert.ok(
+    (await at('brain')).endsWith(' · codegraph.json is not committed — a clone or worktree indexes what it keeps out (/packages/inner/)'),
+    await at('brain'),
+  );
+});
+
+// MV-149. A repo's own grapher's artifact is its own, whoever else writes
+// that path: a repo on a declared grapher writing graphify-out/graph.json is
+// never told it also holds graphify's, with a removal of its own graph.
+test("a repo's own grapher's artifact is never another grapher's leftover", async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-own-art-')));
+  const decl = 'graphers:\n  outgraph:\n    artifact: graphify-out/graph.json\n    refresh: outgraph update .\n';
+  mkdirSync(join(eco.repos.api, 'graphify-out'), { recursive: true });
+  writeFileSync(join(eco.repos.api, 'graphify-out/graph.json'), '{}\n');
+  writeFileSync(join(eco.brain, '.multivac/config.yml'), `doors: [agents]\n${decl}repos:\n  api:\n    path: ../acme-api\n    grapher: outgraph\n`);
+  assert.deepEqual(await leftoverGraphs(await loadConfig(eco.brain), eco.repos.api, 'api'), []);
+  // On codegraph, the same file is graphify's, which api does not resolve.
+  writeFileSync(join(eco.brain, '.multivac/config.yml'), `doors: [agents]\n${decl}repos:\n  api:\n    path: ../acme-api\n    grapher: codegraph\n`);
+  const other = await leftoverGraphs(await loadConfig(eco.brain), eco.repos.api, 'api');
+  assert.deepEqual(other.map((l) => [l.name, l.artifact]), [['graphify', 'graphify-out/graph.json'], ['outgraph', 'graphify-out/graph.json']]);
+});
+
+test("a human's codegraph.json is never a leftover", async () => {
+  // A brain that holds no code and keeps only a codegraph.json: the human's
+  // config for an index built elsewhere, never a kept install.
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-cgjson-human-')));
+  writeFileSync(join(eco.brain, 'codegraph.json'), '{"exclude":["dist/"]}\n');
+  const cfg = await loadConfig(eco.brain);
+  assert.deepEqual(await leftoverGraphs(cfg, eco.brain), []);
+  assert.doesNotMatch((await doctorReport(eco.brain)).lines.join('\n'), /leftover codegraph/);
+  // Beside its database it is the install's, and named with it.
+  mkdirSync(join(eco.brain, '.codegraph'));
+  writeFileSync(join(eco.brain, '.codegraph/codegraph.db'), 'SQLite format 3\0');
+  const kept = (await leftoverGraphs(cfg, eco.brain)).find((l) => l.name === 'codegraph');
+  assert.equal(kept?.ignoreFile, 'codegraph.json');
 });
 
 test('doctor: hooks installed but inactive is a warning, active names the runner', async () => {

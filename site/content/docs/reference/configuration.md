@@ -491,6 +491,18 @@ there:
 pins       api: no brain mount at .brain — run `multivac repos sync` to add it
 ```
 
+**The mount is kept out of each consumer's code graph**, so the consumer's
+graph answers about the consumer and not the brain: graphify through a
+`/.brain/` line in `.graphifyignore`, and codegraph, where the brain holds
+code, through its `codegraph.json`, whose `exclude` list gets the same line —
+codegraph indexes no Markdown, so a brain that holds none adds nothing to its
+index. A consumer of a brain that holds code, on codegraph, indexed 2,254
+nodes, 2,247 of them the mount's, and 7 with the line. It is not a `.gitignore` line: codegraph would honour one, but it is
+git-wide, and a later `git submodule add` of the mount exited 128. The line is
+written as git records the mount — `./.brain`, `.brain/` and `./.brain/` all
+give `/.brain/` — and a mount outside the repo, absolute or starting with `..`,
+gets none. See [Automatic refresh](../graphers-and-sdd#automatic-refresh).
+
 ### `brain_url`
 
 | | |

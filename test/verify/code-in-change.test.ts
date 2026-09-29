@@ -16,7 +16,7 @@ import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { loadConfig } from '../../src/lib/config.js';
-import { graphIgnoreLines, nonCodeGlobs } from '../../src/lib/code-in-change.js';
+import { graphIgnoreLines, mountDir, nonCodeGlobs } from '../../src/lib/code-in-change.js';
 import { grapherSpec } from '../../src/adapters/registry.js';
 import picomatch from 'picomatch';
 
@@ -222,7 +222,8 @@ test("every known grapher's paths are not code, whichever resolves — MV-148", 
     '.agents/skills/graphify/SKILL.md', '.agents/skills/graphify/references/exports.md',
     '.codex/skills/graphify/SKILL.md', '.codex/hooks.json', '.gemini/settings.json', '.cursor/rules/graphify.mdc',
   ];
-  const codegraph = ['.codegraph/codegraph.db', '.codegraph/.gitignore'];
+  // MV-149: codegraph's own ignore file, `codegraph.json`, is its config, not code.
+  const codegraph = ['.codegraph/codegraph.db', '.codegraph/.gitignore', 'codegraph.json'];
   const at = async (config: string): Promise<(p: string) => boolean> => {
     const b = join(mkdtempSync(join(tmpdir(), 'mvac-graphers-')), 'brain');
     initRepo(b, { '.multivac/config.yml': config, '.multivac/invariants.md': '# Invariants\n' });
@@ -233,6 +234,7 @@ test("every known grapher's paths are not code, whichever resolves — MV-148", 
   };
   const cg = await at('doors: [agents]\ngrapher: codegraph\nrepos:\n  api: ../api\n');
   for (const p of graphify) assert.ok(cg(p), `${p} under a codegraph-only config`);
+  for (const p of codegraph) assert.ok(cg(p), `${p} under a codegraph config`);
   const gf = await at('doors: [agents]\ngrapher: graphify\nrepos:\n  api: ../api\n');
   for (const p of codegraph) assert.ok(gf(p), `${p} under a graphify-only config`);
   // A grapher under `graphers:` is known too, whichever resolves.
@@ -305,8 +307,10 @@ test("the ignore lines are the root's non-code directories — MV-148", async ()
   for (const scope of ['brain', 'api']) {
     assert.ok(!lines(scope).some((l) => /graphify-out|codegraph/.test(l)), `${scope}: no grapher's own outputs`);
   }
-  // A grapher with no ignore file gets none (codegraph 1.6.0: FR-031).
-  assert.deepEqual(lines('brain', 'codegraph'), []);
+  // MV-149: codegraph takes only the structural lines — here the repo nested
+  // in the brain, and a code repo's mount, since this brain holds code.
+  assert.deepEqual(lines('brain', 'codegraph'), ['/vendor/lib/']);
+  assert.deepEqual(lines('api', 'codegraph'), ['/.brain/']);
   // The stated dependence: a door whose SDD integration writes outside every
   // door's own directory adds a line — windsurf's `/.devin/`.
   const windsurf = await at('doors: [claude, codex, windsurf]\ngrapher: graphify\nsdd: speckit\nrepos:\n  brain: .\n');
@@ -315,6 +319,58 @@ test("the ignore lines are the root's non-code directories — MV-148", async ()
   const mounted = await at('doors: [agents]\ngrapher: graphify\nmount: .gov\nrepos:\n  api: ../api\n');
   assert.ok(mounted('api').includes('/.gov/') && !mounted('api').includes('/.brain/'));
   assert.ok(!mounted('brain').includes('/.gov/'));
+});
+
+test('the mount is written as git records it', async () => {
+  // MV-149: `/./.brain/`, `./.brain/` and `/.brain//` each left the mount
+  // indexed; git records `path = .brain` for a submodule added at `./.brain`.
+  for (const mount of ['.brain', './.brain', '.brain/', './.brain/', '.brain//']) {
+    assert.equal(mountDir({ mount }), '.brain', mount);
+  }
+  for (const mount of ['../x', '/abs', '/abs/brain', '.', 'a/../..']) assert.equal(mountDir({ mount }), undefined, mount);
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-mount-')), 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\nmount: ./.brain\nrepos:\n  brain: .\n  api:\n    path: ../api\n    grapher: codegraph\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  const cfg = await loadConfig(b);
+  for (const g of ['graphify', 'codegraph']) {
+    const lines = graphIgnoreLines(cfg, b, 'api', grapherSpec(g, cfg.graphers)!);
+    assert.ok(lines.includes('/.brain/'), `${g}: ${lines.join(' ')}`);
+    assert.ok(!lines.some((l) => l.includes('./') || l.includes('//')), `${g}: ${lines.join(' ')}`);
+  }
+  // Outside the root, no line: the tool would read it as a directory here.
+  const out = join(mkdtempSync(join(tmpdir(), 'mvac-mount-')), 'brain');
+  initRepo(out, {
+    '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\nmount: ../brain\nrepos:\n  brain: .\n  api:\n    path: ../api\n    grapher: codegraph\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  const far = await loadConfig(out);
+  for (const g of ['graphify', 'codegraph']) {
+    assert.ok(!graphIgnoreLines(far, out, 'api', grapherSpec(g, far.graphers)!).some((l) => l.includes('brain')), g);
+  }
+});
+
+test('codegraph gets only the structural lines', async () => {
+  const at = async (config: string) => {
+    const b = join(mkdtempSync(join(tmpdir(), 'mvac-structure-')), 'brain');
+    initRepo(b, { '.multivac/config.yml': config, '.multivac/invariants.md': '# Invariants\n' });
+    const cfg = await loadConfig(b);
+    return (scope: string) => graphIgnoreLines(cfg, b, scope, grapherSpec('codegraph', cfg.graphers)!);
+  };
+  // A consumer of a brain that holds no code: the mount adds 0 of its nodes.
+  const codeless = await at('doors: [agents]\ngrapher: codegraph\nsdd: speckit\nrepos:\n  api: ../api\n');
+  assert.deepEqual(codeless('api'), []);
+  // A brain that holds code and nests no repo: nothing, however many
+  // harness and SDD directories it holds — codegraph indexes no Markdown.
+  const own = await at('doors: [claude, codex]\ngrapher: codegraph\nsdd: speckit\nrepos:\n  brain: .\n');
+  assert.deepEqual(own('brain'), []);
+  // A declared repo nested in it: that directory, anchored.
+  const nested = await at('doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n  api: packages/api\n');
+  assert.deepEqual(nested('brain'), ['/packages/api/']);
+  // Its consumer outside it: the mount.
+  const consumer = await at('doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n  web: ../web\n');
+  assert.deepEqual(consumer('web'), ['/.brain/']);
 });
 
 test('with sdd_auto off, or no SDD, nothing is judged; doctor names what makes it binding — MV-137', async () => {

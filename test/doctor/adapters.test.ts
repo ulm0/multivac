@@ -21,8 +21,9 @@ import {
   adaptersByRoot,
   askedGraphers,
   brainHoldsCode,
-  brainRefreshGrapher,
+  brainRefreshGraphers,
   findBinary,
+  hookRefreshes,
   localBin,
   missingRequired,
   sddDeclarationRefusal,
@@ -33,6 +34,7 @@ import { loadConfig } from '../../src/lib/config.js';
 import { parseAnchors } from '../../src/anchor/parse.js';
 import { compileAnchorRegex } from '../../src/lib/regex.js';
 import { initState } from '../../src/lib/init-state.js';
+import { holdsIgnored, IGNORE_RECORD } from '../../src/adapters/refresh.js';
 
 const tmp = mkdtempSync(join(tmpdir(), 'mvac-adapters-'));
 const emptyDir = join(tmp, 'empty');
@@ -245,15 +247,43 @@ test('a grapher states its own query verbs — they are not interchangeable', ()
   const cg = grapherSpec('codegraph')!;
   assert.deepEqual(
     cg.queries?.map((q) => q.run),
-    ['codegraph query <symbol>'],
+    ['codegraph query <symbol>', 'codegraph callers <symbol>', 'codegraph impact <symbol>', 'codegraph node <symbol>'],
   );
-  assert.match(cg.queries![0].answers, /symbol search by name/);
+  assert.match(cg.queries![0].answers, /definitions and imports/);
 
   // A config-declared grapher has no query surface multivac can know about.
   const declared = grapherSpec('acmegraph', {
     acmegraph: { artifact: 'acmegraph-out/graph.json', refresh: 'acmegraph update .' },
   })!;
   assert.equal(declared.queries, undefined);
+});
+
+test('codegraph records four verbs, each with what it misses', () => {
+  // MV-149: each verb was run on 1.6.0 over this repository's own code, and
+  // its line says what it misses as well as what it gives, so an agent does
+  // not read a capped count, a merged name or a missed alias as the whole.
+  const qs = grapherSpec('codegraph')!.queries!;
+  assert.deepEqual(
+    qs.map((q) => q.run),
+    ['codegraph query <symbol>', 'codegraph callers <symbol>', 'codegraph impact <symbol>', 'codegraph node <symbol>'],
+  );
+  const [query, callers, impact, node] = qs.map((q) => q.answers);
+  assert.match(query, /best 10 first \(`--limit N`\)/);
+  // `callers` lists 20 by default and its header counts what it lists.
+  assert.match(callers, /counted as listed/);
+  for (const a of [callers, impact]) {
+    assert.match(a, /aliased imports missed/);
+    assert.match(a, /same-named symbols merged/);
+  }
+  assert.match(impact, /a lower bound/);
+  // `-f` narrows with the path as answers print it; a text no printed path
+  // holds prints every definition, silently (codegraph-real.test.ts).
+  assert.match(node, /as answers print it/);
+  // `--limit 1` hides a second definition: never printed.
+  for (const q of qs) {
+    assert.doesNotMatch(q.run, /--limit 1/);
+    assert.doesNotMatch(q.answers, /--limit 1/);
+  }
 });
 
 test('codegraph names its telemetry, because the refresh runs on every edit', () => {
@@ -272,6 +302,19 @@ test('codegraph names its telemetry, because the refresh runs on every edit', ()
   assert.match(cg.note ?? '', /CODEGRAPH_NO_DOWNLOAD=1/);
   // The MCP server the note names runs its own update check (1.6.0 source).
   assert.match(cg.note ?? '', /CODEGRAPH_NO_UPDATE_CHECK/);
+  // MV-149: what the agent's own codegraph calls write and send, by version —
+  // the queue each verb appends to, when it is sent, the shim's download on
+  // any command, and the opt-outs spelled for where the agent runs. Each
+  // assert reads a sentence the disclosure added: the note before it already
+  // named GitHub Releases and 1.6.0's README.
+  assert.match(cg.note ?? '', /Measured 2026-09-29 on 1\.6\.0/);
+  assert.match(cg.note ?? '', /downloads it from GitHub Releases into ~\/\.codegraph\/bundles on any command, these verbs included/);
+  assert.match(cg.note ?? '', /telemetry-queue\.jsonl/);
+  assert.match(cg.note ?? '', /every six hours/);
+  assert.match(cg.note ?? '', /`uninstall` event/);
+  assert.match(cg.note ?? '', /CODEGRAPH_NO_DOWNLOAD=1 where the agent runs/);
+  // The sentence the disclosure replaced said only that the opt-outs miss them.
+  assert.doesNotMatch(cg.note ?? '', /carries none of that `env`/);
 });
 
 test('opsx names its telemetry, because the gates run openspec validate', () => {
@@ -530,7 +573,7 @@ test('adapters by root: the brain first, absent repos included, `none` in no gro
 
 // --- MV-148: what an agent in the brain asks, and what the brain's hook runs ---
 
-test('the graphers asked from the brain, and the one its hook runs', async () => {
+test('the graphers asked from the brain, and the ones its hooks run', async () => {
   const groups = (cfg: Parameters<typeof askedGraphers>[0]) => [...askedGraphers(cfg)];
   // A brain no entry declares: each code repo's grapher, in config order.
   const codeless = { grapher: 'graphify', repos: { web: {}, api: {} } };
@@ -551,18 +594,22 @@ test('the graphers asked from the brain, and the one its hook runs', async () =>
   // The resolver names what is declared; whether multivac speaks it is the door's question.
   assert.deepEqual(groups({ grapher: 'acmegraph', repos: { web: {} } }), [['acmegraph', ['web']]]);
 
-  // The hook runs one command: one grapher over the code repos, or none.
-  assert.equal(brainRefreshGrapher(codeless), 'graphify');
-  assert.equal(brainRefreshGrapher({ repos: { web: { grapher: 'graphify' }, api: { grapher: 'codegraph' } } }), undefined);
-  assert.equal(
-    brainRefreshGrapher({ grapher: 'graphify', repos: { web: {}, api: { grapher: NO_ADAPTER } } }),
-    'graphify',
+  // MV-149: one hook per grapher over the code repos, each following edits.
+  const names = (cfg: Parameters<typeof brainRefreshGraphers>[0]) => brainRefreshGraphers(cfg).map((g) => g.name);
+  assert.deepEqual(names(codeless), ['graphify']);
+  assert.deepEqual(names({ repos: { web: { grapher: 'graphify' }, api: { grapher: 'codegraph' } } }), ['graphify', 'codegraph']);
+  assert.deepEqual(
+    names({ grapher: 'graphify', repos: { web: {}, api: { grapher: NO_ADAPTER } } }),
+    ['graphify'],
     'a repo resolving none does not disagree',
   );
-  assert.equal(brainRefreshGrapher({ grapher: 'graphify', repos: {} }), undefined, 'no code repo to follow edits into');
-  assert.equal(brainRefreshGrapher(optedOut), 'graphify');
+  assert.deepEqual(names({ grapher: 'graphify', repos: {} }), [], 'no code repo to follow edits into');
+  assert.deepEqual(names(optedOut), ['graphify']);
   // A brain that holds code runs its own, as it always did (MV-52).
-  assert.equal(brainRefreshGrapher({ grapher: 'graphify', repos: { self: { isBrain: true, grapher: 'codegraph' }, web: {} } }), 'codegraph');
+  assert.deepEqual(brainRefreshGraphers({ grapher: 'graphify', repos: { self: { isBrain: true, grapher: 'codegraph' }, web: {} } }), [
+    { name: 'codegraph', follow: false },
+    { name: 'graphify', follow: true },
+  ]);
 
   // Holding code is a declaration: an entry whose path is the brain, under any key.
   const eco = mkdtempSync(join(tmpdir(), 'mvac-holds-'));
@@ -576,6 +623,67 @@ test('the graphers asked from the brain, and the one its hook runs', async () =>
   assert.equal(brainHoldsCode(await load('')), false);
 });
 
+// MV-149: the one question every surface asks before it says "after your
+// edits". Declarations only, so plain objects answer it.
+test('one predicate says whether an edit refreshes a grapher', () => {
+  const holds = { grapher: 'graphify', repos: { self: { isBrain: true }, web: {} } };
+  assert.equal(hookRefreshes({ ...holds, doors: ['agents', 'claude'] }, 'graphify'), true, "a brain that holds code: its own, with claude's post-edit hook");
+  assert.equal(hookRefreshes({ ...holds, doors: ['agents'] }, 'graphify'), false, 'no declared door has a post-edit hook');
+  assert.equal(hookRefreshes({ ...holds, doors: ['agents', 'claude'] }, 'codegraph'), false, 'a grapher it does not refresh');
+  const codeless = { grapher: 'codegraph', repos: { api: {} }, doors: ['agents', 'claude'] };
+  assert.equal(hookRefreshes(codeless, 'codegraph'), true, "a code-less brain: the one grapher its code repos resolve");
+  // Two graphers, one hook each (MV-149): both are refreshed after an edit.
+  const mixed = { repos: { web: { grapher: 'graphify' }, api: { grapher: 'codegraph' } }, doors: ['agents', 'claude'] };
+  assert.equal(hookRefreshes(mixed, 'graphify'), true);
+  assert.equal(hookRefreshes(mixed, 'codegraph'), true);
+});
+
+// MV-149: the brain's session gets one post-edit hook per grapher — its own
+// where it holds code, then a follow hook for each other grapher its code
+// repos resolve — from declarations alone.
+test("the graphers the brain's session refreshes", () => {
+  // brain==code on graphify with a codegraph sibling: its own, then a follow hook.
+  assert.deepEqual(
+    brainRefreshGraphers({ grapher: 'graphify', repos: { self: { isBrain: true }, web: {}, api: { grapher: 'codegraph' } } }),
+    [
+      { name: 'graphify', follow: false },
+      { name: 'codegraph', follow: true },
+    ],
+  );
+  // A code-less brain whose repos resolve two graphers: both follow, in config order.
+  assert.deepEqual(brainRefreshGraphers({ repos: { api: { grapher: 'codegraph' }, web: { grapher: 'graphify' }, docs: { grapher: 'codegraph' } } }), [
+    { name: 'codegraph', follow: true },
+    { name: 'graphify', follow: true },
+  ]);
+  // A repo marked `managed: false` is not multivac's to hook.
+  assert.deepEqual(brainRefreshGraphers({ grapher: 'graphify', repos: { web: {}, vendor: { managed: false, grapher: 'codegraph' } } }), [
+    { name: 'graphify', follow: true },
+  ]);
+  // An unverified name is left out: no hook runs a command multivac guessed.
+  assert.deepEqual(brainRefreshGraphers({ repos: { web: { grapher: 'graphify' }, api: { grapher: 'mystery' } } }), [
+    { name: 'graphify', follow: true },
+  ]);
+  assert.deepEqual(brainRefreshGraphers({ grapher: 'mystery', repos: { self: { isBrain: true }, api: { grapher: 'codegraph' } } }), [
+    { name: 'codegraph', follow: true },
+  ]);
+  // Two graphers writing one artifact: a hook cannot tell them apart. The
+  // brain's own keeps its hook and the second is dropped; where neither is
+  // the brain's own, neither gets one.
+  const graphers = { outgraph: { artifact: 'graphify-out/graph.json', refresh: 'outgraph update .' } };
+  assert.deepEqual(
+    brainRefreshGraphers({ grapher: 'graphify', graphers, repos: { self: { isBrain: true }, api: { grapher: 'outgraph' } } }),
+    [{ name: 'graphify', follow: false }],
+  );
+  assert.deepEqual(
+    brainRefreshGraphers({ graphers, repos: { web: { grapher: 'graphify' }, api: { grapher: 'outgraph' }, cli: { grapher: 'codegraph' } } }),
+    [{ name: 'codegraph', follow: true }],
+  );
+  // The one predicate asks this list: the mixed case of T007 flipped.
+  const mixed = { repos: { web: { grapher: 'graphify' }, api: { grapher: 'codegraph' } }, doors: ['agents', 'claude'] };
+  assert.deepEqual([hookRefreshes(mixed, 'graphify'), hookRefreshes(mixed, 'codegraph')], [true, true]);
+  assert.equal(hookRefreshes({ ...mixed, doors: ['agents'] }, 'codegraph'), false, 'no declared door has a post-edit hook');
+});
+
 // --- MV-124: what each entry declares about its own files and its runs ---
 
 test('each shipped entry declares its state files, its shared and local paths, and its opt-outs', () => {
@@ -586,6 +694,10 @@ test('each shipped entry declares its state files, its shared and local paths, a
     ignore: s.ignore,
     // MV-148: the file only; the lines are derived per root (graphIgnoreLines).
     graphignoreFile: s.graphignoreFile,
+    // MV-149: a JSON file's list and the lists that make a line the human's,
+    // and a grapher that takes only the structural lines.
+    graphignoreJson: s.graphignoreJson,
+    graphignoreScope: s.graphignoreScope,
     artifactKind: s.artifactKind,
     env: s.env,
     // MV-148: the forced rebuild, the flag that points a verb at a checkout,
@@ -608,6 +720,8 @@ test('each shipped entry declares its state files, its shared and local paths, a
     local: ['.specify/feature.json', '.specify/extensions/*/local-config.yml'],
     ignore: [],
     graphignoreFile: undefined,
+    graphignoreJson: undefined,
+    graphignoreScope: undefined,
     artifactKind: undefined,
     env: {},
     ...none148,
@@ -618,6 +732,8 @@ test('each shipped entry declares its state files, its shared and local paths, a
     local: [],
     ignore: [],
     graphignoreFile: undefined,
+    graphignoreJson: undefined,
+    graphignoreScope: undefined,
     artifactKind: undefined,
     env: { DO_NOT_TRACK: '1', OPENSPEC_TELEMETRY: '0' },
     ...none148,
@@ -628,6 +744,8 @@ test('each shipped entry declares its state files, its shared and local paths, a
     local: ['graphify-out/**'],
     ignore: ['graphify-out/*', '!graphify-out/graph.json'],
     graphignoreFile: '.graphifyignore',
+    graphignoreJson: undefined,
+    graphignoreScope: undefined,
     artifactKind: 'shared',
     env: {},
     rebuild: 'graphify update . --force',
@@ -641,7 +759,9 @@ test('each shipped entry declares its state files, its shared and local paths, a
     shared: [],
     local: ['.codegraph/**'],
     ignore: ['.codegraph/'],
-    graphignoreFile: undefined,
+    graphignoreFile: 'codegraph.json',
+    graphignoreJson: { key: 'exclude', reads: ['exclude', 'include', 'includeIgnored', 'deprioritize'] },
+    graphignoreScope: 'structure',
     artifactKind: 'local',
     env: { DO_NOT_TRACK: '1', CODEGRAPH_TELEMETRY: '0', CODEGRAPH_NO_DOWNLOAD: '1' },
     rebuild: undefined,
@@ -659,10 +779,31 @@ test('each shipped entry declares its state files, its shared and local paths, a
     local: [],
     ignore: [],
     graphignoreFile: undefined,
+    graphignoreJson: undefined,
+    graphignoreScope: undefined,
     artifactKind: 'shared',
     env: {},
     ...none148,
   });
+});
+
+test('a graph is read for recorded ignore lines only where its entry records a rebuild — MV-149', async () => {
+  // codegraph records no rebuild: its 0-byte database, which is no JSON, is
+  // never read, beside a codegraph.json that names the mount.
+  const cg = mkdtempSync(join(tmpdir(), 'mvac-holds-cg-'));
+  mkdirSync(join(cg, '.codegraph'));
+  writeFileSync(join(cg, '.codegraph', 'codegraph.db'), '');
+  writeFileSync(join(cg, 'codegraph.json'), '{\n  "exclude": [\n    "/.brain/"\n  ]\n}\n');
+  assert.equal(await holdsIgnored(grapherSpec('codegraph')!, cg), false);
+  // The gate itself: graphify's graph holding a node under a recorded line
+  // forces its rebuild, and the same entry with no rebuild asks nothing.
+  const gf = mkdtempSync(join(tmpdir(), 'mvac-holds-gf-'));
+  mkdirSync(join(gf, 'graphify-out'));
+  writeFileSync(join(gf, 'graphify-out', 'graph.json'), JSON.stringify({ nodes: [{ source_file: '.brain/x.ts' }] }));
+  writeFileSync(join(gf, '.graphifyignore'), `/.brain/\n${IGNORE_RECORD}/.brain/\n`);
+  const graphify = grapherSpec('graphify')!;
+  assert.equal(await holdsIgnored(graphify, gf), true);
+  assert.equal(await holdsIgnored({ ...graphify, rebuild: undefined }, gf), false);
 });
 
 test('every declared opt-out is a bare word, so the hook never has to quote one', () => {
@@ -688,6 +829,7 @@ test('the telemetry notes say the entry applies the opt-outs, and still name eac
   for (const v of ['OPENSPEC_TELEMETRY=0', 'DO_NOT_TRACK=1']) assert.ok(opsxNote.includes(v), v);
   for (const v of ['CODEGRAPH_TELEMETRY=0', 'DO_NOT_TRACK=1', 'CODEGRAPH_NO_DOWNLOAD=1']) assert.ok(cgNote.includes(v), v);
   // MV-121 as amended by MV-147: an entry also says its `env` does not reach
-  // what it PRINTS for the agent to run.
-  assert.match(cgNote, /`codegraph query` a door prints runs in the agent's own environment and carries none of that `env`/);
+  // what it PRINTS for the agent to run — MV-149: every verb the door prints,
+  // and the commands `doctor` and the graph gate print for a human.
+  assert.match(cgNote, /The verbs the door prints, and the `codegraph init` and `codegraph uninit --force` that `doctor` and the graph gate print for a human, run outside multivac, and this entry's `env` reaches none of them\./);
 });

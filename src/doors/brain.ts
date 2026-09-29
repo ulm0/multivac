@@ -4,7 +4,7 @@ import { ecosystemGraphLines } from './ecosystem.js';
 import type { Config } from '../types.js';
 import { doorTargets, grapherSpec, sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { parseClaimRows } from '../anchor/parse.js';
-import { adapterFor, askedGraphers, brainHoldsCode, brainRefreshGrapher } from '../adapters/detect.js';
+import { adapterFor, askedGraphers, brainHoldsCode, hookRefreshes } from '../adapters/detect.js';
 import type { LeftoverGraph } from '../lib/repo-state.js';
 
 /**
@@ -104,8 +104,9 @@ const ASK = 'ASK IT BEFORE READING THE TREE RAW';
 /**
  * MV-140: when a graph is refreshed, spelled once for every door block. "After
  * your edits" only where a hook is declared to make it true — a declared
- * harness's post-edit hook, and for a brain that holds no code, the one
- * grapher that hook runs (MV-148); elsewhere the lifecycle is the refresh.
+ * harness's post-edit hook, and one of the brain's hooks declared to run that
+ * grapher, one per grapher (MV-148, MV-149); elsewhere the lifecycle is the
+ * refresh.
  * Declared, never probed: the door is committed and makes no filesystem check
  * (MV-93), so whether this machine found the binary and wired the hook is
  * `doors`' notice and `doctor`'s refresh path — as a brain==code door's has
@@ -159,9 +160,11 @@ export function grapherLines(config: Config, name: string | undefined): string[]
       `  ${ask} ${spec.queries.map((q) => `\`${q.run.split(' "')[0]}\``).join(', ')} — how and when to use each is in the \`## ${name}\` section ${name}'s own install writes into this file.`,
     );
   } else if (spec.queries && spec.queries.length > 0) {
-    lines.push(
-      `  ${ask} It answers in one call what grep takes many, and it is this tool's verbs, not a generic one:`,
-    );
+    // MV-149: the header claims no saving over grep. Measured, `codegraph
+    // query` printed more than a narrowed definition grep for 311 of 318
+    // functions, and asking graphify cost 2.1 to 2.6 times a narrowed grep
+    // (MV-148); each verb's line says what it answers, and what it misses.
+    lines.push(`  ${ask} These are this tool's own verbs, not a generic one — each line says what it answers:`);
     for (const q of spec.queries) lines.push(`  - \`${q.run}\` — ${q.answers}`);
   } else {
     lines.push(noQueryLine(name, '  '));
@@ -228,25 +231,35 @@ export function sddLines(config: Config, name: string | undefined): string[] {
  * about the code from the skills and the specs. Asked with the flag, web's
  * graph answered from the brain byte for byte as from inside web.
  *
- * A committed graph is named at `<checkout>`: in a change, the worktree `change
- * apply` prints holds the branch's own. A local index is named at `<repo>`
- * and never at a change's worktree, which has none: asked there it answers
- * from the nearest index above it, silently, or fails. Every block says the
+ * A graph is named at `<checkout>`: in a change, the worktree `change apply`
+ * prints holds the branch's own — a committed graph on the branch, a local
+ * index built there by apply (MV-149). Where apply could not build one it
+ * printed no such flag, and a worktree without an index asked with the flag
+ * answers from the nearest index above it, silently, or fails: the group
+ * says so beside the worktree's index, never without it. Every block says the
  * answers' paths are relative to the checkout the flag names, since a path
  * read from the brain would otherwise be taken as the brain's.
  *
  * `holds` picks the head: the brain holds code, and these are its siblings.
+ * `listed` names the brain's own grapher where `grapherLines` listed its verbs
+ * above (no vendor section cited): its sibling group says those verbs apply
+ * with the flag appended instead of listing them again (MV-149). Where the
+ * brain's lines cite the section, which names the bare verb, they are listed.
  * An unverified grapher gets no group (MV-59: `doors` prints the notice); a
  * grapher no writable code repo resolves gets one line and no verb; no group
  * rendered, no head. The vendor's own section is never cited here: it names
  * the bare verb.
  */
-export function whereLines(config: Config, groups: Map<string, string[]>, holds: boolean): string[] {
-  // "After your edits there" only where the brain's one hook is declared to
-  // run this grapher (MV-140's rule, with MV-148's hook): elsewhere the
-  // lifecycle refreshes it. Declarations only (MV-93): `freshness`.
-  const postEdit = config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit);
-  const hookRuns = brainRefreshGrapher(config);
+export function whereLines(
+  config: Config,
+  groups: Map<string, string[]>,
+  holds: boolean,
+  listed?: string,
+): string[] {
+  // "After your edits there" only where a hook of the brain is declared to run
+  // this grapher (MV-140's rule, with MV-148's and MV-149's hooks): elsewhere the lifecycle
+  // refreshes it. Declarations only (MV-93), and the one question every
+  // surface asks (MV-149's `hookRefreshes`).
   const lines: string[] = [];
   for (const [name, keys] of groups) {
     const spec = grapherSpec(name, config.graphers);
@@ -257,17 +270,28 @@ export function whereLines(config: Config, groups: Map<string, string[]>, holds:
       continue;
     }
     const repos = keys.map((k) => `${k}: \`${config.repos[k]?.path}\``).join(', ');
-    const fresh = postEdit && hookRuns === name ? `${freshness(true)} there` : freshness(false);
+    const fresh = hookRefreshes(config, name) ? `${freshness(true)} there` : freshness(false);
     const local = spec.artifactKind === 'local';
     const flag = spec.askAt?.split(' ')[0];
+    // MV-149: `change apply` builds each worktree's index and prints its
+    // flag; the door says so only with the condition beside it, since a
+    // worktree apply could not index answers from the index above it. The
+    // clause a leg reads is a quoted string, never inside a template literal.
+    const unindexed = flag
+      ? `, which prints \`its index: ${spec.askAt!.replace('{checkout}', '<worktree>')}\`; ` +
+        'where `apply` printed no such line, ' +
+        `\`${flag}\` at that worktree answers from the nearest index above it, or fails`
+      : '';
     lines.push(
       `${at} (${repos}), ${fresh}` +
         (local
-          ? `; built in each checkout, never committed — a change's worktree has none yet${flag ? `, and \`${flag}\` at it answers from the nearest index above it, or fails` : ''}:`
+          ? `; built in each checkout, never committed — each change worktree's by \`change apply\`${unindexed}:`
           : ', and committed on the change branch by `change land`:'),
     );
-    const aim = spec.askAt?.replace('{checkout}', local ? '<repo>' : '<checkout>');
-    if (spec.queries && spec.queries.length > 0) {
+    const aim = spec.askAt?.replace('{checkout}', '<checkout>');
+    if (name === listed && aim && spec.queries && spec.queries.length > 0) {
+      lines.push(`    - the verbs above, each with \`${aim}\` appended`);
+    } else if (spec.queries && spec.queries.length > 0) {
       for (const q of spec.queries) lines.push(`    - \`${q.run}${aim ? ` ${aim}` : ''}\` — ${q.answers}`);
     } else {
       lines.push(noQueryLine(name, '    '));
@@ -293,41 +317,57 @@ export function whereLines(config: Config, groups: Map<string, string[]>, holds:
  * worktree holds the branch's own committed graph, which the bare verb in this
  * checkout never reads: measured, the trunk's graph lacked 27 source symbols
  * of a worktree's, and 73 of 185 moved ones sat more than 60 lines from where
- * the trunk put them. A local index has no copy in a worktree. A grapher with
+ * the trunk put them. A local index is built in each worktree by `change
+ * apply`, which prints the flag where it did (MV-149). A grapher with
  * no `askAt` gets the first sentence alone, and one with no query verb no
  * line: nothing reads its artifact back, as the line above it says (MV-61).
  */
-function holdsCodeLine(name: string, spec: AdapterSpec): string | null {
+function holdsCodeLine(spec: AdapterSpec): string | null {
   if (!spec.queries || spec.queries.length === 0) return null;
   const first =
     spec.graphignoreFile !== undefined || spec.codeOnly
       ? '  It answers for this checkout, with the law, the changes and their specs kept out of it: the ecosystem graph above relates them.'
       : '  It answers for this checkout; the ecosystem graph above relates the law, the changes and their specs.';
   if (!spec.askAt) return first;
+  const worktree = spec.askAt.replace('{checkout}', '<worktree>');
+  // MV-149: `change apply` builds the index of each worktree it makes, and
+  // says so where it did; where it printed no such line the flag borrows
+  // this checkout's. codegraph, asked from here with the flag at a worktree
+  // that has none, prints a notice telling the agent to run `codegraph init`
+  // "here", which rebuilds this checkout's index — hence the last sentence.
+  // Quoted strings, never a template literal, where the legs read backticks.
   return spec.artifactKind === 'local'
-    ? `${first} A change's worktree has no index yet: \`${name}\` asked from here or there answers from this checkout's index, without the branch's edits.`
-    : `${first} A change's worktree has its own, as of its last refresh: add \`${spec.askAt.replace('{checkout}', '<worktree>')}\` (\`change apply\` prints it); paths in its answers are relative to that worktree.`;
+    ? `${first} \`change apply\` builds each change worktree its own index and prints \`its index: ${worktree}\`; paths in its answers are relative to that worktree. ` +
+        'Where `apply` printed no such line, ' +
+        `\`${spec.askAt.split(' ')[0]}\` there answers from this checkout's index, without the branch's edits. ` +
+        'Never run the `codegraph init` its notices suggest.'
+    : `${first} A change's worktree has its own, as of its last refresh: add \`${worktree}\` (\`change apply\` prints it); paths in its answers are relative to that worktree.`;
 }
 
 /**
  * MV-148. The brain door's code-graph block. A brain that holds no code
  * resolves no grapher of its own: the block is where each code repo's graph is
- * asked. One that holds code keeps its two grapher lines byte for byte, adds
- * its worktrees' form, and lists its sibling code repos the same way.
+ * asked. One that holds code keeps the grapher lines every consumer door
+ * renders, adds its worktrees' form, and lists its sibling code repos the same
+ * way — a sibling on its own grapher pointed at the verbs listed above rather
+ * than listing them again (MV-149).
  */
 function brainGraphLines(config: Config, holds: boolean): string[] {
   if (!holds) return whereLines(config, askedGraphers(config), false);
   const name = adapterFor(config, 'brain', 'grapher');
   const own = grapherLines(config, name);
   const spec = name === undefined ? null : grapherSpec(name, config.graphers);
-  const line = own.length > 0 && spec ? holdsCodeLine(name!, spec) : null;
+  const line = own.length > 0 && spec ? holdsCodeLine(spec) : null;
   if (line !== null) own.push(line);
+  // MV-149: the verbs `grapherLines` listed above, where it cited no section.
+  const listed =
+    spec && spec.queries && spec.queries.length > 0 && sectionDoors(config, spec).length === 0 ? name : undefined;
   const siblings = new Map<string, string[]>();
   for (const [n, keys] of askedGraphers(config)) {
     const rest = keys.filter((k) => !config.repos[k]?.isBrain);
     if (rest.length > 0) siblings.set(n, rest);
   }
-  return [...own, ...whereLines(config, siblings, true)];
+  return [...own, ...whereLines(config, siblings, true, listed)];
 }
 
 /**

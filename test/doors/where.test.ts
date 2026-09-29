@@ -36,18 +36,26 @@ const GRAPHIFY_BLOCK = [
   '  - `graphify` at `graphify-out/graph.json` (web: `../web`, api: `../api`), refreshed after your edits there, and committed on the change branch by `change land`:',
   ...GRAPHIFY_VERBS,
 ];
-const CODEGRAPH_VERB =
-  '    - `codegraph query <symbol> -p <repo>` — symbol search by name — `--kind function|class` narrows it, `--limit N` bounds it, `--json` makes it machine-readable';
-const CODEGRAPH_BLOCK = [
-  "  - `codegraph` at `.codegraph/codegraph.db` (svc: `../svc`), refreshed after your edits there; built in each checkout, never committed — a change's worktree has none yet, and `-p` at it answers from the nearest index above it, or fails:",
-  CODEGRAPH_VERB,
+// MV-149: each verb at `-p <checkout>`, and the group line says `change apply`
+// builds each worktree's index — with the condition beside it. The four verbs
+// that were run, each saying what it misses.
+const CODEGRAPH_VERBS = [
+  "    - `codegraph query <symbol> -p <checkout>` — a name's definitions and imports, each with kind, file:line and signature, best 10 first (`--limit N`)",
+  '    - `codegraph callers <symbol> -p <checkout>` — the functions calling it, with file:line, module-level callers as their file — 20 unless `--limit N`, counted as listed; aliased imports missed, same-named symbols merged',
+  '    - `codegraph impact <symbol> -p <checkout>` — what may break if it changes: symbols and tests within two calls, by file — a lower bound; aliased imports missed, same-named symbols merged',
+  '    - `codegraph node <symbol> -p <checkout>` — its body with line numbers, what it calls and its callers; `-f <file>`, spelled as answers print it, picks one of several same-named',
 ];
+const CODEGRAPH_GROUP = (fresh: string): string =>
+  `  - \`codegraph\` at \`.codegraph/codegraph.db\` (svc: \`../svc\`), ${fresh}; built in each checkout, never committed — each change worktree's by \`change apply\`, which prints \`its index: -p <worktree>\`; where \`apply\` printed no such line, \`-p\` at that worktree answers from the nearest index above it, or fails:`;
+const CODEGRAPH_BLOCK = [CODEGRAPH_GROUP('refreshed after your edits there'), ...CODEGRAPH_VERBS];
+/** `grapherLines`' list header (MV-149): it claims no saving over grep. */
+const LIST_HEADER = "  ASK IT BEFORE READING THE TREE RAW. These are this tool's own verbs, not a generic one — each line says what it answers:";
 const UNRESOLVED =
   '  - `graphify` at `graphify-out/graph.json`: no writable code repo resolves it yet — each one that does gets its own when `repos sync` or a change reaches it';
 const HOLDS_GRAPHIFY =
   "  It answers for this checkout, with the law, the changes and their specs kept out of it: the ecosystem graph above relates them. A change's worktree has its own, as of its last refresh: add `--graph <worktree>/graphify-out/graph.json` (`change apply` prints it); paths in its answers are relative to that worktree.";
 const HOLDS_CODEGRAPH =
-  "  It answers for this checkout, with the law, the changes and their specs kept out of it: the ecosystem graph above relates them. A change's worktree has no index yet: `codegraph` asked from here or there answers from this checkout's index, without the branch's edits.";
+  "  It answers for this checkout, with the law, the changes and their specs kept out of it: the ecosystem graph above relates them. `change apply` builds each change worktree its own index and prints `its index: -p <worktree>`; paths in its answers are relative to that worktree. Where `apply` printed no such line, `-p` there answers from this checkout's index, without the branch's edits. Never run the `codegraph init` its notices suggest.";
 
 /** The door's lines from `first` on, `n` of them. */
 function block(door: string, first: string, n: number): string[] {
@@ -78,11 +86,15 @@ test("a code-less brain's door names each code repo's graph and the flag that re
   assert.doesNotMatch(two, /## graphify/);
   assert.doesNotMatch(two, /kept fresh for you by/, 'no grapher line of its own');
 
-  // A local index: `-p <repo>`, never `<checkout>`.
+  // A local index: `-p <checkout>`, never `<repo>` — MV-149: `change apply`
+  // builds each change worktree's, and the four verbs that were run each say
+  // what they miss. The block grows from #5's 728 B to 1,411 B.
   const svc = render(await cfg('doors: [agents, claude]\ngrapher: codegraph\nrepos:\n  svc: ../svc\n'));
-  assert.deepEqual(block(svc, HEAD, 3), [HEAD, ...CODEGRAPH_BLOCK]);
-  assert.equal(bytes(block(svc, HEAD, 3)), 728);
-  assert.doesNotMatch(svc, /codegraph[^\n]*<checkout>/);
+  assert.deepEqual(block(svc, HEAD, 6), [HEAD, ...CODEGRAPH_BLOCK]);
+  assert.equal(bytes([CODEGRAPH_BLOCK[0]]), 332);
+  assert.equal(bytes([CODEGRAPH_GROUP('refreshed at `change land` and `change close`')]), 345);
+  assert.equal(bytes(block(svc, HEAD, 6)), 1411);
+  assert.doesNotMatch(svc, /-p <repo>/);
 
   // No post-edit door: the lifecycle is the refresh.
   const lifecycle = render(await cfg('doors: [agents]\ngrapher: graphify\nrepos:\n  web: ../web\n  api: ../api\n'));
@@ -108,19 +120,13 @@ test("a code-less brain's door names each code repo's graph and the flag that re
   const c = await cfg('doors: [agents]\ngrapher: mystery\nrepos:\n  web: ../web\n');
   assert.deepEqual(whereLines(c, new Map([['mystery', ['web']]]), false), []);
 
-  // Graphers the repos resolve, none at the top level: the bytes, pinned. One
-  // hook runs one command, so with two graphers neither is refreshed after an
-  // edit.
+  // Graphers the repos resolve, none at the top level: the bytes, pinned.
+  // MV-149: one hook per grapher, so with two graphers each is refreshed after
+  // an edit there — #5's one hook refreshed neither.
   const mixed = render(await cfg(
     'doors: [agents, claude]\nrepos:\n  web:\n    path: ../web\n    grapher: graphify\n  api:\n    path: ../api\n    grapher: graphify\n  svc:\n    path: ../svc\n    grapher: codegraph\n',
   ));
-  assert.deepEqual(block(mixed, HEAD, 7), [
-    HEAD,
-    '  - `graphify` at `graphify-out/graph.json` (web: `../web`, api: `../api`), refreshed at `change land` and `change close`, and committed on the change branch by `change land`:',
-    ...GRAPHIFY_VERBS,
-    "  - `codegraph` at `.codegraph/codegraph.db` (svc: `../svc`), refreshed at `change land` and `change close`; built in each checkout, never committed — a change's worktree has none yet, and `-p` at it answers from the nearest index above it, or fails:",
-    CODEGRAPH_VERB,
-  ]);
+  assert.deepEqual(block(mixed, HEAD, 10), [HEAD, ...GRAPHIFY_BLOCK, ...CODEGRAPH_BLOCK]);
 
   // A brain that holds code: both grapher lines byte for byte, then its
   // worktrees' form, then its siblings under their own head.
@@ -146,7 +152,7 @@ test("a code-less brain's door names each code repo's graph and the flag that re
   const cg = render(cgCfg);
   const cgOwn = grapherLines(cgCfg, 'codegraph');
   assert.deepEqual(block(cg, cgOwn[0], cgOwn.length + 2), [...cgOwn, HOLDS_CODEGRAPH]);
-  assert.equal(bytes([HOLDS_CODEGRAPH]), 269);
+  assert.equal(bytes([HOLDS_CODEGRAPH]), 441);
   assert.doesNotMatch(cg, /The other code repos/, 'no sibling, no head');
 
   // A grapher under `graphers:` records no verb and no ignore file: nothing
@@ -158,18 +164,113 @@ test("a code-less brain's door names each code repo's graph and the flag that re
   assert.match(md, /`mdgraph` has NO query command/);
   assert.doesNotMatch(md, /It answers for this checkout|kept out of it/);
 
-  // The consumer door does not move (MV-90's shared rendering).
+  // The consumer door moves only by MV-149's verb list (MV-90's shared
+  // rendering): a graphify door citing its section is byte-identical, and
+  // codegraph's block is 982 B with a post-edit door.
   const consumer = await cfg(
     'doors: [agents, claude, codex]\ngrapher: graphify\nsdd: speckit\nrepos:\n  api: ../api\n  web:\n    path: ../web\n    grapher: codegraph\n',
   );
   assert.equal(renderConsumerDoor(consumer, 'api'), CONSUMER_API);
   assert.equal(renderConsumerDoor(consumer, 'web'), CONSUMER_WEB);
+  const cgBlock = CONSUMER_WEB.split('\n').slice(-6);
+  assert.equal(bytes(cgBlock), 982);
+  // No post-edit door: the lifecycle freshness, 1,001 B; graphify's list,
+  // which cites no section, is 6 B shorter at the header (131 → 125 B).
+  const lifecycleConsumer = await cfg(
+    'doors: [agents]\ngrapher: graphify\nsdd: speckit\nrepos:\n  api: ../api\n  web:\n    path: ../web\n    grapher: codegraph\n',
+  );
+  const webLines = renderConsumerDoor(lifecycleConsumer, 'web').split('\n');
+  assert.deepEqual(webLines.slice(-6), [
+    '- A code graph is kept fresh for you by `codegraph` at `.codegraph/codegraph.db` — refreshed at `change land` and `change close`; it is built in each checkout, so never commit it.',
+    ...cgBlock.slice(1),
+  ]);
+  assert.equal(bytes(webLines.slice(-6)), 1001);
+  const apiLines = renderConsumerDoor(lifecycleConsumer, 'api').split('\n');
+  assert.deepEqual(apiLines.slice(-4), [
+    LIST_HEADER,
+    ...GRAPHIFY_VERBS.map((l) => l.slice(2).replace(' --graph <checkout>/graphify-out/graph.json', '')),
+  ]);
+  assert.equal(bytes([LIST_HEADER]), 125);
 
   // The graph is not the code alone: the root's documents and site stay in it.
   for (const d of doors) assert.doesNotMatch(d, /code only/);
+  // MV-149: no door line names a worktree's index without the condition
+  // beside it, and no verb pairs codegraph with the repo.
+  for (const line of doors.join('\n').split('\n')) {
+    if (/-p <worktree>/.test(line)) assert.match(line, /here `apply` printed no such line/, line);
+    assert.doesNotMatch(line, /codegraph[^\n]*-p <repo>/);
+  }
 });
 
-/** Rendered by the tree before MV-148, and pinned: the consumer door is byte-identical. */
+// MV-149: one hook per grapher, so each group asks the one predicate for its
+// own grapher. Declarations only (MV-93): the door is the same on a machine
+// where a binary is missing, and `doors` and `doctor` say that one.
+test('each group says after your edits only where its own hook is wired', async () => {
+  const mixed =
+    'repos:\n  web:\n    path: ../web\n    grapher: graphify\n  api:\n    path: ../api\n    grapher: graphify\n  svc:\n    path: ../svc\n    grapher: codegraph\n';
+  const hooked = renderBrainDoor(await cfg(`doors: [agents, claude]\n${mixed}`), 1);
+  assert.deepEqual(block(hooked, HEAD, 10), [HEAD, ...GRAPHIFY_BLOCK, ...CODEGRAPH_BLOCK]);
+  // No declared door has a post-edit hook: the lifecycle refreshes both.
+  const lifecycle = renderBrainDoor(await cfg(`doors: [agents]\n${mixed}`), 1);
+  assert.equal(block(lifecycle, HEAD, 2)[1], GRAPHIFY_BLOCK[0].replace('refreshed after your edits there', 'refreshed at `change land` and `change close`'));
+  assert.equal(block(lifecycle, HEAD, 6)[5], CODEGRAPH_GROUP('refreshed at `change land` and `change close`'));
+  // Two graphers writing one artifact get no follow hook, and a hook cannot
+  // tell their repos apart: their groups say the lifecycle, codegraph's
+  // still says after your edits.
+  const clash = renderBrainDoor(
+    await cfg(
+      'doors: [agents, claude]\ngraphers:\n  outgraph:\n    artifact: graphify-out/graph.json\n    refresh: outgraph update .\n' +
+        'repos:\n  web:\n    path: ../web\n    grapher: graphify\n  api:\n    path: ../api\n    grapher: outgraph\n  svc:\n    path: ../svc\n    grapher: codegraph\n',
+    ),
+    1,
+  );
+  const groups = clash.split('\n').filter((l) => /^  - `[a-z]+` at /.test(l));
+  assert.deepEqual(
+    groups.map((l) => [l.slice(0, l.indexOf(' at ')), /refreshed after your edits there/.test(l)]),
+    [
+      ['  - `graphify`', false],
+      ['  - `outgraph`', false],
+      ['  - `codegraph`', true],
+    ],
+    groups.join('\n'),
+  );
+});
+
+// MV-149: where the brain's own lines list its grapher's verbs, a sibling
+// group on that grapher says they apply with the flag appended rather than
+// listing them again; where those lines cite the vendor's section, which names
+// the bare verb, the group lists them.
+test("a sibling group on the brain's own grapher says the verbs above", async () => {
+  const cgCfg = await cfg('doors: [agents, claude]\ngrapher: codegraph\nrepos:\n  brain: .\n  svc: ../svc\n');
+  const door = renderBrainDoor(cgCfg, 1);
+  const own = grapherLines(cgCfg, 'codegraph');
+  assert.equal(own[1], LIST_HEADER);
+  assert.equal(own.length, 6, 'the four verbs, listed once above');
+  const dedup = '    - the verbs above, each with `-p <checkout>` appended';
+  assert.deepEqual(block(door, SIBLINGS_HEAD, 3), [SIBLINGS_HEAD, CODEGRAPH_BLOCK[0], dedup]);
+  assert.equal(bytes([dedup]), 58);
+  // The group: 1,090 B with the verbs relisted, 390 B with the line in their place.
+  assert.equal(bytes(CODEGRAPH_BLOCK), 1090);
+  assert.equal(bytes(block(door, SIBLINGS_HEAD, 3).slice(1)), 390);
+  for (const v of CODEGRAPH_VERBS) assert.ok(!door.includes(v), `relisted: ${v.slice(0, 50)}`);
+
+  // graphify citing its section: the door names the bare verbs only, so the
+  // sibling group lists them with the flag.
+  const cited = renderBrainDoor(await cfg('doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n  api: ../api\n'), 1);
+  assert.deepEqual(block(cited, SIBLINGS_HEAD, 5).slice(2), GRAPHIFY_VERBS);
+  assert.doesNotMatch(cited, /the verbs above/);
+  // graphify listing its verbs (no section door): the same line, its own flag.
+  const listed = renderBrainDoor(await cfg('doors: [agents]\ngrapher: graphify\nrepos:\n  brain: .\n  api: ../api\n'), 1);
+  assert.equal(block(listed, SIBLINGS_HEAD, 3)[2], '    - the verbs above, each with `--graph <checkout>/graphify-out/graph.json` appended');
+  // A code-less brain lists every group's verbs: nothing above lists them.
+  const codeless = renderBrainDoor(await cfg('doors: [agents, claude]\ngrapher: codegraph\nrepos:\n  svc: ../svc\n'), 1);
+  assert.doesNotMatch(codeless, /the verbs above/);
+});
+
+/**
+ * Rendered by the tree before MV-148, and pinned: the consumer door is
+ * byte-identical but for MV-149's verb list — its header and codegraph's verbs.
+ */
 const CONSUMER_HEAD = [
   '## multivac — consumer door',
   '',
@@ -213,6 +314,6 @@ const CONSUMER_WEB = [
   CONSUMER_SDD,
   '',
   '- A code graph is kept fresh for you by `codegraph` at `.codegraph/codegraph.db` — refreshed after your edits; it is built in each checkout, so never commit it.',
-  "  ASK IT BEFORE READING THE TREE RAW. It answers in one call what grep takes many, and it is this tool's verbs, not a generic one:",
-  '  - `codegraph query <symbol>` — symbol search by name — `--kind function|class` narrows it, `--limit N` bounds it, `--json` makes it machine-readable',
+  LIST_HEADER,
+  ...CODEGRAPH_VERBS.map((l) => l.slice(2).replace(' -p <checkout>', '')),
 ].join('\n');

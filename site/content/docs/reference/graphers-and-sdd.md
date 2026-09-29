@@ -244,12 +244,47 @@ generic "query the graph". They are not the same verb wearing two names:
 | | `graphify` | `codegraph` |
 | --- | --- | --- |
 | shape | a **question** in words | a **symbol** by name |
-| ask | `graphify query "<question>"` | `codegraph query <symbol>` |
-| also | `explain "<node>"`, `path "<A>" "<B>"` | `--kind`, `--limit`, `--json` |
+| ask | `graphify query "<question>"` | `codegraph query <symbol>` — its definitions and imports |
+| also | `explain "<node>"`, `path "<A>" "<B>"` | `callers <symbol>`, `impact <symbol>`, `node <symbol>` |
 
-Hand `codegraph` a sentence and you get nothing useful; hand `graphify` a bare
-identifier and you have thrown away what it is for. A door that said "query
-the graph" would be wrong for one of them, and an agent cannot tell which.
+Hand `codegraph` a sentence and it returns name matches for its words, not an
+answer: give it a symbol. Hand `graphify` a bare identifier and you have thrown
+away what it is for. A door that said "query the graph" would be wrong for one
+of them, and an agent cannot tell which.
+
+The door's list of verbs claims no saving over grep, for either tool: each line
+says what its verb answers, and for codegraph what it misses. codegraph's four
+verbs are the ones that were run, on the version the registry entry records,
+over multivac's own `src/` and `test/` (141 files): each of the 318 top-level
+functions there was asked each question, against what an agent runs instead.
+
+| Question | Verb | Against | What it printed |
+| --- | --- | --- | --- |
+| Where is X defined | `query` | a narrowed definition grep | **more** for 311 of 318 functions, a median 3.43 times as much; kept for the signature it adds |
+| Who calls X | `callers` | `grep -rn 'X('` over the tree | less for 316 of 318, a median 2.01 times less; it names the calling function |
+| What breaks if X changes | `impact` | a one-level grep for call sites | less for 182 of 318, a median 1.10 times less; its worth is reach — two calls away, and the tests — and it is a lower bound |
+| Show me X's body | `node` | a definition grep and a 60-line read | less for 235 of 318, a median 2.07 times less; it does not replace the read an edit needs |
+| What does file Y hold | `node -f <file> --symbols-only`, left out | `grep -n '^export'` | more for 52 of 52 files, a median 3.3 times as much |
+
+What each misses is in its line. `callers` lists 20 unless given `--limit N`,
+and its header counts what it lists, not what there is: 20 for a function with
+36 callers. `callers` and `impact` merge symbols that share a name, and miss a
+call made through an aliased import — one function imported under another name
+in seven files. `node` prints every definition of a name; `-f <file>` narrows
+it to the definition in that file, spelled as its answers print it — any part
+of that path, such as the file name, also matches. A path it does not match,
+such as one starting `./`, an absolute one or one outside the repo, prints
+every definition again, with no warning and exit 0. `--limit 1` would hide a
+second definition, so the door never prints it. Each call took 250 to 410 ms,
+against under 10 ms for grep.
+
+Also run, and left out: `explore` (15.7 to 17.2 KB a call), `context` (it found
+the expected symbol for 2 of 5 sentences), `files` (what a glob already does),
+`affected` (not a question about navigating code) and `callees` (the trail
+`node` already prints). What repays the half a kilobyte the list adds to a
+session is usually one `node` call — 220 of the 318 functions saved more than
+that against a 60-line read; `callers` repays it for heavily called symbols;
+`query` and `impact`, by bytes, do not.
 
 This is what "multivac speaks a grapher" means, and why the table is short:
 the verbs have to be run before they can be written down. `graphify query` is
@@ -285,12 +320,22 @@ every verb with its flag:
     - `graphify path "<A>" "<B>" --graph <checkout>/graphify-out/graph.json` — the shortest path between two nodes — how A actually reaches B
 ```
 
-A codegraph index is built in each checkout and never committed, so a change's
-worktree has none yet, and `-p` aimed at one answers from the nearest index
-above it. Its verbs carry `-p <repo>`, never a change's checkout. A grapher no
-writable code repo resolves yet — no repo declared, or every one `managed:
-false` or `grapher: none` — is named with no verb. The door never cites the
-vendor's own section here: that section tells the agent to run the bare verb.
+A codegraph index is built in each checkout and never committed, and `change
+apply` builds each change worktree its own — see [A change's own codegraph
+index](#a-changes-own-codegraph-index). Its verbs carry `-p <checkout>`, as
+graphify's carry `--graph`, and its group line names the worktree's index only
+with the condition beside it:
+
+```md
+  - `codegraph` at `.codegraph/codegraph.db` (api: `../api`), refreshed after your edits there; built in each checkout, never committed — each change worktree's by `change apply`, which prints `its index: -p <worktree>`; where `apply` printed no such line, `-p` at that worktree answers from the nearest index above it, or fails:
+    - `codegraph query <symbol> -p <checkout>` — a name's definitions and imports, each with kind, file:line and signature, best 10 first (`--limit N`)
+    - …
+```
+
+A grapher no writable code repo resolves yet — no repo declared, or every one
+`managed: false` or `grapher: none` — is named with no verb. The door never
+cites the vendor's own section here: that section tells the agent to run the
+bare verb.
 
 **`change apply` names the flag for each checkout it hands out**, under the
 checkout's line:
@@ -305,11 +350,12 @@ work here — one checkout per repo, nobody else's tree moves:
 
 The worktree's own graph where it holds one; else the repo checkout's, which
 answers for the base without this branch's edits; else that there is none yet
-and that `change land` builds and commits one. A codegraph worktree is always
-given the repo checkout's `-p`, for the base, and never `-p <worktree>`; a repo
-branched in place is given `its index: -p <repo>`. Nothing is printed for a
-checkout whose grapher is `none` or unverified, or for the brain's own main
-checkout.
+and that `change land` builds and commits one. A codegraph checkout — the
+change's worktree, or the repo branched in place — is given `its index: -p
+<checkout>` where `change apply` has just built or synced its index there, and
+the repo checkout's `-p`, for the base, only where it could not. Nothing is
+printed for a checkout whose grapher is `none` or unverified, or for the brain's
+own main checkout.
 
 **The answers' paths are relative to the checkout asked.** An answer from a
 change's worktree names `src/server.ts`, which read from the brain is a
@@ -325,8 +371,15 @@ and their specs kept out of it — graphify through its ignore file, codegraph
 because it indexes no Markdown; a grapher you declare yourself is not said to
 keep them out (the ecosystem graph relates them) — and a
 change's worktree has its own, as of its last refresh, asked with `--graph
-<worktree>/graphify-out/graph.json`. Its sibling code repos, where they resolve
-a grapher, are listed below it in the form above.
+<worktree>/graphify-out/graph.json`. On codegraph that line says instead that
+`change apply` builds each change worktree its own index and prints `its index:
+-p <worktree>`, that where it printed no such line `-p` there answers from this
+checkout's index, without the branch's edits, and never to run the `codegraph
+init` codegraph's notices suggest. Its sibling code repos, where they resolve a
+grapher, are listed below it in the form above; a sibling on the brain's own
+grapher, whose verbs the door already listed, gets one line in place of the
+list: the verbs above, each with `-p <checkout>` (or `--graph
+<checkout>/graphify-out/graph.json`) appended.
 
 **This is about correctness, not size.** Asking the graph costs more bytes than
 a narrowed grep — 2.1 to 2.6 times as many, measured — and no saving is claimed
@@ -336,6 +389,111 @@ source symbols of a change's worktree graph, and 73 of the 185 symbols that
 moved sat more than 60 lines from where the same path, read from the trunk,
 puts them. A graph query worded without the identifier still missed one
 question in three; the verb is a map, not an oracle.
+
+### A change's own codegraph index
+
+A codegraph index is built in each checkout and never committed, so a change's
+worktree starts with none. Asked there, codegraph answers from the nearest index
+above it — the repo checkout's, or the brain's where the brain holds code —
+with exit 0 and no warning. Measured on one of this project's branches, the
+trunk's index lacked 19 symbols the branch had added and put 24 of the 192 that
+moved more than 60 lines from where the branch has them; and a sibling repo's
+worktree, nested under a brain that holds code on codegraph, answered with the
+brain's code.
+
+**`change apply` builds one in each checkout it hands out** — the change's
+worktree, or the repo branched in place — and syncs the one there when apply
+runs again. It runs the entry's build, or its refresh where an index is
+installed, the way every build runs: the binary looked up in that checkout, the
+entry's opt-outs set, that checkout's lock taken, and a failure warned, never
+stopping apply:
+
+```txt
+api: .codegraph/ added to /home/you/api/.git/info/exclude — git ignored no index here, and that file is never committed
+graph codegraph @ api worktree: built (`codegraph init`) — local artifact, never committed
+work here — one checkout per repo, nobody else's tree moves:
+  api: /home/you/brain/.multivac/worktrees/points-expire/api
+    its index: -p /home/you/brain/.multivac/worktrees/points-expire/api — refreshed after your edits; paths in its answers are relative to this checkout
+```
+
+**The index never shows in `git status`.** Before it builds, apply asks git
+whether it ignores each of the entry's ignore lines — `.codegraph/` — in that
+checkout, asking about the line itself as git walks the tree: of a directory
+line, whether git ignores the directory, so never descends into it. A line git
+does not ignore is appended
+to the repository's common `info/exclude`, which every worktree of that
+repository reads and nobody commits, and apply says so once. It is not a
+`.gitignore` edit: the `.codegraph/` line written into a repo's `.gitignore`
+before its first build sits uncommitted in that repo's own checkout, so a
+worktree index showed as `?? .codegraph/`, `git add -A` staged codegraph's own
+`.codegraph/.gitignore` onto the branch, and `change close` kept the worktree as
+holding uncommitted work. A worktree's own `info/exclude` is not read by git.
+Asking about the line and not the database matters too: codegraph's
+`.codegraph/.gitignore` un-ignores itself, so a repo whose `.gitignore` held only
+`*.db` ignored the database and still listed `?? .codegraph/`. So did one
+holding `.codegraph/*` or `.codegraph/**`, which ignore everything below the
+directory and not the directory itself, letting that file back in: only a line
+naming the directory, such as `.codegraph/` or `/.codegraph/`, keeps git out.
+
+**Land syncs it, close removes it.** `change land`, in the checkout that holds
+the change's branch, runs the same exclude step, then syncs the index — or
+builds it where apply could not — and commits none of it. `change close`
+removes the worktree, and the index with it.
+
+**The pointer says where to ask, and how fresh the answer is.** apply prints
+`its index: -p <checkout>` only where the index is installed in that checkout,
+with one of two wordings: `refreshed after your edits` where a declared harness
+has a post-edit hook and the brain's session refreshes codegraph (see [One
+post-edit hook per grapher](#one-post-edit-hook-per-grapher)), and otherwise
+that the index is as of this apply and refreshed again at `change land`, since
+nothing refreshes it between the two.
+
+**Where apply built none, it names none.** The pointer falls back to the repo
+checkout's index, for the base, as in [Where to ask the
+graph](#where-to-ask-the-graph), and says that `-p` at this checkout answers
+from the nearest index above it, or fails. The doors say the same: every line
+naming a worktree's index carries "where `apply` printed no such line" beside
+it. A binary apply cannot find from the worktree is named once:
+
+```txt
+graph codegraph @ api worktree: build skipped — `codegraph` found on neither PATH nor api worktree's node_modules/.bin — install codegraph: npm i -g @colbymchenry/codegraph (https://github.com/colbymchenry/codegraph), then `codegraph init` there
+```
+
+— unless the repo's own checkout has no index either, where the first build of
+that checkout has just said the same.
+
+**Never run the `codegraph init` its notices suggest.** Asked with `-p` at a
+worktree that has no index, from the checkout above it, some verbs print a
+notice telling you to run `codegraph init` "here". That rebuilds the checkout
+you are in, not the worktree, and run by hand it carries none of the entry's
+opt-outs. Re-run `change apply`: it builds the worktree's index with them set.
+
+**A copy found only in a repo's `node_modules/.bin` builds no worktree index.**
+git never puts an untracked `node_modules` in a worktree, so the lookup there
+finds nothing, and neither the post-edit hook nor your agent's shell would reach
+that copy from there. The door names the bare `codegraph`: install it on PATH.
+
+**Every command multivac runs for a grapher has its standard input closed.**
+With its file watcher off — `CODEGRAPH_NO_WATCH=1`, or WSL on a `/mnt` path —
+`codegraph init` waits on a prompt. Through a runner that left stdin open it had
+not returned after 30 seconds; with stdin closed it exited 0 in about a second
+and installed no git hook.
+
+**What it costs.** apply's builds run one after another, one per named repo on
+codegraph. Measured, `codegraph init` in a worktree took 1.1 to 1.4 seconds and
+4 MB for 52 files, and 7 seconds and 36 MB for 1,012; a sync after one edit
+took under a second. A repo's first apply builds twice — its own checkout's
+first index, then its worktree's. The disk is freed at close.
+
+**graphify gets nothing at apply.** Its graph is committed, so the worktree
+checks it out with the branch; a refresh there cost 10 to 18 seconds and a diff
+of hundreds of lines to add one edge. `change land` refreshes it and commits it.
+
+What stays true: an index is as fresh as the last apply, land, close or hook
+run, so an edit made through a shell command is not in it until the next. A
+worktree's mount is empty, so its index never holds the mounted brain.
+`CODEGRAPH_DIR` set to another directory is read as a partial index, and the
+directory it leaves keeps the worktree at close.
 
 ### There is no generic contract
 
@@ -499,10 +657,60 @@ graph graphify @ api: rebuilt (`graphify update . --force`) — artifact left un
 When the rebuilt graph still holds nodes under the lines land just added, land
 restores the file, commits neither, and says the next land or close rebuilds.
 
-A grapher declared under `graphers:`, and codegraph, get no ignore lines.
-codegraph indexes no Markdown, so none of its nodes came from `.specify/`,
-`specs/`, `.claude/`, `.agents/` or `.multivac/`; it honours `.gitignore`
-through git, and applies its own `codegraph.json` exclusions on `sync`.
+A grapher declared under `graphers:` gets no ignore lines.
+
+**codegraph's lines go into `codegraph.json`.** Its ignore file sits at the
+root, and multivac's lines go into its `exclude` list. codegraph indexes no
+Markdown — none of its nodes came from `.specify/`, `specs/`, `.claude/`,
+`.agents/` or `.multivac/` — so only the lines that change what it indexes are
+written: the brain's mount, in a code repo whose brain holds code, and each
+declared repo nested inside the root. Where there are none, nothing is written
+and no file is created. The mount is the one that matters: a consumer of a
+brain that holds code indexed 2,254 nodes, 2,247 of them the mounted brain's,
+and `codegraph callers` answered with the brain's callers; with `/.brain/` in
+`exclude` it indexed 7. The mount is written as git records it — `./.brain`,
+`.brain/` and `./.brain/` all give `/.brain/` — and a mount outside the repo
+gets no line.
+
+```json
+{
+  "exclude": [
+    "/.brain/"
+  ]
+}
+```
+
+The lines are spliced into the file's text, which is never re-serialised: every
+other byte of yours stays, where re-serialising a hand-written file dropped a
+duplicate key, its CRLF line ends and a number's trailing digits. A line is
+never written over one that `exclude`, `include`, `includeIgnored` or
+`deprioritize` already names — as `x`, `/x`, `x/`, `/x/`, `x/**` or `/x/**`,
+each also with a leading `**/`, negated or not — or that names a path under
+it: `exclude` wins over the other three, so an append would override a
+`deprioritize` of yours. That is said:
+
+```txt
+graph codegraph @ api: /.brain/ not added to codegraph.json — its "deprioritize" names it, which is yours
+```
+
+A file that does not parse to an object with a list of strings under `exclude`
+— codegraph ignores such a file too — is left exactly as it is and named, with
+the lines to add by hand. JSON holds no record line, so a line you delete
+without negating it comes back at the next write: `!/.brain/`, in any of the
+four lists, is how you keep the mount indexed. No rebuild is forced: codegraph's
+`sync` drops what a new line excludes.
+
+A `.gitignore` line is not the route. codegraph honours one, but it is
+git-wide, and a later `git submodule add` of the mount exited 128. The lines are
+written where the other graphers' are — before a root's first build, so a
+consumer's first index at `repos sync` already keeps the mount out, and at
+`change land`, which commits `codegraph.json` alone on the change's branch
+where it may write the file. The build in a change's checkout at `change apply`
+writes none. The copy the first build writes in a code repo's own checkout is
+yours to commit: land writes nothing beside an uncommitted one, and `doctor`
+names it until you do, since a clone or worktree with the mount initialised
+indexes the mount until then. A glob naming the mount in any other way — `.br*/`
+— is not read, and the line is written beside it.
 
 Before this, the graph was only ever built for repos a change explicitly
 touched, so a repo had to be worked on before it could be navigated — backwards
@@ -560,14 +768,17 @@ more entry in the same managed `.claude/settings.json` merge that carries
 ```json
 { "matcher": "Edit|Write|MultiEdit",
   "hooks": [{ "type": "command",
-              "command": "L=.multivac/cache/graph-refresh.lock; f=$(sed -n … | head -n 1); t=$(git -C \"$(dirname \"${f:-.}\")\" rev-parse --show-toplevel 2>/dev/null); [ -n \"$t\" ] && [ -e \"$t/graphify-out/graph.json\" ] && cd \"$t\"; PATH=\"$PATH:$PWD/node_modules/.bin\"; … mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0" }] }
+              "command": "L=.multivac/cache/graph-refresh.lock; f=$(sed -n … | head -n 1); t=$(git -C \"$(dirname \"${f:-.}\")\" rev-parse --show-toplevel 2>/dev/null); [ -n \"$t\" ] || exit 0; [ -e \"$t/graphify-out/graph.json\" ] && cd \"$t\"; PATH=\"$PATH:$PWD/node_modules/.bin\"; … mkdir \"$L\" 2>/dev/null || exit 0; { graphify update .; rmdir \"$L\"; } >/dev/null 2>&1 </dev/null & exit 0" }] }
 ```
 
 The hook first reads the edited file's path from what the harness passes it.
 When that file sits in a git repository holding the graph, the refresh runs
 there, under that repository's lock. So an edit in a change worktree of another
-repo refreshes that repo's graph, not the session's. Otherwise it runs where
-the session is.
+repo refreshes that repo's graph, not the session's. When the file is in no
+repository at all — a scratch file under `/tmp`, say — the hook exits having
+run nothing: it used to fall back to the session's directory and refresh the
+graph there, on every such edit. When the file's repository lacks the graph, or
+the harness named no file, it still runs where the session is.
 
 **In a brain that holds no code the hook follows, and never falls back.** It
 runs only when the edited file's repository holds the graph and is not a
@@ -579,26 +790,28 @@ worktree, never builds a graph in the brain:
 … t=$(git -C "$(dirname "${f:-.}")" rev-parse --show-toplevel 2>/dev/null); [ -n "$t" ] && [ ! -e "$t/.multivac/config.yml" ] && [ -e "$t/graphify-out/graph.json" ] && cd "$t" || exit 0; …
 ```
 
-It runs one grapher, the one the code repos resolve, and is wired only where
-that binary is found on PATH or in each of those repos' `node_modules/.bin`:
-the hook runs inside each repo, where a copy in another one is out of reach.
-A copy found only in a repo's `node_modules/.bin` refreshes edits in that
-repo's own checkout, not in its change worktrees: git never puts an untracked
-`node_modules` in a worktree, so there the hook finds no binary and runs
-nothing. `doctor` names the repos where that holds; a copy on PATH reaches
-every checkout. Where the code repos resolve several graphers, or the binary
-is not reachable from each of them, no hook is wired and `doors` says why:
+There is one such hook per grapher the code repos resolve — see [One post-edit
+hook per grapher](#one-post-edit-hook-per-grapher) — each wired only where its
+binary is found on PATH or in the `node_modules/.bin` of each repo resolving
+it: the hook runs inside each repo, where a copy in another one is out of reach. A copy found only in a repo's `node_modules/.bin` refreshes
+edits in that repo's own checkout, not in its change worktrees: git never puts
+an untracked `node_modules` in a worktree, so there the hook finds no binary and
+runs nothing. `doctor` names the repos where that holds; a copy on PATH reaches
+every checkout. Where the binary is not reachable from each of them, that
+grapher's hook is not wired and `doors` says why — naming the grapher where
+another grapher's hook can still refresh your edits:
 
 ```txt
-brain: notice: no post-edit graph refresh here — the code repos resolve graphify and codegraph, and one hook runs one command; `change land` and `change close` refresh them
+brain: notice: no post-edit graph refresh here — `codegraph` is not reachable from every code repo that resolves codegraph (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them
+brain: notice: no post-edit refresh for codegraph here — `codegraph` is not reachable from every code repo that resolves codegraph (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them
 ```
 
 Like the hook of a brain that holds code, it refreshes any checkout holding
 the graph that an edit made from the session reaches, a repo marked
 `managed: false` included. A brain that holds code and a code repo keep the
-hook above, byte for byte.
+hook shown above it.
 
-The door promises "refreshed after your edits" only for the grapher such a
+The door promises "refreshed after your edits" only for a grapher a brain's
 hook is declared to run, and only where a declared harness has one. Elsewhere it
 says the graph is refreshed at `change land` and `change close`, and `flow.md`
 gives the same answer. Both are committed and read the declarations, never
@@ -648,10 +861,29 @@ until a run without `--json` shows openspec's first-run notice, which writes
 a change prints, the text-mode `openspec status` is the first that can show that
 notice. A text-mode call whose stderr is a terminal also records a completion
 tip in that file whatever the opt-outs, which `OPENSPEC_NO_COMPLETIONS=1`
-stops. The `codegraph query` a door prints runs in your agent's environment
-too, so codegraph's variables reach it only when that environment sets them.
-Whether codegraph honours its variables was read from its source and docs, not
-measured on the network.
+stops.
+
+codegraph's verbs the door prints — and the `codegraph init` and `codegraph
+uninit --force` that `doctor` and the graph gate print for you — run in your
+agent's environment or your shell, and the entry's `env` reaches none of them.
+What they send was measured on the version the registry entry records, with
+`HOME` isolated, a local recorder as the telemetry endpoint and strace, and read
+from its shipped code. Where npm installed the platform bundle, `query`,
+`callers`, `impact` and `node` open no socket; each appends one count per
+command name and day to `~/.codegraph/telemetry-queue.jsonl`. That queue is
+sent — with a machine id minted then, the version, the OS, the architecture,
+Node's major version and a CI flag — by the first `init`, `uninit`, `index`,
+`sync` or `upgrade` run without an opt-out once its day is past, by `codegraph
+install`, and by the MCP server that install registers, at start and every six
+hours. `init` and `index` also send an event at once with the languages and
+coarse file-count and duration buckets, and `uninit` one of its own. Where npm
+did not deliver the platform bundle, the npm shim downloads it from GitHub
+Releases on any command, these verbs included, whatever `DO_NOT_TRACK` or
+`CODEGRAPH_TELEMETRY` say. So, where your agent runs: `DO_NOT_TRACK=1` or
+`CODEGRAPH_TELEMETRY=0` records nothing, and `CODEGRAPH_NO_DOWNLOAD=1` turns the
+download off. multivac's own runs carry all three, record and send nothing, and
+leave the queue as it is. The door carries no telemetry text; whether to set
+these in your harness's environment is yours to decide.
 
 Three properties, on purpose:
 
@@ -671,15 +903,26 @@ refreshes at `change land` and `change close` only. `doctor` names the live path
 
 ```txt
 grapher    refresh path: claude post-edit hook (installed when the binary is present) · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh
+grapher    refresh path: claude post-edit hook (installed when the binary is present) · `change apply` builds the index in each change worktree and `change land` syncs it, never committed · `change close` is the net · git hooks never refresh
 ```
 
-In a brain that holds no code, it says whether the hook follows your edits into
-the code repos, and why not where it does not:
+The second is a brain that holds code on codegraph, whose index is built in each
+checkout. In a brain that holds no code, it says whether the hook follows your
+edits into the code repos, and why not where it does not:
 
 ```txt
 grapher    refresh path: claude post-edit hook follows your edits into the code repos' checkouts (installed when the binary is present) · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh
 grapher    refresh path: claude post-edit hook follows your edits into the code repos' checkouts (installed when the binary is present) · not into the change worktrees of api and web: they reach graphify only in their own node_modules/.bin, which a worktree does not hold · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh
-grapher    refresh path: `change land` and `change close` only — the code repos resolve graphify and codegraph, and the brain's one post-edit hook runs one command · git hooks never refresh
+```
+
+Where several graphers are in play — a brain whose code repos resolve more than
+one, or a brain that holds code with a sibling on another — it names each
+grapher whose hook is wired, why another's is not, and graphers writing one
+artifact, in the words `doors` prints:
+
+```txt
+grapher    refresh path: claude post-edit hooks follow your edits — graphify's and codegraph's (each installed when its binary is present) · `change land` commits graphify's graph on the change branch and syncs codegraph's index, which `change apply` builds in each change worktree, never committed · `change close` is the net · git hooks never refresh
+grapher    refresh path: claude post-edit hook follows your edits — graphify's (installed when the binary is present) · no hook for codegraph: `codegraph` is not reachable from every code repo that resolves codegraph (PATH, or each one's node_modules/.bin) · `change land` commits graphify's graph on the change branch and syncs codegraph's index, which `change apply` builds in each change worktree, never committed · `change close` is the net · git hooks never refresh
 ```
 
 **`change land` commits the graph.** Before it prints the push line for a
@@ -694,13 +937,25 @@ committed: graph: points-expire — refreshed on the change branch
 ```
 
 A repo on a detached HEAD, or one whose graph is ignored, cannot take that
-commit. `land` names it and exits 1. A read-only repo, and a grapher whose
-artifact is built in each checkout, get no refresh and no commit.
+commit. `land` names it and exits 1. A read-only repo gets no refresh and no
+commit. A grapher whose artifact is built in each checkout is synced in the
+checkout that holds the change's branch instead — after the same exclude step
+`change apply` runs — and its index is never committed. On a detached HEAD
+or another branch it is passed over, since nothing of it would be committed:
+
+```txt
+graph codegraph @ web: wrote codegraph.json (+1) before the refresh at `change land`
+graph codegraph @ web: refreshed (`codegraph sync`) — local artifact, never committed
+committed: graph: points-expire — codegraph keeps /.brain/ out of its index
+```
 
 The ignore file lands with the graph it shaped: where land appended the lines
 that root lacked (see the ignore lines above), the same commit carries
-`.graphifyignore` beside `graphify-out/graph.json`. In a brain that holds no
-code, land commits no brain graph, even for a change that names `brain`.
+`.graphifyignore` beside `graphify-out/graph.json`. For codegraph there is no
+graph to carry it, so `codegraph.json` is committed alone, after the sync that
+reads it; one git ignores there is named, with the command that shows the rule,
+and nothing is written. In a brain that holds no code, land commits no brain
+graph, even for a change that names `brain`.
 
 **`change close`, the net.** A change can land edits made outside the harness,
 so close still **runs** the refresh — in the brain where it holds code and in
@@ -748,6 +1003,77 @@ A declared repo that no change names is left alone by the lifecycle.
 
 No grapher is declared by default. A newborn brain is two content files, and a
 graph of that is noise.
+
+### One post-edit hook per grapher
+
+The brain's session gets one refresh hook per grapher it edits code for: the
+brain's own, where the brain holds code, and a following hook for each other
+grapher its writable code repos resolve. A brain that holds no code, with web on
+graphify and api on codegraph, gets two, each in its own entry under the
+post-edit matcher, each running only in the repos holding its artifact:
+
+```txt
+… [ -n "$t" ] && [ ! -e "$t/.multivac/config.yml" ] && [ -e "$t/graphify-out/graph.json" ] && cd "$t" || exit 0; … { graphify update .; rmdir "$L"; } …
+… [ -n "$t" ] && [ ! -e "$t/.multivac/config.yml" ] && [ -e "$t/.codegraph/codegraph.db" ] && cd "$t" || exit 0; … export DO_NOT_TRACK=1 CODEGRAPH_TELEMETRY=0 CODEGRAPH_NO_DOWNLOAD=1; … { codegraph sync; rmdir "$L"; } …
+```
+
+A brain that holds code on graphify, with a sibling repo on codegraph, keeps its
+own hook and adds codegraph's following one. Before, one hook ran one command:
+the code-less brain above got none, and in the brain that holds code an edit in
+the sibling's worktree refreshed the brain's graph and left the sibling's index
+without it. A brain resolving one grapher, and every consumer, keep the one hook
+they had, changed only by its exit for a file in no repository.
+
+**Which hook is whose.** A refresh hook is multivac's by its head — the lock
+path, `L=.multivac/cache/graph-refresh.lock;`, which nobody types — and a
+grapher's by the artifact its test names, `[ -e "$t/<artifact>" ]`, written into
+every hook form. So `doors` rewrites each grapher's own hook in place, copies
+included, and never touches a command you typed, whatever grapher it runs. A
+hook of multivac's naming an artifact no longer wanted, or none — one written
+before hooks named their artifact — is taken over in place, inside its entry,
+by a grapher still without a hook, so your matcher, timeout and sibling commands
+stay; any other is removed, with only the entries it leaves empty. Two unnamed
+copies, which earlier releases kept side by side, become one.
+
+**Graphers writing one artifact get no following hook.** A hook knows its
+grapher by the artifact it tests for, so two graphers declaring the same one
+cannot each have a hook. The brain's own keeps its hook — and, being no
+following hook, it moves into any repo holding its artifact, so an edit in the
+others' repos runs the brain's grapher there. The others get none, and `doors`
+says so, as `doctor`'s refresh path does in the same words — here for two
+graphers you declared under `graphers:` with one artifact, the brain's own
+first:
+
+```txt
+brain: notice: mygraph and depgraph both write graph/out.json, so one hook cannot tell their repos apart — mygraph is wired, and an edit in depgraph's repos runs mygraph there; `change land` and `change close` refresh depgraph
+```
+
+Where none of them is the brain's own, none is wired — a following hook for
+one would run it in the others' repos too — and `change land` and
+`change close` refresh them.
+
+**A repo holding two graphers' artifacts.** A repo that resolves codegraph but
+still holds a graphify graph from before passes both following hooks' tests.
+Both take that repo's one lock, so an edit refreshes whichever takes it first —
+8 and 12 of 20 edits, measured — and the other catches up at its next refresh.
+`doctor` names such a repo, while the other grapher's hook is wired and reaches
+its binary there, with the removal:
+
+```txt
+grapher    codegraph @ api: installed (local) · binary ok · fresh · also holds graphify-out/graph.json of graphify, which it does not resolve — graphify's post-edit hook refreshes it there; remove it: cd /home/you/api && git rm -q --ignore-unmatch -- graphify-out/graph.json .graphifyignore && rm -rf graphify-out .graphifyignore
+```
+
+**A refresh may be running when you ask.** Each refresh runs in the background,
+so an answer can be read while it runs: `codegraph callers` and `impact` read
+during a sync were partial, 31 of 35 callers, in 12 of 12 trials. A
+`.multivac/cache/graph-refresh.lock` directory in the checkout means a refresh
+is running there; ask again once it is gone.
+
+A hook that is not a following one — the brain's own, where it holds code, and a
+consumer's — stays in the session's directory, and refreshes there, when the
+edited file's repository lacks its artifact or the harness names no file. So a
+brain that holds code still refreshes its own graph on an edit in a sibling
+repo of another grapher, in the background, beside that sibling's own hook.
 
 ## A declared grapher obliges something
 

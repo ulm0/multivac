@@ -23,9 +23,9 @@
 // concrete id is written in this file at all, not even as an example.
 
 import type { Config } from '../types.js';
-import { doorTargets, grapherSpec, sddSpec, unverifiedGrapher } from '../adapters/registry.js';
+import { grapherSpec, sddSpec, unverifiedGrapher } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
-import { adaptersByRoot, askedGraphers, brainHoldsCode, brainRefreshGrapher } from '../adapters/detect.js';
+import { adaptersByRoot, askedGraphers, brainHoldsCode, hookRefreshes } from '../adapters/detect.js';
 import { stateLabel } from '../lib/init-state.js';
 import { LAW_PATH, RITUAL_PATH } from '../lib/config.js';
 
@@ -144,14 +144,18 @@ export function renderFlow(config: Config): string {
     }
     verified = true;
     // MV-140: what MV-134 does, not what came before it.
-    // MV-148: "after each edit" only of the grapher the brain's one hook runs
-    // (`brainRefreshGrapher`), the door's answer. The page said it of every
-    // grapher wherever a door had a post-edit hook, and one hook runs one
-    // command: of two, it promised a refresh nothing ran. Declared, like the
+    // MV-148: "after each edit" only of a grapher a hook of the brain is declared
+    // to run — the door's answer, asked through the one question (MV-149's
+    // `hookRefreshes`). The page said it of every grapher wherever a door had
+    // a post-edit hook, and promised a refresh nothing ran. Declared, like the
     // door (MV-93): whether this machine wired it is `doors`' and `doctor`'s.
-    const hooked = config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit) && brainRefreshGrapher(config) === name;
+    const hooked = hookRefreshes(config, name);
+    // MV-149: a local index is also built in each change worktree at `change
+    // apply`, and land syncs it there and commits none — the page said land
+    // committed it, which it never did.
+    const local = spec.artifactKind === 'local';
     auto.push(
-      `- the code graph is built where \`multivac repos sync\` or a change reaches a repo with no \`${spec.artifacts[0]}\`, refreshed ${hooked ? 'after each edit through the harness hook, and ' : ''}at \`change land\`, where it is committed on the change branch, and at \`change close\`, in ${every(roots) ? 'every declared repo' : roots.join(', ')}`,
+      `- the code graph is built where \`multivac repos sync\` or a change reaches a repo with no \`${spec.artifacts[0]}\`${local ? ', and in each change worktree at `change apply`' : ''}, refreshed ${hooked ? 'after each edit through the harness hook, and ' : ''}at \`change land\`, where it is ${local ? 'synced and never committed' : 'committed on the change branch'}, and at \`change close\`, in ${every(roots) ? 'every declared repo' : roots.join(', ')}`,
     );
     if (config.grapherAuto) {
       // MV-148: the brain is gated only where it holds code.

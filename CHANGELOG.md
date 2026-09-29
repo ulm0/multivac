@@ -15,7 +15,9 @@ keeping a second one (MV-78).
 Two behaviours changed in a way that can newly refuse what used to pass: a
 brain that was loading, and an opsx brain's slugs and archives. A third changes
 where a code graph is kept: a brain with no `repos:` entry at `.` stops graphing
-itself. Read the first three items before upgrading.
+itself. A fourth writes where multivac did not: codegraph repos get an index in
+each change worktree, an `info/exclude` line and a `codegraph.json`. Read the
+first four items before upgrading.
 
 **Changed — read before upgrading**
 
@@ -122,16 +124,17 @@ itself. Read the first three items before upgrading.
     the brain door says it answers no code question, and nothing fails over it.
   - **The door says where each code repo's graph is asked**: each verb with
     the flag that points it at a checkout, `--graph
-    <checkout>/graphify-out/graph.json` or `-p <repo>`, and that the answers'
+    <checkout>/graphify-out/graph.json` or `-p <checkout>`, and that the answers'
     paths are relative to that checkout. `change apply` prints under each
     checkout the flag that reaches its graph, else the repo checkout's, for the
     base. A brain that holds code adds its worktrees' form. `change close`
     removes a worktree whose only changes are the grapher's outputs.
   - **The brain's post-edit hook follows edits into the code repos** and never
-    into a checkout of the brain. It is wired only where one grapher's binary
-    is reachable from every code repo that resolves it; `doors` and `doctor`
-    say why otherwise, and the door and flow.md, which read the declarations,
-    promise an edit refresh only for the grapher that hook is declared to run.
+    into a checkout of the brain. Each grapher's hook is wired only where its
+    binary is reachable from every code repo that resolves it (one hook per
+    grapher, below); `doors` and `doctor` say why otherwise, and the door and
+    flow.md, which read the declarations, promise an edit refresh only for a
+    grapher a hook is declared to run.
     A binary found only in a code repo's own `node_modules/.bin` reaches edits
     in that repo's checkout, not in its change worktrees, which hold no
     `node_modules`; `doctor` names the repos where that holds.
@@ -146,6 +149,65 @@ itself. Read the first three items before upgrading.
     land and close run `graphify update . --force`, since graphify 0.9.29's
     plain update refuses to shrink with exit 1. `doctor` names missing lines,
     an uncommitted ignore file and nodes still under a line.
+- **A change's checkout has its own codegraph index, and every grapher its own
+  post-edit hook (MV-149).** codegraph asked in a change's worktree answered
+  from the nearest index above it, silently: the trunk's index lacked 19 of a
+  branch's own symbols and put 24 of 192 moved ones more than 60 lines off.
+  - **`change apply` builds a codegraph index in each checkout it hands out**,
+    or syncs the one there, and prints `its index: -p <worktree>` under it,
+    saying whether a hook refreshes it after your edits or it is as of this
+    apply until `change land`. Where git would list the index it first appends
+    `.codegraph/` to the repository's common `.git/info/exclude`, never a
+    tracked file, and says so — asking git of the directory itself, so a
+    `.gitignore` of `.codegraph/*`, which lets codegraph's own `.gitignore`
+    back in, gets the line too. `change land` syncs the index on the change's
+    branch after the same step and commits none of it; a detached HEAD passes
+    it by. `change close` removes it with the worktree. Where apply could not
+    build it, it names the binary once and points at the repo checkout's index,
+    for the base. A binary found only in a repo's `node_modules/.bin` builds no
+    worktree index. apply takes about 1 to 7 s longer per codegraph repo, twice
+    on a repo's first apply.
+  - **Every command multivac runs for a grapher has its stdin closed.** With
+    its file watcher off, `codegraph init` waited on a prompt and apply had not
+    returned after 30 s.
+  - **One post-edit hook per grapher.** A brain whose code repos resolve
+    graphify and codegraph used to wire none; a brain that holds code on one
+    grapher refreshed its own graph on an edit in a sibling of another and left
+    the sibling's index behind. Each grapher now gets its own hook, known by
+    the artifact its test names; `doors` rewrites each in place, takes over one
+    of its own naming no wanted artifact, and turns two unnamed copies of its
+    own into one. Graphers declaring one artifact get no following hook, with a
+    notice `doctor` repeats; where one is the brain's own, its hook stays and
+    runs in the others' repos too. A grapher whose binary is not reachable is
+    named in `doors`' notice. `doctor` names each grapher's hook, and a repo still holding the
+    artifact of a grapher it does not resolve while that grapher's hook is
+    wired, with the removal.
+  - **No hook refreshes anything for a file in no repository.** The hook of a
+    brain that holds code, and a consumer's, fell back to the session's
+    directory and refreshed its graph on every edit of a scratch file; they
+    now exit, 8 bytes longer. `doors` rewrites them in place.
+  - **A consumer's codegraph index keeps the mounted brain out.** Where the
+    brain holds code, `/.brain/` goes into `codegraph.json`'s `exclude` — a
+    consumer of this brain went from 2,254 nodes, 2,247 of them the mount's, to
+    7. The line is spliced into your file, every other byte kept, and never
+    over a line any of its four lists names; a file that does not parse is left
+    and named; `**/.brain/` counts as naming the mount. `change land` commits
+    `codegraph.json` alone where it may write it: the copy the first build
+    writes in a repo's own checkout is yours to commit, and `doctor` names it —
+    and names one git ignores — until you do. The mount is written as git
+    records it, for graphify's `.graphifyignore` too.
+  - **codegraph's door lists four verbs, each with what it misses** —
+    `query`, `callers`, `impact` and `node` — run over this repository's 318
+    functions, and no longer claims a saving over grep: `codegraph query`
+    printed more than a narrowed definition grep for 311 of them. The claims
+    that a sentence gets nothing from codegraph and that one graph call
+    answers what a search takes many are gone everywhere.
+  - **What the agent's own codegraph calls queue and send is disclosed by
+    version** in the registry entry: the printed verbs open no socket where
+    npm installed the platform bundle and queue one count per command and day,
+    which a later un-opted-out run sends; without the bundle the npm shim
+    downloads it whatever `DO_NOT_TRACK` says, and `CODEGRAPH_NO_DOWNLOAD=1`
+    where the agent runs turns that off.
 
 **Fixed**
 

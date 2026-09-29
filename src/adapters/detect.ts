@@ -10,6 +10,7 @@ import { constants } from 'node:fs';
 import { delimiter, dirname, join, resolve } from 'node:path';
 import { doorTargets, grapherSpec, sddNames, sddSpec, type AdapterSpec, type SddScaffold } from './registry.js';
 import { isShallow, run as gitRun } from '../lib/git.js';
+import { andList } from '../lib/out.js';
 import type { Config, RepoEntry } from '../types.js';
 
 export async function pathExists(p: string): Promise<boolean> {
@@ -241,82 +242,196 @@ export function askedGraphers(cfg: AdapterDecls): Map<string, string[]> {
   return groups;
 }
 
-/**
- * MV-148. The one grapher the brain's post-edit hook is declared to run —
- * whether this machine can wire it is `brainHook`'s. Where the brain holds
- * code, its own, as always (MV-52). Where it holds none, the single grapher
- * the code repos asked from the brain resolve — a repo resolving none does not
- * disagree — because one hook runs one command (`REFRESH_HEAD`, MV-52 and
- * MV-124). Two names, or no repo at all, and no hook follows edits from the
- * brain: `doors` says so.
- */
-export function brainRefreshGrapher(cfg: AdapterDecls): string | undefined {
-  if (brainHoldsCode(cfg)) return adapterFor(cfg, 'brain', 'grapher');
-  const named = [...askedGraphers(cfg)].filter(([, keys]) => keys.length > 0);
-  return named.length === 1 ? named[0][0] : undefined;
+/** One grapher the brain's session refreshes, and whether its hook follows edits (MV-148). */
+export interface RefreshGrapher {
+  name: string;
+  /** false: the brain's own, which refreshes where it was (MV-52, MV-140); true: a follow hook. */
+  follow: boolean;
+}
+
+/** Graphers one hook cannot tell apart: they write the same artifact. */
+export interface RefreshClash {
+  /** The graphers, config order; the brain's own first where it is one of them. */
+  names: string[];
+  artifact: string;
+  /** The first name is the brain's own, whose hook stays; the others get none. */
+  own: boolean;
 }
 
 /**
- * MV-148. The post-edit hook of a brain that holds no code, or why it has none.
+ * MV-149. What the brain's session refreshes, from declarations alone: the
+ * listed graphers, the follow graphers dropped because they write an artifact
+ * another listed one writes, and every follow candidate in config order,
+ * unverified names included — `brainHooks` answers for those as #5 did.
+ * Reads the top level only through `adapterFor`, like `askedGraphers`.
+ */
+function refreshPlan(cfg: AdapterDecls & { graphers?: Config['graphers'] }): {
+  listed: RefreshGrapher[];
+  clashes: RefreshClash[];
+  candidates: string[];
+} {
+  const own = brainHoldsCode(cfg) ? adapterFor(cfg, 'brain', 'grapher') : undefined;
+  const candidates: string[] = [];
+  for (const [key, r] of Object.entries(cfg.repos ?? {})) {
+    if (r.isBrain || r.managed === false) continue;
+    const name = adapterFor(cfg, key, 'grapher');
+    if (name !== undefined && name !== own && !candidates.includes(name)) candidates.push(name);
+  }
+  const artifactOf = (name: string): string | undefined => grapherSpec(name, cfg.graphers)?.artifacts[0];
+  const ownArt = own === undefined ? undefined : artifactOf(own);
+  // Each follow candidate's artifact, and who else writes it: the brain's own
+  // first, then the other candidates in config order.
+  const clashes: RefreshClash[] = [];
+  const dropped = new Set<string>();
+  for (const name of candidates) {
+    const art = artifactOf(name);
+    if (art === undefined || dropped.has(name)) continue;
+    const same = candidates.filter((n) => artifactOf(n) === art);
+    if (art === ownArt) {
+      clashes.push({ names: [own!, ...same], artifact: art, own: true });
+    } else if (same.length > 1) {
+      clashes.push({ names: same, artifact: art, own: false });
+    } else continue;
+    for (const n of same) dropped.add(n);
+  }
+  const listed: RefreshGrapher[] = [];
+  if (own !== undefined && ownArt !== undefined) listed.push({ name: own, follow: false });
+  for (const name of candidates) {
+    if (artifactOf(name) !== undefined && !dropped.has(name)) listed.push({ name, follow: true });
+  }
+  return { listed, clashes, candidates: candidates.filter((n) => !dropped.has(n)) };
+}
+
+/**
+ * MV-149. The graphers the brain's session refreshes after an edit, in the
+ * order their hooks are written: where the brain holds code, its own, the hook
+ * it has always had (MV-52), then each other grapher the code repos not marked
+ * `managed: false` resolve, each a follow hook (MV-148); where it holds none,
+ * those alone. One hook ran one command, so a code-less brain whose repos
+ * resolve two graphers wired none, and a brain==code brain refreshed its own
+ * graph on an edit in a sibling of another grapher and left the sibling's
+ * index without it.
+ *
+ * Declarations only, synchronous (MV-93): whether this machine can wire each is
+ * `brainHooks`'. A name with no registry or config entry is left out — no hook
+ * runs a command multivac guessed (MV-59). A hook knows its grapher by the
+ * artifact its toplevel test names (`refreshKey`), so graphers writing one
+ * artifact cannot each have one: a follow grapher writing the brain's own
+ * artifact is left out, so are all the follow graphers sharing one, and `doors`
+ * says so (`refreshClashes`).
+ */
+export function brainRefreshGraphers(cfg: AdapterDecls & { graphers?: Config['graphers'] }): RefreshGrapher[] {
+  return refreshPlan(cfg).listed;
+}
+
+/** MV-149. The graphers `brainRefreshGraphers` leaves out for writing one artifact, for `doors`' notice and `doctor`'s refresh path. */
+export function refreshClashes(cfg: AdapterDecls & { graphers?: Config['graphers'] }): RefreshClash[] {
+  return refreshPlan(cfg).clashes;
+}
+
+/**
+ * MV-149. What one clash means, in the one sentence `doors`' notice and
+ * `doctor`'s refresh path both print, so the two cannot frame it apart.
+ * Where the brain's own grapher is one of them, its hook stays — its bytes
+ * are MV-52's — and, being no follow hook, it moves into any toplevel holding
+ * its artifact: an edit in the others' repos runs the brain's grapher there,
+ * and the sentence says so rather than name only land and close. Where none
+ * is the brain's own, none is wired: a follow hook wired for the first would
+ * pass its toplevel test in the others' repos and run the wrong grapher there.
+ */
+export function clashSentence(c: RefreshClash): string {
+  const [first, ...rest] = c.names;
+  return (
+    `${andList(c.names)} ${c.names.length === 2 ? 'both' : 'all'} write ${c.artifact}, so one hook cannot tell their repos apart — ` +
+    (c.own
+      ? `${first} is wired, and an edit in ${andList(rest.map((n) => `${n}'s`))} repos runs ${first} there; ` +
+        `\`change land\` and \`change close\` refresh ${andList(rest)}`
+      : `${c.names.length === 2 ? 'neither' : 'none'} is wired; \`change land\` and \`change close\` refresh them`)
+  );
+}
+
+/**
+ * MV-149. Whether "after your edits" is true of `name`: a declared door's
+ * harness has a post-edit hook, and the brain's session is declared to
+ * refresh that grapher — `brainRefreshGraphers` lists it. One question, so the
+ * surfaces that say it cannot disagree: the door's where-block, the apply
+ * pointer and flow.md's refresh row ask it, where each asked its own copy of
+ * it. Declarations only (MV-93): whether this machine found the binary and
+ * wired the hook is `doors`' notice and `doctor`'s refresh path.
+ */
+export function hookRefreshes(cfg: AdapterDecls & { doors: readonly string[]; graphers?: Config['graphers'] }, name: string): boolean {
+  return cfg.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit) && brainRefreshGraphers(cfg).some((g) => g.name === name);
+}
+
+/**
+ * MV-148, MV-149. A follow hook of the brain, or why it has none.
  * `follow`: it runs `name` in whichever of `dirs` holds the edited file;
  * `local` names the repos that reach its binary only in their own
- * node_modules/.bin, which their change worktrees do not hold. `mixed`: the
- * code repos resolve several graphers, and one hook runs one
- * command. `unresolved`: no writable code repo resolves the grapher declared,
- * so there is no checkout to follow edits into. `unreachable`: `bin` is not
- * found from every one of them.
+ * node_modules/.bin, which their change worktrees do not hold. `unresolved`:
+ * no writable code repo resolves the grapher declared, so there is no checkout
+ * to follow edits into. `unreachable`: `bin` is not found from every one of
+ * them.
  */
 export type BrainHook =
   | { kind: 'follow'; name: string; dirs: string[]; local: string[] }
-  | { kind: 'mixed'; names: string[] }
   | { kind: 'unresolved'; name: string }
   | { kind: 'unreachable'; name: string; bin: string };
 
 /**
- * MV-148. Which hook a brain that holds no code wires, from the one lookup
- * (MV-123) made where the hook will run: the hook moves into the code repo of
- * the file edited before it looks, so it reaches PATH and THAT repo's own
- * node_modules/.bin, never the brain's. A copy in the brain, or in one of two
- * repos, wired a hook that refreshed nothing in the other. So the binary must
- * be found from every writable code repo resolving the grapher, which a PATH
- * entry satisfies for all of them. Ceiling: a copy found only in a repo's
+ * MV-148, MV-149. Which follow hooks the brain wires, one answer per grapher
+ * `brainRefreshGraphers` lists as a follow hook, in its order, from the one
+ * lookup (MV-123) made where the hook will run: the hook moves into the code
+ * repo of the file edited before it looks, so it reaches PATH and THAT repo's
+ * own node_modules/.bin, never the brain's. A copy in the brain, or in one of
+ * two repos, wired a hook that refreshed nothing in the other. So the binary
+ * must be found from every writable code repo resolving the grapher, which a
+ * PATH entry satisfies for all of them. Ceiling: a copy found only in a repo's
  * node_modules/.bin is reached from that repo's checkout and not from its
  * change worktrees, where git never puts an untracked node_modules — there the
- * hook runs nothing, silently, and those are the edits it exists for. The
- * hook's bytes stay pinned, so it is stated: `local` names those repos and
- * `doctor` says it. `doors` wires by this answer and `doctor`
- * reports it, so the two cannot disagree; the door and flow.md, which read
- * declarations alone (MV-93), say "after your edits" of the grapher the hook
- * is declared to run (`brainRefreshGrapher`), and where this machine cannot
- * wire it, `doors` and `doctor` say so. An unverified name is returned as it
- * is: `doors` names it and wires nothing, as for any root, and `doctor` says
- * nothing refreshes it. Null where the brain holds code — its hook is its
- * own, as always — or where no grapher is asked from it.
+ * hook runs nothing, silently, and those are the edits it exists for. `local`
+ * names those repos and `doctor` says it. `doors` wires by these answers and
+ * `doctor` reports them, so the two cannot disagree; the door, flow.md and the
+ * apply pointer, which read declarations alone (MV-93), say "after your edits"
+ * of each grapher a hook is declared to run (`hookRefreshes`), and where this
+ * machine cannot wire one, `doors` and `doctor` say so for that grapher.
+ *
+ * Where the brain holds no code, an unverified name the code repos resolve is
+ * answered as it is, with no lookup: `doors` names it and wires nothing, as
+ * for any root, and `doctor` says nothing refreshes it; and where no writable
+ * code repo resolves any grapher, the one declared is `unresolved`. `[]` where
+ * nothing follows edits — a brain that holds code with no sibling on another
+ * grapher keeps its own hook, wired by `doors`' lookup in the brain.
  */
-export async function brainHook(cfg: Config, brain: string): Promise<BrainHook | null> {
-  if (brainHoldsCode(cfg)) return null;
+export async function brainHooks(cfg: Config, brain: string): Promise<BrainHook[]> {
+  const holds = brainHoldsCode(cfg);
+  const { listed, clashes, candidates } = refreshPlan(cfg);
+  const follows = holds ? listed.filter((g) => g.follow).map((g) => g.name) : candidates;
   const asked = askedGraphers(cfg);
-  const name = brainRefreshGrapher(cfg);
-  if (name === undefined) {
-    const named = [...asked].filter(([, keys]) => keys.length > 0).map(([n]) => n);
-    if (named.length > 1) return { kind: 'mixed', names: named };
+  if (!holds && follows.length === 0 && clashes.length === 0) {
     const [declared] = asked.keys();
-    return declared === undefined ? null : { kind: 'unresolved', name: declared };
+    return declared === undefined ? [] : [{ kind: 'unresolved', name: declared }];
   }
-  const keys = asked.get(name) ?? [];
-  const dirs = keys.map((key) => resolve(brain, cfg.repos[key]!.path));
-  const spec = grapherSpec(name, cfg.graphers);
-  const local: string[] = [];
-  if (spec !== null) {
-    for (const [i, root] of dirs.entries()) {
-      for (const bin of spec.required) {
-        const found = await findBinary(bin, root);
-        if (found === null) return { kind: 'unreachable', name, bin };
-        if (dirname(found) === localBin(resolve(root)) && !local.includes(keys[i]!)) local.push(keys[i]!);
+  const out: BrainHook[] = [];
+  next: for (const name of follows) {
+    const keys = asked.get(name) ?? [];
+    const dirs = keys.map((key) => resolve(brain, cfg.repos[key]!.path));
+    const spec = grapherSpec(name, cfg.graphers);
+    const local: string[] = [];
+    if (spec !== null) {
+      for (const [i, root] of dirs.entries()) {
+        for (const bin of spec.required) {
+          const found = await findBinary(bin, root);
+          if (found === null) {
+            out.push({ kind: 'unreachable', name, bin });
+            continue next;
+          }
+          if (dirname(found) === localBin(resolve(root)) && !local.includes(keys[i]!)) local.push(keys[i]!);
+        }
       }
     }
+    out.push({ kind: 'follow', name, dirs, local });
   }
-  return { kind: 'follow', name, dirs, local };
+  return out;
 }
 
 /**

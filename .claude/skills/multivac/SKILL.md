@@ -113,18 +113,24 @@ refuses work for not having been planned first (MV-89).
 ## Ask the graph before you read the tree
 
 If the door names a grapher, a code graph is kept current for you: after your
-edits where the door says "refreshed after your edits" — in a brain that holds
-no code, that is the one grapher its post-edit hook runs — and at `change
-land`, which commits it on the change's branch, and `change close`. Use it to orient before grepping — one call answers what a search
-takes many — and use **that tool's own verbs**, which are not interchangeable:
+edits where the door says "refreshed after your edits" — each grapher the code
+repos resolve gets its own post-edit hook — and at `change land`, which commits
+a shared graph on the change's branch and syncs a local index (codegraph's)
+there without committing it, and `change close`. In a change, ask each
+checkout's graph with the flag `change apply` printed under it: a local index
+is built in each change worktree and named `its index: -p <worktree>`. Use it to orient before grepping — its answers are about the name or
+the question you hand it, with the callers and the reach a search does not
+show, and they are not a saving over grep for every question — and use **that
+tool's own verbs**, which are not interchangeable:
 
 | grapher | ask |
 | --- | --- |
 | `graphify` | `graphify query "<question>"` — a question in words, returns the subgraph that answers it; `explain "<node>"` for one node and its neighbours; `path "<A>" "<B>"` for how A reaches B |
-| `codegraph` | `codegraph query <symbol>` — symbol lookup by name; `--kind function\|class` narrows, `--json` for machine output |
+| `codegraph` | `codegraph query <symbol>` — a name's definitions and imports, with signatures; `callers <symbol>` — who calls it, 20 unless `--limit N`; `impact <symbol>` — what may break if it changes, a lower bound; `node <symbol>` — its body, what it calls and its callers, `-f <file>` picking one of several same-named. `callers` and `impact` merge same-named symbols and miss calls made through an aliased import |
 
-Hand `codegraph` a sentence and you get nothing; hand `graphify` a bare
-identifier and you have thrown away what it is for. The door prints the exact
+Hand `codegraph` a sentence and it returns name matches for its words, not an
+answer, so give it a symbol; hand `graphify` a bare identifier and you have
+thrown away what it is for. The door prints the exact
 verbs for each grapher asked from here — read them there rather than
 guessing, and if it says the tool has no query command, believe it and grep.
 Where the tool's own install wrote its section into the door file (graphify's
@@ -134,8 +140,8 @@ that holds no code, whose door never cites it.
 A verb run bare asks the graph in your session's directory. In a brain that
 holds no code — no `repos:` entry is the brain — there is none: each code repo
 keeps its own, and you ask it from here with the flag the door gives,
-`--graph <checkout>/graphify-out/graph.json` for graphify or `-p <repo>` for
-codegraph. In a change, `change apply` prints under each checkout the flag that
+`--graph <checkout>/graphify-out/graph.json` for graphify or `-p <checkout>`
+for codegraph. In a change, `change apply` prints under each checkout the flag that
 reaches its graph — the worktree's own, else the repo checkout's for the base
 without the branch's edits. The paths in an answer are relative to the checkout
 the flag names, not to the brain: read `src/x.ts` there, not here. A brain that
