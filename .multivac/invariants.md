@@ -1337,3 +1337,4 @@ checks them on every commit.
 <!-- @anchor MV-147 brain:test/verify/code-in-change.test.ts /the bodies an openspec init writes are not code under any integration's directory/ unique -->
 <!-- @anchor MV-147 brain:site/content/docs/reference/graphers-and-sdd.md /^### The question openspec asks at archive$/ unique -->
 <!-- @anchor MV-147 brain:.multivac/invariants.md /Amended [0-9]{4}-[0-9]{2}-[0-9]{2} by MV-147/ count=12 -->
+| MV-148 | RESERVED by change graph-answers-where-asked — state the rule here before close. | open | proposed | 2026-09-29 | [changes/graph-answers-where-asked.md](changes/graph-answers-where-asked.md) |
