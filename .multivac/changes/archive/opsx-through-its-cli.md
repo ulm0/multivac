@@ -1,6 +1,6 @@
 ---
 slug: opsx-through-its-cli
-status: open
+status: archived
 horizon: now
 repos:
   brain:
@@ -100,3 +100,5 @@ and 7b849fa's as `BASE`; quickstart.md's walks, in order.
   `--tools none` brain printed "No configured tools found." and changed nothing.
 - **I, this repository**: see the stage's commit — `multivac doors`, the full suite and
   `verify` at 0 blocking, with twelve dated notes by MV-147.
+
+Specified in `specs/074-opsx-through-its-cli/` (speckit).

@@ -473,8 +473,8 @@
    "id": "change:opsx-through-its-cli",
    "label": "opsx-through-its-cli",
    "file_type": "change",
-   "source_file": ".multivac/changes/opsx-through-its-cli.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/opsx-through-its-cli.md",
+   "status": "archived",
    "horizon": "now",
    "issue": null
   },
