@@ -6,7 +6,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rmdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, rmdir, writeFile } from 'node:fs/promises';
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { join, relative, resolve } from 'node:path';
@@ -20,7 +20,7 @@ import {
   RITUAL_PATH,
   loadConfig,
 } from '../lib/config.js';
-import { ignoredPaths, lastFetchAge, lsFiles, revParse, run as gitRun } from '../lib/git.js';
+import { ignoredPaths, inHead, lastFetchAge, lsFiles, revParse, run as gitRun } from '../lib/git.js';
 import { say, warn } from '../lib/out.js';
 import { ritualChecklist } from '../lib/ritual.js';
 import { writeEcosystem } from '../doors/ecosystem.js';
@@ -28,10 +28,12 @@ import { applyManagedBlock } from '../doors/block.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { grapherSpec, sddSpec, type AdapterSpec, type GatePoint, type LifecyclePoint } from '../adapters/registry.js';
 import { sddGate, sddInstructions, sddSlugWhy } from '../adapters/sdd.js';
-import { graphGate, graphScopes, refreshGraph } from '../adapters/refresh.js';
+import { graphGate, graphScopes, ignoreLinesToAdd, nodesUnder, refreshGraph, writeIgnores } from '../adapters/refresh.js';
+import { graphIgnoreLines } from '../lib/code-in-change.js';
 import { equip, missingTools } from '../adapters/equip.js';
 import { projectDocLines } from '../adapters/project-doc.js';
 import { cloneFix, cloneState } from '../lib/repo-state.js';
+import { initState } from '../lib/init-state.js';
 import {
   closeOwnedDirs,
   doCarry,
@@ -44,7 +46,7 @@ import {
 import { citeLine, citeSpec } from '../change/cite.js';
 import picomatch from 'picomatch';
 import { graphTrackedGate } from '../adapters/tracked.js';
-import { adapterFor, adaptersByRoot, readOnly } from '../adapters/detect.js';
+import { adapterFor, adaptersByRoot, askedGraphers, brainHoldsCode, readOnly } from '../adapters/detect.js';
 import { evaluate, fmtAge, stalenessLines } from './verify.js';
 import {
   ChangeError,
@@ -78,12 +80,15 @@ const execFileP = promisify(execFile);
  * is left floating in the shared checkout where a pull would block on it or a
  * concurrent change would trample it. A commit that cannot happen degrades to
  * the exact command, never a half-done state.
+ *
+ * False when the commit could not be made (MV-148): land's graph commit asks,
+ * so a graph that did not land is never followed by the push line.
  */
 export async function commitBookkeeping(
   brain: string,
   paths: string[],
   message: string,
-): Promise<void> {
+): Promise<boolean> {
   // MV-139: a brain bookkeeping commit carries the governance graph its own
   // edit changed, so the committed graph moves with the declarations.
   if (paths.some((p) => p.startsWith('.multivac/')) && existsSync(join(brain, CONFIG_PATH))) {
@@ -94,17 +99,19 @@ export async function commitBookkeeping(
     }
   }
   const dirty = await gitRun(brain, ['status', '--porcelain', '--', ...paths]).catch(() => '');
-  if (!dirty.trim()) return;
+  if (!dirty.trim()) return true;
   try {
     await gitRun(brain, ['add', '--', ...paths]);
     // Pathspec'd commit: only these paths land, whatever else is staged.
     await gitRun(brain, ['commit', '-q', '-m', message, '--', ...paths]);
     say(`committed: ${message}`);
+    return true;
   } catch (e) {
     warn(
       `could not commit the bookkeeping (${(e as Error).message.split('\n')[0]}) — do it yourself: ` +
         `git -C ${brain} add -- ${paths.join(' ')} && git commit -m "${message}"`,
     );
+    return false;
   }
 }
 
@@ -416,6 +423,9 @@ function sharedGraph(cfg: Config, key: string): string | undefined {
  * refresh after the merge and leave the artifact modified, and every close
  * from 052 to 058 in this repository needed a graph commit made by hand.
  * The refresh module still touches no git (MV-50): the commit is made here.
+ * MV-148: the grapher's ignore file lands in the same commit, its missing
+ * lines appended first (`landIgnores`), unless the rebuild still left nodes
+ * under them.
  * Returns false, naming why, when the graph cannot be committed there.
  */
 async function commitGraph(brain: string, cfg: Config, key: string, slug: string): Promise<boolean> {
@@ -430,20 +440,125 @@ async function commitGraph(brain: string, cfg: Config, key: string, slug: string
     return false;
   }
   if (branch !== slug) return true; // the change's branch is not checked out here
-  await refreshGraph(adapterFor(cfg, key, 'grapher')!, dir, key, cfg.graphers);
-  if (!existsSync(join(dir, art))) return true; // not built: the refresh said why
+  const name = adapterFor(cfg, key, 'grapher')!;
+  const ignores = await landIgnores(brain, cfg, key, slug, name, dir, repo);
+  await refreshGraph(name, dir, key, cfg.graphers);
+  if (!existsSync(join(dir, art))) {
+    await ignores?.restore(); // not built: the refresh said why
+    return true;
+  }
   if ((await ignoredPaths(dir, [art])).length > 0) {
+    await ignores?.restore();
     warn(
       `${key}: the graph cannot land with ${slug} — ${art} is ignored in ${dir}; ` +
         `\`git -C ${dir} check-ignore -v ${art}\` names the rule: remove it, then re-run land`,
     );
     return false;
   }
+  // MV-148: the ignore file lands with the graph it shaped — never one
+  // without the other, or the merged checkout refreshes a graph the lines
+  // would shrink, and every plain refresh there refuses (graphify 0.9.29).
+  let file: string | undefined;
+  if (ignores) {
+    const left = await nodesUnder(ignores.spec, dir, ignores.dirs);
+    if (left > 0) {
+      await ignores.restore();
+      // Only a land appends: close refreshes the repo's own checkout, whose
+      // file then holds no record of these lines, so it never forces.
+      warn(
+        `graph ${name} @ ${key}: the rebuild left ${left} node(s) under the lines just added to ${ignores.file} — ` +
+          `it is restored and not committed; the next \`change land\` naming ${key} appends them again and rebuilds`,
+      );
+    } else {
+      file = ignores.file;
+    }
+  }
   // A brain checkout carries its governance graph on the branch too (MV-139).
   const own = existsSync(join(dir, CONFIG_PATH)) ? await loadConfig(dir).catch(() => null) : null;
   if (own) await writeEcosystem(dir, own);
-  await commitBookkeeping(dir, own ? [art, ECOSYSTEM_PATH] : [art], `graph: ${slug} — refreshed on the change branch`);
-  return true;
+  const paths = [art, ...(file ? [file] : []), ...(own ? [ECOSYSTEM_PATH] : [])];
+  // A graph that did not land is not followed by the push line (MV-148).
+  return commitBookkeeping(dir, paths, `graph: ${slug} — refreshed on the change branch`);
+}
+
+/**
+ * MV-148, land's ignore step: before the refresh on the change's branch, the
+ * grapher's ignore file gets the root's missing derived lines, in the checkout
+ * holding that branch — the grapher's file alone, never `.gitignore`, whose
+ * edit left every such worktree kept at close. Only when the file is
+ * committed at that checkout's HEAD with no uncommitted edit there, or absent
+ * both there and in the repo's own checkout and not ignored: land creating it
+ * beside an untracked copy in the repo's own checkout made the later pull or
+ * merge refuse (rc 1/2), an untracked file never reaches the worktree where
+ * land refreshes (1,460 nodes became 5,937 there), an edit of yours would
+ * ride multivac's graph commit, and an ignored one failed the `git add` that
+ * lands the graph. Otherwise the file is named, with why, and nothing is
+ * written: the graph lands without it.
+ *
+ * The HEAD read is here, never in refresh.ts, which touches no git (MV-50,
+ * MV-103). Returns what was appended and how to take it back, or null.
+ */
+async function landIgnores(
+  brain: string,
+  cfg: Config,
+  key: string,
+  slug: string,
+  name: string,
+  dir: string,
+  repo: string,
+): Promise<{ spec: AdapterSpec; file: string; dirs: string[]; restore: () => Promise<void> } | null> {
+  const spec = grapherSpec(name, cfg.graphers);
+  const file = spec?.graphignoreFile;
+  if (!spec || !file) return null;
+  const tracked = await inHead(dir, file);
+  const here = existsSync(join(dir, file));
+  if (!tracked && !here && existsSync(join(repo, file)) && (await inHead(repo, file))) {
+    // Committed on the repo's own branch after this one was cut: the file is
+    // not missing, the branch is behind it.
+    say(
+      `${key}: ${file} is committed in ${repo} but not on ${slug} — the graph on ${slug} is built without it; ` +
+        `merge that commit into ${slug}, or rebase ${slug} onto it, then re-run land`,
+    );
+    return null;
+  }
+  if (!tracked && (here || existsSync(join(repo, file)))) {
+    say(
+      `${key}: ${file} in ${here ? dir : repo} is not committed — the graph on ${slug} is built without it; ` +
+        'commit it there the way that repo lands work',
+    );
+    return null;
+  }
+  if (tracked && (await gitRun(dir, ['status', '--porcelain', '--', file]).catch(() => '')).trim() !== '') {
+    say(
+      `${key}: ${file} in ${dir} has uncommitted edits — multivac appends nothing over them, and the graph lands without it; ` +
+        'commit or discard them there, then re-run land',
+    );
+    return null;
+  }
+  if (!tracked && (await ignoredPaths(dir, [file])).length > 0) {
+    say(
+      `${key}: ${file} is ignored in ${dir} — the graph lands without it; ` +
+        `\`git -C ${dir} check-ignore -v ${file}\` names the rule: remove it to land the lines multivac keeps out`,
+    );
+    return null;
+  }
+  const lines = graphIgnoreLines(cfg, brain, key, spec);
+  const before = await readFile(join(dir, file), 'utf8').catch(() => '');
+  const add = ignoreLinesToAdd(before, lines);
+  if (!(await writeIgnores(name, spec, dir, key, lines, { gitignore: false, before: 'the refresh at `change land`' }))) {
+    return null;
+  }
+  return {
+    spec,
+    file,
+    dirs: add.map((l) => l.replace(/^\/+|\/+$/g, '')),
+    // The bytes it held — HEAD's copy, the only one ever appended to — or,
+    // created here, gone again.
+    restore: async () => {
+      if (here) await writeFile(join(dir, file), before);
+      else await rm(join(dir, file), { force: true });
+    },
+  };
 }
 
 /**
@@ -568,7 +683,20 @@ async function ensureWorkspace(
   return wt;
 }
 
-/** close: the worktrees go with the change. Uncommitted work is never forced. */
+/**
+ * MV-148. The paths `key`'s grapher writes and never commits (its `local`
+ * globs), as a matcher, or undefined where it declares none.
+ */
+function grapherOutputs(cfg: Config, key: string): ((path: string) => boolean) | undefined {
+  const name = adapterFor(cfg, key, 'grapher');
+  const spec = name === undefined ? null : grapherSpec(name, cfg.graphers);
+  return spec && spec.local.length > 0 ? picomatch(spec.local, { dot: true }) : undefined;
+}
+
+/**
+ * close: the worktrees go with the change. Uncommitted work is never forced;
+ * what the grapher alone wrote there is not work (MV-148).
+ */
 async function removeWorktrees(
   brain: string,
   cfg: Config,
@@ -585,11 +713,18 @@ async function removeWorktrees(
     // when it is the one thing left: anything else keeps the worktree.
     const art = sharedGraph(cfg, key);
     const dirty = (await gitRun(wt, ['status', '--porcelain']).catch(() => '')).split('\n').filter(Boolean);
-    if (art && dirty.length > 0 && dirty.every((l) => l.slice(3) === art)) {
+    // MV-148: a `--graph` query writes its stamp next to the graph it read, and
+    // a refresh leaves its cache there, both untracked; `git worktree remove`
+    // refused the worktree over them (exit 128) and close left it behind. When
+    // every uncommitted path lies under the grapher's own outputs, the removal
+    // is forced; a single other path keeps the worktree, as before.
+    const outputs = grapherOutputs(cfg, key);
+    const force = outputs !== undefined && dirty.length > 0 && dirty.every((l) => outputs(l.slice(3)));
+    if (!force && art && dirty.length > 0 && dirty.every((l) => l.slice(3) === art)) {
       await gitRun(wt, ['checkout', '--', art]).catch(() => {});
     }
     try {
-      await gitRun(repo, ['worktree', 'remove', wt]);
+      await gitRun(repo, force ? ['worktree', 'remove', '--force', wt] : ['worktree', 'remove', wt]);
       say(`${key}: worktree removed (${wt})`);
     } catch {
       warn(
@@ -966,6 +1101,15 @@ async function cmdPlan(
     if (!existsSync(abs)) {
       if (entry.url) await clone(entry.url, abs, key);
       else say(`${key}: missing at ${abs}, no url — greenfield; \`change apply ${slug}\` creates it`);
+    } else if (entry.isBrain && !brainHoldsCode(cfg)) {
+      // MV-148: `brain`, the reserved handle, in a brain no repos entry
+      // declares: not code, so no graph is built, gated or landed there. Said
+      // with the fix, in the change it would belong to: a change that lands
+      // code in the brain declares it.
+      say(`${key}: ${abs} (the brain)`);
+      if (askedGraphers(cfg).size > 0) {
+        say(`${key}: named by this change, but no repos entry is the brain — no code graph is built, gated or landed here; if the change lands code in the brain, declare \`brain: .\` under repos: in this change`);
+      }
     } else {
       say(`${key}: ${abs}${entry.isBrain ? ' (brain==code)' : ''}`);
     }
@@ -1028,6 +1172,63 @@ async function cmdPlan(
   }
   runSdd(cfg, 'plan', slug, noSdd);
   return rc;
+}
+
+/** A directory as the agent types it: single-quoted when it holds whitespace or a quote. */
+const typed = (dir: string): string => (/[\s'"]/.test(dir) ? `'${dir.replace(/'/g, `'\\''`)}'` : dir);
+
+/**
+ * MV-148. The one line `apply` prints under a workspace: what reaches the
+ * graph of that checkout, from an agent working in the brain. The bare verb
+ * asks the graph in the session's directory — the brain's — and a change's
+ * worktree holds the branch's own: the trunk's graph lacked 27 source symbols
+ * of one, measured. Probed offline (MV-124's `initState`) in each checkout a
+ * line can name, so the line is the worktree's flag where its graph is there,
+ * the repo checkout's for the base where it is not, or that there is none yet
+ * and what builds one.
+ *
+ * A local index is built in each checkout and never committed, so a change's
+ * worktree has none, and asked there it answers from the nearest index above
+ * it — the checkout's, or the brain's — with exit 0, or fails: its flag is
+ * named at the repo checkout only, and a worktree's own `.codegraph/` is never
+ * probed. Every line that offers a flag says the
+ * answers' paths are relative to the checkout it names. Nothing for a grapher
+ * that is none, unverified or records no flag, nor for the brain's own main
+ * checkout, which the door's bare verbs already ask.
+ */
+async function graphPointer(cfg: Config, key: string, ws: string, abs: string): Promise<string | undefined> {
+  const name = adapterFor(cfg, key, 'grapher');
+  const spec = name === undefined ? null : grapherSpec(name, cfg.graphers);
+  const askAt = spec?.askAt;
+  if (!spec || !askAt) return undefined;
+  if (ws === abs && (key === 'brain' || cfg.repos[key]?.isBrain)) return undefined;
+  const local = spec.artifactKind === 'local';
+  const what = local ? 'index' : 'graph';
+  const flag = askAt.split(' ')[0];
+  const at = (dir: string): string => askAt.replace('{checkout}', typed(dir));
+  const relative = 'paths in its answers are relative to';
+  if (!local || ws === abs) {
+    const here = await initState(spec, ws);
+    if (here.state === 'partial' || here.state === 'unevaluable') return `its ${what} cannot be pointed at — ${here.reason}`;
+    if (here.state === 'installed') return `its ${what}: ${at(ws)} — ${relative} this checkout`;
+    if (ws === abs) {
+      return local
+        ? `no ${name} index here yet — ${flag} here answers from the nearest index above it, or fails`
+        : 'no graph here yet — `change land` builds and commits one here';
+    }
+  }
+  const base = await initState(spec, abs);
+  if (base.state === 'partial' || base.state === 'unevaluable') {
+    return `its ${what} cannot be pointed at — ${base.reason} in ${typed(abs)}`;
+  }
+  if (base.state === 'installed') {
+    return local
+      ? `no ${name} index in this checkout — ${at(abs)} answers for the base, without this branch's edits; ${relative} ${typed(abs)}; ${flag} at this checkout answers from the nearest index above it, or fails`
+      : `no graph in this checkout yet (\`change land\` commits one) — ${at(abs)} answers for the base, without this branch's edits; ${relative} ${typed(abs)}`;
+  }
+  return local
+    ? `no ${name} index here or in ${typed(abs)} yet — ${flag} at either answers from the nearest index above it, or fails`
+    : `no graph here or in ${typed(abs)} yet — \`change land\` builds and commits one here`;
 }
 
 async function cmdApply(
@@ -1104,12 +1305,12 @@ async function cmdApply(
   // MV-129: the gate above equipped what was on disk; a repo just cloned or
   // created was not.
   await equip(brain, cfg, noSdd, keys);
-  const workspaces: string[] = [];
+  const workspaces: { key: string; ws: string; abs: string }[] = [];
   for (const key of keys) {
     const entry = entries.get(key)!;
     const abs = resolve(brain, entry.path);
     const wt = await ensureWorkspace(brain, abs, slug, key);
-    workspaces.push(`${key}: ${wt}`);
+    workspaces.push({ key, ws: wt, abs });
     const plan = carries.get(key);
     const sddName = adapterFor(cfg, key, 'sdd');
     if (plan && sddName) {
@@ -1124,7 +1325,12 @@ async function cmdApply(
   if (tool && stayed !== undefined) sayRepointed(tool, await pointFeature(brain, tool.spec, stayed), stayed);
   runSdd(cfg, 'apply', slug, noSdd);
   say(`work here — one checkout per repo, nobody else's tree moves:`);
-  for (const w of workspaces) say(`  ${w}`);
+  for (const w of workspaces) {
+    say(`  ${w.key}: ${w.ws}`);
+    // MV-148: under each checkout, the flag that reaches its graph.
+    const pointer = await graphPointer(cfg, w.key, w.ws, w.abs);
+    if (pointer) say(`    ${pointer}`);
+  }
   // MV-95. The tool has just computed the two things that make concurrent work
   // safe and said neither: `landing_order` putting repos in ONE stage is the
   // operator's own statement that they have no ordering dependency on each
@@ -1355,8 +1561,8 @@ async function cmdClose(
   // MV-90, and deliberately BELOW the --abandon path above: an abandoned change
   // made no claims and landed nothing, so demanding an artifact from it would
   // punish dropping work — the one moment an operator is already giving up.
-  // Over the brain and the repos this change names (MV-134): a repo it never
-  // touched is not this close's to refuse over.
+  // Over the brain where it holds code (MV-148) and the repos this change
+  // names (MV-134): a repo it never touched is not this close's to refuse over.
   const graph = await graphGate(brain, cfg, slug, noGrapher, closing);
   for (const l of graph.lines) (graph.ok ? say : warn)(l);
   if (!graph.ok) return 1;
@@ -1450,10 +1656,11 @@ async function cmdClose(
   // repointLawLinks touches it on EVERY close that has a row to repoint — not
   // only when a reservation was released. Omitting it left the law dirty in
   // exactly the normal case, and the next `change new` refuses over that.
-  // MV-134: the refresh runs BEFORE the commit is printed, over the brain and
-  // the repos this change names, and what it changes goes into a printed
-  // commit. It used to run after, over every declared repo, and left the graph
-  // modified for a hand-made commit nobody was told about.
+  // MV-134: the refresh runs BEFORE the commit is printed, over the brain where
+  // it holds code (MV-148) and the repos this change names, and what it
+  // changes goes into a printed commit. It used to run after, over every
+  // declared repo, and left the graph modified for a hand-made commit nobody
+  // was told about.
   const graphs: string[] = [];
   const siblings: string[] = [];
   for (const s of await graphScopes(brain, cfg, closing)) {

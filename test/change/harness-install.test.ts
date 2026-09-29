@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { gitInit, vendorPath } from '../helpers/fixture.js';
+import { gitInit, initRepo, vendorPath } from '../helpers/fixture.js';
 import { init } from '../../src/commands/init.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { bareBinary } from '../../src/adapters/refresh.js';
@@ -30,11 +30,29 @@ async function run(argv: string[], cwd: string): Promise<{ code: number; out: st
   }
 }
 
+// MV-148: a brain that holds code — a committed source file makes `init`
+// declare `brain: .` — since only such a brain resolves the grapher, and is
+// where the vendor's install goes.
 const tmp = (): string => {
   const d = mkdtempSync(join(tmpdir(), 'mvac-harness-'));
-  gitInit(d);
+  initRepo(d, { 'src/app.ts': 'export const app = 1;\n' });
   return d;
 };
+
+test('a code-less brain gets no harness install — MV-148', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-harness-codeless-'));
+  gitInit(dir);
+  const { code, out } = await run(['--provider', 'claude,cursor', '--grapher', 'graphify'], dir);
+  assert.equal(code, 0, out);
+  for (const probe of ['.agents/skills/graphify/SKILL.md', '.claude/skills/graphify/SKILL.md', '.cursor/rules/graphify.mdc']) {
+    assert.equal(existsSync(join(dir, probe)), false, probe);
+  }
+  assert.doesNotMatch(out, /installed into/);
+  assert.equal(existsSync(join(dir, 'graphify-out')), false, 'and no graph');
+  const gi = existsSync(join(dir, '.gitignore')) ? readFileSync(join(dir, '.gitignore'), 'utf8') : '';
+  assert.doesNotMatch(gi, /graphify/, 'no ignore line of the grapher either');
+  assert.match(out, /init: graphify is declared, and this brain holds no code \(no repos entry is the brain\)/);
+});
 
 test('a declared grapher is installed into each declared harness, once — MV-131', async () => {
   const dir = tmp();

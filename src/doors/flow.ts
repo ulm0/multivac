@@ -25,7 +25,7 @@
 import type { Config } from '../types.js';
 import { doorTargets, grapherSpec, sddSpec, unverifiedGrapher } from '../adapters/registry.js';
 import { proofOf } from '../adapters/sdd.js';
-import { adaptersByRoot } from '../adapters/detect.js';
+import { adaptersByRoot, askedGraphers, brainHoldsCode, brainRefreshGrapher } from '../adapters/detect.js';
 import { stateLabel } from '../lib/init-state.js';
 import { LAW_PATH, RITUAL_PATH } from '../lib/config.js';
 
@@ -55,7 +55,11 @@ export function renderFlow(config: Config): string {
   // MV-122: a row per adapter a declared root resolves, not the ecosystem's
   // alone. A grapher row names its roots only when some declared root resolves
   // otherwise, so a config naming only top-level adapters renders what it did.
-  const declared = 1 + Object.values(config.repos).filter((r) => !r.isBrain).length;
+  // MV-148: the brain is one of those roots only where it holds code — one
+  // that holds none resolves no grapher, and counting it named every grapher's
+  // repos as though the brain were left out of it.
+  const holds = brainHoldsCode(config);
+  const declared = (holds ? 1 : 0) + Object.values(config.repos).filter((r) => !r.isBrain).length;
   const every = (roots: string[]): boolean => roots.length === declared;
   const inRoots = (roots: string[]): string => (every(roots) ? '' : ` — in ${roots.join(', ')}`);
   const forRoots = (roots: string[]): string => (every(roots) ? '' : ` for ${roots.join(', ')}`);
@@ -120,6 +124,13 @@ export function renderFlow(config: Config): string {
   }
 
   const graphers = adaptersByRoot(config, 'grapher');
+  // MV-148: a declared grapher no writable code repo resolves is not "no
+  // grapher declared": the brain holds no code, so it is built nowhere yet,
+  // and a repo marked `managed: false` is never built or gated (MV-125) —
+  // `askedGraphers` leaves those repos out.
+  const asked = askedGraphers(config);
+  const noWritable = (name: string): string =>
+    `- \`${name}\` is declared, and no writable code repo resolves it yet: the brain holds no code, so none here; each code repo that resolves it gets its own when \`repos sync\` or a change reaches it`;
   let verified = false;
   for (const [name, roots] of graphers) {
     const spec = grapherSpec(name, config.graphers);
@@ -127,15 +138,25 @@ export function renderFlow(config: Config): string {
       auto.push(`- \`${name}\` is declared as the grapher${forRoots(roots)} but ${unverifiedGrapher(name)}`);
       continue;
     }
+    if (!holds && !asked.get(name)?.length) {
+      auto.push(noWritable(name));
+      continue;
+    }
     verified = true;
     // MV-140: what MV-134 does, not what came before it.
+    // MV-148: "after each edit" only of the grapher the brain's one hook runs
+    // (`brainRefreshGrapher`), the door's answer. The page said it of every
+    // grapher wherever a door had a post-edit hook, and one hook runs one
+    // command: of two, it promised a refresh nothing ran. Declared, like the
+    // door (MV-93): whether this machine wired it is `doors`' and `doctor`'s.
+    const hooked = config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit) && brainRefreshGrapher(config) === name;
     auto.push(
-      `- the code graph is built where \`multivac repos sync\` or a change reaches a repo with no \`${spec.artifacts[0]}\`, refreshed ${config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit) ? 'after each edit through the harness hook, and ' : ''}at \`change land\`, where it is committed on the change branch, and at \`change close\`, in ${every(roots) ? 'every declared repo' : roots.join(', ')}`,
+      `- the code graph is built where \`multivac repos sync\` or a change reaches a repo with no \`${spec.artifacts[0]}\`, refreshed ${hooked ? 'after each edit through the harness hook, and ' : ''}at \`change land\`, where it is committed on the change branch, and at \`change close\`, in ${every(roots) ? 'every declared repo' : roots.join(', ')}`,
     );
     if (config.grapherAuto) {
-      gate.push(
-        `- \`change close\` refuses while the brain or a repo the change names has no \`${spec.artifacts[0]}\`${inRoots(roots)}`,
-      );
+      // MV-148: the brain is gated only where it holds code.
+      const who = holds ? 'the brain or a repo the change names' : 'a repo the change names';
+      gate.push(`- \`change close\` refuses while ${who} has no \`${spec.artifacts[0]}\`${inRoots(roots)}`);
     }
     if (spec.queries && spec.queries.length > 0) {
       yours.push(
@@ -144,7 +165,16 @@ export function renderFlow(config: Config): string {
     }
   }
   if (graphers.size === 0) {
-    auto.push('- no grapher is declared, so no graph is built or required');
+    // MV-148: the ecosystem's declaration, where no code repo resolves it —
+    // unverified, it is named as such (MV-59): nothing builds it anywhere.
+    const [top] = holds ? [] : asked.keys();
+    auto.push(
+      top === undefined
+        ? '- no grapher is declared, so no graph is built or required'
+        : grapherSpec(top, config.graphers) === null
+          ? `- \`${top}\` is declared as the grapher but ${unverifiedGrapher(top)}`
+          : noWritable(top),
+    );
   }
   if (verified && !config.grapherAuto) {
     yours.push('- `grapher_auto: false` — the graph is still built, and `change close` no longer requires it');

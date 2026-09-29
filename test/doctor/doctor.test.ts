@@ -6,9 +6,12 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import {
   chmodSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   utimesSync,
   writeFileSync,
@@ -19,7 +22,11 @@ import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { installHooks } from '../../src/hooks/install.js';
-import { sddSpec } from '../../src/adapters/registry.js';
+import { grapherSpec, sddSpec } from '../../src/adapters/registry.js';
+import { leftoverGraphs } from '../../src/lib/repo-state.js';
+import { renderBrainDoor } from '../../src/doors/brain.js';
+import { graphIgnoreLines } from '../../src/lib/code-in-change.js';
+import { loadConfig } from '../../src/lib/config.js';
 
 const line = (lines: string[], section: string): string => {
   const l = lines.find((x) => x.startsWith(section));
@@ -564,9 +571,11 @@ graphers:
   acmegraph:
     artifact: acmegraph-out/graph.json
     refresh: acmegraph update .
-repos: {}
+repos:
+  brain: .
 `,
   );
+  // MV-148: the brain holds code (`brain: .`), so it keeps a graph of its own.
   symlinkSync('AGENTS.md', join(eco.brain, 'CLAUDE.md'));
   // fake grapher binary, found through PATH
   const binDir = join(eco.brain, '..', 'fakebin');
@@ -597,6 +606,361 @@ repos: {}
   } finally {
     process.env.PATH = old;
   }
+});
+
+// MV-148. A brain that holds no code refreshes no graph of its own: its one
+// post-edit hook follows edits into the code repos' checkouts, and the line
+// says so where `doors` wires it, and why it wired none where it did not.
+test("doctor: a code-less brain's refresh path says where its hook follows edits, or why it runs none", async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-follow-')));
+  const binDir = join(eco.brain, '..', 'fakebin');
+  mkdirSync(binDir, { recursive: true });
+  writeFileSync(join(binDir, 'acmegraph'), '#!/bin/sh\nexit 0\n');
+  chmodSync(join(binDir, 'acmegraph'), 0o755);
+  const decl = 'graphers:\n  acmegraph:\n    artifact: acmegraph-out/graph.json\n    refresh: acmegraph update .\n';
+  const refreshPath = async (config: string, path: string[]): Promise<string> => {
+    writeFileSync(join(eco.brain, '.multivac/config.yml'), config);
+    const old = process.env.PATH;
+    process.env.PATH = [...path, '/usr/bin', '/bin'].join(delimiter);
+    try {
+      const l = (await doctorReport(eco.brain)).lines.filter((x) => x.startsWith('grapher    refresh path: '));
+      assert.equal(l.length, 1, l.join('\n'));
+      return l[0].slice('grapher    '.length);
+    } finally {
+      process.env.PATH = old;
+    }
+  };
+  const two = `doors: [agents, claude]\ngrapher: acmegraph\n${decl}repos:\n  api: ../acme-api\n  web: ../acme-web\n`;
+  const net = ' (installed when the binary is present) · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh';
+
+  assert.equal(await refreshPath(two, [binDir]), `refresh path: claude post-edit hook follows your edits into the code repos' checkouts${net}`);
+  assert.equal(
+    await refreshPath(
+      'doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n',
+      [],
+    ),
+    "refresh path: `change land` and `change close` only — the code repos resolve graphify and codegraph, and the brain's one post-edit hook runs one command · git hooks never refresh",
+  );
+  // In one of the two repos' node_modules/.bin: the hook, moved into the other, finds none.
+  mkdirSync(join(eco.repos.web, 'node_modules', '.bin'), { recursive: true });
+  writeFileSync(join(eco.repos.web, 'node_modules', '.bin', 'acmegraph'), '#!/bin/sh\nexit 0\n');
+  chmodSync(join(eco.repos.web, 'node_modules', '.bin', 'acmegraph'), 0o755);
+  assert.equal(
+    await refreshPath(two, []),
+    "refresh path: `change land` and `change close` only — `acmegraph` is not reachable from every code repo that resolves acmegraph (PATH, or each one's node_modules/.bin) · git hooks never refresh",
+  );
+  // In each repo's node_modules/.bin and not on PATH: wired, and the ceiling
+  // stated — a change worktree holds no node_modules, so there the hook finds
+  // no binary and runs nothing.
+  mkdirSync(join(eco.repos.api, 'node_modules', '.bin'), { recursive: true });
+  writeFileSync(join(eco.repos.api, 'node_modules', '.bin', 'acmegraph'), '#!/bin/sh\nexit 0\n');
+  chmodSync(join(eco.repos.api, 'node_modules', '.bin', 'acmegraph'), 0o755);
+  assert.equal(
+    await refreshPath(two, []),
+    "refresh path: claude post-edit hook follows your edits into the code repos' checkouts (installed when the binary is present) · not into the change worktrees of api and web: they reach acmegraph only in their own node_modules/.bin, which a worktree does not hold · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh",
+  );
+  // On PATH too: found there first, from the worktrees as from the repos.
+  assert.equal(await refreshPath(two, [binDir]), `refresh path: claude post-edit hook follows your edits into the code repos' checkouts${net}`);
+  // The one repo resolving it is not multivac's to write: no checkout to follow into.
+  assert.equal(
+    await refreshPath(`doors: [agents, claude]\ngrapher: acmegraph\n${decl}repos:\n  web:\n    path: ../acme-web\n    managed: false\n`, [binDir]),
+    "refresh path: none yet — no writable code repo resolves acmegraph, so the brain's post-edit hook has no checkout to follow edits into · git hooks never refresh",
+  );
+  // An unverified name, resolved by the repos or by none: nothing wires or
+  // refreshes it (MV-59), where `doors` prints what to declare.
+  for (const repos of ['repos:\n  api: ../acme-api\n  web: ../acme-web\n', 'repos: {}\n']) {
+    assert.equal(
+      await refreshPath(`doors: [agents, claude]\ngrapher: mystery\n${repos}`, [binDir]),
+      'refresh path: none — mystery is not verified, so no post-edit hook, `change land` or `change close` runs it · git hooks never refresh',
+      repos,
+    );
+  }
+  // A brain that holds code keeps the line it had.
+  assert.equal(
+    await refreshPath(`doors: [agents, claude]\ngrapher: acmegraph\n${decl}repos:\n  brain: .\n  api: ../acme-api\n`, [binDir]),
+    `refresh path: claude post-edit hook${net}`,
+  );
+  // No harness with a post-edit hook: the same line in every brain.
+  assert.equal(
+    await refreshPath(`doors: [agents]\ngrapher: acmegraph\n${decl}repos:\n  api: ../acme-api\n`, [binDir]),
+    'refresh path: `change land` and `change close` only — no declared harness has a post-edit hook · git hooks never refresh',
+  );
+});
+
+// MV-148. A brain no repos entry declares holds no code and resolves no
+// grapher; an install an earlier release left there is kept until a human
+// removes it, and doctor prints that removal — the vendor's own uninstall per
+// platform found, the one its registry entry marks first leading — and runs
+// nothing.
+test('doctor: a kept install in a code-less brain is named with its removal, gemini first', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-kept-')));
+  const b = eco.brain;
+  const config =
+    'doors: [agents, claude]\ngrapher: graphify\ngraphers:\n  acme:\n    artifact: acme-out/graph.json\n    refresh: acme update .\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n';
+  writeFileSync(join(b, '.multivac/config.yml'), config);
+  const git = (...a: string[]): void => {
+    execFileSync('git', ['-C', b, ...a], { stdio: 'ignore' });
+  };
+  git('add', '-A');
+  git('commit', '-qm', 'config');
+  const old = process.env.PATH;
+  process.env.PATH = ['/usr/bin', '/bin'].join(delimiter);
+  const grapher = async (): Promise<{ lines: string[]; exit: number }> => {
+    const r = await doctorReport(b);
+    return { lines: r.lines.filter((l) => l.startsWith('grapher')), exit: r.exit };
+  };
+  const fact =
+    "grapher    brain: holds no code (no repos entry is the brain), so no code graph is built, gated or refreshed here — agents here ask the code repos' graphs; if this repo holds code, add `brain: .` under repos:";
+  try {
+    const clean = await grapher();
+    assert.ok(clean.lines.includes(fact), clean.lines.join('\n'));
+    assert.ok(!clean.lines.some((l) => l.includes('leftover')), clean.lines.join('\n'));
+
+    // What an earlier release left: graphify for agents, claude and gemini —
+    // gemini is no declared door here — its graph and ignore file committed;
+    // a codegraph index; a declared grapher's graph, untracked.
+    const put = (rel: string, body = 'x\n'): void => {
+      mkdirSync(join(b, rel, '..'), { recursive: true });
+      writeFileSync(join(b, rel), body);
+    };
+    for (const p of ['agents', 'claude', 'gemini']) put(`.${p}/skills/graphify/SKILL.md`);
+    put('graphify-out/graph.json', '{"nodes":[],"links":[]}\n');
+    put('.graphifyignore', '.claude/\n');
+    git('add', '-A');
+    git('commit', '-qm', 'an earlier release');
+    put('.codegraph/codegraph.db');
+    put('acme-out/graph.json', '{}\n');
+
+    const kept = await grapher();
+    const out = kept.lines.join('\n');
+    assert.equal(kept.exit, clean.exit, 'the exit code is unchanged');
+    assert.ok(kept.lines.includes(fact), out);
+    assert.ok(
+      kept.lines.includes(
+        `grapher    leftover graphify install @ brain: platforms gemini, agents, claude and graphify-out/graph.json (tracked) — kept until you remove it; it graphs none of the code, and graphify's own section and hooks still send agents to it. Remove: cd ${b} && graphify uninstall --project --platform gemini && graphify uninstall --project --platform agents && graphify uninstall --project --platform claude && git rm -q --ignore-unmatch -- graphify-out/graph.json .graphifyignore && rm -rf graphify-out .graphifyignore; review \`git diff\` (the uninstall drops the whole hook group it wrote, commands you added to it included, and leaves an emptied hook list in each settings file it touched), then \`multivac doors\` and commit`,
+      ),
+      out,
+    );
+    assert.ok(
+      kept.lines.includes(
+        `grapher    leftover codegraph index @ brain: .codegraph/codegraph.db (local) — kept until you remove it; it indexes none of the code. Remove: cd ${b} && codegraph uninit --force, then \`multivac doors\``,
+      ),
+      out,
+    );
+    assert.ok(
+      kept.lines.includes(
+        `grapher    leftover acme graph @ brain: acme-out/graph.json (untracked) — kept until you remove it; it graphs none of the code. Remove: cd ${b} && git rm -q --ignore-unmatch -- acme-out/graph.json && rm -f acme-out/graph.json, then \`multivac doors\` and commit`,
+      ),
+      out,
+    );
+    // Never a refresh, a build or an install for the brain, and no scope line.
+    const brainLines = kept.lines.filter((l) => /@ brain|grapher {4}brain:/.test(l));
+    assert.doesNotMatch(brainLines.join('\n'), /`graphify update \.`|`graphify install /);
+    assert.doesNotMatch(out, /none @ brain/);
+
+    // The probe reads every platform, declared door or not, and tracked is
+    // git's answer over what it found.
+    rmSync(join(b, 'graphify-out'), { recursive: true });
+    rmSync(join(b, '.graphifyignore'));
+    rmSync(join(b, '.agents'), { recursive: true });
+    rmSync(join(b, '.claude/skills/graphify'), { recursive: true });
+    git('add', '-A', '--', 'graphify-out', '.graphifyignore', '.agents', '.claude');
+    git('commit', '-qm', 'half removed');
+    const left = await leftoverGraphs(await loadConfig(b), b);
+    assert.deepEqual(
+      left.map((l) => [l.name, l.kind, l.tracked, l.platforms, l.artifact ?? null]),
+      [
+        ['graphify', 'shared', true, ['gemini'], null],
+        ['codegraph', 'local', false, [], '.codegraph/codegraph.db'],
+        ['acme', 'declared', false, [], 'acme-out/graph.json'],
+      ],
+    );
+    // gemini's own door is not declared here, so its install wrote no section
+    // this door carries: the line names the hooks alone (FR-022).
+    const gemini = renderBrainDoor(await loadConfig(b), 1, left);
+    assert.ok(
+      gemini.includes(
+        "- `.gemini/skills/graphify/SKILL.md` here is a leftover that holds no code: graphify's own hooks point at it — ask the code repos' graphs above instead; `multivac doctor` prints its removal.",
+      ),
+      gemini,
+    );
+    assert.doesNotMatch(gemini, /## graphify/);
+
+    // Removed, as printed: only the fact line is left.
+    rmSync(join(b, '.gemini'), { recursive: true });
+    rmSync(join(b, '.codegraph'), { recursive: true });
+    rmSync(join(b, 'acme-out'), { recursive: true });
+    git('add', '-A');
+    git('commit', '-qm', 'removed');
+    const after = await grapher();
+    assert.ok(after.lines.includes(fact), after.lines.join('\n'));
+    assert.ok(!after.lines.some((l) => l.includes('leftover')), after.lines.join('\n'));
+    assert.equal(after.exit, clean.exit);
+
+    // An `agents` skill alone: that platform writes no section and no hook,
+    // so neither the line nor the door claims one (MV-143), and the door names
+    // what is there, not a `graphify-out/` that is not.
+    put('.agents/skills/graphify/SKILL.md');
+    const skill = await grapher();
+    assert.ok(
+      skill.lines.includes(
+        `grapher    leftover graphify install @ brain: platforms agents (untracked) — kept until you remove it; it graphs none of the code. Remove: cd ${b} && graphify uninstall --project --platform agents && git rm -q --ignore-unmatch -- graphify-out/graph.json .graphifyignore && rm -rf graphify-out .graphifyignore; review \`git diff\` (the uninstall drops the whole hook group it wrote, commands you added to it included, and leaves an emptied hook list in each settings file it touched), then \`multivac doors\` and commit`,
+      ),
+      skill.lines.join('\n'),
+    );
+    const door = renderBrainDoor(await loadConfig(b), 1, await leftoverGraphs(await loadConfig(b), b));
+    assert.ok(
+      door.includes(
+        "- `.agents/skills/graphify/SKILL.md` here is a leftover that holds no code — ask the code repos' graphs above instead; `multivac doctor` prints its removal.",
+      ),
+      door,
+    );
+    assert.doesNotMatch(door, /## graphify|own hooks/);
+  } finally {
+    process.env.PATH = old;
+  }
+});
+
+// MV-148 (FR-018, FR-021, FR-022). A code-less brain that declares no grapher
+// asks none from itself, and an install an earlier release left there is found
+// all the same: `doctor` states the fact and prints the removal, its exit
+// unchanged, and the door names the leftover without pointing "above" at
+// graphs it does not list.
+test('doctor: a kept install in a code-less brain that declares no grapher is still named with its removal', async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-kept-none-')));
+  const b = eco.brain;
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents, claude]\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n');
+  const git = (...a: string[]): void => {
+    execFileSync('git', ['-C', b, ...a], { stdio: 'ignore' });
+  };
+  git('add', '-A');
+  git('commit', '-qm', 'config');
+  const old = process.env.PATH;
+  process.env.PATH = ['/usr/bin', '/bin'].join(delimiter);
+  try {
+    const clean = await doctorReport(b);
+    // Nothing asked, nothing kept: silence, as ever.
+    assert.deepEqual(clean.lines.filter((l) => l.startsWith('grapher')), []);
+
+    for (const [rel, body] of [
+      ['.claude/skills/graphify/SKILL.md', 'x\n'],
+      ['graphify-out/graph.json', '{"nodes":[],"links":[]}\n'],
+    ]) {
+      mkdirSync(join(b, rel, '..'), { recursive: true });
+      writeFileSync(join(b, rel), body);
+    }
+    git('add', '-A');
+    git('commit', '-qm', 'an earlier release');
+    const kept = await doctorReport(b);
+    const lines = kept.lines.filter((l) => l.startsWith('grapher'));
+    assert.equal(kept.exit, clean.exit, 'the exit code is unchanged');
+    assert.ok(
+      lines.includes(
+        "grapher    brain: holds no code (no repos entry is the brain), so no code graph is built, gated or refreshed here — agents here ask the code repos' graphs; if this repo holds code, add `brain: .` under repos:",
+      ),
+      lines.join('\n'),
+    );
+    assert.ok(
+      lines.includes(
+        `grapher    leftover graphify install @ brain: platforms claude and graphify-out/graph.json (tracked) — kept until you remove it; it graphs none of the code, and graphify's own section and hooks still send agents to it. Remove: cd ${b} && graphify uninstall --project --platform claude && git rm -q --ignore-unmatch -- graphify-out/graph.json .graphifyignore && rm -rf graphify-out .graphifyignore; review \`git diff\` (the uninstall drops the whole hook group it wrote, commands you added to it included, and leaves an emptied hook list in each settings file it touched), then \`multivac doors\` and commit`,
+      ),
+      lines.join('\n'),
+    );
+    assert.doesNotMatch(lines.join('\n'), /`graphify update \.`|`graphify install /);
+
+    // The door lists no code repo's graph here, so the line points at none.
+    const door = renderBrainDoor(await loadConfig(b), 1, await leftoverGraphs(await loadConfig(b), b));
+    assert.ok(
+      door.includes(
+        "- `graphify-out/` here is a leftover that holds no code: the `## graphify` section below and graphify's own hooks point at it — ask the code repos' graphs instead; `multivac doctor` prints its removal.",
+      ),
+      door,
+    );
+    assert.doesNotMatch(door, /graphs above/);
+  } finally {
+    process.env.PATH = old;
+  }
+});
+
+// MV-148. The grapher's ignore file at an installed, writable root: what it
+// lacks, whether a clone gets it, and what the graph still holds under it —
+// read only, since a line appended over a built graph makes every plain
+// refresh refuse; the next `change land` naming the root appends.
+test("doctor: the ignore file's missing lines, its commit and the nodes under it are facts, never writes", async () => {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doc-ignore-')));
+  const b = eco.brain;
+  const { api, web } = eco.repos;
+  writeFileSync(
+    join(b, '.multivac/config.yml'),
+    'doors: [agents]\ngrapher: graphify\nrepos:\n  brain: .\n  api: ../acme-api\n  web:\n    path: ../acme-web\n    managed: false\n',
+  );
+  const git = (dir: string, ...a: string[]): void => {
+    execFileSync('git', ['-C', dir, ...a], { stdio: 'ignore' });
+  };
+  const graph = (...files: string[]): string =>
+    JSON.stringify({ nodes: files.map((f, i) => ({ id: `n${i}`, source_file: f })), links: [] }) + '\n';
+  const cfg = await loadConfig(b);
+  const spec = grapherSpec('graphify')!;
+  // The brain: every derived line committed under its record — no fact.
+  const brainLines = graphIgnoreLines(cfg, b, 'brain', spec);
+  writeFileSync(join(b, '.graphifyignore'), `${brainLines.join('\n')}\n# multivac: kept out of the graph — ${brainLines.join(' ')}\n`);
+  mkdirSync(join(b, 'graphify-out'), { recursive: true });
+  writeFileSync(join(b, 'graphify-out/graph.json'), graph('src/app.ts'));
+  git(b, 'add', '-A');
+  git(b, 'commit', '-qm', 'graph');
+  // api: a committed graph two of whose nodes sit under `.claude/`, and an
+  // ignore file never committed that holds that line and a human's `docs/`.
+  mkdirSync(join(api, 'graphify-out'), { recursive: true });
+  writeFileSync(join(api, 'graphify-out/graph.json'), graph('src/server.ts', '.claude/skills/a/SKILL.md', '.claude/settings.json'));
+  git(api, 'add', '-A');
+  git(api, 'commit', '-qm', 'graph');
+  const apiIgnore = join(api, '.graphifyignore');
+  writeFileSync(apiIgnore, 'docs/\n/.claude/\n# multivac: kept out of the graph — /.claude/\n');
+  utimesSync(apiIgnore, new Date(1000), new Date(1000));
+  // web: read-only (MV-125) — the same state, and no fact.
+  mkdirSync(join(web, 'graphify-out'), { recursive: true });
+  writeFileSync(join(web, 'graphify-out/graph.json'), graph('.claude/x.md'));
+  writeFileSync(join(web, '.graphifyignore'), '/.claude/\n');
+  git(web, 'add', 'graphify-out');
+  git(web, 'commit', '-qm', 'graph');
+
+  const { lines, exit } = await doctorReport(b);
+  const grapher = lines.filter((l) => l.startsWith('grapher'));
+  const at = (scope: string): string => {
+    const l = grapher.find((x) => x.includes(`@ ${scope}:`) || x.includes(`${scope}: `));
+    assert.ok(l, `no ${scope} line in:\n${grapher.join('\n')}`);
+    return l;
+  };
+  const apiLacks = graphIgnoreLines(cfg, b, 'api', spec).filter((l) => l !== '/.claude/');
+  assert.ok(apiLacks.includes('/.brain/') && !apiLacks.includes('/specs/'), apiLacks.join(' '));
+  assert.ok(
+    at('api').includes(
+      ` · .graphifyignore lacks ${apiLacks.length} line(s) multivac keeps out of the graph (${apiLacks.join(', ')}) — the next \`change land\` naming api appends them, and rebuilds if the graph holds nodes under them` +
+        ' · .graphifyignore is not committed — a clone or worktree graphs without it' +
+        " · the graph still holds 2 node(s) under .graphifyignore's lines — a plain refresh refuses to shrink; run `graphify update . --force` there",
+    ),
+    at('api'),
+  );
+  assert.doesNotMatch(at('brain'), /\.graphifyignore/);
+  assert.doesNotMatch(at('web'), /\.graphifyignore|node\(s\)/);
+  assert.equal(exit, 0);
+  // Read only: the file keeps its bytes and its mtime.
+  assert.equal(readFileSync(apiIgnore, 'utf8'), 'docs/\n/.claude/\n# multivac: kept out of the graph — /.claude/\n');
+  assert.equal(statSync(apiIgnore).mtimeMs, 1000);
+
+  // No ignore file at all: every derived line is missing, and nothing is
+  // "not committed" — there is no file to commit, and none is written.
+  rmSync(apiIgnore);
+  const bare = (await doctorReport(b)).lines.find((x) => x.startsWith('grapher') && x.includes('@ api:'));
+  const every = graphIgnoreLines(cfg, b, 'api', spec);
+  assert.ok(
+    bare?.includes(
+      ` · .graphifyignore lacks ${every.length} line(s) multivac keeps out of the graph (${every.join(', ')}) — the next \`change land\` naming api appends them, and rebuilds if the graph holds nodes under them`,
+    ),
+    bare,
+  );
+  assert.doesNotMatch(bare!, /is not committed|node\(s\) under/);
+  assert.equal(existsSync(apiIgnore), false);
 });
 
 test('doctor: hooks installed but inactive is a warning, active names the runner', async () => {

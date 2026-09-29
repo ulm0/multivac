@@ -15,6 +15,7 @@ import { CANONICAL_DOOR, hasGrapherSection, linkDoor } from '../doors/link.js';
 import { ignoredPaths } from '../lib/git.js';
 import { adapterFor, adaptersByRoot, localBin, missingRequired, pathExists, readOnly, type ReadOnly } from './detect.js';
 import { initState } from '../lib/init-state.js';
+import { graphIgnoreLines } from '../lib/code-in-change.js';
 import { GRAPH_LOCK } from '../doors/settings.js';
 import { CONFIG_PATH } from '../lib/config.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
@@ -79,11 +80,12 @@ async function runDeclared(spec: AdapterSpec, run: string, dir: string): Promise
 }
 
 /**
- * Refresh the graph for one scope (the brain, or one declared repo) — or BUILD
- * it, where the vendor is not installed there yet (MV-124): missing, or a
- * partial graph such as a 0-byte `graph.json` or a codegraph clone whose
- * `.codegraph/` holds no database. A graph is derived from the tree, so
- * rebuilding a partial one loses nothing. An unevaluable root gets neither.
+ * Refresh the graph for one scope (the brain where it holds code, or one
+ * declared repo) — or BUILD it, where the vendor is not installed there yet
+ * (MV-124): missing, or a partial graph such as a 0-byte `graph.json` or a
+ * codegraph clone whose `.codegraph/` holds no database. A graph is derived
+ * from the tree, so rebuilding a partial one loses nothing. An unevaluable
+ * root gets neither.
  *
  * The two are not the same command for every tool: an adapter may declare a
  * `create` that differs from its `refresh`, and `doctor` has always printed
@@ -116,12 +118,19 @@ export async function refreshGraph(
     return;
   }
   const first = st.state !== 'installed';
-  const run = first ? (spec.create ?? spec.refresh) : spec.refresh;
+  // MV-148: the entry's `rebuild` while the graph holds a node under a line
+  // multivac recorded in its ignore file — the vendor's refresh refuses the
+  // shrink those lines ask for, so it would fail at every land and close. A
+  // failed or interrupted rebuild leaves the nodes there, so the next land or
+  // close rebuilds again.
+  const forced = !first && spec.rebuild !== undefined && (await holdsIgnored(spec, dir));
+  const run = first ? (spec.create ?? spec.refresh) : forced ? spec.rebuild! : spec.refresh;
+  const verb = first ? 'build' : forced ? 'rebuild' : 'refresh';
   // MV-123: the one lookup, in this scope's own checkout.
   const missing = await missingRequired(spec, dir);
   if (missing.length > 0) {
     say(
-      `graph ${name} @ ${scope}: ${first ? 'build' : 'refresh'} skipped — ${binaryMissing(name, spec, missing, scope)}, ` +
+      `graph ${name} @ ${scope}: ${verb} skipped — ${binaryMissing(name, spec, missing, scope)}, ` +
         `then \`${run}\` there`,
     );
     return;
@@ -145,7 +154,7 @@ export async function refreshGraph(
     // was found, and a copy on PATH still wins. MV-124: the entry's opt-outs
     // over the inherited environment, outside the declared command.
     await runDeclared(spec, run, dir);
-    say(`${label}: ${first ? 'built' : 'refreshed'} (\`${run}\`) — ${spec.artifactKind === 'local' ? 'local artifact, never committed' : 'artifact left uncommitted'}`);
+    say(`${label}: ${first ? 'built' : forced ? 'rebuilt' : 'refreshed'} (\`${run}\`) — ${spec.artifactKind === 'local' ? 'local artifact, never committed' : 'artifact left uncommitted'}`);
   } catch (e) {
     // The tool's cause, not node's `Command failed: <cmd>`, which only repeats
     // the command this line prints again, and not the tool's first lines, which
@@ -153,7 +162,7 @@ export async function refreshGraph(
     // The one quote the scaffold and the validator get too (MV-123).
     const err = e as { stderr?: string; stdout?: string; message: string };
     const said = quoteFailure(err);
-    warn(`${label}: ${first ? 'build' : 'refresh'} failed (${said}) — run \`${run}\` there by hand`);
+    warn(`${label}: ${verb} failed (${said}) — run \`${run}\` there by hand`);
   } finally {
     await release?.();
   }
@@ -175,7 +184,10 @@ export interface GraphScope {
  * entry included, and undefined where the root resolves `none` (MV-122) —
  * and whether it is read-only (MV-125). The same list `doctor` reports over,
  * so the report and the runner cannot disagree about which scopes exist; the
- * build, the refresh and both gates skip a read-only one.
+ * build, the refresh and both gates skip a read-only one. MV-148: the brain
+ * carries a grapher only where it holds code — a repos entry is the brain —
+ * so every one of them skips a brain that holds none, as a root resolving
+ * none.
  */
 export async function graphScopes(brain: string, cfg: Config, only?: string[]): Promise<GraphScope[]> {
   const scopes: GraphScope[] = [{ scope: 'brain', dir: brain, name: adapterFor(cfg, 'brain', 'grapher') }];
@@ -191,66 +203,168 @@ export async function graphScopes(brain: string, cfg: Config, only?: string[]): 
 }
 
 /**
- * Build the graph once in every scope on disk that has none and that
- * multivac may write in (MV-87, MV-125).
- *
- * The graph was only ever built for repos a change happened to touch, so a
- * repo had to be worked on before it could be navigated — backwards for an
- * agent that reads the graph in order to do the work. `doctor` named the
- * command per repo and nothing ever ran it.
- *
- * Self-limiting, which is why the lifecycle can call it at more than one
- * point: a scope the probe finds installed is skipped (MV-124), so this costs
- * one probe per scope on every run after the first, and a repo is built once
- * unless its graph is lost or left partial.
- * Refreshing an existing graph stays where it was — `change close`, over the
- * repos that change touched.
+ * MV-148. The comment line every append to a grapher's ignore file ends with,
+ * listing the lines it appended. graphify 0.9.29 ignores `#` lines (1,460 nodes
+ * with the record and without). It is what tells a line multivac wrote from
+ * one a human wrote: a recorded line is never appended again, even after a
+ * human deletes it and keeps its record, and only a recorded line lets the
+ * refresh force a rebuild (`holdsIgnored`).
  */
+export const IGNORE_RECORD = '# multivac: kept out of the graph — ';
+
+/** `/x/`, `x/`, `/x`, `x` → `x`: the directory an ignore line names, spelling aside. */
+const bareDir = (line: string): string => line.trim().replace(/^!/, '').replace(/^\/+/, '').replace(/\/+$/, '');
 
 /**
- * MV-128. Before a graph's first build, the lines that keep it worth reading:
- * the grapher's own ignore file keeps multivac's and the SDD's scaffolding out
- * of the graph, and `.gitignore` keeps the per-checkout outputs out of git while
- * the shared artifact stays in. Without them the first graph of a fresh brain
- * was mostly vendor skills and templates (measured on graphify 0.9.29, see the
- * registry entry), and seven outputs sat untracked beside the one to commit.
- *
- * Appended, never rewritten: a line already present is left, and every other
- * line is the user's. An existing rule can still ignore the shared artifact —
- * `graphify-out/` ignores the directory, and git cannot re-include a file under
- * an excluded directory — so that is said, never fixed by editing their line.
+ * MV-148. Of `lines` (each `/<dir>/`), those an ignore file's `text` does not
+ * already hold. Pure, so `doctor` reports what the next append would write
+ * without writing (it may not call `writeIgnores`). A line is skipped when the
+ * file holds its directory in any spelling — `x/`, `/x/`, `x` or `/x`,
+ * negated or not: a human's `!/x/` is the whole-directory opt-out — when a
+ * record line lists it, or when any line, negation stripped, names a path
+ * under it (`x/…`, `x/*`): a directory line nullifies a human's re-include of
+ * a path under it (`!.agents/skills/team/`), so it is theirs to write.
  */
-async function writeIgnores(
+export function ignoreLinesToAdd(text: string, lines: string[]): string[] {
+  const held = new Set<string>();
+  const under: string[] = [];
+  for (const raw of text.split('\n')) {
+    const l = raw.trim();
+    if (l.startsWith(IGNORE_RECORD.trim())) {
+      for (const r of l.slice(IGNORE_RECORD.trim().length).trim().split(/\s+/)) if (r) held.add(bareDir(r));
+      continue;
+    }
+    if (l === '' || l.startsWith('#')) continue;
+    const d = bareDir(l);
+    held.add(d);
+    under.push(d);
+  }
+  return lines.filter((line) => {
+    const d = bareDir(line);
+    return !held.has(d) && !under.some((u) => u.startsWith(`${d}/`));
+  });
+}
+
+/**
+ * MV-148. The directories an ignore file keeps out of the graph: each
+ * directory line (`x/`, `/x/`; no glob) that no `!` line re-includes whole —
+ * with `recorded`, only those a record line lists too, so a line a human
+ * deleted and whose record stays forces no rebuild. Pure.
+ */
+export function ignoredDirs(text: string, recorded: boolean): string[] {
+  const lines = new Set<string>();
+  const listed = new Set<string>();
+  const back = new Set<string>();
+  for (const raw of text.split('\n')) {
+    const l = raw.trim();
+    if (l.startsWith(IGNORE_RECORD.trim())) {
+      for (const r of l.slice(IGNORE_RECORD.trim().length).trim().split(/\s+/)) if (r) listed.add(bareDir(r));
+      continue;
+    }
+    if (l === '' || l.startsWith('#')) continue;
+    if (l.startsWith('!')) back.add(bareDir(l));
+    else if (l.endsWith('/') && !/[*?[\]]/.test(l)) lines.add(bareDir(l));
+  }
+  return [...lines].filter((d) => d !== '' && !back.has(d) && (!recorded || listed.has(d)));
+}
+
+/**
+ * MV-148. How many of the shared artifact's nodes come from under `dirs`, read
+ * from the file alone (no git, MV-50): graphify 0.9.29 records each node's
+ * repo-relative `source_file`. 0 when the artifact is unreadable or parses to
+ * no node list — nothing then explains a shrink.
+ */
+export async function nodesUnder(spec: AdapterSpec, dir: string, dirs: string[]): Promise<number> {
+  if (dirs.length === 0 || spec.artifactKind !== 'shared') return 0;
+  const g = await readFile(join(dir, spec.artifacts[0]!), 'utf8').then(
+    (t) => JSON.parse(t) as { nodes?: unknown },
+    () => null,
+  ).catch(() => null);
+  if (!g || !Array.isArray(g.nodes)) return 0;
+  let n = 0;
+  for (const node of g.nodes as { source_file?: unknown }[]) {
+    const f = typeof node?.source_file === 'string' ? node.source_file.replace(/^\.\//, '') : '';
+    if (dirs.some((d) => f.startsWith(`${d}/`))) n++;
+  }
+  return n;
+}
+
+/**
+ * MV-148, FR-029. Whether the root's graph holds a node under a directory a
+ * record line lists and no negation re-includes — the one state in which the
+ * vendor's refresh refuses to shrink (graphify 0.9.29: `update .` exit 1,
+ * "Refusing to overwrite") and the entry's `rebuild` runs instead. Driven by
+ * what the graph holds, never by the event of an append: a rebuild triggered
+ * by the append froze the graph once it failed, since no later run rebuilt.
+ * Files only (MV-50, MV-52).
+ */
+export async function holdsIgnored(spec: AdapterSpec, dir: string): Promise<boolean> {
+  if (!spec.graphignoreFile) return false;
+  const text = await readFile(join(dir, spec.graphignoreFile), 'utf8').catch(() => '');
+  return (await nodesUnder(spec, dir, ignoredDirs(text, true))) > 0;
+}
+
+/**
+ * MV-128, as amended by MV-148. The lines that keep a graph worth reading:
+ * the grapher's own ignore file keeps what is not code at this root out of the
+ * graph — `lines`, derived by `graphIgnoreLines` — and `.gitignore` keeps the
+ * per-checkout outputs out of git while the shared artifact stays in. Without
+ * them the first graph of a fresh brain was mostly vendor skills and templates
+ * (measured on graphify 0.9.29, see the registry entry), and seven outputs sat
+ * untracked beside the one to commit.
+ *
+ * Written before a root's first build (both files) and, MV-148, at `change
+ * land` in the checkout holding the change's branch (`gitignore: false`: the
+ * grapher's file alone — land's `.gitignore` edit kept every worktree it
+ * touched at close). Appended, never rewritten: a line the file already holds
+ * in any spelling is skipped (`ignoreLinesToAdd`), every other line is the
+ * user's, and the append ends with one `IGNORE_RECORD` line. The `(+N)` counts
+ * lines, never the record. True when it appended to the grapher's file.
+ *
+ * On the first-build path only: an existing rule can still ignore the shared
+ * artifact — `graphify-out/` ignores the directory, and git cannot re-include
+ * a file under an excluded directory — so that is said, never fixed by editing
+ * their line. Land refuses such a graph by name itself.
+ */
+export async function writeIgnores(
   name: string,
   spec: AdapterSpec,
   dir: string,
   scope: string,
-  before = 'the first build',
-): Promise<void> {
+  lines: string[],
+  opts: { before?: string; gitignore?: boolean } = {},
+): Promise<boolean> {
   const wrote: string[] = [];
-  const targets: [string | undefined, string[]][] = [
-    [spec.graphignoreFile, spec.graphignore ?? []],
-    ['.gitignore', spec.ignore],
-  ];
-  for (const [file, lines] of targets) {
-    if (!file || lines.length === 0) continue;
+  let appended = false;
+  const append = async (file: string, add: string[], record: boolean): Promise<void> => {
+    if (add.length === 0) return;
     const path = join(dir, file);
     const text = await readFile(path, 'utf8').catch(() => '');
-    const have = new Set(text.split('\n').map((l) => l.trim()));
-    const add = lines.filter((l) => !have.has(l));
-    if (add.length === 0) continue;
     const sep = text === '' || text.endsWith('\n') ? '' : '\n';
-    await writeFile(path, `${text}${sep}${add.join('\n')}\n`);
+    const tail = record ? [...add, `${IGNORE_RECORD}${add.join(' ')}`] : add;
+    await writeFile(path, `${text}${sep}${tail.join('\n')}\n`);
     wrote.push(`${file} (+${add.length})`);
+  };
+  if (spec.graphignoreFile) {
+    const text = await readFile(join(dir, spec.graphignoreFile), 'utf8').catch(() => '');
+    const add = ignoreLinesToAdd(text, lines);
+    await append(spec.graphignoreFile, add, true);
+    appended = add.length > 0;
   }
-  if (wrote.length > 0) say(`graph ${name} @ ${scope}: wrote ${wrote.join(' and ')} before ${before}`);
-  if (spec.artifactKind !== 'shared') return;
+  if (opts.gitignore !== false) {
+    const text = await readFile(join(dir, '.gitignore'), 'utf8').catch(() => '');
+    const have = new Set(text.split('\n').map((l) => l.trim()));
+    await append('.gitignore', spec.ignore.filter((l) => !have.has(l)), false);
+  }
+  if (wrote.length > 0) say(`graph ${name} @ ${scope}: wrote ${wrote.join(' and ')} before ${opts.before ?? 'the first build'}`);
+  if (opts.before !== undefined || spec.artifactKind !== 'shared') return appended;
   for (const shared of await ignoredPaths(dir, spec.shared)) {
     warn(
       `graph ${name} @ ${scope}: ${shared} is ignored by a rule already in this repo, so it cannot be committed — ` +
         `\`git check-ignore -v ${shared}\` names the rule`,
     );
   }
+  return appended;
 }
 
 
@@ -350,7 +464,8 @@ async function runHarnessInstalls(
     say(`${label}: harness install not run — ${binaryMissing(s.name!, spec, missing, s.scope)}`);
     return;
   }
-  await writeIgnores(s.name!, { ...spec, graphignore: [], ignore: h.ignore }, s.dir, s.scope, 'its first project install');
+  // `.gitignore` alone: the grapher's own file is the first build's and land's.
+  await writeIgnores(s.name!, { ...spec, ignore: h.ignore }, s.dir, s.scope, [], { before: 'its first project install' });
   for (const { key, redundant } of [...todo].sort((a, b) => Number(a.redundant) - Number(b.redundant))) {
     if (redundant && (await hasGrapherSection(s.dir, s.name!))) {
       say(`${label}: ${key} skipped — ${CANONICAL_DOOR} already carries the \`## ${s.name}\` section`);
@@ -366,6 +481,23 @@ async function runHarnessInstalls(
   }
 }
 
+/**
+ * Build the graph once in every scope on disk that has none and that
+ * multivac may write in (MV-87, MV-125).
+ *
+ * The graph was only ever built for repos a change happened to touch, so a
+ * repo had to be worked on before it could be navigated — backwards for an
+ * agent that reads the graph in order to do the work. `doctor` named the
+ * command per repo and nothing ever ran it.
+ *
+ * Self-limiting, which is why the lifecycle can call it at more than one
+ * point: a scope the probe finds installed is skipped (MV-124), so this costs
+ * one probe per scope on every run after the first, and a repo is built once
+ * unless its graph is lost or left partial.
+ * Refreshing an existing graph stays where it was — `change land` and
+ * `change close`, over the roots that change names (MV-134). MV-148: the
+ * lines `graphIgnoreLines` derives for a root go in before its first build.
+ */
 export async function ensureGraphs(brain: string, cfg: Config, only?: string[]): Promise<void> {
   for (const s of await graphScopes(brain, cfg, only)) {
     if (!s.name) continue; // no grapher resolves for this scope: silence
@@ -376,8 +508,13 @@ export async function ensureGraphs(brain: string, cfg: Config, only?: string[]):
     if (spec === null) continue;
     if ((await initState(spec, s.dir)).state === 'installed') continue; // already built here
     // Only where the build will run: a missing binary writes nothing here and
-    // refreshGraph says why.
-    if ((await missingRequired(spec, s.dir)).length === 0) await writeIgnores(s.name, spec, s.dir, s.scope);
+    // refreshGraph says why. MV-148: the lines this root derives, so its first
+    // graph leaves out the non-code directories they name — the law, the
+    // changes, the SDD's specs where they are this root's, the harness and
+    // vendor state. Directories only: its own Markdown stays in.
+    if ((await missingRequired(spec, s.dir)).length === 0) {
+      await writeIgnores(s.name, spec, s.dir, s.scope, graphIgnoreLines(cfg, brain, s.scope, spec));
+    }
     await refreshGraph(s.name, s.dir, s.scope, cfg.graphers);
   }
 }
@@ -389,7 +526,9 @@ export interface GateResult {
 
 /**
  * MV-90. A declared grapher leaves a graph in every declared root on disk that
- * is not read-only (MV-125), or `change close` refuses.
+ * is not read-only (MV-125), or `change close` refuses — the brain among them
+ * only where it holds code (MV-148): one that holds none resolves no grapher,
+ * and is neither built nor judged.
  *
  * Declaring `grapher: graphify` used to oblige nothing. The SDD adapter has
  * been gated at both ends since MV-56 — `plan` refuses without the spec,

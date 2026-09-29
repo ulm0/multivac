@@ -58,9 +58,48 @@ test('the page sorts declared obligations into automatic, gate and yours', async
   }
   // The grapher's work is automatic; its artifact is a gate.
   assert.match(page, /the code graph is built where `multivac repos sync` or a change reaches a repo with no `graphify-out\/graph\.json`, refreshed .*at `change land`, where it is committed on the change branch, and at `change close`/);
-  assert.match(page, /`change close` refuses while the brain or a repo the change names has no `graphify-out\/graph\.json`/);
+  // MV-148: this brain holds no code, so the gate names only the repos a change names.
+  assert.match(page, /^- `change close` refuses while a repo the change names has no `graphify-out\/graph\.json`$/m);
   // MV-140: asking the graph is named as unchecked, with graphify's own reason.
   assert.match(page, /^- asking `graphify` before reading the tree — no committed file records a query: graphify writes only an untracked `graphify-out\/cache\/last_query_stamp`/m);
+  // A brain that holds code is one of the roots the gate names.
+  const holds = renderFlow((await eco([...DECLARED, '  brain: .'])).cfg);
+  assert.match(holds, /^- `change close` refuses while the brain or a repo the change names has no `graphify-out\/graph\.json`$/m);
+});
+
+test('a declared grapher no code repo resolves gets its own row, and the brain is no root of it — MV-148', async () => {
+  // No repo: the top level declares graphify, and nothing resolves it.
+  const alone = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos: {}'])).cfg);
+  assert.match(
+    alone,
+    /^- `graphify` is declared, and no writable code repo resolves it yet: the brain holds no code, so none here; each code repo that resolves it gets its own when `repos sync` or a change reaches it$/m,
+  );
+  assert.doesNotMatch(alone, /no grapher is declared/);
+  assert.doesNotMatch(alone, /`change close` refuses while .*graphify-out/, 'nothing to gate');
+  // Every repo opts out: the same row.
+  const out = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api:', '    path: ../acme-api', '    grapher: none'])).cfg);
+  assert.match(out, /^- `graphify` is declared, and no writable code repo resolves it yet/m);
+  // Every repo resolving it is `managed: false`, never built or gated there
+  // (MV-125): the same row, and no build or gate row naming it.
+  const unmanaged = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api:', '    path: ../acme-api', '    managed: false'])).cfg);
+  assert.match(unmanaged, /^- `graphify` is declared, and no writable code repo resolves it yet/m);
+  assert.doesNotMatch(unmanaged, /the code graph is built where/);
+  assert.doesNotMatch(unmanaged, /`change close` refuses while .*graphify-out/);
+  // Unverified, and no repo resolves it: named as such, never promised (MV-59).
+  const mystery = renderFlow((await eco(['doors: [agents]', 'grapher: mystery', 'repos: {}'])).cfg);
+  assert.match(mystery, /^- `mystery` is declared as the grapher but grapher "mystery" is not verified/m);
+  assert.doesNotMatch(mystery, /each code repo that resolves it gets its own/);
+  // One code repo of two resolves it: its rows name it, the brain is not counted.
+  const one = renderFlow(
+    (await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api: ../acme-api', '  web:', '    path: ../acme-web', '    grapher: none'])).cfg,
+  );
+  assert.match(one, /refreshed at `change land`, where it is committed on the change branch, and at `change close`, in api$/m);
+  assert.match(one, /^- `change close` refuses while a repo the change names has no `graphify-out\/graph\.json` — in api$/m);
+  // Both resolve it: every declared repo, the brain not among them.
+  const both = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api: ../acme-api', '  web: ../acme-web'])).cfg);
+  assert.match(both, /and at `change close`, in every declared repo$/m);
+  // Nothing declared anywhere: the row it always was.
+  assert.match(renderFlow((await eco(['doors: [agents]', 'repos:', '  api: ../acme-api'])).cfg), /no grapher is declared/);
 });
 
 test('a gating row leads with the command that refuses and names the artifact', async () => {
@@ -151,6 +190,30 @@ test('an unverified adapter is named as declared-but-unknown, never guessed', as
     () => eco(['doors: [agents]', 'sdd: acme-not-real', 'grapher: acme-graph', 'repos:', '  api: ../acme-api']),
     /sdd: acme-not-real — REFUSED: no SDD adapter is named acme-not-real/,
   );
+});
+
+// The brain's one post-edit hook runs one grapher: the page says "after each
+// edit" of that one, and of none when the code repos resolve two.
+test("the refresh row promises an edit refresh only for the grapher the brain's hook runs", async () => {
+  const edit = /after each edit through the harness hook/;
+  const row = (page: string, artifact: string): string =>
+    page.split('\n').find((l) => l.startsWith('- the code graph is built') && l.includes(`\`${artifact}\``)) ?? '';
+  const mixed = renderFlow(
+    (await eco([
+      'doors: [agents, claude]', 'repos:',
+      '  web:', '    path: ../acme-web', '    grapher: graphify',
+      '  api:', '    path: ../acme-api', '    grapher: codegraph',
+    ])).cfg,
+  );
+  for (const artifact of ['graphify-out/graph.json', '.codegraph/codegraph.db']) {
+    assert.ok(row(mixed, artifact), `no refresh row for ${artifact}:\n${mixed}`);
+    assert.doesNotMatch(row(mixed, artifact), edit, artifact);
+  }
+  const one = renderFlow((await eco(['doors: [agents, claude]', 'grapher: graphify', 'repos:', '  api: ../acme-api'])).cfg);
+  assert.match(row(one, 'graphify-out/graph.json'), edit);
+  // No post-edit harness, no promise, as before.
+  const none = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api: ../acme-api'])).cfg);
+  assert.doesNotMatch(row(none, 'graphify-out/graph.json'), edit);
 });
 
 // --- US2: derived, and saying so ---

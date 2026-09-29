@@ -9,7 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeScratchEcosystem, vendorPath } from '../helpers/fixture.js';
+import { makeScratchEcosystem, vendorPath, type ScratchOpts } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { reposCommand } from '../../src/commands/repos.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
@@ -42,12 +42,18 @@ async function run(
   }
 }
 
-/** A brain declaring speckit and graphify, plus `extra` repos lines. */
-function eco(extra: string[] = []) {
-  const e = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-equip7-')));
+/**
+ * A brain declaring speckit and graphify, plus `extra` repos lines; with
+ * `brainIsCode`, a brain that holds code (MV-148), so it resolves the grapher.
+ */
+function eco(extra: string[] = [], opts: ScratchOpts = {}) {
+  const e = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-equip7-')), opts);
   writeFileSync(
     join(e.brain, '.multivac/config.yml'),
-    ['doors: [agents]', 'sdd: speckit', 'grapher: graphify', 'repos:', '  api: ../acme-api', ...extra, ''].join('\n'),
+    [
+      'doors: [agents]', 'sdd: speckit', 'grapher: graphify', 'repos:',
+      ...(opts.brainIsCode ? ['  brain: .'] : []), '  api: ../acme-api', ...extra, '',
+    ].join('\n'),
   );
   execFileSync('git', ['-C', e.brain, 'add', '-A'], { stdio: 'ignore' });
   execFileSync('git', ['-C', e.brain, 'commit', '-qm', 'config'], { stdio: 'ignore' });
@@ -84,7 +90,8 @@ test('repos sync exits 1 over a missing tool and still equips the rest — MV-12
 });
 
 test('change new refuses the SDD its steps need, before writing anything — MV-129', async () => {
-  const e = eco();
+  // MV-148: a brain that holds code, so `new` equips its graph too.
+  const e = eco([], { brainIsCode: true });
   const before = head(e.brain);
   const { code, out } = await run(() => change.run(['new', 'nope', 'Nope'], { cwd: e.brain }), none.path);
   assert.equal(code, 1, out);

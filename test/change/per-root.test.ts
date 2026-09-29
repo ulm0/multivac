@@ -280,7 +280,11 @@ test("the brain's own grapher wins over the ecosystem's everywhere the brain is 
   const { renderBrainDoor } = await import('../../src/doors/brain.js');
   const door = renderBrainDoor(cfg, 1);
   assert.match(door, /kept fresh for you by `codegraph` at `\.codegraph\/codegraph\.db` — refreshed at `change land` and `change close`; it is built in each checkout, so never commit it\./);
-  assert.equal(door.includes('graphify'), false);
+  // MV-148: graphify is named for api alone, under the siblings' head — never
+  // as the brain's own grapher.
+  assert.doesNotMatch(door, /kept fresh for you by `graphify`/);
+  assert.match(door, /^- The other code repos keep their own graphs\./m);
+  assert.match(door, /^ {2}- `graphify` at `graphify-out\/graph\.json` \(api: `\.\.\/acme-api`\)/m);
 
   const page = renderFlow(cfg);
   assert.match(page, /no `\.codegraph\/codegraph\.db`, refreshed .*at `change close`, in brain$/m);

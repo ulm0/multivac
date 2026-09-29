@@ -177,7 +177,15 @@ the steps and their gates, never what was already written.
 The code-graph tool for every root that does not declare its own: a repo's
 `grapher:` wins in that repo, and the brain's own entry in the brain.
 `none` declares no grapher, here or on a repo, and is never read as a tool's
-name. The name must be one multivac **speaks** — `graphify` or
+name.
+
+The brain is a root only when it holds code — when a [`repos`](#repos) entry
+at path `.` is the brain (`brain: .`). A brain with no such entry keeps no code
+graph, whatever this key says: the key then declares the grapher of the code
+repos, and the brain door says where each of their graphs is asked. `init`
+writes `brain: .` when the repo it scaffolds holds any file — a README, a
+LICENSE or a `.gitignore` included. See
+[A brain that holds no code](../graphers-and-sdd#a-brain-that-holds-no-code). The name must be one multivac **speaks** — `graphify` or
 `codegraph` — or one you declare yourself under [`graphers`](#graphers).
 multivac never derives an artifact path or a refresh command from a name,
 because inventing either is inventing a fact.
@@ -590,7 +598,10 @@ tool name there is refused when the config loads.
 
 **The brain's own entry.** In a brain that is its own code repo, the `brain`
 entry decides the brain's grapher exactly as any repo's entry decides its own,
-and a top-level `none` never overrides it. For the SDD, the brain's entry may
+and a top-level `none` never overrides it. Without an entry at path `.`, the
+brain holds no code: no grapher resolves there, and nothing builds, refreshes,
+gates, lands or reports a graph in it. Add `brain: .` — inside a change, once
+the config is committed — when the brain starts holding code. For the SDD, the brain's entry may
 repeat the top-level tool or declare one where the top level has none; a
 different tool, or `none` under a top-level tool, is refused:
 

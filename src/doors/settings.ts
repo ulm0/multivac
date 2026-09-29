@@ -87,18 +87,39 @@ type Json = Record<string, unknown>;
  *   the first word MV-115's lookup reads. Empty exports nothing, so a hook for
  *   an entry declaring none keeps its bytes. The values are bare words (a test
  *   holds that), so nothing is quoted.
+ * - `follow` (MV-148) is the hook of a brain that holds no code: it runs only
+ *   in the checkout holding the edited file, and only when that checkout holds
+ *   the artifact and is no checkout of a brain; otherwise it exits 0 having run
+ *   nothing. Without it the bytes are the ones a brain that holds code and a
+ *   consumer have always had.
  */
-export function refreshHookCmd(refresh: string, env: Record<string, string> = {}, artifact?: string): string {
+export function refreshHookCmd(
+  refresh: string,
+  env: Record<string, string> = {},
+  artifact?: string,
+  follow = false,
+): string {
   const exported = Object.entries(env).map(([k, v]) => `${k}=${v}`).join(' ');
   // MV-140: the repo of the file just edited, when that repo holds the graph.
   // The hook ran in the session's directory, so an edit inside a named
   // sibling's worktree refreshed the brain's graph and left the sibling's
   // stale. The harness hands the payload on stdin; `file_path` is read in the
   // foreground, before the refresh is detached. Anything else stays where it was.
+  //
+  // MV-148: in a brain that holds no code, "where it was" is the brain, and one
+  // edit of a brain file built a graph there again after a human had removed
+  // the install. The follow form stops instead of falling through, and skips a
+  // toplevel carrying the brain's config — the brain itself, and each of its
+  // change worktrees, whose toplevel is not the session's directory, so a
+  // compare with `pwd` would miss them. A kept install is never refreshed by
+  // it. Spelled out literally, no interpolation in the test, so the law can
+  // read it; and never a forced rebuild — that is `change land`'s to decide.
   const here = artifact
     ? `f=$(sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -n 1); ` +
       `t=$(git -C "$(dirname "\${f:-.}")" rev-parse --show-toplevel 2>/dev/null); ` +
-      `[ -n "$t" ] && [ -e "$t/${artifact}" ] && cd "$t"; `
+      (follow
+        ? `[ -n "$t" ] && [ ! -e "$t/.multivac/config.yml" ] && [ -e "$t/${artifact}" ] && cd "$t" || exit 0; `
+        : `[ -n "$t" ] && [ -e "$t/${artifact}" ] && cd "$t"; `)
     : '';
   return (
     `${REFRESH_HEAD} ${here}PATH="$PATH:$PWD/node_modules/.bin"; ${exported ? `export ${exported}; ` : ''}` +
@@ -253,10 +274,18 @@ function duplicateNotice(hooks: Json, event: string): string | null {
  * `refresh` is the declared grapher's refresh command, and only when its
  * binary is present; null/undefined writes no refresh entry at all. `env` is
  * that grapher's opt-out environment, which the hook exports (MV-124).
+ * `follow` gives a brain that holds no code the hook that follows edits into
+ * the code repos and never runs in a checkout of the brain (MV-148).
  */
 export function mergeClaudeSettings(
   raw: string | null,
-  opts: { refresh?: string | null; matcher?: string; env?: Record<string, string>; artifact?: string } = {},
+  opts: {
+    refresh?: string | null;
+    matcher?: string;
+    env?: Record<string, string>;
+    artifact?: string;
+    follow?: boolean;
+  } = {},
 ): { text: string; notices: string[] } {
   let obj: unknown = {};
   if (raw !== null && raw.trim() !== '') {
@@ -293,7 +322,9 @@ export function mergeClaudeSettings(
     if (added) notices.push(added);
   }
   if (opts.refresh) {
-    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh, opts.env, opts.artifact), { matcher });
+    ensureEvent(hooks as Json, 'PostToolUse', ownsRefresh, refreshHookCmd(opts.refresh, opts.env, opts.artifact, opts.follow), {
+      matcher,
+    });
   } else {
     // No grapher declared, or its binary is gone: our hook goes with it —
     // a hook pointing at a missing tool is worse than no hook. Every match is

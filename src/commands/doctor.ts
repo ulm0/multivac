@@ -19,7 +19,7 @@ import { sectionDoors } from '../doors/brain.js';
 import { CANONICAL_DOOR, hasGrapherSection } from '../doors/link.js';
 import * as git from '../lib/git.js';
 import { initState, stateLabel } from '../lib/init-state.js';
-import { say, warn } from '../lib/out.js';
+import { andList, say, warn } from '../lib/out.js';
 import {
   binaryMissing,
   doorTargets,
@@ -30,6 +30,9 @@ import {
 } from '../adapters/registry.js';
 import {
   adaptersByRoot,
+  askedGraphers,
+  brainHoldsCode,
+  brainHook,
   type ReadOnly,
   type SddRoot,
   missingRequired,
@@ -39,8 +42,18 @@ import {
   sddRoots,
 } from '../adapters/detect.js';
 import { flowLines, proofOf, scaffoldCommands, stepsGating } from '../adapters/sdd.js';
-import { cloneFix, cloneState, leftoverBodies, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
-import { graphScopes } from '../adapters/refresh.js';
+import {
+  cloneFix,
+  cloneState,
+  leftoverBodies,
+  leftoverGraphs,
+  leftoverNoun,
+  leftoverSdds,
+  projectDocVerdict,
+  type LeftoverGraph,
+} from '../lib/repo-state.js';
+import { graphScopes, ignoredDirs, ignoreLinesToAdd, nodesUnder, type GraphScope } from '../adapters/refresh.js';
+import { graphIgnoreLines } from '../lib/code-in-change.js';
 import { readLaw } from '../change/reserve.js';
 import {
   HOOKS_DIR,
@@ -376,15 +389,88 @@ async function graphStale(dir: string, spec: AdapterSpec): Promise<boolean> {
   return false;
 }
 
+/** A directory as the human types it: single-quoted when it holds whitespace or a quote. */
+const typed = (dir: string): string => (/[\s'"]/.test(dir) ? `'${dir.replace(/'/g, `'\\''`)}'` : dir);
+
+/**
+ * MV-148. A grapher install kept in a brain that holds no code, with its
+ * removal — printed, never run (MV-129: `doctor` runs no vendor). Everything
+ * in it is read off the registry entry, never off the grapher's name: the
+ * vendor's own uninstall per platform found, the one its entry marks
+ * `uninstallFirst` leading (gemini's stops early once another's has removed
+ * the shared section, measured on graphify 0.9.29); then the vendor's own
+ * removal (`remove`, codegraph's `uninit --force`), or removing its files. The
+ * uninstall drops the whole hook group it wrote, a command a human added to
+ * it included, and leaves the emptied list behind, so the human is told to
+ * review the diff before committing.
+ */
+function leftoverGraphLine(brain: string, cfg: Config, l: LeftoverGraph): string | null {
+  const spec = grapherSpec(l.name, cfg.graphers);
+  if (!spec) return null;
+  const local = l.kind === 'local';
+  const what = leftoverNoun(l);
+  const file = l.artifact ?? (l.stateDir ? `${l.stateDir}/` : l.ignoreFile);
+  const named = [...l.platforms, ...(file ? [file] : [])];
+  const found = l.platforms.length > 0 ? `platforms ${andList(named)}` : andList(named);
+  const state = local ? 'local' : l.tracked ? 'tracked' : 'untracked';
+  const hooked = l.platforms.length > 0 && spec.harness;
+  // MV-143: a section only where a platform found writes one, hooks only where
+  // one writes a hook that sends the agent to the graph — graphify's `agents`
+  // platform writes a skill and neither.
+  const at = Object.values(spec.harness?.platforms ?? {}).filter((p) => l.platforms.includes(p.key));
+  const section = at.some((p) => p.section !== 'none');
+  const hooks = at.some((p) => p.hooks);
+  const sends = section && hooks ? 'section and hooks still send' : section ? 'section still sends' : hooks ? 'hooks still send' : null;
+  const kept =
+    `kept until you remove it; it ${local ? 'indexes' : 'graphs'} none of the code` +
+    (sends ? `, and ${l.name}'s own ${sends} agents to it` : '');
+  const top = spec.local.map((g) => g.split('/')[0]).find((t) => !/[*?[{]/.test(t));
+  const art = spec.artifacts[0];
+  const files = [art, ...(spec.graphignoreFile ? [spec.graphignoreFile] : [])];
+  const gone = [top ?? art, ...(spec.graphignoreFile ? [spec.graphignoreFile] : [])];
+  const removal =
+    spec.remove ?? `git rm -q --ignore-unmatch -- ${files.join(' ')} && rm -${top ? 'rf' : 'f'} ${gone.join(' ')}`;
+  const steps = [...(hooked ? l.platforms.map((k) => spec.harness!.uninstall.replace('{key}', k)) : []), removal];
+  const tail = hooked
+    ? '; review `git diff` (the uninstall drops the whole hook group it wrote, commands you added to it included, and leaves an emptied hook list in each settings file it touched), then `multivac doors` and commit'
+    : local
+      ? ', then `multivac doors`'
+      : ', then `multivac doors` and commit';
+  return (
+    label('grapher') +
+    `leftover ${l.name} ${what} @ brain: ${found} (${state}) — ${kept}. ` +
+    `Remove: cd ${typed(brain)} && ${steps.join(' && ')}${tail}`
+  );
+}
+
 async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
   // The same list the lifecycle builds from, not a second copy of it: a report
   // and a runner that enumerate the scopes separately can disagree about which
   // scopes exist, and the report is the only one anybody reads.
   const scopes = await graphScopes(brain, cfg);
+  // MV-148: a brain that holds no code resolves no grapher. Where one is asked
+  // from it, or an install an earlier release left is found, it says so, in
+  // place of the out-of-scope line: "no grapher declared" was false there.
+  const holds = brainHoldsCode(cfg);
+  const leftovers = holds ? [] : await leftoverGraphs(cfg, brain);
+  const codeless = !holds && (askedGraphers(cfg).size > 0 || leftovers.length > 0);
   // No present root resolves a grapher: silence, as the SDD pass has it.
-  if (!scopes.some((s) => s.name)) return [];
+  if (!scopes.some((s) => s.name) && !codeless) return [];
   const out: string[] = [];
   for (const s of scopes) {
+    if (s.scope === 'brain' && codeless) {
+      // Never a refresh, a build or an install for this brain (MV-148): the
+      // fact, then each kept install with its removal.
+      out.push(
+        label('grapher') +
+          "brain: holds no code (no repos entry is the brain), so no code graph is built, gated or refreshed here — agents here ask the code repos' graphs; if this repo holds code, add `brain: .` under repos:",
+      );
+      for (const l of leftovers) {
+        const line = leftoverGraphLine(brain, cfg, l);
+        if (line !== null) out.push(line);
+      }
+      continue;
+    }
     if (!s.name || s.readOnly) {
       // `grapher: none`, or nothing resolving here: scope, never an unverified
       // tool called `none` (MV-122). A read-only root is scope too, with no
@@ -428,6 +514,7 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
           ? ` · IGNORED by .gitignore → remove the rule, then \`git -C ${s.dir} add ${art}\`, then commit it`
           : ` · NOT COMMITTED → \`git -C ${s.dir} add ${art}\`, then commit it`;
     }
+    if (st.state === 'installed') msg += await ignoreFacts(brain, cfg, s, spec);
     // MV-131: the grapher's own install into each declared harness. Reported
     // from its probe file; doctor runs nothing.
     if (spec.harness) {
@@ -458,19 +545,80 @@ async function grapherLines(brain: string, cfg: Config): Promise<string[]> {
   if (out.length > 0) {
     out.push(label('grapher') + 'navigation: ungateable — no committed file records that a graph was asked before the tree was read; a nudge, never a gate');
   }
-  // Where the refresh actually comes from. The harness post-edit hook is the
-  // live path when a declared door target has one; git hooks never refresh.
-  if (out.length > 0) {
-    const postEdit = cfg.doors.filter((d) => doorTargets[d]?.hookConfig?.postEdit);
-    out.push(
-      label('grapher') +
-        (postEdit.length > 0
-          ? `refresh path: ${postEdit.join(', ')} post-edit hook (installed when the binary is present) · ` +
-            '`change land` commits it on the change branch · `change close` is the net · git hooks never refresh'
-          : 'refresh path: `change land` and `change close` only — no declared harness has a post-edit hook · git hooks never refresh'),
-    );
+  if (out.length > 0) out.push(label('grapher') + (await refreshPath(brain, cfg)));
+  return out;
+}
+
+/**
+ * MV-148, FR-030. What the grapher's ignore file lacks at an installed root
+ * whose artifact is committed, read only — `doctor` never writes it, since a
+ * line appended over a built graph made every plain refresh refuse; the next
+ * `change land` naming the root appends, and rebuilds only where the graph
+ * holds nodes under what it appended. The derived lines the file does not
+ * hold in any spelling, a file no clone or worktree receives, and the nodes
+ * the graph still holds under its directory lines, with the rebuild to run.
+ * Only this root's grapher line is reached, so a read-only root gets none.
+ */
+async function ignoreFacts(brain: string, cfg: Config, s: GraphScope, spec: AdapterSpec): Promise<string> {
+  const file = spec.graphignoreFile;
+  if (!file || spec.artifactKind !== 'shared') return '';
+  const text = await readFile(join(s.dir, file), 'utf8').catch(() => null);
+  let out = '';
+  const lack = ignoreLinesToAdd(text ?? '', graphIgnoreLines(cfg, brain, s.scope, spec));
+  if (lack.length > 0) {
+    out +=
+      ` · ${file} lacks ${lack.length} line(s) multivac keeps out of the graph (${lack.join(', ')}) — ` +
+      `the next \`change land\` naming ${s.scope} appends them, and rebuilds if the graph holds nodes under them`;
+  }
+  if (text !== null && !(await git.inHead(s.dir, file))) out += ` · ${file} is not committed — a clone or worktree graphs without it`;
+  const held = await nodesUnder(spec, s.dir, ignoredDirs(text ?? '', false));
+  if (held > 0 && spec.rebuild) {
+    out += ` · the graph still holds ${held} node(s) under ${file}'s lines — a plain refresh refuses to shrink; run \`${spec.rebuild}\` there`;
   }
   return out;
+}
+
+/**
+ * Where the refresh actually comes from. The harness post-edit hook is the
+ * live path when a declared door target has one; git hooks never refresh.
+ *
+ * MV-148: in a brain that holds no code that hook follows edits into the code
+ * repos' checkouts, and `brainHook` — the answer `doors` wires by — says
+ * whether it is wired and, where it is not, why, in the words `doors` prints.
+ * Where a repo reaches the binary only in its own node_modules/.bin, the hook
+ * runs nothing in that repo's change worktrees, which hold none: said here,
+ * the one place that reads this machine's disk for it. A brain that holds
+ * code keeps the line it always had.
+ */
+async function refreshPath(brain: string, cfg: Config): Promise<string> {
+  const postEdit = cfg.doors.filter((d) => doorTargets[d]?.hookConfig?.postEdit);
+  const only = 'refresh path: `change land` and `change close` only — ';
+  const never = ' · git hooks never refresh';
+  if (postEdit.length === 0) return `${only}no declared harness has a post-edit hook${never}`;
+  const installed = ' (installed when the binary is present)';
+  const net = `${installed} · \`change land\` commits it on the change branch · \`change close\` is the net`;
+  if (brainHoldsCode(cfg)) return `refresh path: ${postEdit.join(', ')} post-edit hook${net}${never}`;
+  const hook = await brainHook(cfg, brain);
+  // An unverified name is wired by nothing and refreshed by nothing (MV-59):
+  // `doors` prints what to declare, and so does its line above.
+  if ((hook?.kind === 'follow' || hook?.kind === 'unresolved') && grapherSpec(hook.name, cfg.graphers) === null) {
+    return `refresh path: none — ${hook.name} is not verified, so no post-edit hook, \`change land\` or \`change close\` runs it${never}`;
+  }
+  switch (hook?.kind) {
+    case 'follow': {
+      const local =
+        hook.local.length === 0
+          ? ''
+          : ` · not into the change worktrees of ${andList(hook.local)}: they reach ${hook.name} only in their own node_modules/.bin, which a worktree does not hold`;
+      return `refresh path: ${postEdit.join(', ')} post-edit hook follows your edits into the code repos' checkouts${installed}${local}${net.slice(installed.length)}${never}`;
+    }
+    case 'mixed':
+      return `${only}the code repos resolve ${andList(hook.names)}, and the brain's one post-edit hook runs one command${never}`;
+    case 'unreachable':
+      return `${only}\`${hook.bin}\` is not reachable from every code repo that resolves ${hook.name} (PATH, or each one's node_modules/.bin)${never}`;
+    default:
+      return `refresh path: none yet — no writable code repo resolves ${hook?.name ?? 'a grapher'}, so the brain's post-edit hook has no checkout to follow edits into${never}`;
+  }
 }
 
 async function reposLine(brain: string, cfg: Config): Promise<string> {

@@ -20,7 +20,7 @@ import { gitFailure, gitlinkInIndex, inHead, lsTreeGitlink, submoduleAdd } from 
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
-import { cloneFix, cloneState, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
+import { cloneFix, cloneState, leftoverGraphs, leftoverNoun, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
 import { adapterFor } from '../adapters/detect.js';
 import { grapherSpec, sddSpec } from '../adapters/registry.js';
 import { initState } from '../lib/init-state.js';
@@ -316,8 +316,13 @@ export async function reposCheck(brainDir: string): Promise<{ lines: string[]; e
     // said on its line and never counted: nothing reads it, and `doctor`
     // names the removal. Only where the brain resolves an SDD — with none, a
     // code repo's own install is that team's, and the line is what it was.
-    const left =
-      e.isBrain || adapterFor(cfg, 'brain', 'sdd') === undefined
+    // MV-148: a brain that holds no code resolves no grapher, so no graph is
+    // asked of it and none fails its line; a grapher install an earlier
+    // release left there is said the same way, and `doctor` names its removal.
+    // `leftoverGraphs` answers nothing where the brain holds code.
+    const left = e.isBrain
+      ? (await leftoverGraphs(cfg, dir)).map((l) => `; leftover ${l.name} ${leftoverNoun(l)} (${l.tracked ? 'tracked' : 'untracked'})`).join('')
+      : adapterFor(cfg, 'brain', 'sdd') === undefined
         ? ''
         : (await leftoverSdds(dir)).map((l) => `; leftover ${l.sdd} install (${l.tracked ? 'tracked' : 'untracked'})`).join('');
     if (fails.length > 0) {

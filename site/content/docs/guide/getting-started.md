@@ -31,8 +31,8 @@ init:   4. a human enacts each row in .multivac/invariants.md, then `multivac do
 ```
 
 Step 3 is the branch [Session zero](../session-zero) turns on. `init` prints
-both and marks the one that fits this directory: tracked source means
-discovery, an empty repo means the interview. A new brain for code that lives
+both and marks the one that fits this directory: source, tracked or not,
+means discovery, an empty repo means the interview. A new brain for code that lives
 in other repos is empty, and still wants discovery. Declare `repos:` before the
 first commit: after it, a changed config needs an open change.
 
@@ -108,7 +108,11 @@ brain empty — load the multivac skill to fill it.
 ```
 
 With `--sdd` or `--grapher`, the door also carries that tool's flow and the
-graph's verbs, and `init` installs the tool in the brain. The SDD stays there:
+graph's verbs. `init` installs the SDD in the brain, and the grapher there only
+when the brain holds code — when the directory holds any file, so its config
+gets `brain: .`. A new brain for code that lives in other repos is empty: it
+keeps no code graph, each code repo keeps its own, and the door says where to
+ask them. The SDD stays in the brain:
 it is where every change's specs are written, and no code repo installs it. For
 spec-kit, the install also writes three skeleton templates where spec-kit looks
 first, and says so:
@@ -185,8 +189,8 @@ repos:
   brain: .
 ```
 
-`mvac init` writes exactly that when the repo it initializes already has
-tracked source. Anchors then target `brain:<glob>`, `mvac change` branches
+`mvac init` writes exactly that when the repo it initializes already holds
+source, tracked or not. Anchors then target `brain:<glob>`, `mvac change` branches
 right here, and `doctor` stops looking for a brain mount there is no reason
 to have — nothing is submoduled into itself. Sibling repos are more keys
 alongside it whenever the project grows into an ecosystem.

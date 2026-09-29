@@ -11,12 +11,12 @@
 // branch makes the range reader binding, and that is not on disk (`doctor`).
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import picomatch from 'picomatch';
 import type { Config } from '../types.js';
 import { changesDir, parseChange, type ChangeFile } from '../change/file.js';
 import { adapterFor, bodyGlobs, sddGoverning } from '../adapters/detect.js';
-import { doorTargets, grapherSpec, sddNames, sddSpec, type AdapterSpec } from '../adapters/registry.js';
+import { doorTargets, grapherNames, grapherSpec, sddNames, sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { CHANGES_DIR } from './config.js';
 import { dim, red } from './out.js';
 import { currentBranch, run as git } from './git.js';
@@ -110,16 +110,74 @@ export function nonCodeGlobs(cfg: Config, repoKey?: string): string[] {
     for (const step of spec.steps ?? []) if (step.artifact) out.add(`${step.artifact.split('/')[0]}/**`);
     for (const p of spec.projectSteps ?? []) out.add(p.artifact);
   }
-  const graphers = new Set<string>();
+  // MV-148: every KNOWN grapher's paths and every one declared under
+  // `graphers:`, whichever resolves here — as for the SDDs above. A brain that
+  // holds no code resolves no grapher, so the install an earlier release left
+  // there is no resolved grapher's, and the commit removing it was refused as
+  // code landing outside a change; so was a code repo's switch from one grapher
+  // to another. A grapher some root resolves keeps its harness directories
+  // whole, as it always did. One no root resolves is taken by name, as MV-147
+  // takes an SDD's bodies: its artifact, outputs and ignore file, its hook
+  // files, and every path each platform's install writes, as the entry
+  // measured them (`files`: `.codex/skills/graphify/**`, opencode's plugin and
+  // config) — never a glob guessed from a directory's name — so the rest of
+  // such a directory (`.codex/config.toml`) stays code.
+  const resolved = new Set<string>();
   for (const key of ['brain', ...Object.keys(cfg.repos)]) {
     const g = adapterFor(cfg, key, 'grapher');
-    if (g) graphers.add(g);
+    if (g) resolved.add(g);
   }
-  for (const name of graphers) {
+  for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
     const g = grapherSpec(name, cfg.graphers);
-    if (g) vendor(g);
+    if (!g) continue;
+    if (resolved.has(name)) {
+      vendor(g);
+      continue;
+    }
+    for (const p of [...g.shared, ...g.local, ...g.artifacts, ...(g.harness?.hookFiles ?? [])]) out.add(p);
+    if (g.graphignoreFile) out.add(g.graphignoreFile);
+    for (const pl of Object.values(g.harness?.platforms ?? {})) for (const f of pl.files) out.add(f);
   }
   return [...out];
+}
+
+/**
+ * MV-148. The lines a root's grapher keeps out of its graph, derived from what
+ * is not code there — never a list. The fixed five missed what a harness
+ * installs: a fresh brain with doors claude and codex graphed 228 of its 305
+ * nodes from `.agents/` and `.codex/` after one refresh, a consumer 427 of 501
+ * from its brain mount, and a code repo's `specs/` line hid its own
+ * `specs/*.spec.ts` (graphify 0.9.29). So: each top-level directory of the
+ * root's non-code set, anchored `/<dir>/` — an unanchored `specs/` also hid
+ * `src/specs/` — but the mount and every known grapher's own output directory
+ * (graphify skips `graphify-out/` itself, and indexes no `.db`); in a code repo
+ * the mount; and every declared repo nested inside the root, relative. The
+ * SDD's step-artifact directories come in only where the non-code set holds
+ * them, the brain (MV-146). Directories only, so a root's own Markdown and
+ * documentation directories stay in its graph. `[]` for a grapher with no
+ * ignore file.
+ */
+export function graphIgnoreLines(cfg: Config, brain: string, scope: string, spec: AdapterSpec): string[] {
+  if (!spec.graphignoreFile) return [];
+  const inBrain = scope === 'brain' || cfg.repos[scope]?.isBrain === true;
+  const skip = new Set<string>([cfg.mount]);
+  for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
+    for (const p of grapherSpec(name, cfg.graphers)?.local ?? []) skip.add(p.split('/')[0]!);
+  }
+  const out = new Set<string>();
+  for (const g of nonCodeGlobs(cfg, scope)) {
+    const dir = /^([^/*?[\]{}!]+)\/\*\*$/.exec(g)?.[1];
+    if (dir !== undefined && !skip.has(dir)) out.add(`/${dir}/`);
+  }
+  if (!inBrain) out.add(`/${cfg.mount}/`);
+  const root = resolve(brain, inBrain ? '.' : (cfg.repos[scope]?.path ?? '.'));
+  for (const e of Object.values(cfg.repos)) {
+    const rel = relative(root, resolve(brain, e.path));
+    // The root itself (`brain: .`), and anything outside it, is no line.
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) continue;
+    out.add(`/${rel.split(sep).join('/')}/`);
+  }
+  return [...out].sort();
 }
 
 async function readChange(brainDir: string, slug: string, rev: string | null, dir = CHANGES_DIR): Promise<ChangeFile | null> {

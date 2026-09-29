@@ -7,8 +7,8 @@
 
 import { access, readdir, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { delimiter, join, resolve } from 'node:path';
-import { doorTargets, sddNames, sddSpec, type AdapterSpec, type SddScaffold } from './registry.js';
+import { delimiter, dirname, join, resolve } from 'node:path';
+import { doorTargets, grapherSpec, sddNames, sddSpec, type AdapterSpec, type SddScaffold } from './registry.js';
 import { isShallow, run as gitRun } from '../lib/git.js';
 import type { Config, RepoEntry } from '../types.js';
 
@@ -90,7 +90,19 @@ function ownDecl(cfg: AdapterDecls, root: string | null, kind: 'sdd' | 'grapher'
  * reach every declared repo, and each paid a vendor install, a door block and
  * a constitution for specs that are written in the brain. Which SDD governs a
  * code repo's CODE is a different question, `sddGoverning`'s. Graphers still
- * resolve per root.
+ * resolve per root, with one exception.
+ *
+ * MV-148: the brain resolves a grapher only where a repos entry is the brain
+ * (`brainHoldsCode`). A brain no entry declares holds the law, the changes and
+ * their specs, which are not code, and it resolved the ecosystem's grapher
+ * for itself: `init` installed 23 graphify files and a 2-node graph of
+ * `CLAUDE.md`, the first close committed 1,261 lines of a graph answering from
+ * graphify's own skill, and codegraph built an index of 0 nodes. Every
+ * surface reading through here — the build, the refresh, the harness install,
+ * both graph gates, land, `repos check`, `doctor`, `init`'s lookup, the hook
+ * wiring and the ecosystem graph — skips such a brain with no edit of its own.
+ * A code repo keyed to the brain (`core: .`) is that entry, and resolves as
+ * before.
  */
 export function adapterFor(
   cfg: AdapterDecls,
@@ -99,6 +111,7 @@ export function adapterFor(
 ): string | undefined {
   const own = entryOf(cfg, root);
   if (kind === 'sdd' && root !== 'brain' && !own?.isBrain) return undefined;
+  if (kind === 'grapher' && root === 'brain' && own === undefined) return undefined;
   const name = ownDecl(cfg, root, kind) ?? ownDecl(cfg, null, kind);
   return name && name !== NO_ADAPTER ? name : undefined;
 }
@@ -189,6 +202,121 @@ export function adaptersByRoot(cfg: AdapterDecls, kind: 'sdd' | 'grapher'): Map<
     if (name !== undefined) groups.set(name, [...(groups.get(name) ?? []), root]);
   }
   return groups;
+}
+
+/**
+ * MV-148. Whether the brain holds code: some repos entry is the brain — `brain:
+ * .`, or any key whose path is the brain (`isBrain`, derived at load). A brain
+ * no entry declares holds the law, the changes and their specs, which are not
+ * code, and its code graph answered questions about the code from them.
+ */
+export function brainHoldsCode(cfg: AdapterDecls): boolean {
+  return Object.values(cfg.repos ?? {}).some((r) => r.isBrain);
+}
+
+/**
+ * MV-148. Which graphers an agent in the brain asks, and in which repos: per
+ * grapher, in order of first appearance, the brain's own under the key of the
+ * entry that is the brain, where it holds code, then each code repo not marked
+ * `managed: false`, in config order. Synchronous, so it asks git nothing: a
+ * shallow or unsynced clone is still named — `readOnly` answers whether
+ * multivac may write there (MV-125), not whether an agent may ask there. When
+ * no repo resolves a grapher, the ecosystem's own declaration maps to no repo,
+ * so the door can say no code repo resolves it; nothing declared is an empty
+ * map. Every name goes through `adapterFor` or `ownDecl`, the one read.
+ */
+export function askedGraphers(cfg: AdapterDecls): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  const add = (name: string | undefined, key: string): void => {
+    if (name !== undefined) groups.set(name, [...(groups.get(name) ?? []), key]);
+  };
+  const repos = Object.entries(cfg.repos ?? {});
+  const brainKey = repos.find(([, r]) => r.isBrain)?.[0];
+  if (brainKey !== undefined) add(adapterFor(cfg, 'brain', 'grapher'), brainKey);
+  for (const [key, r] of repos) if (!r.isBrain && r.managed !== false) add(adapterFor(cfg, key, 'grapher'), key);
+  if (groups.size === 0) {
+    const top = ownDecl(cfg, null, 'grapher');
+    if (top && top !== NO_ADAPTER) groups.set(top, []);
+  }
+  return groups;
+}
+
+/**
+ * MV-148. The one grapher the brain's post-edit hook is declared to run —
+ * whether this machine can wire it is `brainHook`'s. Where the brain holds
+ * code, its own, as always (MV-52). Where it holds none, the single grapher
+ * the code repos asked from the brain resolve — a repo resolving none does not
+ * disagree — because one hook runs one command (`REFRESH_HEAD`, MV-52 and
+ * MV-124). Two names, or no repo at all, and no hook follows edits from the
+ * brain: `doors` says so.
+ */
+export function brainRefreshGrapher(cfg: AdapterDecls): string | undefined {
+  if (brainHoldsCode(cfg)) return adapterFor(cfg, 'brain', 'grapher');
+  const named = [...askedGraphers(cfg)].filter(([, keys]) => keys.length > 0);
+  return named.length === 1 ? named[0][0] : undefined;
+}
+
+/**
+ * MV-148. The post-edit hook of a brain that holds no code, or why it has none.
+ * `follow`: it runs `name` in whichever of `dirs` holds the edited file;
+ * `local` names the repos that reach its binary only in their own
+ * node_modules/.bin, which their change worktrees do not hold. `mixed`: the
+ * code repos resolve several graphers, and one hook runs one
+ * command. `unresolved`: no writable code repo resolves the grapher declared,
+ * so there is no checkout to follow edits into. `unreachable`: `bin` is not
+ * found from every one of them.
+ */
+export type BrainHook =
+  | { kind: 'follow'; name: string; dirs: string[]; local: string[] }
+  | { kind: 'mixed'; names: string[] }
+  | { kind: 'unresolved'; name: string }
+  | { kind: 'unreachable'; name: string; bin: string };
+
+/**
+ * MV-148. Which hook a brain that holds no code wires, from the one lookup
+ * (MV-123) made where the hook will run: the hook moves into the code repo of
+ * the file edited before it looks, so it reaches PATH and THAT repo's own
+ * node_modules/.bin, never the brain's. A copy in the brain, or in one of two
+ * repos, wired a hook that refreshed nothing in the other. So the binary must
+ * be found from every writable code repo resolving the grapher, which a PATH
+ * entry satisfies for all of them. Ceiling: a copy found only in a repo's
+ * node_modules/.bin is reached from that repo's checkout and not from its
+ * change worktrees, where git never puts an untracked node_modules — there the
+ * hook runs nothing, silently, and those are the edits it exists for. The
+ * hook's bytes stay pinned, so it is stated: `local` names those repos and
+ * `doctor` says it. `doors` wires by this answer and `doctor`
+ * reports it, so the two cannot disagree; the door and flow.md, which read
+ * declarations alone (MV-93), say "after your edits" of the grapher the hook
+ * is declared to run (`brainRefreshGrapher`), and where this machine cannot
+ * wire it, `doors` and `doctor` say so. An unverified name is returned as it
+ * is: `doors` names it and wires nothing, as for any root, and `doctor` says
+ * nothing refreshes it. Null where the brain holds code — its hook is its
+ * own, as always — or where no grapher is asked from it.
+ */
+export async function brainHook(cfg: Config, brain: string): Promise<BrainHook | null> {
+  if (brainHoldsCode(cfg)) return null;
+  const asked = askedGraphers(cfg);
+  const name = brainRefreshGrapher(cfg);
+  if (name === undefined) {
+    const named = [...asked].filter(([, keys]) => keys.length > 0).map(([n]) => n);
+    if (named.length > 1) return { kind: 'mixed', names: named };
+    const [declared] = asked.keys();
+    return declared === undefined ? null : { kind: 'unresolved', name: declared };
+  }
+  const keys = asked.get(name) ?? [];
+  const dirs = keys.map((key) => resolve(brain, cfg.repos[key]!.path));
+  const spec = grapherSpec(name, cfg.graphers);
+  const local: string[] = [];
+  if (spec !== null) {
+    for (const [i, root] of dirs.entries()) {
+      for (const bin of spec.required) {
+        const found = await findBinary(bin, root);
+        if (found === null) return { kind: 'unreachable', name, bin };
+        if (dirname(found) === localBin(resolve(root)) && !local.includes(keys[i]!)) local.push(keys[i]!);
+      }
+    }
+  }
+  return { kind: 'follow', name, dirs, local };
 }
 
 /**

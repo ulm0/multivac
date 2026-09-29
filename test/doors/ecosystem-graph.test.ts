@@ -112,4 +112,17 @@ test('the doors name it, with graphify\'s --graph verbs only where graphify reso
   assert.deepEqual(ecosystemGraphLines(without, 'brain', ''), [
     "- How the repos, the law's rows, their anchors and the changes relate is `.multivac/ecosystem.json`, rendered from the brain's declarations, as plain node-link JSON.",
   ]);
+  // MV-148: a brain that holds no code resolves no grapher of its own, so the
+  // brain's verbs follow the graphers asked from it — its code repos'
+  // graphify, or the ecosystem's declaration with no repo declared yet.
+  const lone = join(mkdtempSync(join(tmpdir(), 'mvac-eco-')), 'brain');
+  initRepo(lone, { '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\n', '.multivac/invariants.md': '# Invariants\n' });
+  for (const c of [withG, await loadConfig(lone)]) {
+    const door = renderBrainDoor(c, 1);
+    for (const verb of ['query "<question>"', 'explain "<row id or change slug>"', 'path "<A>" "<B>"']) {
+      assert.ok(door.includes(`\`graphify ${verb} --graph .multivac/ecosystem.json\``), verb);
+    }
+  }
+  // A consumer asks what resolves for its own key: a codegraph repo gets none.
+  assert.doesNotMatch(renderConsumerDoor(without, 'api'), /--graph/);
 });

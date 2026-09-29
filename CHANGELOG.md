@@ -13,8 +13,9 @@ keeping a second one (MV-78).
 ## Unreleased
 
 Two behaviours changed in a way that can newly refuse what used to pass: a
-brain that was loading, and an opsx brain's slugs and archives. Read the first
-two items before upgrading.
+brain that was loading, and an opsx brain's slugs and archives. A third changes
+where a code graph is kept: a brain with no `repos:` entry at `.` stops graphing
+itself. Read the first three items before upgrading.
 
 **Changed — read before upgrading**
 
@@ -102,6 +103,49 @@ two items before upgrading.
     the validator and the scaffold; the calls the agent makes follow the
     agent's own environment, where `OPENSPEC_TELEMETRY=0` or `DO_NOT_TRACK=1`
     stops them sending.
+- **A brain that holds no code keeps no code graph, and says where to ask
+  (MV-148).** A brain holds code only where a `repos:` entry is the brain
+  (`brain: .`). One that did not still resolved the ecosystem's grapher for
+  itself: `init` installed 23 graphify files and a 2-node graph of `CLAUDE.md`,
+  the first close committed a graph that answered a code question from
+  graphify's own skill, and codegraph built an index of 0 nodes. Such a brain
+  is now never built, refreshed, installed into, gated or landed, and `init`,
+  `doctor` and `change plan` say so, with how to declare `brain: .`.
+  - **A brain holding source with no `brain: .` entry is no longer graphed**
+    until you add one, inside a change. `init` writes it when the repo it
+    scaffolds holds any file, tracked or untracked; `init --grapher <name>` in
+    an empty repo no longer needs the binary, and exits 0.
+  - **An install an earlier release left is kept.** `doctor` prints its
+    removal — graphify's own uninstall per platform found, gemini's first, then
+    its files; review `git diff`, since each uninstall drops the whole hook
+    group it wrote and leaves an emptied hook list — `repos check` states it,
+    the brain door says it answers no code question, and nothing fails over it.
+  - **The door says where each code repo's graph is asked**: each verb with
+    the flag that points it at a checkout, `--graph
+    <checkout>/graphify-out/graph.json` or `-p <repo>`, and that the answers'
+    paths are relative to that checkout. `change apply` prints under each
+    checkout the flag that reaches its graph, else the repo checkout's, for the
+    base. A brain that holds code adds its worktrees' form. `change close`
+    removes a worktree whose only changes are the grapher's outputs.
+  - **The brain's post-edit hook follows edits into the code repos** and never
+    into a checkout of the brain. It is wired only where one grapher's binary
+    is reachable from every code repo that resolves it; `doors` and `doctor`
+    say why otherwise, and the door and flow.md, which read the declarations,
+    promise an edit refresh only for the grapher that hook is declared to run.
+    A binary found only in a code repo's own `node_modules/.bin` reaches edits
+    in that repo's checkout, not in its change worktrees, which hold no
+    `node_modules`; `doctor` names the repos where that holds.
+  - **The grapher's ignore lines are derived, and land with the graph.**
+    `.graphifyignore` gets the root's non-code top-level directories, anchored
+    as `/<dir>/`, with a closing `# multivac:` record; a code repo adds `/.brain/` and
+    no `/specs/`, which hid its own `specs/*.spec.ts`. `change land` appends
+    the lines a root lacks and commits the file with the graph — in code repos
+    other teams own too; an ignore file it may not write — untracked, edited,
+    ignored, or committed only on the repo's own branch — is named, and the
+    graph lands alone. While the graph holds nodes under a recorded line,
+    land and close run `graphify update . --force`, since graphify 0.9.29's
+    plain update refuses to shrink with exit 1. `doctor` names missing lines,
+    an uncommitted ignore file and nodes still under a line.
 
 **Fixed**
 

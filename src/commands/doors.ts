@@ -25,7 +25,7 @@ import { ConfigError, LAW_PATH, loadConfig,
   ECOSYSTEM_PATH,
   FLOW_PATH,
 } from '../lib/config.js';
-import { say, warn } from '../lib/out.js';
+import { andList, say, warn } from '../lib/out.js';
 import { applyManagedBlock, stripManagedBlock } from '../doors/block.js';
 import { CANONICAL_DOOR, linkDoor } from '../doors/link.js';
 import { renderFlow } from '../doors/flow.js';
@@ -35,7 +35,15 @@ import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings } from '../doors/settings.js';
 import { installHooks } from '../hooks/install.js';
 import { gitlinkInIndex, lsTreeGitlink } from '../lib/git.js';
-import { adapterFor, missingRequired, readOnly } from '../adapters/detect.js';
+import { leftoverGraphs } from '../lib/repo-state.js';
+import {
+  adapterFor,
+  brainHoldsCode,
+  brainHook,
+  type BrainHook,
+  missingRequired,
+  readOnly,
+} from '../adapters/detect.js';
 import {
   type DoorTarget,
   doorTargets,
@@ -137,7 +145,8 @@ export function installSkill(
 }
 
 /** Merge multivac's harness entries — verify, and the graph refresh with its
- *  grapher's opt-out environment (MV-124) — into the harness hook config. */
+ *  grapher's opt-out environment (MV-124) — into the harness hook config.
+ *  `follow` writes the refresh of a brain that holds no code (MV-148). */
 async function installHookConfig(
   dir: string,
   hookConfig: NonNullable<DoorTarget['hookConfig']>,
@@ -145,6 +154,7 @@ async function installHookConfig(
   env: Record<string, string>,
   notices: string[],
   artifact?: string,
+  follow = false,
 ): Promise<void> {
   const settingsFile = join(dir, hookConfig.path);
   try {
@@ -155,6 +165,7 @@ async function installHookConfig(
       matcher: hookConfig.postEdit,
       env,
       artifact,
+      follow,
     });
     await mkdir(dirname(settingsFile), { recursive: true });
     await writeFile(settingsFile, merged.text);
@@ -197,6 +208,7 @@ async function projectInto(
   body: string,
   config: Config,
   grapher?: string,
+  follow = false,
 ): Promise<string[]> {
   const notices: string[] = [];
   // Declared AND installed, or no refresh entry at all — an absent binary
@@ -205,9 +217,13 @@ async function projectInto(
   // node_modules/.bin half the hook reaches too. An unverified grapher wires
   // nothing either: a hook running a command multivac guessed is worse than no
   // hook at all.
+  // MV-148: the follow hook never runs here — it moves into the code repo of
+  // the file edited first — so `follow` means `brainHook` already found the
+  // binary from every code repo that hook can move into, and a lookup from the
+  // brain would decide on a copy the hook cannot reach.
   const spec = grapher === undefined ? null : grapherSpec(grapher, config.graphers);
   if (grapher !== undefined && spec === null) notices.push(unverifiedGrapher(grapher));
-  const refresh = spec !== null && (await missingRequired(spec, dir)).length === 0 ? spec.refresh : null;
+  const refresh = spec !== null && (follow || (await missingRequired(spec, dir)).length === 0) ? spec.refresh : null;
   const doorFile = join(dir, 'AGENTS.md');
   // MV-115: a broken managed file is THAT file's notice, and the run goes on.
   // One mangled door used to abort the whole multi-repo pass, so every repo
@@ -260,7 +276,7 @@ async function projectInto(
       }
     }
     if (t.skill) installSkill(dir, t.skill, notices);
-    if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, spec?.env ?? {}, notices, spec?.artifacts[0]);
+    if (t.hookConfig) await installHookConfig(dir, t.hookConfig, refresh, spec?.env ?? {}, notices, spec?.artifacts[0], follow);
   }
   const hooks = await installHooks(dir, { strictPrePush: config.strictPrePush });
   if (hooks.strategy === 'chained') {
@@ -274,6 +290,27 @@ async function projectInto(
     notices.push(`${r.path} exists and does not run multivac — NOT touched; ${r.fix}`);
   }
   return notices;
+}
+
+/**
+ * MV-148. Why a brain that holds no code wires no post-edit graph refresh, in
+ * the words `doctor`'s refresh path uses; null when it wires one. Printed only
+ * where a declared harness has the hook to wire: elsewhere the refresh path
+ * already says none does.
+ */
+function noRefreshNotice(hook: BrainHook): string | null {
+  const head = 'no post-edit graph refresh here — ';
+  const net = '`change land` and `change close` refresh them';
+  switch (hook.kind) {
+    case 'follow':
+      return null;
+    case 'mixed':
+      return `${head}the code repos resolve ${andList(hook.names)}, and one hook runs one command; ${net}`;
+    case 'unreachable':
+      return `${head}\`${hook.bin}\` is not reachable from every code repo that resolves ${hook.name} (PATH, or each one's node_modules/.bin); ${net}`;
+    case 'unresolved':
+      return `${head}no writable code repo resolves ${hook.name} yet, so there is no checkout to follow edits into; \`multivac doors\` wires it once one does`;
+  }
 }
 
 /** What doors takes. One declaration: citty parses it, `undeclared` refuses against it. */
@@ -309,15 +346,31 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     for (const n of notices) say(`${name}: notice: ${n}`);
   };
 
-  report(
-    'brain',
-    await projectInto(
-      brainDir,
-      renderBrainDoor(config, active),
-      config,
-      adapterFor(config, 'brain', 'grapher'),
-    ),
+  // MV-148: a brain that holds code refreshes its own graph, as it always has.
+  // One that holds none keeps no graph: its hook follows edits into the code
+  // repos' checkouts, wired by `brainHook`'s answer, the one `doctor` reports —
+  // and where that answer is no hook, one notice says why.
+  const holds = brainHoldsCode(config);
+  const hook = holds ? null : await brainHook(config, brainDir);
+  const brainNotices = await projectInto(
+    brainDir,
+    // MV-148: a kept grapher install gets its line, from the same probe `init`
+    // passes, so a re-run of `init` writes these bytes too (MV-102).
+    renderBrainDoor(config, active, await leftoverGraphs(config, brainDir)),
+    config,
+    holds ? adapterFor(config, 'brain', 'grapher') : hook?.kind === 'follow' ? hook.name : undefined,
+    hook?.kind === 'follow',
   );
+  // An unverified name no repo resolves is never wired either (MV-59): the
+  // notice says what to declare, where "wires it once one does" would not be
+  // true. One that resolves got the same notice from `projectInto`.
+  const unwired =
+    hook?.kind === 'unresolved' && grapherSpec(hook.name, config.graphers) === null
+      ? unverifiedGrapher(hook.name)
+      : hook !== null && config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit)
+        ? noRefreshNotice(hook)
+        : null;
+  report('brain', unwired === null ? brainNotices : [...brainNotices, unwired]);
 
   // MV-96: the derived page. Rewritten whole every projection — the ritual is
   // the operator's and is never overwritten, this is the tool's and always is.

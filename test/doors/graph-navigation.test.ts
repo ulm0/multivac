@@ -4,13 +4,14 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { gitInit, initRepo } from '../helpers/fixture.js';
 import { renderBrainDoor } from '../../src/doors/brain.js';
 import { refreshHookCmd } from '../../src/doors/settings.js';
+import { grapherSpec } from '../../src/adapters/registry.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import type { Config } from '../../src/types.js';
 import { loadConfig } from '../../src/lib/config.js';
@@ -85,6 +86,129 @@ test('the post-edit refresh runs in the repo of the edited file when it holds th
   assert.equal(fire(join(sibling, 'src/a.ts')), sibling, 'the edited repo');
   assert.equal(fire(join(bare, 'x.ts')), session, 'a repo with no graph leaves the refresh where it was');
   assert.equal(fire(''), session);
+});
+
+// MV-148. In a brain that holds no code the post-edit hook is the one refresh
+// that follows an agent's edits, made from the brain session, into a code
+// repo's worktree; and today's hook fell through to the session's directory —
+// the brain — where one edit built a graph again after a human had removed
+// the install. Run synchronously, so "nothing ran" is read, not waited for.
+test("a code-less brain's hook never refreshes a checkout of the brain — MV-148", () => {
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-nav-follow-')));
+  const brain = join(tmp, 'brain');
+  const web = join(tmp, 'web');
+  const kept = '{"kept":"by a human"}\n';
+  initRepo(brain, {
+    '.multivac/config.yml': 'doors: [agents, claude]\ngrapher: fakeg\nrepos:\n  web: ../web\n',
+    'tools/ledger.ts': '',
+    'out/graph.json': kept,
+  });
+  initRepo(web, { 'src/util.ts': '', 'out/graph.json': '{}\n' });
+  // The change's worktrees: the brain's, whose toplevel is not the session's
+  // directory, and web's, nested under the brain's worktree root.
+  const brainWt = join(brain, '.multivac/worktrees/x/brain');
+  const webWt = join(brain, '.multivac/worktrees/x/web');
+  execFileSync('git', ['-C', brain, 'worktree', 'add', '-q', '-b', 'x', brainWt], { stdio: 'ignore' });
+  execFileSync('git', ['-C', web, 'worktree', 'add', '-q', '-b', 'x', webWt], { stdio: 'ignore' });
+  const marker = join(tmp, 'ran');
+  const bin = join(tmp, 'bin');
+  mkdirSync(bin);
+  writeFileSync(join(bin, 'fakeg'), `#!/bin/sh\npwd -P >> '${marker}'\necho '{"refreshed":true}' > out/graph.json\n`);
+  chmodSync(join(bin, 'fakeg'), 0o755);
+  const cmd = refreshHookCmd('fakeg update .', {}, 'out/graph.json', true);
+  assert.ok(cmd.endsWith(' & exit 0'), cmd);
+  const sync = `${cmd.slice(0, -' & exit 0'.length)}; exit 0`;
+  const fire = (file: string): string => {
+    writeFileSync(marker, '');
+    const r = spawnSync('sh', ['-c', sync], {
+      cwd: brain,
+      input: JSON.stringify({ tool_input: { file_path: file } }),
+      env: { ...process.env, PATH: `${bin}:/usr/bin:/bin` },
+    });
+    assert.equal(r.status, 0, String(r.stderr));
+    return readFileSync(marker, 'utf8').trim();
+  };
+  const graph = (dir: string): string => readFileSync(join(dir, 'out/graph.json'), 'utf8');
+
+  assert.equal(fire(join(brain, 'tools/ledger.ts')), '', 'a brain file');
+  assert.equal(fire(join(brainWt, 'tools/ledger.ts')), '', "a file in the brain's worktree");
+  assert.equal(fire(''), '', 'no file: the session directory, which is the brain');
+  assert.equal(graph(brain), kept);
+  assert.equal(graph(brainWt), kept);
+  assert.equal(fire(join(web, 'src/util.ts')), web, 'a code repo file');
+  assert.equal(fire(join(webWt, 'src/util.ts')), webWt, "a file in that repo's worktree");
+  assert.equal(graph(webWt), '{"refreshed":true}\n');
+  assert.equal(graph(brain), kept);
+});
+
+// MV-148, a stated ceiling. The follow hook moves into the edited file's repo
+// and reaches a copy of the grapher in THAT checkout's node_modules/.bin, and
+// `doors` wires it when every code repo finds one there. git never puts an
+// untracked node_modules in a change worktree, so an edit there — the one
+// this hook is for — runs nothing, silently; `doctor`'s refresh path says so.
+test("a copy found only in a code repo's node_modules/.bin refreshes that checkout and not its change worktree — MV-148", () => {
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-nav-local-')));
+  const brain = join(tmp, 'brain');
+  const web = join(tmp, 'web');
+  initRepo(brain, { '.multivac/config.yml': 'doors: [agents, claude]\ngrapher: fakeg\nrepos:\n  web: ../web\n' });
+  initRepo(web, { '.gitignore': 'node_modules/\n', 'src/util.ts': '', 'out/graph.json': '{}\n' });
+  const marker = join(tmp, 'ran');
+  mkdirSync(join(web, 'node_modules/.bin'), { recursive: true });
+  writeFileSync(join(web, 'node_modules/.bin/fakeg'), `#!/bin/sh\npwd -P >> '${marker}'\n`);
+  chmodSync(join(web, 'node_modules/.bin/fakeg'), 0o755);
+  const webWt = join(brain, '.multivac/worktrees/x/web');
+  execFileSync('git', ['-C', web, 'worktree', 'add', '-q', '-b', 'x', webWt], { stdio: 'ignore' });
+  const cmd = refreshHookCmd('fakeg update .', {}, 'out/graph.json', true);
+  const sync = `${cmd.slice(0, -' & exit 0'.length)}; exit 0`;
+  const fire = (file: string): string => {
+    writeFileSync(marker, '');
+    const r = spawnSync('sh', ['-c', sync], {
+      cwd: brain,
+      input: JSON.stringify({ tool_input: { file_path: file } }),
+      env: { ...process.env, PATH: '/usr/bin:/bin' },
+    });
+    assert.equal(r.status, 0, String(r.stderr));
+    return readFileSync(marker, 'utf8').trim();
+  };
+  assert.equal(fire(join(web, 'src/util.ts')), web, "the repo's own checkout");
+  assert.equal(readFileSync(join(webWt, 'out/graph.json'), 'utf8'), '{}\n');
+  assert.equal(fire(join(webWt, 'src/util.ts')), '', 'its worktree: no node_modules, no binary, nothing run');
+});
+
+// The hook bytes a brain that holds code and a consumer write, pinned whole:
+// MV-148 adds the follow form beside them and changes none of theirs.
+test('the follow hook adds one guard, and every other hook keeps its bytes — MV-148', () => {
+  const head =
+    `L=.multivac/cache/graph-refresh.lock; f=$(sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\\([^"]*\\)".*/\\1/p' | head -n 1); ` +
+    't=$(git -C "$(dirname "${f:-.}")" rev-parse --show-toplevel 2>/dev/null); ';
+  const tail = (refresh: string, env: string): string =>
+    `PATH="$PATH:$PWD/node_modules/.bin"; ${env}find "$L" -maxdepth 0 -mmin +30 -exec rmdir {} + 2>/dev/null; ` +
+    `mkdir -p .multivac/cache && mkdir "$L" 2>/dev/null || exit 0; { ${refresh}; rmdir "$L"; } >/dev/null 2>&1 </dev/null & exit 0`;
+  const graphify = grapherSpec('graphify')!;
+  const codegraph = grapherSpec('codegraph')!;
+  const hook = (s: typeof graphify, follow?: boolean): string => refreshHookCmd(s.refresh, s.env ?? {}, s.artifacts[0], follow);
+  const cgEnv = 'export DO_NOT_TRACK=1 CODEGRAPH_TELEMETRY=0 CODEGRAPH_NO_DOWNLOAD=1; ';
+  const today = {
+    graphify: `${head}[ -n "$t" ] && [ -e "$t/graphify-out/graph.json" ] && cd "$t"; ${tail('graphify update .', '')}`,
+    codegraph: `${head}[ -n "$t" ] && [ -e "$t/.codegraph/codegraph.db" ] && cd "$t"; ${tail('codegraph sync', cgEnv)}`,
+  };
+  assert.equal(hook(graphify), today.graphify);
+  assert.equal(hook(graphify, false), today.graphify);
+  assert.equal(hook(codegraph), today.codegraph);
+  assert.equal(Buffer.byteLength(today.graphify), 492);
+  assert.equal(Buffer.byteLength(today.codegraph), 558);
+  const guard = '[ -n "$t" ] && [ ! -e "$t/.multivac/config.yml" ] && ';
+  assert.equal(
+    hook(graphify, true),
+    `${head}${guard}[ -e "$t/graphify-out/graph.json" ] && cd "$t" || exit 0; ${tail('graphify update .', '')}`,
+  );
+  assert.equal(
+    hook(codegraph, true),
+    `${head}${guard}[ -e "$t/.codegraph/codegraph.db" ] && cd "$t" || exit 0; ${tail('codegraph sync', cgEnv)}`,
+  );
+  assert.equal(Buffer.byteLength(hook(graphify, true)), 540);
+  assert.equal(Buffer.byteLength(hook(codegraph, true)), 606);
+  assert.doesNotMatch(hook(graphify, true), /--force/);
 });
 
 test('doctor names asking the graph as unchecked, and offers a platform that writes the section — MV-140, MV-143', async () => {

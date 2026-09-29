@@ -2,7 +2,8 @@
 
 Lines are printed exactly; tests pin the load-bearing substrings. `<name>` is the grapher,
 `<artifact>` its first artifact, `<k>` a config key, `<path>` a declared path, `<brain>`,
-`<ws>`, `<abs>` absolute directories (single-quoted when they hold whitespace). Byte counts
+`<ws>`, `<abs>` absolute directories (single-quoted when they hold whitespace or a quote, an
+embedded `'` written `'\''` as a shell reads it). Byte counts
 are `wc -c` of the lines, each ending in a newline, with the synth ecosystem's example names
 (research.md R6, R8). A brain that holds code, a consumer, and a brain with no grapher print
 byte for byte what they printed before, except where a section below says otherwise.
@@ -32,8 +33,9 @@ A local artifact (codegraph) — never `<checkout>`:
 ```
 
 The freshness is `refreshed after your edits there` only where a declared door has a post-edit
-hook and the brain's hook runs this grapher; otherwise `refreshed at \`change land\` and \`change
-close\``. The repos are `<k>: \`<path>\`` joined by `, `. A grapher with no `queries` gets
+hook and the brain's hook is declared to run this grapher (`brainRefreshGrapher`); otherwise
+`refreshed at \`change land\` and \`change close\``. Declarations alone (MV-93): the door is
+the same bytes on a machine where `doors` could not wire that hook, and `doors` and `doctor` say so there. The repos are `<k>: \`<path>\`` joined by `, `. A grapher with no `queries` gets
 `    - \`<name>\` has NO query command: the artifact is written but nothing reads it back. Do not invent one.`
 under its group line.
 
@@ -59,7 +61,11 @@ codegraph (269 B):
 ```
   It answers for this checkout, with the law, the changes and their specs kept out of it: the ecosystem graph above relates them. A change's worktree has no index yet: `codegraph` asked from here or there answers from this checkout's index, without the branch's edits.
 ```
-A grapher with no `askAt`: the first sentence alone.
+A grapher with no `askAt`: the first sentence alone. The first sentence says the law, the changes
+and their specs are kept out only where the grapher has an ignore file (graphify) or is recorded to
+index no Markdown (`codeOnly`, codegraph); another grapher's reads `  It answers for this checkout;
+the ecosystem graph above relates the law, the changes and their specs.` A grapher with no query
+verb gets no such line: the line above it says nothing reads its artifact back.
 
 Sibling code repos resolving a grapher, after it, in the code-less form under this head (282 B):
 ```
@@ -82,8 +88,19 @@ A grapher found with no harness platform probe present (codegraph, 138 B):
 ```
 - `.codegraph/` here is a leftover that holds no code — ask the code repos' graphs above instead; `multivac doctor` prints its removal.
 ```
-`init` and `doors` write the same bytes. `<dir>/` is the artifact's top directory; an artifact at
-the root is named as it is.
+`init` and `doors` write the same bytes. `<dir>/` is the artifact's top directory, named where
+the artifact or that directory is there; an artifact at the root is named as it is; with neither
+there, the ignore file, else the first platform probe found (`.agents/skills/graphify/SKILL.md`).
+The clause after the colon names the section only where a platform found writes it into this
+door — `canonical`, or `own-door` for a declared door that is a symlink (the rule `sectionDoors`
+reads) — and the hooks only where a platform found writes one that sends the agent to the graph
+(`hooks`: claude's and gemini's on 0.9.29): `the \`## graphify\` section below points at it`,
+`graphify's own hooks point at it`, both as above, or no clause (an `agents` skill alone).
+Where the door lists no code repo's graph — no grapher is asked from the brain, or the one asked
+is unverified — the line says `ask the code repos' graphs instead`, without `above`:
+```
+- `graphify-out/` here is a leftover that holds no code: graphify's own hooks point at it — ask the code repos' graphs instead; `multivac doctor` prints its removal.
+```
 
 ## `change apply`
 
@@ -106,7 +123,11 @@ at most one line, four spaces in (plan bytes with `/home/you/…` paths):
 156 B, 87 B, 214 B, 234 B, 88 B, 119 B for the first six. The flag is the entry's `askAt` with
 `{checkout}` replaced; "graph"/"index" follows `artifactKind` (`shared`/`local`); "codegraph" is
 `<name>`. Nothing is printed for a grapher that is none, unverified or has no `askAt`, or for the
-brain's own main checkout. Which line prints: data-model.md *Pointer states*.
+brain's own main checkout. Which line prints: data-model.md *Pointer states*. Every line that
+offers a flag aimed at a checkout says where its answers' paths are placed; the sixth and the
+eighth name `-p` only to warn what it does where no index is, offer none, and carry no such
+clause (FR-008, analyze I4). A `<reason>` read in the repo checkout rather than the workspace
+ends ` in <abs>`.
 
 ## `change plan` (a change naming `brain`, a code-less brain)
 
@@ -123,16 +144,38 @@ The ignore step, when it appended (before the refresh):
 graph graphify @ <k>: wrote .graphifyignore (+N) before the refresh at `change land`
 ```
 When the file is neither committed at the branch checkout's HEAD nor absent there and in the
-repo's own checkout:
+repo's own checkout — untracked there, or in the repo's own checkout:
 ```
 <k>: .graphifyignore in <abs> is not committed — the graph on <slug> is built without it; commit it there the way that repo lands work
 ```
+Committed in the repo's own checkout, on its branch, but not on the change's:
+```
+<k>: .graphifyignore is committed in <abs> but not on <slug> — the graph on <slug> is built without it; merge that commit into <slug>, or rebase <slug> onto it, then re-run land
+```
+Committed at the branch checkout's HEAD with an uncommitted edit there:
+```
+<k>: .graphifyignore in <abs> has uncommitted edits — multivac appends nothing over them, and the graph lands without it; commit or discard them there, then re-run land
+```
+Absent, and ignored by the branch checkout's own rules:
+```
+<k>: .graphifyignore is ignored in <abs> — the graph lands without it; `git -C <abs> check-ignore -v .graphifyignore` names the rule: remove it to land the lines multivac keeps out
+```
+In each of these four, nothing is written and the graph is committed alone.
+The refresh, at land or close, while the graph holds a node under a recorded line (`rebuild
+failed` and `rebuild skipped` in place of today's `refresh failed` and `refresh skipped` there):
+```
+graph graphify @ <k>: rebuilt (`graphify update . --force`) — artifact left uncommitted
+```
 When the rebuilt graph still holds a node under a line it just recorded:
 ```
-graph graphify @ <k>: the rebuild left <N> node(s) under the lines just added to .graphifyignore — it is restored and not committed; the next `change land` or `change close` rebuilds
+graph graphify @ <k>: the rebuild left <N> node(s) under the lines just added to .graphifyignore — it is restored and not committed; the next `change land` naming <k> appends them again and rebuilds
 ```
+Restored: checked out to its committed bytes where it was committed, deleted where land created
+it. `change close` refreshes the repo's own checkout, whose file then records none of those
+lines, so it never forces a rebuild for them: only a later land does.
 The commit stages `graphify-out/graph.json .graphifyignore` (and `.multivac/ecosystem.json` in a
-brain checkout). No `.gitignore` is written.
+brain checkout). No `.gitignore` is written. When that commit fails, land names the command, as
+`commitBookkeeping` always has, and prints no push or merge line for that repo; it exits 1.
 
 ## `change close`
 
@@ -142,15 +185,16 @@ commit's pathspec names no brain graph.
 
 ## The ignore file
 
-Appended, never rewritten; one record per append:
+Appended, never rewritten; one record per append, after the lines it lists (data-model.md
+*Ignore writing*):
 ```
-# multivac: kept out of the graph — /.agents/ /.claude/ /.codex/ /.copilot/ /.cursor/ /.gemini/ /.husky/ /.multivac/ /.opencode/ /.specify/ /openspec/ /specs/
 /.agents/
 /.claude/
 …
 /specs/
+# multivac: kept out of the graph — /.agents/ /.claude/ /.codex/ /.copilot/ /.cursor/ /.gemini/ /.husky/ /.multivac/ /.opencode/ /.specify/ /openspec/ /specs/
 ```
-(this brain at 92c4c08; a consumer: the same set without `/specs/`, plus `/.brain/`). The first
+(this brain at 92c4c08, re-derived at 116a719; a consumer: the same set without `/specs/`, plus `/.brain/`). The first
 build prints, as today, `graph graphify @ <scope>: wrote .graphifyignore (+N) and .gitignore (+M)
 before the first build`, N counting lines, never the record.
 
@@ -177,7 +221,14 @@ grapher    leftover graphify install @ brain: platforms agents, claude and graph
 ```
 With `gemini` among the platforms found, `graphify uninstall --project --platform gemini` comes
 first; the rest follow in registry order. With no platform probe present, the `platforms …
-and` part and the section clause go and the removal is the `git rm … && rm -rf …` part.
+and` part and the section clause go and the removal is the `git rm … && rm -rf …` part. The
+clause names the section only where a platform found writes one (`section` not `none`) and the
+hooks only where one writes a hook that sends the agent to the graph (`hooks`): `, and
+graphify's own section still sends agents to it`, `…own hooks still send…`, both as above, or
+none — an `agents` skill alone:
+```
+grapher    leftover graphify install @ brain: platforms agents (untracked) — kept until you remove it; it graphs none of the code. Remove: cd <brain> && graphify uninstall --project --platform agents && git rm -q --ignore-unmatch -- graphify-out/graph.json .graphifyignore && rm -rf graphify-out .graphifyignore; review `git diff` (…), then `multivac doors` and commit
+```
 
 A kept codegraph index (214 B):
 ```
@@ -193,10 +244,28 @@ its exit code is unchanged.
 The refresh path, a code-less brain:
 ```
 grapher    refresh path: <doors> post-edit hook follows your edits into the code repos' checkouts (installed when the binary is present) · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh
+grapher    refresh path: <doors> post-edit hook follows your edits into the code repos' checkouts (installed when the binary is present) · not into the change worktrees of <keys>: they reach <name> only in their own node_modules/.bin, which a worktree does not hold · `change land` commits it on the change branch · `change close` is the net · git hooks never refresh
 grapher    refresh path: `change land` and `change close` only — the code repos resolve graphify and codegraph, and the brain's one post-edit hook runs one command · git hooks never refresh
 grapher    refresh path: `change land` and `change close` only — `<bin>` is not reachable from every code repo that resolves <name> (PATH, or each one's node_modules/.bin) · git hooks never refresh
+grapher    refresh path: none yet — no writable code repo resolves <name>, so the brain's post-edit hook has no checkout to follow edits into · git hooks never refresh
 ```
-A brain that holds code keeps today's line.
+The second is the first where some of those repos reach the binary only in their own
+`node_modules/.bin` and not on PATH (`brainHook`'s `local`, joined `a and b`): the hook is wired,
+and a change worktree, which holds no untracked `node_modules`, gives it no binary, so an edit
+there runs nothing — a stated ceiling. The fifth is a grapher declared that no writable code repo resolves — every fresh `init
+--grapher <name>` in an empty repo (analyze U1); `<name>` reads `a grapher` where none is asked
+at all. A name the registry does not know and `graphers:` does not declare, resolved by the code
+repos or by none, is wired and refreshed by nothing (MV-59):
+```
+grapher    refresh path: none — <name> is not verified, so no post-edit hook, `change land` or `change close` runs it · git hooks never refresh
+```
+These answer for this machine: the door and flow.md, which read declarations alone (MV-93), say
+"after your edits" of the grapher the hook is declared to run, where the first form is printed on
+a machine that found the binary and the fourth on one that did not. The names of the third are joined `a and b` (`a, b and c`). A brain that holds code
+keeps today's line, and with no declared door having a post-edit hook every brain prints today's
+`refresh path: \`change land\` and \`change close\` only — no declared harness has a post-edit
+hook · git hooks never refresh`. All six forms ask `brainHook` (detect.ts), the answer `doors`
+wires by.
 
 Ignore facts appended to an installed, writable root's grapher line, reading only:
 ```
@@ -211,7 +280,15 @@ One notice, where no brain hook can be wired in a code-less brain:
 ```
 brain: notice: no post-edit graph refresh here — the code repos resolve graphify and codegraph, and one hook runs one command; `change land` and `change close` refresh them
 brain: notice: no post-edit graph refresh here — `<bin>` is not reachable from every code repo that resolves <name> (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them
+brain: notice: no post-edit graph refresh here — no writable code repo resolves <name> yet, so there is no checkout to follow edits into; `multivac doors` wires it once one does
 ```
+The third where a grapher is declared and no writable code repo resolves it (analyze U1). None
+of the three prints where no declared door has a post-edit hook — nothing could be wired there in
+any brain, and `doctor`'s refresh path says so — or where no grapher is asked from the brain.
+Where that grapher is unverified, the third gives way to today's `brain: notice: grapher "<name>"
+is not verified — …` (`unverifiedGrapher`), printed whether or not a door has a post-edit hook: no
+`doors` run ever wires it. The door and flow.md do not change with these notices: they read
+declarations alone (MV-93).
 
 The code-less brain's hook command (graphify, 540 B; codegraph 606 B), backgrounded as today:
 ```sh
@@ -226,7 +303,9 @@ The brain's line of a code-less brain never FAILs over a graph, and states a lef
 ```
 brain      ok   cloned; leftover graphify install (tracked)
 ```
-(appended as #3's SDD leftover is, `; leftover <name> install (tracked|untracked)`).
+(appended as #3's SDD leftover is, `; leftover <name> <noun> (tracked|untracked)`, the noun
+`doctor`'s line uses — `install` for a known grapher's shared artifact, `index` for a local one,
+`graph` for one under `graphers:` (`leftoverNoun`, analyze I6)).
 
 ## flow.md
 
@@ -236,6 +315,9 @@ In a code-less brain:
 - `graphify` is declared, and no writable code repo resolves it yet: the brain holds no code, so none here; each code repo that resolves it gets its own when `repos sync` or a change reaches it
 ```
 (the second in place of `- no grapher is declared, so no graph is built or required` when the
-top level declares one). The automatic row says `after each edit through the harness hook, and `
-only for the grapher the brain's hook runs; the brain is counted among a grapher's roots only
-where it holds code.
+top level declares one, and in place of the build, gate and query rows of a grapher only repos
+marked `managed: false` resolve; an unverified top-level name gets `- \`<name>\` is declared as
+the grapher but grapher "<name>" is not verified — …` instead). The automatic row says `after
+each edit through the harness hook, and ` only for the grapher the brain's hook is declared to run
+(`brainRefreshGrapher`), whether or not this machine could wire it; the brain is counted among a
+grapher's roots only where it holds code.

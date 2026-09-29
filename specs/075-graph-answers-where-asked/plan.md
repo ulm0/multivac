@@ -24,7 +24,7 @@ counts untracked source as code; `init`, `doctor` and `change plan` say the brai
 code; a kept install is found by `leftoverGraphs`, its removal printed by `doctor` (gemini
 first), stated by `repos check` and named in the door `init` and `doors` both write; every
 known grapher's paths are not code. **Kept out**: `graphIgnoreLines` derives a root's ignore
-lines from its non-code set, anchored `/<dir>/`, under a `# multivac:` record; they are written
+lines from its non-code set, anchored `/<dir>/`, with a closing `# multivac:` record; they are written
 before the first build and, at `change land`, in the checkout holding the branch, committed with
 the graph; `holdsIgnored` makes the refresh run the entry's `rebuild` while the graph holds a
 node under a recorded line. The stories run in dependency order (US1 where asked, US2 followed,
@@ -35,7 +35,7 @@ code-less brain's lines true already exist (critic gap 1). Research and measurem
 ## Technical Context
 
 **Language/Version**: TypeScript on Node 24, ES modules, compiled to `dist/` | **Primary Dependencies**: picomatch, yaml, citty — no new dependency (MV-02) | **Storage**: files; git through src/lib/git.ts only (MV-03)
-**Testing**: `node --test "dist-test/**/*.test.js"` (node:test, `test/helpers/`), graphers stubbed per test on a PATH the test builds; the real graphify 0.9.29 only in `test/change/graphify-real.test.ts`, skipped when it is not on PATH, and in quickstart.md | **Target Platform**: developer machines and CI; the post-edit hook is POSIX `sh` as today | **Project Type**: single CLI package, brain==code
+**Testing**: `node --test "dist-test/**/*.test.js"` (node:test, `test/helpers/`), graphers stubbed per test on a PATH the test builds; the real graphify 0.9.29 only in `test/change/graphify-real.test.ts`, skipped unless that exact version answers, and in quickstart.md | **Target Platform**: developer machines and CI; the post-edit hook is POSIX `sh` as today | **Project Type**: single CLI package, brain==code
 **Performance Goals**: `verify` unchanged (no new read on its path); `doors` gains one offline leftover probe of the brain (file reads and one `git ls-files`); `holdsIgnored` parses the graph once per refresh at land and close (1.8 MB here after the rebuild) | **Constraints**: `verify`, `doctor` and `doors` run no vendor and write no ignore line (MV-129, MV-131, Principle IV); refresh.ts still runs no git (MV-50/MV-52 `absent` leg) and reads no HEAD (MV-103 `absent` leg); the brain==code and consumer hooks keep their bytes (492 B, codegraph 558 B); the consumer door is byte-identical (MV-90); legs of rows NOT touched stay green — MV-61's `ASK IT BEFORE READING THE TREE RAW` and `has NO query command` unique, MV-102's `renderBrainDoor\(cfg, countActiveInvariants` unique, MV-125's `count=6` skips, MV-52's `missingRequired\(spec, dir\)` unique, MV-124's installed-skip unique, MV-12's `/brain==code/` | **Scale/Scope**: one new row, sixteen amendment notes, four registry fields, about fifteen source files, about twenty-five test files (four new), nine documentation files
 
 No NEEDS CLARIFICATION remains: every unknown the design carried was measured (research.md
@@ -48,7 +48,8 @@ MV-148 reserved) and declared (e5d034f); #4 touched `src/adapters/{registry,sdd,
 `src/lib/{code-in-change,repo-state}.ts` and the doors' rendered files. **Every `file:line` in
 these artifacts is re-anchored on the branch head at apply time (T001)**; tasks name functions
 first and lines second, and none depends on #4's line numbers. The design's "today" leg counts
-were re-run on e5d034f and hold (research.md R17).
+were re-run on e5d034f and hold (research.md R17). T001 re-anchored them on 116a719 and re-ran
+the counts there: all hold.
 
 ## Constitution Check
 
@@ -62,7 +63,7 @@ and its `.gitignore` exclusion, the forced worktree removal, `leftoverGraphs`, d
 line, init's untracked read, plan's line, the two flow rows), an `each` leg on the paths clause
 and on the leftover probe in `init` and `doors`, `absent` legs on the fixed ignore list, on
 `writeIgnores` in `doors`/`doctor`/`verify`/`repos` and on `--force` in the hook, seven test-title
-legs, two site legs and `count=16` on the dated notes (research.md R17). Every leg an amended row
+legs, two site legs and `count=16` on the dated notes (research.md R17; `count=19` after review, R22). Every leg an amended row
 loses is moved by the task that makes it false (MV-128, MV-140 ×2).
 
 **II. The Tool Never Claims More Than It Checked** — no byte saving is claimed for asking the
@@ -78,15 +79,18 @@ shrink; the door no longer says a graph holds "code only" where root documents s
 
 **III. The Law Changes Before The Code** — MV-148's row and the sixteen notes are the first
 tasks (T002–T004); the row was reserved by `change new` (49591e7) and `change.invariants`
-declares exactly the sixteen touched rows (e5d034f); filed `proposed`, only a human enacts it.
+declares exactly the sixteen touched rows (e5d034f; nineteen after review added MV-87, MV-93 and
+MV-125, research.md R22); filed `proposed`, only a human enacts it.
 
 **IV. Deterministic, Offline, Small** — no new dependency; `leftoverGraphs`, `askedGraphers`,
 `brainRefreshGrapher`, `graphIgnoreLines` and `whereLines` are offline (file reads and git
 through its argument vector); `doors`, `doctor`, `verify` and `repos` never write an ignore line
 (an `absent` leg); the vendor runs only where it already ran — the refresh at land and close,
 with the entry's `env` and lock — plus its recorded `rebuild` in that same runner; the
-`graphify-real` test is skipped, never failed, where graphify is not on the host (tests do not
-depend on host configuration).
+`graphify-real` test is skipped, never failed, unless `graphify --version` prints exactly
+`graphify 0.9.29`, the version its facts were measured on, and runs the vendor in a `mkdtemp`
+repo with HOME, GIT_CONFIG_GLOBAL and `DO_NOT_TRACK` isolated (tests do not depend on host
+configuration; analyze CA1).
 
 **V. An Invented Integration Is A Lie** — `askAt`, `rebuild`, `harness.uninstall`, the
 gemini-first order and `remove` are each measured with the real binary and name its version in
@@ -103,7 +107,7 @@ choices go beyond the design, each recorded in research.md: the gemini-first ord
 the platform entry (`uninstallFirst: true`), not a name in code (Principle V); `change land`
 writes the grapher's ignore file alone, never `.gitignore` (critic gap 5); the derived lines
 leave out every known grapher's own output directory (critic gap 2). None moves an active row's
-statement beyond the sixteen notes.
+statement beyond the sixteen notes (nineteen after review, R22).
 
 ## Project Structure
 
@@ -124,10 +128,10 @@ specs/075-graph-answers-where-asked/
 ### Source Code (repository root)
 
 ```text
-.multivac/invariants.md          # MV-148 row + sixteen dated notes + legs — FIRST
+.multivac/invariants.md          # MV-148 row + sixteen dated notes (nineteen after review) + legs — FIRST
 .multivac/changes/graph-answers-where-asked.md  # body: the quickstart record (frontmatter declared, e5d034f)
 src/adapters/registry.ts         # AdapterSpec: askAt, rebuild, remove, harness.uninstall, platform uninstallFirst; graphignore removed (US4); graphify and codegraph entries, measurement comments
-src/adapters/detect.ts           # brainHoldsCode, askedGraphers, brainRefreshGrapher; the brain guard in adapterFor (US3); the :86-93 comment
+src/adapters/detect.ts           # brainHoldsCode, askedGraphers, brainRefreshGrapher; the brain guard in adapterFor (US3); the :87-93 comment
 src/lib/code-in-change.ts        # nonCodeGlobs: every known grapher and every graphers: entry (US3); graphIgnoreLines (US4)
 src/adapters/refresh.ts          # IGNORE_RECORD; writeIgnores(lines, opts) exported, skip rules, returns boolean; ensureGraphs passes graphIgnoreLines; runHarnessInstalls passes []; holdsIgnored; refreshGraph picks rebuild; comments
 src/lib/repo-state.ts            # leftoverGraphs + LeftoverGraph, beside leftoverSdds and #4's leftoverBodies

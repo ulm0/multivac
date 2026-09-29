@@ -31,6 +31,11 @@ export function warn(line: string): void {
   console.error(line);
 }
 
+/** Names as a sentence says them: `a`, `a and b`, `a, b and c`. */
+export function andList(names: string[]): string {
+  return names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
 /** A line made only of block-element, box-drawing and space characters: drawing, not words. */
 const DRAWN = /^[\s\u2500-\u259F]*$/;
 /** A Python traceback's header. The exception that closes it is the cause. */

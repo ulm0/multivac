@@ -142,15 +142,23 @@ The file also carries per-repo status
   merged; it reads the channel ref to offer a conclusion, never to record one.
   Before the push line, `land` refreshes the ready repo's code graph in the
   change's worktree and **commits it on the branch** (MV-134), with the brain's
-  `.multivac/ecosystem.json` where the repo is the brain (MV-139). A detached
-  HEAD or an ignored graph is refused by name. In CI, the merge request
+  `.multivac/ecosystem.json` where the repo is the brain (MV-139). Before that
+  refresh it appends the ignore lines the root lacks to the grapher's ignore
+  file — never `.gitignore` — and commits that file with the graph, rebuilding
+  while the graph holds nodes under a line it recorded (MV-148). A file it may
+  not write — untracked, edited, ignored, or committed only on the repo's own
+  branch — is named and the graph lands alone; a rebuild that leaves nodes under
+  the new lines restores the file, and the next `land` appends them again. In a brain that
+  holds no code it commits no brain graph, even for a change naming `brain`. A
+  detached HEAD or an ignored graph is refused by name. In CI, the merge request
   pipeline runs `verify --strict --range <base>..<head> --branch <name>`, which
   refuses code outside a change's branch even when a hook was skipped.
 
 ## close — the gate
 
 **The graph gate (MV-90).** A declared grapher must be installed in the brain
-and in every repo the change names that is not read-only (MV-125, MV-134) — its own state file, a `graph.json` that parses, not a
+where it holds code, and in every repo the change names that is not read-only
+(MV-125, MV-134, MV-148) — its own state file, a `graph.json` that parses, not a
 path being there (MV-124) — or close refuses and names every root that is not.
 The build-where-missing pass runs inside the gate, so a fresh ecosystem builds
 rather than refuses; a root whose binary is found on neither PATH nor its
@@ -164,10 +172,14 @@ A shared graph must also be in each root's committed HEAD, not only staged
 (MV-103): close names the add and the commit, and runs neither. codegraph's
 database is local, built in each checkout and never committed.
 
-The refresh that follows covers the brain and the repos this change names. It
-runs before the archive commit is printed, and a brain graph it changed is in
-that commit, with `.multivac/ecosystem.json`; for a named repo whose graph
-changed, close prints the commit to make there (MV-134). A read-only repo — declared
+The refresh that follows covers the brain where it holds code and the repos
+this change names. It runs before the archive commit is printed, and a brain
+graph it changed is in that commit, with `.multivac/ecosystem.json`; for a
+named repo whose graph changed, close prints the commit to make there (MV-134).
+A brain that holds no code — no `repos:` entry is the brain — is never built,
+refreshed or gated, and its archive commit names no graph (MV-148). A worktree
+whose only changes are the grapher's outputs is removed; one holding anything
+else is kept and named. A read-only repo — declared
 `managed: false`, or a shallow clone — is never scaffolded, built, refreshed,
 projected into or gated, and `plan` and `apply` refuse a change that names one
 (MV-125).
@@ -209,7 +221,14 @@ refresh into your harness's **post-edit hook**, so the map is current for the
 next question you ask it. It is backgrounded and silent: it never delays an
 edit, never fails one, and skips when a refresh is already running. It refreshes
 the repository of the file you edited, when that repository holds a graph, so an
-edit in a sibling's worktree refreshes that sibling (MV-140). `change land`
+edit in a sibling's worktree refreshes that sibling (MV-140). In a brain that
+holds no code the hook only follows: it runs the one grapher the code repos
+resolve, wired only when its binary is found on PATH or in each of those repos,
+and only in the edited file's repo when that repo holds the graph and is not a
+checkout of the brain — otherwise nothing runs (MV-52, MV-148). Where the code
+repos resolve several graphers, or the binary is not reachable from each, no
+hook is wired and `doors` says so; their graphs are then refreshed at `change
+land` and `change close` only. `change land`
 refreshes and commits the graph on the branch, and `change close` runs the
 refresh as the **safety net** for edits made outside a harness, taking the same
 lock but waiting on it rather than skipping.

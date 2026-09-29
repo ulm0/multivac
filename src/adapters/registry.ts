@@ -377,16 +377,36 @@ export interface AdapterSpec {
    * MV-124: which of the vendor's paths are versioned (`shared`) and which
    * belong to one checkout (`local`), plus the ignore lines that say so. A
    * literal path beats a glob, and between two globs `local` wins, so
-   * `.specify/feature.json` is local under `.specify/**`. Declared, and not yet
-   * read by any command: the change that equips a root reads them.
+   * `.specify/feature.json` is local under `.specify/**`. Read where they
+   * decide something: the carry takes an SDD's `shared` files onto a change's
+   * branch (MV-144), the code-in-change gate counts all three as not code
+   * (MV-137), the first build appends `ignore` to `.gitignore` (MV-128), and
+   * `change close` removes a worktree whose only changes lie under the
+   * grapher's `local` (MV-148).
    */
   shared: string[];
   local: string[];
   ignore: string[];
-  /** Grapher only: default lines keeping the graph off multivac's and the SDD's own files. */
-  graphignore?: string[];
-  /** Grapher only: the file the tool reads `graphignore` from, in the root. */
+  /**
+   * Grapher only: the file the tool reads its ignore rules from, in the root.
+   * MV-148: multivac appends the root's derived lines there (`graphIgnoreLines`
+   * — never a list here) under a `# multivac:` record, before the first build
+   * and at `change land`.
+   */
   graphignoreFile?: string;
+  /**
+   * MV-148. Grapher only: measured to index source files alone, no Markdown,
+   * so the law, the changes and their specs stay out of its graph with no
+   * ignore line. With `graphignoreFile`, what lets a brain that holds code
+   * say they are kept out of it; a grapher with neither says no such thing.
+   */
+  codeOnly?: true;
+  /**
+   * MV-148. Grapher only: the vendor's own removal of a local artifact,
+   * printed by `doctor` for an install a brain that holds no code kept, and
+   * never run — `doctor` and `doors` run no vendor (MV-129).
+   */
+  remove?: string;
   /**
    * MV-131. Grapher only: the tool's own project install into a harness.
    * `run` takes `{key}`; `platforms` maps a door to the vendor's platform and
@@ -397,6 +417,12 @@ export interface AdapterSpec {
   harness?: {
     run: string;
     /**
+     * MV-148. The vendor's own uninstall for one platform, `{key}` the
+     * platform's key: printed by `doctor` for an install a brain that holds no
+     * code kept, never run. The human reviews what it removes.
+     */
+    uninstall: string;
+    /**
      * Per door target: the vendor's own platform key, the file that proves it
      * installed, and — MV-143 — WHERE that platform writes the vendor's own
      * section, measured, never inferred from the platform's name. `canonical`
@@ -404,11 +430,28 @@ export interface AdapterSpec {
      * file, which reaches AGENTS.md only where that door is a symlink to it;
      * `none` writes no section anywhere. `redundant` marks a platform whose own
      * file only repeats what that section already says, so it is skipped where
-     * the section is present.
+     * the section is present. MV-148: `uninstallFirst` marks a platform whose
+     * uninstall is printed before every other platform's, because its own
+     * stops early once another's has removed the shared section — measured,
+     * so the order is data here, never a platform's name tested in code; and
+     * `hooks` one whose install writes a hook that sends the agent to the
+     * graph, so a kept install is said to have hooks only where one did.
+     * `files`, MV-148: every path the platform's install writes but the root
+     * door's section and `hookFiles`, measured — the probe among them. Where
+     * no root resolves the grapher, these are what `nonCodeGlobs` takes by
+     * name, so the rest of a directory they sit in stays code.
      */
     platforms: Record<
       string,
-      { key: string; probe: string; section: 'canonical' | 'own-door' | 'none'; redundant?: true }
+      {
+        key: string;
+        probe: string;
+        section: 'canonical' | 'own-door' | 'none';
+        hooks?: true;
+        redundant?: true;
+        uninstallFirst?: true;
+        files: string[];
+      }
     >;
     hookFiles: string[];
     ignore: string[];
@@ -436,6 +479,13 @@ export interface AdapterSpec {
   installHint: string;
   /** Command that refreshes the artifact. */
   refresh: string;
+  /**
+   * MV-148. Grapher only: run in place of `refresh` while the root's graph
+   * holds a node under a directory a `# multivac:` record line of its ignore
+   * file lists — the vendor's refresh refuses to shrink the graph those lines
+   * would shrink. Same runner, env, lock and failure quoting as `refresh`.
+   */
+  rebuild?: string;
   /** Command that builds the artifact the first time, when it differs. */
   create?: string;
   /**
@@ -498,6 +548,15 @@ export interface AdapterSpec {
    * tool has none, and the door says that rather than inventing one.
    */
   queries?: GrapherQuery[];
+  /**
+   * MV-148. Grapher only: how each verb in `queries` is pointed at another
+   * checkout's graph, `{checkout}` the placeholder, appended to the verb as
+   * the agent types it. The brain door and `change apply` render it, so an
+   * agent in the brain asks the graph of the checkout it means and knows the
+   * answers' paths are relative to that checkout. None for a grapher under
+   * `graphers:`: its flag was never measured.
+   */
+  askAt?: string;
   /** What the tool's own docs say, where it matters. */
   note?: string;
   /** Vendor doc this entry was verified against. */
@@ -1054,12 +1113,17 @@ const knownGraphers: Record<string, GrapherEntry> = {
     shared: ['graphify-out/graph.json'],
     local: ['graphify-out/**'],
     ignore: ['graphify-out/*', '!graphify-out/graph.json'],
-    // Measured 2026-09-16 on graphify 0.9.29 (MV-128): with these lines in
+    // Measured 2026-09-16 on graphify 0.9.29 (MV-128): with ignore lines in
     // `.graphifyignore`, a fresh brain's first graph went from 223001 bytes,
     // 530 of its nodes from `.claude` and `.specify`, to 2703 bytes holding
     // only the repo's own files; `graphify-out/*` with `!graphify-out/graph.json`
-    // in `.gitignore` left `graph.json` the one output git reports.
-    graphignore: ['.claude/', '.multivac/', '.specify/', 'specs/', 'openspec/'],
+    // in `.gitignore` left `graph.json` the one output git reports. MV-148: the
+    // lines are derived from the root's non-code set (`graphIgnoreLines`) —
+    // the fixed five missed `.agents/` and `.codex/` (228 of a fresh brain's
+    // 305 nodes) and a consumer's mount (427 of 501), and an unanchored
+    // `specs/` hid a code repo's own `specs/*.spec.ts`. graphify reads the file
+    // gitignore-style; `#` lines are comments, and it skips `graphify-out/`
+    // itself.
     graphignoreFile: '.graphifyignore',
     // MV-131, measured 2026-09-16 on graphify 0.9.29 in scratch repos with HOME
     // isolated: `graphify install --project --platform <p>` exited 0 for each
@@ -1080,14 +1144,38 @@ const knownGraphers: Record<string, GrapherEntry> = {
     // was followed too: the install created AGENTS.md and wrote into it.
     harness: {
       run: 'graphify install --project --platform {key}',
+      // MV-148, measured 2026-09-28 on graphify 0.9.29 with HOME isolated:
+      // `--project` without `--platform` printed about 25 "nothing to do"
+      // lines and left gemini's hook, and `--purge` is ignored under
+      // `--project`. Per platform, the uninstall drops the whole hook group it
+      // wrote, a command a human added to it included, and leaves the emptied
+      // hook list behind (`"PreToolUse": []` in `.claude/settings.json`);
+      // `*.graphify-bak` is the human's own pre-install copy, never removed.
+      uninstall: 'graphify uninstall --project --platform {key}',
       platforms: {
-        agents: { key: 'agents', probe: '.agents/skills/graphify/SKILL.md', section: 'none' },
-        claude: { key: 'claude', probe: '.claude/skills/graphify/SKILL.md', section: 'own-door' },
-        cursor: { key: 'cursor', probe: '.cursor/rules/graphify.mdc', section: 'none', redundant: true },
-        codex: { key: 'codex', probe: '.codex/skills/graphify/SKILL.md', section: 'canonical' },
-        opencode: { key: 'opencode', probe: '.opencode/skills/graphify/SKILL.md', section: 'canonical' },
-        gemini: { key: 'gemini', probe: '.gemini/skills/graphify/SKILL.md', section: 'own-door' },
-        copilot: { key: 'copilot', probe: '.copilot/skills/graphify/SKILL.md', section: 'none' },
+        // `hooks` (MV-148, measured on 0.9.29): the platform's install writes a
+        // hook that sends the agent to the graph — claude's on a search and an
+        // in-project read, gemini's on every read. codex's hook is a no-op, and
+        // the others write none.
+        // `files` (MV-148, measured 2026-09-29 on graphify 0.9.29, one fresh
+        // git repo per platform, HOME and GIT_CONFIG_GLOBAL isolated): each
+        // skill directory held SKILL.md, `.graphify_version` and eight
+        // `references/*.md`; claude also wrote `.claude/CLAUDE.md`, opencode
+        // `.opencode/plugins/graphify.js` and `.opencode/opencode.json`, which
+        // its uninstall rewrote to `{}`; cursor wrote its rule alone. Each
+        // platform's uninstall deleted or rewrote exactly these, its root door
+        // section and its `hookFiles`.
+        agents: { key: 'agents', probe: '.agents/skills/graphify/SKILL.md', section: 'none', files: ['.agents/skills/graphify/**'] },
+        claude: { key: 'claude', probe: '.claude/skills/graphify/SKILL.md', section: 'own-door', hooks: true, files: ['.claude/skills/graphify/**', '.claude/CLAUDE.md'] },
+        cursor: { key: 'cursor', probe: '.cursor/rules/graphify.mdc', section: 'none', redundant: true, files: ['.cursor/rules/graphify.mdc'] },
+        codex: { key: 'codex', probe: '.codex/skills/graphify/SKILL.md', section: 'canonical', files: ['.codex/skills/graphify/**'] },
+        opencode: { key: 'opencode', probe: '.opencode/skills/graphify/SKILL.md', section: 'canonical', files: ['.opencode/skills/graphify/**', '.opencode/plugins/graphify.js', '.opencode/opencode.json'] },
+        // MV-148, measured on 0.9.29 with doors [agents, codex, gemini]: once
+        // another platform's uninstall has removed the shared section, gemini's
+        // stops early and leaves its `BeforeTool` hook; printed first, it
+        // leaves `"BeforeTool": []`.
+        gemini: { key: 'gemini', probe: '.gemini/skills/graphify/SKILL.md', section: 'own-door', hooks: true, uninstallFirst: true, files: ['.gemini/skills/graphify/**'] },
+        copilot: { key: 'copilot', probe: '.copilot/skills/graphify/SKILL.md', section: 'none', files: ['.copilot/skills/graphify/**'] },
       },
       hookFiles: ['.claude/settings.json', '.codex/hooks.json', '.gemini/settings.json'],
       ignore: ['*.graphify-bak'],
@@ -1100,6 +1188,15 @@ const knownGraphers: Record<string, GrapherEntry> = {
     // derived npm line pointed at an unrelated registry entirely.
     installHint: 'uv tool install graphifyy',
     refresh: 'graphify update .',
+    // MV-148, measured 2026-09-28 on graphify 0.9.29 over a clone of this
+    // brain: with lines appended to `.graphifyignore` over a graph whose files
+    // lay under them, every `graphify update .` exited 1 ("new graph has 1460
+    // nodes but existing graph.json has 5937. Refusing to overwrite … Pass
+    // --force to override"), and `graphify update . --force` exited 0 with
+    // 1460 nodes; the next plain update exited 0. `refreshGraph` runs this
+    // only while the graph holds a node under a recorded line, so the vendor's
+    // shrink guard is bypassed only where those lines explain the shrink.
+    rebuild: 'graphify update . --force',
     // No separate create: `graphify extract` is the full AST+LLM build, which
     // a close hook must not run. `update .` builds and refreshes, AST-only.
     // `query` is REAL: it was run against the shipped 0.9.29 binary and returns
@@ -1120,6 +1217,13 @@ const knownGraphers: Record<string, GrapherEntry> = {
         answers: 'the shortest path between two nodes — how A actually reaches B',
       },
     ],
+    // MV-148, measured 2026-09-28 on graphify 0.9.29: with `--graph <path>`,
+    // query, explain and path answered byte for byte as from inside that
+    // checkout, from any directory, the path absolute or relative, and wrote
+    // nothing in the caller's directory (the query stamp goes next to the
+    // graph). `graphify update <path>` left a stray manifest in the caller's
+    // directory, so no printed refresh takes a path.
+    askAt: '--graph {checkout}/graphify-out/graph.json',
     note: 'Python tool, published as `graphifyy`. Writes graphify-out/graph.json; `graphify update .` is AST-only (no model, no network), which is what makes it safe in a close hook — `graphify extract` is the LLM path and is deliberately not wired here. Its query surface is question-shaped: `query` takes a question in words.',
     source: 'https://github.com/Graphify-Labs/graphify',
   },
@@ -1132,7 +1236,15 @@ const knownGraphers: Record<string, GrapherEntry> = {
     shared: [],
     local: ['.codegraph/**'],
     ignore: ['.codegraph/'],
-    // No graphignore: no ignore file of codegraph's was verified.
+    // No `graphignoreFile`, so no ignore lines (MV-148). Measured 2026-09-28 on
+    // codegraph 1.6.0: it indexes no Markdown, so 0 of its nodes came from
+    // `.specify`, `specs`, `.claude`, `.agents` or `.multivac`; it honours
+    // `.gitignore` through git; and `codegraph.json`'s `exclude` is applied by
+    // `sync`. A consumer of a brain that holds code indexes the mount (93.3% of
+    // its nodes), and a `.gitignore` mount line made a later `git submodule
+    // add` exit 128 — the fix is a merge into `codegraph.json`, a writer of its
+    // own, not a line here. A brain that holds no code adds 0 nodes there.
+    codeOnly: true,
     env: { DO_NOT_TRACK: '1', CODEGRAPH_TELEMETRY: '0', CODEGRAPH_NO_DOWNLOAD: '1' },
     binaries: ['codegraph'],
     required: ['codegraph'],
@@ -1151,6 +1263,14 @@ const knownGraphers: Record<string, GrapherEntry> = {
           'symbol search by name — `--kind function|class` narrows it, `--limit N` bounds it, `--json` makes it machine-readable',
       },
     ],
+    // MV-148, measured 2026-09-28 on codegraph 1.6.0: `-p <path>` answered byte
+    // for byte as from inside that checkout; with no index at the path it
+    // answered from the nearest index above it with exit 0, or exited 1 where
+    // there was none. A change's worktree holds no index, so it is never
+    // paired with this flag: the repo checkout is.
+    askAt: '-p {checkout}',
+    // MV-148, 1.6.0: without `--force`, `uninit` prompts and removes nothing.
+    remove: 'codegraph uninit --force',
     note: 'SQLite index under .codegraph/, not <name>-out/; `codegraph init` builds it and `codegraph sync` refreshes only what changed. TELEMETRY IS ON BY DEFAULT — 1.6.0\'s README says it collects which tools and commands get used and which languages get indexed, and never any code, paths, file or symbol names, queries, or IP addresses. It is still network traffic on a refresh multivac fires after every edit, so `codegraph telemetry off` (or CODEGRAPH_TELEMETRY=0, or DO_NOT_TRACK=1) is half of what makes the contract above literally true. The other half is the npm shim: when the platform bundle its optional dependency should carry is missing, it falls back to downloading that bundle from GitHub Releases, and CODEGRAPH_NO_DOWNLOAD=1 turns the fallback off. This entry\'s `env` sets all three on every run multivac makes and in the post-edit hook (MV-124). The `codegraph query` a door prints runs in the agent\'s own environment and carries none of that `env`: the opt-outs above reach it only when set there (MV-147). It also ships `codegraph install`, which registers an MCP server — a second, richer surface than the CLI for harnesses that speak MCP. That server, which multivac never starts, checks GitHub releases for a newer version in the background on 1.6.0, and CODEGRAPH_NO_UPDATE_CHECK or DO_NOT_TRACK turns the check off.',
     source: 'https://github.com/colbymchenry/codegraph',
   },

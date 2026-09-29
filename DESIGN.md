@@ -874,8 +874,9 @@ no mount, pin or staleness check against it; `verify` reaches it through the
 implicit `brain` handle, so `*` legs scan that directory once, not once per
 key; `change` accepts `brain` as a repo key in the change file — declared in
 the config or not — and branches in place. `init` writes the idiom above when
-the repo it initializes already has tracked source, and the commented example
-when it does not.
+the repo it initializes holds any file outside `.multivac/`, tracked or
+untracked and not ignored (a README-only repo included), and the commented
+example when it does not.
 
 `brain` and `*` stay reserved: `*` is every repo in an anchor leg, and a
 `brain` key pointing anywhere other than the brain root is refused (it would
@@ -1232,8 +1233,9 @@ name (`doors: [agents, claude]`, `sdd: opsx`, `grapher: graphify`).
 
 ### Every adapter question is asked per root (2026-08-17)
 
-**A root is the brain plus each declared repo on disk, and one root's artifact
-never answers for another's.** Measured in an ecosystem of six: a
+**A root is the brain plus each declared repo on disk — for a grapher, the
+brain only where it holds code — and one root's artifact never answers for
+another's.** Measured in an ecosystem of six: a
 single sibling repo somebody had run `specify init` in by hand made the
 scaffold return before it touched anything — the brain included — because
 presence was asked of the whole list and answered by the first hit; `doctor`
@@ -1261,7 +1263,9 @@ derives a command from a tool's name: a tool that declares no init still gets
 none, stated once per root where the tool is missing.
 
 Since 2026-09-28 the SDD half of this answers for one root, the brain; the
-grapher half is unchanged. The next section says why.
+next section says why. Since 2026-09-29 the brain is a grapher's root only
+where a repos entry is the brain (MV-148): a brain that holds none keeps no
+code graph, and each code repo keeps its own.
 
 ### The SDD lives in the brain (2026-09-28)
 
@@ -1380,7 +1384,11 @@ multivac may write in (not `managed: false`, not a shallow clone, MV-125):
   declared and its binary found — on PATH or in that repo's
   `node_modules/.bin`, the one lookup of MV-123 — `doors` installs it as the **harness's
   post-edit hook** — for a harness that has one — fire-and-forget, coalesced
-  behind a lock, never failing an edit and never adding latency to it.
+  behind a lock, never failing an edit and never adding latency to it. In a
+  brain that holds no code the hook only follows: it runs the one grapher the
+  code repos resolve, in the edited file's repo when that repo holds the graph
+  and is not a checkout of the brain, and otherwise exits having run nothing
+  (MV-148).
   `change close` runs the same refresh as the **safety net**, for edits made
   outside a harness. **Git hooks never refresh**: the shims run `verify` only,
   because an ergonomic convenience does not belong on a gate. Nothing is ever

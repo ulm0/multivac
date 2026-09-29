@@ -19,6 +19,9 @@ import {
   NO_ADAPTER,
   adapterFor,
   adaptersByRoot,
+  askedGraphers,
+  brainHoldsCode,
+  brainRefreshGrapher,
   findBinary,
   localBin,
   missingRequired,
@@ -424,10 +427,29 @@ test('one resolver answers for both kinds: a grapher per root, the SDD for the b
   };
   assert.equal(adapterFor(cfg, 'api', 'grapher'), 'graphify', 'grapher: api inherits');
   assert.equal(adapterFor(cfg, 'web', 'grapher'), 'codegraph', 'grapher: web declares its own');
-  assert.equal(adapterFor(cfg, 'brain', 'grapher'), 'graphify', "grapher: a brain with no entry takes the ecosystem's");
+  // MV-148: a brain no repos entry declares holds no code, and resolves no grapher.
+  assert.equal(adapterFor(cfg, 'brain', 'grapher'), undefined, 'grapher: a brain with no entry holds no code');
   assert.equal(adapterFor(cfg, 'undeclared', 'grapher'), 'graphify', 'grapher: an unknown key has no entry to read');
   assert.equal(adapterFor(cfg, 'brain', 'sdd'), 'speckit', "sdd: a brain with no entry takes the ecosystem's");
   for (const root of ['api', 'web', 'undeclared']) assert.equal(adapterFor(cfg, root, 'sdd'), undefined, `sdd: ${root}`);
+});
+
+test('a brain resolves a grapher only where a repos entry is the brain — MV-148', () => {
+  // No entry is the brain: it holds no code, and the ecosystem's grapher
+  // reaches only the code repos.
+  const codeless = { grapher: 'graphify', repos: { web: {}, api: { grapher: 'codegraph' } } };
+  assert.equal(adapterFor(codeless, 'brain', 'grapher'), undefined, 'a code-less brain resolves none');
+  assert.equal(adapterFor(codeless, 'web', 'grapher'), 'graphify', 'a code repo inherits, as before');
+  assert.equal(adapterFor(codeless, 'api', 'grapher'), 'codegraph', 'a code repo declares its own, as before');
+  // A repos entry that is the brain, under any key, resolves as before.
+  const declared = { grapher: 'graphify', repos: { brain: { isBrain: true }, web: {} } };
+  assert.equal(adapterFor(declared, 'brain', 'grapher'), 'graphify', '`brain: .`');
+  const core = { grapher: 'graphify', repos: { core: { isBrain: true }, web: {} } };
+  assert.equal(adapterFor(core, 'brain', 'grapher'), 'graphify', '`core: .`');
+  assert.equal(adapterFor(core, 'core', 'grapher'), 'graphify', 'the entry by its own key');
+  const own = { grapher: 'graphify', repos: { core: { isBrain: true, grapher: 'codegraph' }, web: {} } };
+  assert.equal(adapterFor(own, 'brain', 'grapher'), 'codegraph', '`core: { path: ., grapher: codegraph }`');
+  assert.equal(adapterFor(own, 'web', 'grapher'), 'graphify', 'the brain entry overrides only the brain');
 });
 
 test("the brain root reads the declared entry whose path is the brain, for both kinds", () => {
@@ -448,7 +470,8 @@ test('`none` is no adapter for both kinds, at repo and at top level', () => {
   for (const kind of ['sdd', 'grapher'] as const) {
     const repoNone = { [kind]: 'x', repos: { api: { [kind]: NO_ADAPTER } } };
     assert.equal(adapterFor(repoNone, 'api', kind), undefined, `${kind}: repo-level none`);
-    assert.equal(adapterFor(repoNone, 'brain', kind), 'x');
+    // MV-148: the SDD runs in the brain; a grapher only in a brain that holds code.
+    assert.equal(adapterFor(repoNone, 'brain', kind), kind === 'sdd' ? 'x' : undefined);
 
     const topNone = { [kind]: NO_ADAPTER, repos: { api: {} } };
     assert.equal(adapterFor(topNone, 'api', kind), undefined, `${kind}: top-level none`);
@@ -505,6 +528,54 @@ test('adapters by root: the brain first, absent repos included, `none` in no gro
   assert.equal(adaptersByRoot({ grapher: NO_ADAPTER, repos: {} }, 'grapher').size, 0);
 });
 
+// --- MV-148: what an agent in the brain asks, and what the brain's hook runs ---
+
+test('the graphers asked from the brain, and the one its hook runs', async () => {
+  const groups = (cfg: Parameters<typeof askedGraphers>[0]) => [...askedGraphers(cfg)];
+  // A brain no entry declares: each code repo's grapher, in config order.
+  const codeless = { grapher: 'graphify', repos: { web: {}, api: {} } };
+  assert.deepEqual(groups(codeless), [['graphify', ['web', 'api']]]);
+  // A brain that holds code: its own grapher under its own key, first,
+  // wherever the entry sits in the config.
+  const holds = { grapher: 'graphify', repos: { web: {}, self: { isBrain: true }, api: { grapher: 'codegraph' } } };
+  assert.deepEqual(groups(holds), [['graphify', ['self', 'web']], ['codegraph', ['api']]]);
+  // `managed: false` is a repo the operator opted out of: not asked from here.
+  const optedOut = { grapher: 'graphify', repos: { web: {}, vendor: { managed: false } } };
+  assert.deepEqual(groups(optedOut), [['graphify', ['web']]]);
+  // No repo resolves one: the ecosystem's declaration, with no repo to ask.
+  assert.deepEqual(groups({ grapher: 'graphify', repos: {} }), [['graphify', []]]);
+  const none = { grapher: 'graphify', repos: { web: { managed: false }, api: { grapher: NO_ADAPTER } } };
+  assert.deepEqual(groups(none), [['graphify', []]]);
+  assert.deepEqual(groups({ grapher: NO_ADAPTER, repos: { web: {} } }), [], 'nothing declared, nothing asked');
+  assert.deepEqual(groups({ repos: { web: {} } }), []);
+  // The resolver names what is declared; whether multivac speaks it is the door's question.
+  assert.deepEqual(groups({ grapher: 'acmegraph', repos: { web: {} } }), [['acmegraph', ['web']]]);
+
+  // The hook runs one command: one grapher over the code repos, or none.
+  assert.equal(brainRefreshGrapher(codeless), 'graphify');
+  assert.equal(brainRefreshGrapher({ repos: { web: { grapher: 'graphify' }, api: { grapher: 'codegraph' } } }), undefined);
+  assert.equal(
+    brainRefreshGrapher({ grapher: 'graphify', repos: { web: {}, api: { grapher: NO_ADAPTER } } }),
+    'graphify',
+    'a repo resolving none does not disagree',
+  );
+  assert.equal(brainRefreshGrapher({ grapher: 'graphify', repos: {} }), undefined, 'no code repo to follow edits into');
+  assert.equal(brainRefreshGrapher(optedOut), 'graphify');
+  // A brain that holds code runs its own, as it always did (MV-52).
+  assert.equal(brainRefreshGrapher({ grapher: 'graphify', repos: { self: { isBrain: true, grapher: 'codegraph' }, web: {} } }), 'codegraph');
+
+  // Holding code is a declaration: an entry whose path is the brain, under any key.
+  const eco = mkdtempSync(join(tmpdir(), 'mvac-holds-'));
+  const load = async (repos: string) => {
+    mkdirSync(join(eco, 'brain/.multivac'), { recursive: true });
+    writeFileSync(join(eco, 'brain/.multivac/config.yml'), `doors: [agents]\ngrapher: graphify\n${repos}`);
+    return loadConfig(join(eco, 'brain'));
+  };
+  assert.equal(brainHoldsCode(await load('repos:\n  brain: .\n')), true);
+  assert.equal(brainHoldsCode(await load('repos:\n  core: .\n')), true);
+  assert.equal(brainHoldsCode(await load('')), false);
+});
+
 // --- MV-124: what each entry declares about its own files and its runs ---
 
 test('each shipped entry declares its state files, its shared and local paths, and its opt-outs', () => {
@@ -513,10 +584,19 @@ test('each shipped entry declares its state files, its shared and local paths, a
     shared: s.shared,
     local: s.local,
     ignore: s.ignore,
-    graphignore: s.graphignore,
+    // MV-148: the file only; the lines are derived per root (graphIgnoreLines).
+    graphignoreFile: s.graphignoreFile,
     artifactKind: s.artifactKind,
     env: s.env,
+    // MV-148: the forced rebuild, the flag that points a verb at a checkout,
+    // and the removals `doctor` prints for an install a code-less brain kept.
+    rebuild: s.rebuild,
+    askAt: s.askAt,
+    remove: s.remove,
+    uninstall: s.harness?.uninstall,
+    uninstallFirst: Object.entries(s.harness?.platforms ?? {}).filter(([, p]) => p.uninstallFirst).map(([d]) => d),
   });
+  const none148 = { rebuild: undefined, askAt: undefined, remove: undefined, uninstall: undefined, uninstallFirst: [] };
   assert.deepEqual(declared(sddSpec('speckit')!), {
     state: {
       dir: '.specify',
@@ -527,36 +607,48 @@ test('each shipped entry declares its state files, its shared and local paths, a
     shared: ['.specify/**'],
     local: ['.specify/feature.json', '.specify/extensions/*/local-config.yml'],
     ignore: [],
-    graphignore: undefined,
+    graphignoreFile: undefined,
     artifactKind: undefined,
     env: {},
+    ...none148,
   });
   assert.deepEqual(declared(sddSpec('opsx')!), {
     state: { dir: 'openspec', files: ['openspec/config.yaml', 'openspec/config.yml'], check: 'file' },
     shared: ['openspec/config.yaml', 'openspec/config.yml', 'openspec/specs/**'],
     local: [],
     ignore: [],
-    graphignore: undefined,
+    graphignoreFile: undefined,
     artifactKind: undefined,
     env: { DO_NOT_TRACK: '1', OPENSPEC_TELEMETRY: '0' },
+    ...none148,
   });
   assert.deepEqual(declared(grapherSpec('graphify')!), {
     state: { dir: 'graphify-out', files: ['graphify-out/graph.json'], check: 'json' },
     shared: ['graphify-out/graph.json'],
     local: ['graphify-out/**'],
     ignore: ['graphify-out/*', '!graphify-out/graph.json'],
-    graphignore: ['.claude/', '.multivac/', '.specify/', 'specs/', 'openspec/'],
+    graphignoreFile: '.graphifyignore',
     artifactKind: 'shared',
     env: {},
+    rebuild: 'graphify update . --force',
+    askAt: '--graph {checkout}/graphify-out/graph.json',
+    remove: undefined,
+    uninstall: 'graphify uninstall --project --platform {key}',
+    uninstallFirst: ['gemini'],
   });
   assert.deepEqual(declared(grapherSpec('codegraph')!), {
     state: { dir: '.codegraph', files: ['.codegraph/codegraph.db'], check: 'file' },
     shared: [],
     local: ['.codegraph/**'],
     ignore: ['.codegraph/'],
-    graphignore: undefined,
+    graphignoreFile: undefined,
     artifactKind: 'local',
     env: { DO_NOT_TRACK: '1', CODEGRAPH_TELEMETRY: '0', CODEGRAPH_NO_DOWNLOAD: '1' },
+    rebuild: undefined,
+    askAt: '-p {checkout}',
+    remove: 'codegraph uninit --force',
+    uninstall: undefined,
+    uninstallFirst: [],
   });
   // The database is the artifact, not the directory around its own .gitignore.
   assert.deepEqual(grapherSpec('codegraph')!.artifacts, ['.codegraph/codegraph.db']);
@@ -566,9 +658,10 @@ test('each shipped entry declares its state files, its shared and local paths, a
     shared: ['acmegraph-out/graph.json'],
     local: [],
     ignore: [],
-    graphignore: undefined,
+    graphignoreFile: undefined,
     artifactKind: 'shared',
     env: {},
+    ...none148,
   });
 });
 

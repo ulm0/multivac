@@ -123,6 +123,35 @@ test('with no SDD in the brain, a code repo\'s own install is not a leftover —
   assert.doesNotMatch(lines.join('\n'), /leftover/);
 });
 
+test('a code-less brain with no graph is ok, and a kept install is a fact on its line — MV-148', async () => {
+  // No repos entry is the brain: it resolves no grapher, so no graph is asked
+  // of it, and none fails its line.
+  const root = mkdtempSync(join(tmpdir(), 'mvac-check-'));
+  const b = join(root, 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\nrepos:\n  api: ../api\n',
+    '.multivac/invariants.md': '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
+  });
+  initRepo(join(root, 'api'), { 'graphify-out/graph.json': '{}\n' });
+  let { lines, exit } = await reposCheck(b);
+  assert.equal(exit, 0, lines.join('\n'));
+  assert.match(lines.join('\n'), /^brain\s+ok\s+cloned$/m);
+  assert.match(lines.join('\n'), /^api\s+ok\s+cloned · graphify built and committed$/m);
+
+  // An install an earlier release left there: stated, never a failure.
+  mkdirSync(join(b, 'graphify-out'), { recursive: true });
+  writeFileSync(join(b, 'graphify-out/graph.json'), '{"nodes":[],"links":[]}\n');
+  execFileSync('git', ['-C', b, 'add', 'graphify-out/graph.json']);
+  execFileSync('git', ['-C', b, 'commit', '-qm', 'an earlier release built this']);
+  ({ lines, exit } = await reposCheck(b));
+  assert.equal(exit, 0, lines.join('\n'));
+  assert.match(lines.join('\n'), /^brain\s+ok\s+cloned; leftover graphify install \(tracked\)$/m);
+  // A brain that holds code keeps its graph as its own: no leftover.
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\ngrapher: graphify\nrepos:\n  brain: .\n  api: ../api\n');
+  ({ lines } = await reposCheck(b));
+  assert.match(lines.join('\n'), /^brain\s+ok\s+cloned · graphify built and committed$/m);
+});
+
 test('an empty project document is empty, in repos check and in doctor — MV-132', async () => {
   const { brain: b } = brain('');
   writeFileSync(join(b, '.specify/memory/constitution.md'), '');

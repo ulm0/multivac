@@ -99,16 +99,27 @@ ON accounts
 TO app_role;
 `;
 
+export interface ScratchOpts {
+  /**
+   * MV-148. The brain holds code: `brain: .` is declared under `repos:`, first,
+   * and the brain commits a source file. The default brain holds none — the
+   * law and the door only — which the SDD tests depend on (MV-146), and which
+   * resolves no grapher at the brain root.
+   */
+  brainIsCode?: true;
+}
+
 /** Create brain + acme-api + acme-web under tmpdir; returns absolute paths. */
-export function makeScratchEcosystem(tmpdir: string): ScratchEcosystem {
+export function makeScratchEcosystem(tmpdir: string, opts: ScratchOpts = {}): ScratchEcosystem {
   const brain = join(tmpdir, 'acme-brain');
   const api = join(tmpdir, 'acme-api');
   const web = join(tmpdir, 'acme-web');
 
   initRepo(brain, {
-    '.multivac/config.yml': CONFIG_YML,
+    '.multivac/config.yml': opts.brainIsCode ? CONFIG_YML.replace('repos:\n', 'repos:\n  brain: .\n') : CONFIG_YML,
     'AGENTS.md': '# acme brain\n\nStart here.\n',
     '.multivac/invariants.md': INVARIANTS_MD,
+    ...(opts.brainIsCode ? { 'src/app.ts': 'export const app = "acme-brain";\n' } : {}),
   });
 
   initRepo(api, {

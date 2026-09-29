@@ -43,7 +43,8 @@ const runsOf = (tool: string): number =>
 
 test('declared at init, installed at init: spec-kit scaffolded and the graph built — MV-128', async () => {
   const dir = tmp();
-  gitInit(dir);
+  // MV-148: a brain holding code, so the grapher is built here.
+  initRepo(dir, { 'src/app.ts': 'export const app = 1;\n' });
   const specify = runsOf('specify');
   const graphify = runsOf('graphify');
 
@@ -86,6 +87,9 @@ test('sdd_auto: false runs nothing, and opsx is installed like speckit — MV-12
 test('a tool init would run and cannot find refuses init before anything is written — MV-128', async () => {
   for (const flags of [['--sdd', 'speckit'], ['--grapher', 'graphify']]) {
     const dir = tmp(); // exists, and is not a repo yet
+    // MV-148: the grapher runs only in a brain holding code — here a source
+    // file, not a repository yet.
+    if (flags[0] === '--grapher') writeFileSync(join(dir, 'app.py'), 'print(1)\n');
     const { code, out } = await run([...flags], dir, bare);
     assert.equal(code, 1, `${flags.join(' ')}: ${out}`);
     assert.match(out, /init refused — /);
@@ -94,6 +98,46 @@ test('a tool init would run and cannot find refuses init before anything is writ
     assert.equal(existsSync(join(dir, '.git')), false, 'no git init');
     assert.equal(existsSync(join(dir, '.multivac')), false, 'no brain');
     assert.equal(existsSync(join(dir, 'AGENTS.md')), false, 'no door');
+  }
+});
+
+test('untracked source makes the brain code — MV-148', async () => {
+  // Tracked files alone were asked: a repo whose source was not committed yet
+  // got no `brain: .` and no graph.
+  const dir = tmp();
+  gitInit(dir);
+  mkdirSync(join(dir, 'src'), { recursive: true });
+  writeFileSync(join(dir, 'src/server.ts'), 'export const port = 8080;\n');
+  const { code, out } = await run(['--grapher', 'graphify'], dir);
+  assert.equal(code, 0, out);
+  assert.match(readFileSync(join(dir, '.multivac/config.yml'), 'utf8'), /^repos:\n {2}brain: \.$/m);
+  assert.ok(existsSync(join(dir, 'graphify-out/graph.json')), 'the graph is built in the brain');
+  assert.doesNotMatch(out, /holds no code/);
+  assert.match(out, /← this repo holds code$/m);
+});
+
+test('an empty repo declaring a grapher it cannot find exits 0 and writes none of it — MV-148', async () => {
+  // A brain holding no code resolves no grapher: no lookup, no refusal, no
+  // install, no build. It says so, and where the graphs will be.
+  for (const repo of [true, false]) {
+    const dir = tmp();
+    if (repo) gitInit(dir);
+    const graphify = runsOf('graphify');
+    const { code, out } = await run(['--provider', 'claude', '--grapher', 'graphify'], dir, bare);
+    assert.equal(code, 0, out);
+    assert.doesNotMatch(out, /init refused/);
+    assert.match(readFileSync(join(dir, '.multivac/config.yml'), 'utf8'), /^grapher: graphify$/m, 'the declaration is kept');
+    assert.doesNotMatch(readFileSync(join(dir, '.multivac/config.yml'), 'utf8'), /^ {2}brain: \.$/m);
+    for (const p of ['graphify-out', '.graphifyignore', '.claude/skills/graphify', '.agents/skills/graphify']) {
+      assert.equal(existsSync(join(dir, p)), false, p);
+    }
+    assert.doesNotMatch(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /^## graphify$/m, 'no vendor section');
+    assert.equal(runsOf('graphify'), graphify, 'no vendor ran');
+    assert.match(
+      out,
+      /^init: graphify is declared, and this brain holds no code \(no repos entry is the brain\), so no graph is built here — each code repo gets its own when `repos sync` or a change reaches it$/m,
+    );
+    assert.match(out, /← this repo holds none$/m);
   }
 });
 
@@ -147,10 +191,25 @@ test('before the first build, the ignore lines go in, appended — MV-128', asyn
   initRepo(dir, { '.gitignore': 'node_modules/', 'app.py': 'print(1)\n' }); // no trailing newline: appended cleanly
   const { code, out } = await run(['--grapher', 'graphify'], dir);
   assert.equal(code, 0, out);
-  assert.match(out, /graph graphify @ brain: wrote \.graphifyignore \(\+5\) and \.gitignore \(\+2\) before the first build/);
+  // MV-148: the lines are this root's non-code directories, anchored, under
+  // one record — every harness directory, not the fixed five that missed
+  // `.agents/` and `.codex/`; no grapher's own output directory; `specs/`
+  // only where the brain's SDD writes it.
+  assert.match(out, /graph graphify @ brain: wrote \.graphifyignore \(\+11\) and \.gitignore \(\+2\) before the first build/);
   // MV-131 adds the vendor's install backup after the build's own lines.
   assert.equal(readFileSync(join(dir, '.gitignore'), 'utf8'), 'node_modules/\ngraphify-out/*\n!graphify-out/graph.json\n*.graphify-bak\n');
-  assert.match(readFileSync(join(dir, '.graphifyignore'), 'utf8'), /^\.claude\/\n\.multivac\/\n\.specify\/\nspecs\/\nopenspec\/\n$/);
+  const lines = '/.agents/ /.claude/ /.codex/ /.copilot/ /.cursor/ /.gemini/ /.husky/ /.multivac/ /.opencode/ /.specify/ /openspec/';
+  assert.equal(
+    readFileSync(join(dir, '.graphifyignore'), 'utf8'),
+    `${lines.split(' ').join('\n')}\n# multivac: kept out of the graph — ${lines}\n`,
+  );
+  assert.doesNotMatch(readFileSync(join(dir, '.graphifyignore'), 'utf8'), /codegraph|graphify-out|\.brain/);
+  const withSdd = tmp();
+  initRepo(withSdd, { 'app.py': 'print(1)\n' });
+  const speckit = await run(['--sdd', 'speckit', '--grapher', 'graphify'], withSdd);
+  assert.equal(speckit.code, 0, speckit.out);
+  assert.match(speckit.out, /graph graphify @ brain: wrote \.graphifyignore \(\+12\) and \.gitignore \(\+2\) before the first build/);
+  assert.match(readFileSync(join(withSdd, '.graphifyignore'), 'utf8'), /^\/openspec\/\n\/specs\/\n# multivac: kept out of the graph — .* \/openspec\/ \/specs\/$/m);
   const zero = out.split('\n').find((l) => /0\. commit what was just written/.test(l)) ?? '';
   assert.match(zero, /\s\.gitignore(\s|$)/);
   assert.match(zero, /\s\.graphifyignore(\s|$)/);

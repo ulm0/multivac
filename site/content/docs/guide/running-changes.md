@@ -198,16 +198,31 @@ explicitly asked for an operation that needs the repo.
 ```txt
 $ mvac change apply points-expire
 committed: change apply: points-expire — status branched
+web: created ~/eco/acme-web — git init, door written, first commit
+graph graphify @ web: wrote .graphifyignore (+12) and .gitignore (+2) before the first build
+graph graphify @ web: built (`graphify update .`) — artifact left uncommitted
+graph graphify @ web: wrote .gitignore (+1) before its first project install
+graph graphify @ web: installed into agents (`graphify install --project --platform agents`)
 api: branched points-expire from main cba4d83 — no origin/main known locally
 api: worktree ~/eco/brain/.multivac/worktrees/points-expire/api
-web: created ~/eco/acme-web — git init, door written, first commit
 web: branched points-expire from main a5d5c36 — no origin/main known locally
 web: worktree ~/eco/brain/.multivac/worktrees/points-expire/web
 work here — one checkout per repo, nobody else's tree moves:
   api: ~/eco/brain/.multivac/worktrees/points-expire/api
+    its graph: --graph ~/eco/brain/.multivac/worktrees/points-expire/api/graphify-out/graph.json — paths in its answers are relative to this checkout
   web: ~/eco/brain/.multivac/worktrees/points-expire/web
+    no graph in this checkout yet (`change land` commits one) — --graph ~/eco/acme-web/graphify-out/graph.json answers for the base, without this branch's edits; paths in its answers are relative to ~/eco/acme-web
 then commit on branch points-expire and run `multivac change land points-expire`
 ```
+
+Under each checkout, `apply` names the flag that points the grapher's verbs at
+it from the brain. api's worktree holds its committed graph. web's first graph
+was just built in its own checkout and is not committed yet, so its worktree
+has none: the flag given is the repo checkout's, answering for the base without
+this branch's edits, until `change land` commits one on the branch. An answer's
+paths are relative to the checkout that flag names — `src/server.ts` in web's
+worktree is not the brain's. See
+[Where to ask the graph](../../reference/graphers-and-sdd/#where-to-ask-the-graph).
 
 Each present repo gets its own git worktree for this change, branched after
 the slug. **Write the feature in the printed paths**, not in the shared
@@ -282,7 +297,9 @@ stage 2 [blocked] web:branched
 `land` reports stage by stage: what is ready to push and MR now, what is
 blocked behind an earlier stage. Before each push line it refreshes that repo's
 code graph in the change's worktree and commits it on the branch, so the merge
-carries a graph of the merged tree.
+carries a graph of the merged tree. Where the repo's `.graphifyignore` lacks
+lines multivac keeps out of the graph, land appends them first and commits the
+file with the graph.
 
 The code you push is judged too. Where an SDD is declared, a commit or a merge
 of code that is not on the branch of an open change declaring the repo is
@@ -323,8 +340,7 @@ claims**:
 $ mvac change close points-expire
 INV-02: ok
 archived -> .multivac/changes/archive/points-expire.md
-graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
-archived — commit this: git -C ~/eco/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md graphify-out/graph.json .multivac/ecosystem.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
+archived — commit this: git -C ~/eco/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md .multivac/ecosystem.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/api)
 web: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/web)
 
@@ -332,6 +348,9 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] tell support before the flag flips
   - [ ] the public site ships before the backend
 ```
+
+This brain holds no code of its own, so close refreshes no graph in it and the
+archive commit names none: the code repos' graphs landed with their branches.
 
 The printed commit is scoped to the closing change's paths — never `add -A`,
 which in a shared checkout would sweep another change's files into the archive

@@ -4,7 +4,7 @@
 // managed blocks, never duplicates or destroys user content.
 
 import { parseArgs, type ArgsDef } from 'citty';
-import { access, mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
+import { access, mkdir, readdir, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import picomatch from 'picomatch';
 import { join, resolve } from 'node:path';
@@ -35,7 +35,8 @@ import {
   ECOSYSTEM_PATH,
 } from '../lib/config.js';
 import { ritualSeed } from '../lib/ritual.js';
-import { ignoredPaths, lsFiles, run as git } from '../lib/git.js';
+import { ignoredPaths, lsFiles, run as git, untrackedFiles } from '../lib/git.js';
+import { leftoverGraphs } from '../lib/repo-state.js';
 import { acid, bold, dim, say, warn } from '../lib/out.js';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { banner } from '../lib/banner.js';
@@ -43,7 +44,15 @@ import { writeEcosystem } from '../doors/ecosystem.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
 import { PRECOMMIT_MISSING_FIX, installHooks } from '../hooks/install.js';
-import { adapterFor, adaptersByRoot, detectAdapters, missingRequired, type Detected } from '../adapters/detect.js';
+import {
+  adapterFor,
+  adaptersByRoot,
+  askedGraphers,
+  brainHoldsCode,
+  detectAdapters,
+  missingRequired,
+  type Detected,
+} from '../adapters/detect.js';
 
 export type { Detected };
 
@@ -331,18 +340,47 @@ async function grapherRefusal(dir: string, name: string): Promise<string | null>
 
 
 /**
+ * MV-148. Whether the repo `init` runs in holds any file of its own: in a git
+ * repository, any path git lists outside `.multivac/`, tracked or untracked and
+ * not ignored; outside one, any entry but `.multivac` and `.git`. Tracked files
+ * alone were asked, so a repo whose source was not committed yet was taken as
+ * holding none, got no `brain: .` and no graph. Asked once, before anything is
+ * written — every file init writes would otherwise count. A README-only repo
+ * counts too: a ceiling, stated, since a rule on file kinds misjudges others.
+ */
+async function holdsFiles(dir: string): Promise<boolean> {
+  if (!(await isRepoRoot(dir))) {
+    return (await readdir(dir).catch(() => [] as string[])).some((n) => n !== '.multivac' && n !== '.git');
+  }
+  const listed = [...(await lsFiles(dir).catch(() => [])), ...(await untrackedFiles(dir).catch(() => []))];
+  return listed.some((p) => p !== '.multivac' && !p.startsWith('.multivac/'));
+}
+
+/**
  * MV-128. The tools init would run in the brain, and only those: the same
  * conditions `runScaffold` and `ensureGraphs` apply, asked before anything is
  * written. A kept config decides (MV-91); on a first run the flags are what the
  * config is about to say. An installed tool, one with no recorded init, and an
  * SDD under `sdd_auto: false` run nothing, so a missing binary there is no
  * reason to refuse.
+ *
+ * MV-148: and whether the brain holds code, the answer that decided the
+ * grapher. A kept config says so by a repos entry that is the brain; on a
+ * first run `holdsFiles` decides, and the same answer writes the brain entry.
+ * A brain holding no code resolves no grapher, so `init --grapher graphify` in
+ * an empty repo neither looks for the binary nor refuses over it.
  */
 async function toolsInitWouldRun(
   dir: string,
   declared: Config | null,
   f: Flags,
-): Promise<ToolRun[]> {
+): Promise<{ runs: ToolRun[]; holdsCode: boolean }> {
+  const holdsCode = declared ? brainHoldsCode(declared) : await holdsFiles(dir);
+  return { runs: await brainTools(dir, declared, f, holdsCode), holdsCode };
+}
+
+/** The tools `toolsInitWouldRun` answers with, once whether the brain holds code is known. */
+function brainTools(dir: string, declared: Config | null, f: Flags, holdsCode: boolean): Promise<ToolRun[]> {
   // MV-129: the same predicate `change new` and `repos sync` ask, over the one
   // root init equips.
   return toolsToRun(
@@ -351,7 +389,7 @@ async function toolsInitWouldRun(
         scope: 'brain',
         dir,
         sdd: declared ? adapterFor(declared, 'brain', 'sdd') : f.sdd,
-        grapher: declared ? adapterFor(declared, 'brain', 'grapher') : f.grapher,
+        grapher: declared ? adapterFor(declared, 'brain', 'grapher') : holdsCode ? f.grapher : undefined,
       },
     ],
     { sdd: declared?.sddAuto ?? true, graphers: declared?.graphers ?? {} },
@@ -452,7 +490,7 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   const kept = (await exists(join(dir, CONFIG_PATH))) ? await loadConfig(dir).catch(() => null) : null;
   const wouldRun = await toolsInitWouldRun(dir, kept, f);
   const missingTools: string[] = [];
-  for (const { name, spec } of wouldRun) {
+  for (const { name, spec } of wouldRun.runs) {
     const bins = await missingRequired(spec, dir);
     if (bins.length > 0) missingTools.push(`${name}: ${binaryMissing(name, spec, bins, 'brain')}`);
   }
@@ -567,10 +605,11 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // for a reason unrelated to the upgrade — quiet, and looking resolved.
   if (!(await exists(join(dir, PROJECTED_PATH)))) await stamp(dir);
   const cfgPath = join(dir, '.multivac', 'config.yml');
-  // Tracked source already here = the brain is its own code repo. Decided
-  // before the config branch because the closing call to action needs it too:
-  // it is what picks discovery over the interview.
-  const brainIsCode = (await lsFiles(dir).catch(() => [])).length > 0;
+  // Source already here = the brain is its own code repo. Decided before
+  // anything was written (MV-148: `holdsFiles`, untracked files included), and
+  // read here because the config and the closing call to action need it: it is
+  // what writes `brain: .` and picks discovery over the interview.
+  const brainIsCode = wouldRun.holdsCode;
   if (await exists(cfgPath)) {
     report('init: .multivac/config.yml kept — edit it directly, then `multivac doors`');
     // MV-91: a flag that survived the refusal above either agrees with the
@@ -626,8 +665,10 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // top of this run — never a third read, and never a broken one: that case
   // returned above (MV-114).
   const cfg = await loadConfig(dir).catch(() => null);
+  // MV-148: with the kept grapher install `doors` names, from the same probe,
+  // so the two write one door.
   const body = cfg
-    ? renderBrainDoor(cfg, countActiveInvariants(await readFile(join(dir, LAW_PATH), 'utf8').catch(() => '')))
+    ? renderBrainDoor(cfg, countActiveInvariants(await readFile(join(dir, LAW_PATH), 'utf8').catch(() => '')), await leftoverGraphs(cfg, dir))
     : null;
   const doorPath = join(dir, 'AGENTS.md');
   const existing = await readFile(doorPath, 'utf8').catch(() => null);
@@ -736,13 +777,20 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // files init wrote.
   const equipCfg = await loadConfig(dir).catch(() => null);
   if (equipCfg !== null) await equip(dir, equipCfg, false);
+  // MV-148: a brain that holds no code keeps no code graph, and a declared
+  // grapher not built here is said, never left silent.
+  if (equipCfg !== null && !brainHoldsCode(equipCfg)) {
+    for (const name of askedGraphers(equipCfg).keys()) {
+      report(`init: ${name} is declared, and this brain holds no code (no repos entry is the brain), so no graph is built here — each code repo gets its own when \`repos sync\` or a change reaches it`);
+    }
+  }
 
   // The last word is a call to action, not a full stop. init leaves a brain
   // that is scaffolded and empty, and "load the skill" alone left the reader
   // to discover session zero — that there are two flows and which one is
   // theirs — from the door. Both are named here, and the branch is decided,
-  // not asked: tracked source means there is an ecosystem to read, an empty
-  // repo means there is one to invent. The steps stay pointers into the
+  // not asked: source, tracked or not (MV-148: `holdsFiles`), means there is
+  // an ecosystem to read, an empty repo means there is one to invent. The steps stay pointers into the
   // skill; init does not restate a protocol that lives there.
   emit('');
   emit(bold(acid('init: done — the brain is scaffolded and empty. Session zero fills it:')));

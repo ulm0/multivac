@@ -10,7 +10,7 @@ are checked against are in [research.md](research.md). **(measured)** marks a re
 measured with these vendors; **(expected)** follows from this design and is what the tests pin.
 
 ```bash
-REPO=/home/user/multivac; SCR=<scratch>
+REPO=/home/user/multivac/.multivac/worktrees/graph-answers-where-asked/brain; SCR=<scratch>   # this change's worktree: `multivac` on PATH runs main's build (analyze I3)
 export HOME=$SCR/home GIT_CONFIG_GLOBAL=$SCR/gitconfig DO_NOT_TRACK=1 OPENSPEC_TELEMETRY=0 \
   CODEGRAPH_TELEMETRY=0 CODEGRAPH_NO_DOWNLOAD=1 CODEGRAPH_NO_UPDATE_CHECK=1
 mkdir -p $HOME $SCR/nobin && git config --global user.name t && git config --global user.email t@t \
@@ -38,27 +38,29 @@ test; api's `src/index.ts` one function.
    the printed step-zero commit (once it is committed the config changes only inside a change);
    `cd $SCR/eco/brain && $MV repos sync` — each code repo gets its graph, the brain none
    (**expected**; SC-012).
-3. `cd $SCR/eco/web && cat .graphifyignore` — the `# multivac:` record, then `/.agents/` … `/.brain/`
-   and no `/specs/` (**expected**); `cd $SCR/eco/web && python3 -c "import json,collections;g=json.load(open('graphify-out/graph.json'));print(collections.Counter(n.get('source_file','').split('/')[0] for n in g['nodes']))"`
+3. `cd $SCR/eco/web && cat .graphifyignore` — the lines `/.agents/` … `/.brain/`, then the
+   `# multivac:` record listing them, and no `/specs/` (**expected**); `cd $SCR/eco/web && python3 -c "import json,collections;g=json.load(open('graphify-out/graph.json'));print(collections.Counter(n.get('source_file','').split('/')[0] for n in g['nodes']))"`
    — no `.agents` or `.brain`, and `specs` present (SC-021; ver-M measured 501 → 74 nodes with the
-   mount line).
+   mount line in a larger consumer than this fixture, whose own graph is a few nodes: walked, `src` 4
+   and `specs` 2).
 4. A second brain for the untracked-source rule:
    `mkdir -p $SCR/u && cd $SCR/u && git init -q && mkdir src && printf 'export function computeTotal(a: number[]) { return a.reduce((s, x) => s + x, 0); }\n' > src/server.ts && $MV init --provider claude --grapher graphify --quiet && grep -A1 '^repos:' .multivac/config.yml && graphify query "computeTotal" --graph graphify-out/graph.json | grep -c computeTotal`
    — `brain: .` and a positive count (today `# repos:`, **measured** ver-G; SC-014).
 
 ## Walk B — the door and the flag (US1)
 
-1. `cd $SCR/eco/brain && $MV doors && sed -n '/holds no code/,/^$/p' AGENTS.md | wc -c` — the
-   where-block of the contract, 954 B for the two repos (**expected**; SC-002); `grep -c '## graphify'
-   AGENTS.md` is 0.
+1. `cd $SCR/eco/brain && $MV doors && sed -n '/holds no code/,/^$/p' AGENTS.md | grep -v '^$' | wc -c` — the
+   where-block of the contract, 954 B for the two repos (**measured**; SC-002 — without the
+   `grep -v`, the range's closing blank line makes it 955); `grep -c '## graphify' AGENTS.md` is 0.
 2. `cd $SCR/eco/brain && graphify query "where is the order total computed" --graph ../web/graphify-out/graph.json | grep -m1 computeTotal`
    — `computeTotal()` with `src=src/server.ts` (**measured** inv; SC-001);
    `cd $SCR/eco/brain && graphify query "where is the order total computed"; echo $?` exits 1,
    `graph file not found`, and `git status --porcelain` is unchanged (**measured** inv).
 3. `cd $SCR/eco/brain && graphify query "which repo does INV-01 anchor" --graph .multivac/ecosystem.json`
    answers with the binary alone (**measured** inv).
-4. A zero-repo twin: `mkdir -p $SCR/z && cd $SCR/z && git init -q && $MV init --provider claude --grapher graphify --quiet && grep -c -- '--graph .multivac/ecosystem.json' AGENTS.md`
-   — 3 (SC-006), and the unresolved line of the contract.
+4. A zero-repo twin: `mkdir -p $SCR/z && cd $SCR/z && git init -q && $MV init --provider claude --grapher graphify --quiet && grep -o -- '--graph .multivac/ecosystem.json' AGENTS.md | wc -l`
+   — 3 (SC-006; the three verbs share one line, so `grep -c` prints 1), and the unresolved line of
+   the contract.
 
 ## Walk C — a change, its pointer, the hook, land and close (US1, US2, US4)
 
@@ -67,7 +69,7 @@ test; api's `src/index.ts` one function.
    — under `web: <wt>`, the graphify base line naming `--graph $SCR/eco/web/graphify-out/graph.json`
    (**expected**; SC-003); `ls <wt>/graphify-out` shows none (**measured** ver-X);
    `cd $SCR/eco/brain && graphify query "which function computes the total" --graph $SCR/eco/web/graphify-out/graph.json | wc -c`
-   — exit 0, about 6,491 B (**measured** ver-X).
+   — exit 0 (**measured**; ver-X's 6,491 B came from a larger web than this fixture's).
 2. The hook. `cd $SCR/eco/brain && HOOK=$(python3 -c "import json;s=json.load(open('.claude/settings.json'));print([h['command'] for e in s['hooks']['PostToolUse'] for h in e['hooks'] if 'graph-refresh.lock' in h['command']][0])") && printf %s "$HOOK" | wc -c`
    — 540 plus the `env` prefix (**expected**; SC-009). Then, one payload at a time, waiting for
    the lock to clear (`for i in $(seq 60); do [ -d <repo>/.multivac/cache/graph-refresh.lock ] || break; sleep 1; done`):
@@ -83,15 +85,25 @@ test; api's `src/index.ts` one function.
    — web's own checkout holds `.graphifyignore` untracked (written by `repos sync`), so land prints
    `web: .graphifyignore in $SCR/eco/web is not committed — …` and creates no copy (**expected**;
    FR-028); `git -C <wt> status --porcelain` names no `.gitignore` (SC-023).
-   `cd $SCR/eco/web && git add .graphifyignore && git commit -qm ignore`, merge the branch,
-   `cd $SCR/eco/brain && $MV change land totals --landed web`.
+   `cd $SCR/eco/web && git add .graphifyignore && git commit -qm ignore`, then merge the branch into
+   web's main. web's own checkout still holds the untracked `graphify-out/graph.json` that `repos
+   sync` built, which the branch's committed graph would overwrite: the merge refuses with exit 1
+   (`untracked working tree files would be overwritten by merge`) until you move it aside
+   (`cd $SCR/eco/web && mv graphify-out/graph.json $SCR/web-graph.json`), and until that merge
+   lands `change close` refuses with `web: graphify-out/graph.json is not committed`, a gate older
+   than this change (**measured**). Then `cd $SCR/eco/brain && $MV change land totals --landed web`.
 4. Close. `cd $SCR/eco/brain && graphify query "total" --graph <wt>/graphify-out/graph.json >/dev/null && git -C <wt> status --porcelain`
    — `?? graphify-out/cache/` (**measured** inv: blocks `git worktree remove`, exit 128);
-   `cd $SCR/eco/brain && $MV change close totals` — `web: worktree removed (<wt>)` (**expected**;
+   `cd $SCR/eco/brain && $MV change close totals` — `web: worktree removed (<wt>)` (**measured**;
    SC-005); the printed archive commit names no `graphify-out/graph.json` for the brain (SC-012).
+   Close also refuses a claim with no anchor: state and anchor the change's claim first, as any
+   close requires.
 5. `cd $SCR/eco/brain && $MV doctor | grep '^grapher'` — the fact line, web's and api's status
    lines, and `refresh path: claude post-edit hook follows your edits into the code repos'
-   checkouts` (**expected**); `cd $SCR/eco/brain && $MV repos check; echo $?` — 0.
+   checkouts` (**measured**); `cd $SCR/eco/brain && $MV repos check; echo $?` — 0 once api's graph,
+   which `repos sync` built, is committed (`cd $SCR/eco/api && git add graphify-out/graph.json && git commit -qm graph`);
+   before that it exits 1 on api's line, `graphify built but graphify-out/graph.json is not
+   committed`, while the brain's line reads `ok cloned` (**measured**).
 6. Main checkouts untouched: `git -C $SCR/eco/web status --porcelain` and `git -C $SCR/eco/api status --porcelain`
    are empty after `change new`, `plan`, `apply`, `repos sync`, `doors`, `doctor` and `verify`
    (SC-023).
@@ -106,8 +118,9 @@ test; api's `src/index.ts` one function.
    `cd $SCR/eco2/brain && cp AGENTS.md $SCR/door.doors && $MV init --provider claude --quiet && cmp AGENTS.md $SCR/door.doors`
    — identical (SC-018).
 3. `cd $SCR/eco2/brain && md5sum graphify-out/graph.json > $SCR/kept.md5 && $MV change new probe "Probe" && md5sum -c $SCR/kept.md5`
-   — OK: nothing reinstalled or refreshed (SC-016); `cd $SCR/eco2/brain && $MV repos check; echo $?` — 0 with
-   `; leftover graphify install (tracked)` on the brain's line.
+   — OK: nothing reinstalled or refreshed (SC-016); `cd $SCR/eco2/brain && $MV repos check; echo $?` — the
+   brain's line `ok cloned; leftover graphify install (tracked)`, and 0 once each code repo's graph
+   the `init` re-run built is committed there — until then 1, on that repo's own line (**measured**).
 4. Run the printed removal:
    `cd $SCR/eco2/brain && graphify uninstall --project --platform agents && graphify uninstall --project --platform claude && git rm -q --ignore-unmatch -- graphify-out/graph.json .graphifyignore && rm -rf graphify-out .graphifyignore && git status --porcelain | awk '{print $1}' | sort | uniq -c`
    — 23 D and 2 M; `grep -c '"PreToolUse": \[\]' .claude/settings.json` is 1; `CLAUDE.md` is still a
@@ -121,25 +134,27 @@ test; api's `src/index.ts` one function.
 ## Walk E — a brain that holds code: this brain, cloned (US1, US4)
 
 1. `git clone -q $REPO $SCR/clone && cd $SCR/clone && git checkout -q e5d034f && python3 -c "import json;print(len(json.load(open('graphify-out/graph.json'))['nodes']))"`
-   — the committed graph, about 5,937 nodes (**measured** synth, on 92c4c08; re-read here, since
-   #4 moved it).
+   — the committed graph: 6,066 nodes in 5,989,444 B at e5d034f, 4,583 of them under the 12 lines
+   (**measured**; 5,937 on 92c4c08, before #4 moved it).
 2. Write the record and the 12 lines of contracts/cli-output.md *The ignore file* into
    `.graphifyignore`, then `cd $SCR/clone && graphify update .; echo $?` — exit 1, `new graph has
-   1460 nodes but existing graph.json has 5937. Refusing to overwrite` (**measured** synth).
+   1483 nodes but existing graph.json has 6066. Refusing to overwrite` (**measured** at e5d034f;
+   1460 and 5937 on 92c4c08).
 3. With this change's `refreshGraph` (`holdsIgnored` true), which runs `cd $SCR/clone && graphify update . --force` — exit 0 in
-   about 6.4 s, 1,460 nodes, 1,815,100 B; a later `cd $SCR/clone && graphify update .` exits 0 (**measured**
-   synth; SC-024).
+   about 6.5 s, 1,483 nodes, 1,852,040 B at e5d034f (1,460 and 1,815,100 B on 92c4c08); a later
+   `cd $SCR/clone && graphify update .` exits 0 (**measured**; SC-024).
 4. `cd $SCR/clone && $MV doors && grep -c 'kept out of it: the ecosystem graph above relates them' AGENTS.md`
    — 1, and the two grapher lines byte for byte as `$BASE doors` renders them (SC-019).
-5. `graphify explain "sddGoverning()" --graph <a worktree graph of #3's branch>` resolves where the
-   trunk graph says `No node matching` (**measured** inv, ver-M; SC-004).
+5. `graphify explain "graphPointer()" --graph <this change's worktree graph>` resolves where the
+   trunk graph says `No node matching` (SC-004; **measured** inv, ver-M with #3's `sddGoverning()`,
+   which the trunk graph now holds and whose worktree is gone — analyze C3).
 
 ## Walk F — a fresh brain that holds code, doors claude and codex (US4)
 
 `mkdir -p $SCR/f && cd $SCR/f && git init -q && mkdir src && printf 'export const a = 1;\n' > src/a.ts && git add src && git commit -qm src && $MV init --provider claude --sdd speckit --grapher graphify`,
 add `codex` to `doors:`, then `cd $SCR/f && $MV doors`, run the printed commit, `cd $SCR/f && $MV repos sync` — the graph holds no
-node from `.agents/` or `.codex/` (SC-020; ver-M measured 305 → 77 nodes with the fixed lines
-replaced).
+node from `.agents/` or `.codex/` (SC-020; walked, 0 of 4 nodes, where `$BASE` graphs 120 of 124
+from them; ver-M's 305 → 77 came from a larger brain than this fixture).
 
 ## Walk G — codegraph, and mixed graphers (US1, US2, US3)
 
@@ -160,7 +175,12 @@ replaced).
 
 ## Walk H — this repository
 
-In the change's worktree: `multivac doors` adds exactly the brain==code line to `AGENTS.md` (and
+In the change's worktree, with its own build (`node dist/cli.js`, never the `multivac` on PATH,
+which runs main's): `node dist/cli.js doors` adds exactly the brain==code line to `AGENTS.md` (and
 `CLAUDE.md` through the link) and re-renders `.multivac/flow.md` and `.multivac/ecosystem.json`;
-`corepack pnpm test` passes; `multivac verify` reports every claim anchored and 0 blocking;
-`grep -c 'Amended [0-9-]* by MV-148' .multivac/invariants.md` is 16 (SC-025).
+`corepack pnpm test` passes; `node dist/cli.js verify --strict` reports every claim anchored, 0
+blocking and no broken leg of any mode (analyze CA3); `grep -c 'Amended [0-9-]* by MV-148'
+.multivac/invariants.md` is 19 (SC-025; 16 until review added MV-87, MV-93 and MV-125). Measured at S6 (T072-T074): `.graphifyignore` the 12
+lines and the record, the forced rebuild 6,066 → 1,542 nodes, 5,989,444 → 1,969,521 B, 0 nodes
+under a recorded line; after T076's refresh the committed graph held 1,542 nodes in 1,974,492 B
+at e6f7994, 0 under a recorded line, and a refresh reproduced it byte for byte (walked).

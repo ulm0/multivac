@@ -81,6 +81,9 @@ subgraph rather than a pile of line hits.
 The reason it stays current is that the refresh follows **your edits, not your
 commits**: `doors` wires it into the harness's post-edit hook, backgrounded and
 coalesced behind a lock, so the map is fresh for the next question you ask it.
+From a brain whose code lives in other repos, that hook follows your edits into
+the repo you edited, and `doors` wires it only where one grapher's binary is
+reachable from every code repo that resolves it.
 `change close` runs the same refresh as a safety net for edits made outside a
 harness. Git hooks never refresh — they run `verify` only.
 

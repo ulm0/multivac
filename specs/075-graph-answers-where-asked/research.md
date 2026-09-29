@@ -14,6 +14,9 @@ the completeness critic, **(plan)** re-measured for these artifacts. Tokens are 
 The design cites `file:line` on `main` at **92c4c08**; `opsx-through-its-cli` was merged and
 archived since (bfe9728), and this change was promoted (49591e7) and declared (e5d034f). Every
 `file:line` below is re-anchored on the branch head when the change is applied (tasks.md T001).
+**T001 re-anchored them on 116a719**, the head it ran on, before any code of this change: the
+citations below are that tree's unless marked otherwise, and tasks.md cites the tree after its
+Phase 2 commit. Figures T001 re-measured there are marked **(T001)**.
 
 The scratch setup behind every figure, for whoever re-runs one:
 
@@ -56,7 +59,7 @@ SC-015 (FR-A3), SC-017 (gemini first, the removal's residue), SC-018 (critic gap
 
 ## R1. A brain that holds no code resolved a grapher for itself
 
-`adapterFor(cfg, root, 'grapher')` (src/adapters/detect.ts:95-105 at 92c4c08) answers a root's
+`adapterFor(cfg, root, 'grapher')` (src/adapters/detect.ts:95-104 at 116a719) answers a root's
 own value first and the ecosystem's otherwise; #3 made the SDD brain-only and left graphers per
 root, so a brain no repos entry declares as code resolves the top-level grapher for itself.
 
@@ -73,7 +76,7 @@ root, so a brain no repos entry declares as code resolves the top-level grapher 
 
 **Decision**: in `adapterFor`, after #3's SDD guard, reading the same `own = entryOf(cfg,
 root)`: `if (kind === 'grapher' && root === 'brain' && own === undefined) return undefined;`. A
-brain holds code only where a repos entry is the brain (`isBrain`, config.ts:414-418). Every
+brain holds code only where a repos entry is the brain (`isBrain`, config.ts:439-440). Every
 surface resolving through it skips the brain with no further edit: `graphScopes`, and through it
 `ensureGraphs`, `installHarness`, `graphGate`, `graphTrackedGate`, the close refresh loop,
 `doctor`'s scope list, `equipRoots`/`toolsToRun`/`missingTools`; `sharedGraph`/`commitGraph`;
@@ -103,7 +106,7 @@ graph of its documents (ver-M). A repo created on a hosting provider, with `READ
 `gh/init.log`).
 
 **Decision**: `holdsFiles(dir)` decides once, before any write: in a git repository, whether
-`lsFiles` plus `untrackedFiles` (git.ts:183) list a file outside `.multivac/`; outside one,
+`lsFiles` plus `untrackedFiles` (git.ts:182) list a file outside `.multivac/`; outside one,
 whether any entry but `.multivac` and `.git` exists. On a first run `toolsInitWouldRun` passes
 the grapher only when it is true, and the same answer replaces init.ts:573's. Its only read of
 untracked files is in that helper, so MV-128's `const wouldRun = await toolsInitWouldRun\(dir,
@@ -124,10 +127,10 @@ the population it leaves out is stated instead (R15, spec Assumptions).
 | `init`, code-less brain declaring a grapher | contracts/cli-output.md *init* | 187 (synth) |
 | `doctor`, where a grapher is asked from the brain or a leftover is found | *doctor — the fact line*, in place of `outOfScope`'s false `none @ brain: no grapher declared` (ver-G) | 211 (synth); today's brain status line is 70 |
 | `change plan`, a change naming `brain`, a grapher declared | *change plan* | 197 (synth) |
-| `change plan`'s label | `(the brain)` in place of `(brain==code)` (change.ts:945 at 92c4c08) | — |
+| `change plan`'s label | `(the brain)` in place of `(brain==code)` (change.ts:970 at 116a719) | — |
 | flow.md | the gate row names only the repos a change names; a declared-no-code-root row | R6 |
 
-`doctor`'s early `return []` (doctor.ts:367) also lets the fact and leftover lines through.
+`doctor`'s early `return []` (doctor.ts:385) also lets the fact and leftover lines through.
 
 **Decision**: these lines, with the leg phrases of R17.
 
@@ -161,7 +164,7 @@ asking for a `git diff` review and naming the emptied hook lists (674 B, plan; t
 608 B line did not name the residue it required); codegraph's `codegraph uninit --force`
 (214 B, synth); a declared grapher's `git rm … && rm -f <artifact>`. `repos check` appends
 `; leftover <name> install (tracked|untracked)` to the brain's line, as #3's SDD leftover does
-(repos.ts:319-323). The door gets one line (210 B, synth), rendered by `renderBrainDoor(config,
+(repos.ts:316-322). The door gets one line (210 B, synth), rendered by `renderBrainDoor(config,
 activeInvariants, leftovers)`, whose leftovers BOTH `init` and `doors` pass from `await
 leftoverGraphs(…)` (an `each` leg), so their bytes stay one.
 
@@ -275,8 +278,10 @@ line of `cmdApply`'s "work here" block, probes `initState(spec, ws)` and, when `
 *Pointer states*; texts in contracts/cli-output.md). Byte counts with the example paths of the
 design (20–53 characters), plan: installed 156 B; codegraph in place 87 B; graphify base 214 B;
 codegraph base 234 B; graphify none 88 B; codegraph none 119 B. The design's base lines said
-"paths relative to <abs>", which does not carry FR-008's clause; every line that names a flag now
-says "paths in its answers are relative to".
+"paths relative to <abs>", which does not carry FR-008's clause; every line that offers a flag
+aimed at a checkout now says "paths in its answers are relative to" — the two codegraph lines
+with no index anywhere name `-p` only to warn what it does there, and offer none (analyze I4).
+A partial or unreadable probe of the repo checkout names its reason followed by `in <abs>`.
 
 **Alternatives considered**: `-p <worktree>` for codegraph — R5. A pointer for the brain's own
 main checkout — the bare verbs already ask it.
@@ -289,7 +294,7 @@ blocked `git worktree remove` with exit 128 (inv); land's refresh in a worktree 
 picomatch `graphify-out/**` matches both `graphify-out/` and `graphify-out/graph.json`, and the
 empty `.multivac/cache/` the hook leaves in a worktree is invisible to git (critic).
 
-**Decision**: `removeWorktrees` (change.ts:571-598) runs `['worktree', 'remove', '--force', wt]`
+**Decision**: `removeWorktrees` (change.ts:571-603) runs `['worktree', 'remove', '--force', wt]`
 when every path `git status --porcelain` names lies under the key's grapher `local` globs,
 matched with picomatch as the code gate matches; anything else keeps the worktree, as today; the
 restore of the committed shared artifact stays. This is the reader of `local` MV-124 said did
@@ -315,7 +320,7 @@ payload (`.multivac/worktrees/x/brain/tools/ledger.ts`) left the kept graph's md
 zeta` found it); one in `brain/.multivac/worktrees/x/web/src/util.ts` refreshed that worktree's
 graph (`omega` found). Without `follow` the bytes are unchanged.
 
-`doors` (doors.ts:311-320) projects a code-less brain with `brainRefreshGrapher(cfg)` — the one
+`doors` (doors.ts:312-319) projects a code-less brain with `brainRefreshGrapher(cfg)` — the one
 grapher every writable code repo resolving one resolves; roots resolving none do not disagree
 (ver-X s6) — and `follow: !brainHoldsCode(cfg)`. The follow hook's
 `PATH="$PATH:$PWD/node_modules/.bin"` runs after `cd "$t"`, so it reaches only the edited repo's
@@ -328,8 +333,8 @@ satisfies for all — else no hook, and one notice.
 Where the writable code repos resolve several graphers, no hook is wired and `doors` prints one
 notice: one hook runs one command, and a per-grapher identity in `ownsRefresh` (`REFRESH_HEAD`,
 settings.ts:57, :131) is pinned by MV-52 and MV-124 — `codegraph-worktrees-and-verbs`' work.
-The door's freshness, flow.md's refresh row (flow.ts:127, which the design left out — critic gap
-11), `doctor`'s refresh path (doctor.ts:446-454) and `doors` ask the one `brainRefreshGrapher`.
+The door's freshness, flow.md's refresh row (flow.ts:133, which the design left out — critic gap
+11), `doctor`'s refresh path (doctor.ts:461-472) and `doors` ask the one `brainRefreshGrapher`.
 
 graphify's own hooks, in a kept install (ver-M): 190 B on a Grep or a search-like Bash call
 (grep, rg, find, fd, ack, ag) and 402 B on an in-project Read or Glob of a source or doc file
@@ -354,7 +359,7 @@ brain==code hook has today, and is stated as a ceiling (R20).
 | a code repo with `specs/add.spec.ts` | graphed `add.ts` only (ver-M) |
 | unanchored `specs/` | hid `src/specs/` code, 33 → 26 nodes (ver-X); an anchored `/specs/` keeps `src/specs/b.ts` (critic) |
 
-The fixed list today (registry.ts:908): `.claude/`, `.multivac/`, `.specify/`, `specs/`,
+The fixed list today (registry.ts:1062): `.claude/`, `.multivac/`, `.specify/`, `specs/`,
 `openspec/`.
 
 **Decision**: `graphIgnoreLines(cfg, brain, scope, spec)` in code-in-change.ts: each top-level
@@ -374,7 +379,15 @@ measured for this brain:
 
 `/.agents/ /.claude/ /.codex/ /.copilot/ /.cursor/ /.gemini/ /.husky/ /.multivac/ /.opencode/ /.specify/ /openspec/ /specs/`
 
-A code repo gets the same set without `/specs/`, plus `/.brain/`. `test/init/equip.test.ts`'s
+A code repo gets the same set without `/specs/`, plus `/.brain/`.
+
+**Re-measured at 116a719 (T001)**, with `node` over the head's dist: the top-level `<dir>/**`
+globs of `nonCodeGlobs(loadConfig('.'), 'brain')` are 14 — the 12 above, `/graphify-out/` and
+`/.brain/`. `nonCodeGlobs` holds the mount (`${cfg.mount}/**`) in every repo, the brain's
+included, so minus the outputs alone gives 13: the derivation drops the mount, then adds it back
+in a code repo (data-model.md *Derivations* steps 2–3; analyze I1). A fresh brain declaring doors
+`[claude]` and `brain: .` derives 11 with no SDD, 12 with speckit and 11 with opsx; #4's
+`bodyGlobs` add no top-level `<dir>/**`. `test/init/equip.test.ts`'s
 `(+5)` becomes 11 with no SDD and 12 with speckit, for the registry at 92c4c08 (synth);
 re-measured at T001, after #4 (whose `bodyGlobs` are not top-level `<dir>/**` globs).
 
@@ -383,8 +396,8 @@ no mount (critic gap 13): the 1,460-node result is the same either way, since no
 there; the instance edit writes the 12.
 
 `nonCodeGlobs` adds every door target's directory and every graphify platform's probe directory
-whether declared or not (code-in-change.ts:52-83), but the SDD scaffold's integration
-directories only for declared doors (:73-80). Over every door target with main's dist the sets
+whether declared or not (code-in-change.ts:56-73), but the SDD scaffold's integration
+directories only for declared doors (:85-94). Over every door target with main's dist the sets
 are equal except windsurf, which adds `/.devin/`, for no SDD, speckit and opsx alike (critic gap
 9). **Decision**: stated, not widened: widening the non-code set to every integration directory
 makes `.github/prompts/**` and `.codex/**` not code in every brain, which #4 (MV-147) rejected in
@@ -409,7 +422,7 @@ relates. Unanchored lines — above.
 
 (a) **`nonCodeGlobs`.** With the guard alone, graphify's paths left the set of a code-less
 brain whose top level declares graphify: 32 → 25 globs (ver-X), so removing a kept install would
-read as code. The grapher loop (code-in-change.ts:100-108) takes every name in `grapherNames` and
+read as code. The grapher loop (code-in-change.ts:113-121) takes every name in `grapherNames` and
 every key of `cfg.graphers`, whichever resolves, mirroring #3's "every known SDD's vendor state".
 
 (b) **When.**
@@ -419,7 +432,7 @@ every key of `cfg.graphers`, whichever resolves, mirroring #3's "every known SDD
 | append at every equip, in `repos sync`, in `doors`/`doctor` | main checkouts end up with modified tracked files the landing merge must overwrite: `git merge` exit 2 (ver-G, ver-X); `repos sync` would dirty graphs of repos no change names (MV-134's harm); `doctor` would freeze a graph (exit 1 on every refresh) |
 | an ignore file left uncommitted | never reached the worktree where `change land` refreshes: 1,460 nodes became 5,937 there, and the merged main froze (ver-M) |
 | creating the ignore file at land beside a byte-identical untracked copy in the repo's own checkout | `git pull`/merge refused, rc=1/2 (ver-X, ver-G) |
-| land's write of `.gitignore` | `writeIgnores` writes both files (refresh.ts:228-231); in a checkout whose committed `.gitignore` lacks `graphify-out/*` / `!graphify-out/graph.json`, land left ` M .gitignore`, outside `graphify-out/**`, so close kept the worktree and the lines never landed (critic gap 5; #6's critic found the same for codegraph) |
+| land's write of `.gitignore` | `writeIgnores` writes both files (refresh.ts:231-234); in a checkout whose committed `.gitignore` lacks `graphify-out/*` / `!graphify-out/graph.json`, land left ` M .gitignore`, outside `graphify-out/**`, so close kept the worktree and the lines never landed (critic gap 5; #6's critic found the same for codegraph) |
 
 **Decision** (FR-028): before a root's first build in `ensureGraphs`, as today (both files;
 MV-128's timing); at `change land`, in `commitGraph`, before `refreshGraph`, in the checkout
@@ -453,7 +466,9 @@ $ graphify update . --force    # exit 0, 6.4 s
 ```
 
 `graph.json` 5,854,764 → 1,815,100 B; `GRAPH_REPORT.md` 150,289 → 20,947 B; a later plain
-update exits 0; the top sources left are `src` 568, `test` 438, `site` 213, `skills` 52 (synth,
+update exits 0 (all at 92c4c08). **At 116a719 (T001)** the committed graph holds 6,066 nodes in
+5,989,444 B, 4,583 of them under the 12 lines (`specs/` 3,809, `.multivac/` 350, `.claude/` 222,
+`.specify/` 142, `.agents/` 60), leaving about 1,483; the top sources left are `src` 568, `test` 438, `site` 213, `skills` 52 (synth,
 ver-M). A rebuild triggered by the event of an append froze the graph when it failed once: the
 lines were there, and no later run rebuilt (ver-G, ver-M). The dated backup is graphify's own
 `backup_if_protected`, only for curated or semantic graphs (ver-G). A forced rebuild cannot gut a
@@ -484,7 +499,7 @@ applied by `sync` (inv). A consumer of a brain==code brain indexes the mount —
 fix is a JSON-key merge into `codegraph.json`, a new writer, `codegraph-worktrees-and-verbs`'.
 A code-less brain's mount adds 0 codegraph nodes (inv). **Decision** (FR-031): no codegraph
 lines here; the registry comment "No graphignore: no ignore file of codegraph's was verified"
-(registry.ts:981) is replaced by the mechanism above; `remove: 'codegraph uninit --force'`.
+(registry.ts:1135) is replaced by the mechanism above; `remove: 'codegraph uninit --force'`.
 
 ## R15. What it saves, by population, and what it costs
 
@@ -531,7 +546,7 @@ and a row in a 388,288 B `invariants.md` (ver-M).
   never a dotted or bracket read of `sdd`/`grapher`, so MV-122's dotted leg and #3's bracket leg
   stay at 0; `leftoverGraphs` reads `cfg.graphers`, which the dotted leg does not match
   (`grapher` then `s` is no word boundary). `nonCodeGlobs` (root-aware since #3,
-  code-in-change.ts:43) changes in its grapher loop only.
+  code-in-change.ts:44) changes in its grapher loop only.
 - **#4 (MV-147).** Merged before this change is applied. It added `bodyGlobs` to `nonCodeGlobs`
   (entries under integration directories, no top-level `<dir>/**`), `leftoverBodies` beside
   `leftoverSdds`, the flow.md ungateable verb, and notes: MV-124's (the entry's `env` reaches no
@@ -618,6 +633,31 @@ The design's 36, plus four the critic's fixes need: `gitignore: false` (gap 5), 
 true` (the gemini order as data, Principle V), the leftover probe in `init` and `doors` (gap 3),
 and the door test (the where-block had no test leg).
 
+**Written at T071 (S6): 49**, the 40 above unchanged — each dry-run on the code as written, every
+one holding (`unique` 1, `absent` 0, `each` ≥1 per file, `count=16` 16) — plus nine for the
+mechanisms analyze CA2 found reverted by tests alone: the forced refresh's condition (FR-029), the
+every-grapher loop in `nonCodeGlobs` and `graphIgnoreLines` (FR-024, `count=2`), `init`'s line
+(FR-018), `doctor`'s leftover removal (FR-021), its code-less refresh path (FR-015) and its
+ignore facts (FR-030), the `doors` notices (FR-012/FR-013), `repos check`'s leftover fact (FR-023)
+and the door's leftover line (FR-022, `count=2`, its two forms):
+
+```text
+<!-- @anchor MV-148 brain:src/adapters/refresh.ts /const forced = !first && spec\.rebuild !== undefined && \(await holdsIgnored\(spec, dir\)\);/ unique -->
+<!-- @anchor MV-148 brain:src/lib/code-in-change.ts /for \(const name of new Set\(\[\.\.\.grapherNames, \.\.\.Object\.keys\(cfg\.graphers\)\]\)\)/ count=2 -->
+<!-- @anchor MV-148 brain:src/commands/init.ts /is declared, and this brain holds no code \(no repos entry is the brain\), so no graph is built here/ unique -->
+<!-- @anchor MV-148 brain:src/commands/doctor.ts /kept until you remove it; it / unique -->
+<!-- @anchor MV-148 brain:src/commands/doctor.ts /follows your edits into the code repos' checkouts/ unique -->
+<!-- @anchor MV-148 brain:src/commands/doctor.ts /line\(s\) multivac keeps out of the graph/ unique -->
+<!-- @anchor MV-148 brain:src/commands/doors.ts /no post-edit graph refresh here — / unique -->
+<!-- @anchor MV-148 brain:src/commands/repos.ts /; leftover \$\{l\.name\} \$\{leftoverNoun\(l\)\}/ unique -->
+<!-- @anchor MV-148 brain:src/doors/brain.ts /here is a leftover that holds no code/ count=2 -->
+```
+
+Every `absent` leg of the law re-run over the tree after T065–T071: 0 matches, but for two legs
+reading `.multivac/invariants.md` whose regex text matches its own leg line (MV-118's and
+MV-120's, pre-existing), which `verify` does not count; `verify --strict` reports 148 of 148
+claims anchored and no broken leg of any mode.
+
 **Legs that move** (each by the task whose code makes the old one false: T061, T048, T024):
 
 | Row | Old | New | Why |
@@ -652,9 +692,9 @@ kept.
 - The no-query line is one helper, so `has NO query command` stays one literal.
 - flow.ts spells `const who = holds ? 'the brain or a repo the change names' : 'a repo the change names';` on one line.
 - init.ts reads untracked files once, in `holdsFiles(dir)`; MV-128's `const wouldRun = await toolsInitWouldRun\(dir, kept, f\)` keeps its spelling.
-- The code-less hook lookup in doors.ts spells `missingRequired(spec, root.dir)`, so MV-52's `missingRequired\(spec, dir\)` stays `unique`.
+- The code-less hook lookup is `brainHook` in detect.ts (`missingRequired(spec, root)`), which doors.ts and doctor.ts both ask, so MV-52's `missingRequired\(spec, dir\)` stays `unique` in doors.ts (landed that way in Phase 4).
 - Land's ignore call spells `gitignore: false` once in change.ts.
-- New text in code, strings, comments and docs matches no existing `absent` leg (critic gap 12). Phrases to avoid, with the row whose leg reads them: MV-124 ``(at|has no) `\.codegraph` `` and `` `.codegraph` | `` (write `` `.codegraph/` `` or `.codegraph/codegraph.db`, never a bare `` `.codegraph` `` code span, and no codegraph row in a docs table starting that way); MV-123 `is not on PATH` (write "is not reachable from"); MV-125 `every declared, present repo`; MV-146 `in every repo where … is installed`; MV-121 ``leaves `.claude/settings.json` alone``. T071 re-runs every `absent` leg of the law over the tree.
+- New text in code, strings, comments and docs matches no existing `absent` leg (critic gap 12). Phrases to avoid, with the row whose leg reads them: MV-124 ``(at|has no) `\.codegraph` `` and `` `.codegraph` | `` (write `` `.codegraph/` `` or `.codegraph/codegraph.db`, never a bare `` `.codegraph` `` code span, and no codegraph row in a docs table starting that way); MV-123 `is not on PATH` (write "is not reachable from"); MV-125 `every declared, present repo`; MV-146 `in every repo where … is installed`; MV-121 ``leaves `.claude/settings.json` alone``; MV-123 `[Bb]inary (probed )?on PATH` (write "its binary is found on PATH"); on the site pages (site/content/**) MV-84's `x.y.z` — no version string, so no graphify or codegraph release number — and MV-126's law IDs (analyze A3). T071 re-runs every `absent` leg of the law over the tree.
 
 ## R18. The law as it will be written
 
@@ -665,6 +705,13 @@ wrapped here for reading:
 ```text
 | MV-148 | **The graph an agent is told to ask is one that answers: a brain that holds no code keeps no code graph and says where the code repos' graphs are asked from it, a change's checkout is named with the flag that reaches its graph, the brain's refresh follows edits into the code repos and never into a checkout of the brain, and the grapher's ignore lines are the root's non-code directories, landed with the graph.** Measured 2026-09-28 with graphify 0.9.29 and codegraph 1.6.0, in scratch ecosystems of a brain and two code repos with HOME and GIT_CONFIG_GLOBAL isolated, and on this brain. A brain no repos entry declares as code resolved the ecosystem's grapher for itself: `init` installed 23 graphify files, 170,619 bytes, and a 2-node graph of `CLAUDE.md`; after the first close that graph held 63 nodes, 60 of them graphify's own skill, the archive commit carried 1,261 lines of it, and asked where the order total is computed it answered from the skill, while the code repo's graph, asked from the brain with `--graph ../web/graphify-out/graph.json`, answered `computeTotal()`. codegraph built a 163,840-byte index of 0 nodes there. After a human removed that install, the next `change new` reinstalled it, `change close` refused over it, `repos check` failed it, and one edit of a brain file made multivac's post-edit hook build a new graph there. `init --grapher graphify` in an empty repo exited 1 without graphify on PATH, and a repo whose source was not committed yet was taken as holding none. From the brain the door named the brain's own graph and `change apply` a path and no graph: this brain's trunk graph lacked 27 source symbols of a change's worktree graph, whose answers name paths relative to that worktree, and 73 of the 185 symbols that moved sit more than 60 lines from where the same path, read from the brain, puts them. `graphify query --graph <path>` and `codegraph query -p <path>` answered byte for byte as from inside that checkout; codegraph given a path with no index answered from the nearest index above it, with exit 0. graphify's own hooks added 190 bytes to a Grep and 402 to an in-project Read, pointing at the graph in the session's directory. This brain had no `.graphifyignore`, and 62% of its 5,937 nodes came from `specs/`; a fresh brain's ignore lines missed `.agents/` and `.codex/`, 228 of 305 nodes after one refresh, a consumer's missed its brain mount, 427 of 501 nodes, and a code repo's `specs/` line hid its own `specs/*.spec.ts`. An ignore line appended over an existing graph made every plain `graphify update .` exit 1, refusing to shrink, until `--force`, and an ignore file left uncommitted never reached the worktree where `change land` refreshes: 1,460 nodes became 5,937 there. **The rule.** *No code, no graph.* A brain holds code when a repos entry is the brain. For a brain that does not, `adapterFor` resolves no grapher at the brain root, so no build, refresh, harness install, gate, land commit, `repos check` or `doctor` status reaches it, and `init` asks for the grapher's binary and equips the brain only when the repo holds files, tracked or untracked and not ignored. `init`, `doctor`, and `change plan` for a change naming `brain`, say the brain holds no code and how to declare it. An install found there is kept: `doctor` prints its removal — the grapher's own uninstall for each platform found, the platform its entry marks first leading (gemini on 0.9.29), then its files, naming the emptied hook lists the uninstall leaves — `repos check` states it, nothing fails over it, the brain door, which `init` and `doors` write alike, says it answers no code question, and every known grapher's paths are not code in any repo. *Where asked.* `askedGraphers` answers which graphers an agent in the brain asks: the brain's where it holds code, each code repo's not marked `managed: false`, else the ecosystem's declaration. A code-less brain's door lists, per such grapher with an entry, the repos' paths and each verb with the entry's `askAt` — `--graph <checkout>/graphify-out/graph.json`, the checkout being the repo or, in a change, the one whose flag `change apply` printed, and `-p <repo>` for a local index, which a change's worktree does not have — says so of a grapher no writable code repo resolves, and never cites the vendor's section; a brain holding code keeps its lines, adds its worktrees' form, and says the law, the changes and their specs are kept out of its graph. `change apply` prints under each workspace the flag that reaches its graph, else the repo checkout's, for the base without the branch's edits, else that there is none. Every pointer says its answers' paths are relative to the checkout asked. `change close` removes a worktree whose only changes are the grapher's outputs. *Followed.* A code-less brain's post-edit hook runs the one grapher its writable code repos resolve, wired only where its binary is on PATH or in each of those repos, and only in the edited file's repo when that repo holds the artifact and is not a checkout of the brain; brain==code and consumer hooks keep their bytes. The door, flow.md, `doctor` and `doors` say a graph is refreshed after edits only where that hook runs its grapher. *Kept out.* A root's ignore lines are the top-level directories of its non-code set but every known grapher's own output directory, its nested declared repos and, in a code repo, the mount, anchored `/<dir>/` and appended under a `# multivac:` record, never over a line already there in any spelling, negated, recorded, or naming a path under it. They are written before a root's first build and, at `change land`, into the grapher's ignore file alone, never `.gitignore`, in the checkout holding the change's branch when that file is committed there or absent there and in the repo's own checkout, and committed with the graph; `doors`, `doctor`, `verify` and `repos sync` over a built root never write them. A refresh at land or close runs the entry's `rebuild` while the graph holds a node under a recorded line. **What is mechanical**: `unique` legs on the brain guard, `askedGraphers`, `brainRefreshGrapher`, `whereLines` and its fact sentence, `graphPointer`, the hook's brain-checkout test, the registry's `askAt`, `rebuild`, `uninstall`, `uninstallFirst` and `remove`, `graphIgnoreLines`, `holdsIgnored`, the record, land's ignore write and its `.gitignore` exclusion, the forced worktree removal, `leftoverGraphs`, doctor's fact line, init's untracked read, plan's line and the two flow rows; `each` legs on the paths clause and on the door's leftover probe in `init` and `doors`; `absent` legs on a static ignore list, on `writeIgnores` in `doors`, `doctor`, `verify` and `repos`, and on `--force` in the hook; test legs; site legs; a count on the sixteen amendment notes. **Ceilings.** A brain holds code by declaration: source in a repo with no entry at `.` is not graphed until `brain: .` is added, a directory not yet a repository is judged at `init` by its entries without ignore rules, and a repo holding only a README, a LICENSE or a `.gitignore` is declared code. A kept install keeps graphify's own section and hooks naming the bare verb in the session's directory — claude's on a search and an in-project read, gemini's on every read; codex's hook is a no-op, cursor and agents have none — until a human removes it, and the removal leaves emptied hook lists in the settings files graphify touched. Where the code repos resolve several graphers the brain wires no hook. The follow hook, like a brain==code hook, refreshes any checkout holding the artifact that an edit made from the brain session reaches, a `managed: false` or `grapher: none` repo's included. A change's worktree holds no graphify graph until `change land` commits one and no codegraph index at all, so codegraph's hook follows into repo checkouts only; a graph edited only through Bash is stale, and existence is never freshness (MV-90). An answer's paths can still be read from the wrong checkout. A graphify query worded without the identifier missed one question in three, and asking the graph cost 2.1 to 2.6 times the bytes of a narrowed grep. A shallow or unsynced repo is named though multivac builds nothing there. A line a human deletes along with its record is appended again at the next land; a `specs/` line an earlier multivac wrote into a code repo stays; a negation re-includes a whole directory only; a code repo whose ignore file is untracked in its own checkout lands a graph built without it; a door whose SDD integration writes outside every door's own directory adds a line, windsurf's `/.devin/`; and the lines are directories, so a root's own Markdown files and documentation directories stay in its graph. The rebuild bypasses graphify's shrink guard only where recorded lines explain the shrink. A grapher declared under `graphers:` and codegraph get no ignore lines, and codegraph in a consumer of a brain==code brain indexes the mount. graphify was measured on 0.9.29 alone (MV-121). The legs see spellings. | open | proposed | <date> | [changes/graph-answers-where-asked.md](changes/graph-answers-where-asked.md) |
 ```
+
+Filed 2026-09-29 (T002) with three spellings changed from the draft above: "no writable code repo
+resolves" became "no such code repo resolves" and "its writable code repos resolve" became "its
+code repos not marked `managed: false` resolve" — the resolver reads `managed: false` alone, and
+MV-125's read-only also counts a shallow clone (analyze A2) — and the ignore lines are the
+non-code set's top-level directories "but the mount and every known grapher's own output
+directory" (analyze I1).
 
 **The sixteen notes**, each `**Amended <date> by MV-148**: …` appended at the end of its row's
 statement cell, `<date>` the day the law commit is made:
@@ -688,6 +735,18 @@ statement cell, `<date>` the day the law commit is made:
 | MV-140 | in a brain that holds no code, the door says so. For each grapher the code repos resolve, it lists the repos' paths and each verb with the flag that points it at a checkout, and says the answers' paths are relative to that checkout. There, "refreshed after your edits" also needs the brain's hook wired for that grapher (MV-52's note), and flow.md's refresh row and `doctor`'s refresh path ask the same. A brain that holds code keeps both lines, and adds its worktrees' form and that the law, the changes and their specs are kept out of its graph. `doctor`'s refresh path says whether the brain's hook follows edits. flow.md's gate names the brain only where it holds code. Ceiling: until a kept install is removed, graphify's own hooks and section name the bare verb in the session's directory: claude's on a search and an in-project read, gemini's on every read. |
 | MV-143 | a brain that holds no code resolves no grapher, so its door never cites the vendor's section, whatever a kept install wrote there, and `doctor` offers no install there. |
 
+As filed (T003), each note quotes the sentence of its row it narrows or withdraws, as the row
+reads at 116a719 — MV-50's "in the brain", MV-52's "only when a grapher is declared AND its
+binary is present", MV-103's and MV-90's "the brain and the repos the change names" (MV-134's
+notes), MV-122's "for the brain root the declared entry whose path is the brain", MV-124's
+"graphify its `graphignore`", MV-128's "its own file keeping multivac's and the SDD's files out of
+the graph", MV-129's "The grapher still reaches every writable repo", MV-131's "every writable
+root whose graph is installed", MV-132's "its declared graph not built or, shared, not in HEAD",
+MV-137's "the SDD's and grapher's shared, local and artifact paths", MV-139's "`change land`
+commits it in a brain checkout with the graph" — and MV-52's says "finds the binary in each of
+those repos, on PATH or in its `node_modules/.bin`", since "binary on PATH" is MV-123's `absent`
+phrase (analyze A3).
+
 `change.invariants.touches` lists exactly these sixteen, `adds: [MV-148]`, `retires: []`
 (.multivac/changes/graph-answers-where-asked.md, e5d034f). The design's MV-52, MV-128, MV-134,
 MV-137 and MV-140 notes gained what critic gaps 2, 5, 10, 11 and 13 changed; the design's
@@ -700,14 +759,14 @@ it asserts; a title an existing leg reads is kept.
 
 | Test | What moves | Leg reading its title |
 | --- | --- | --- |
-| `test/doctor/adapters.test.ts` :396 (in "the SDD runs in the brain alone … — MV-146") and :427 (in "one resolver answers for both kinds…") | their `adapterFor(cfg,'brain','grapher')` assertions become `undefined` for a brain no entry declares | none |
+| `test/doctor/adapters.test.ts` :427 (in "one resolver answers for both kinds…") and :451 (in "`none` is no adapter for both kinds…", `adapterFor(repoNone, 'brain', kind)` for `grapher`) — at 116a719 :396, in "the SDD runs in the brain alone … — MV-146", asserts `api`'s grapher only (T001) | their brain-grapher assertions become `undefined` for a brain no entry declares | none |
 | `test/change/equip-lifecycle.test.ts:86` "change new refuses the SDD its steps need, before writing anything — MV-129" | to the `brainIsCode` fixture (it expects `graph graphify @ …: build skipped`) | none (MV-144 reads :146) |
 | `test/init/equip.test.ts:44` "declared at init, installed at init: spec-kit scaffolded and the graph built — MV-128" | the repo gets a source file (FR-017) | none |
 | `test/init/equip.test.ts:86` "a tool init would run and cannot find refuses init before anything is written — MV-128" | its graphify pass gets a source file; an empty-repo case exits 0 | none |
 | `test/init/equip.test.ts:145` "before the first build, the ignore lines go in, appended — MV-128" | `(+5)` → the derived count; the record and anchored lines | none |
 | `test/doors/flow.test.ts:49` "the page sorts declared obligations…" (the :60 assertion) | the code-less gate row; a brain==code case keeps "the brain or a repo the change names" | none |
 | `test/doors/flow.test.ts:140` "an unverified adapter is named as declared-but-unknown" | green with FR-025 | none |
-| `test/doors/doors.test.ts:338` "grapher declared + present: harness post-edit entry, git shim untouched" | green with FR-012's follow entry | MV-52 — kept |
+| `test/doors/doors.test.ts:391` "grapher declared + present: harness post-edit entry, git shim untouched" | green with FR-012's follow entry | MV-52 — kept |
 | `test/init/init.test.ts:367` "the scaffolded door names the declared grapher — MV-102" | green with FR-003/FR-006 (`graphify query "<question>" --graph .multivac/ecosystem.json`) | MV-102 — kept |
 | `test/doors/ecosystem-graph.test.ts:107` | green with FR-006; code-less cases added | none (MV-139 reads :61) |
 | `test/change/grapher-tracked.test.ts` :92, :105, :132, :176, :236, :247 | to `brainIsCode` where they assert the brain | MV-103 "close proceeds once the graph is committed", "the gate stages nothing" — kept |
@@ -716,10 +775,33 @@ it asserts; a title an existing leg reads is kept.
 | `@ brain` assertions (synth `grep -c`): doctor.test.ts 12, vendor-state.test.ts 12, binary-lookup.test.ts 7, grapher-refresh.test.ts 4, harness-install.test.ts 3, per-root.test.ts 2; brain-only, constitution-state, sdd-gates, init/equip, repos/check 1 each | to `brainIsCode` where the brain is asserted | MV-50, MV-58, MV-59, MV-87, MV-134 (grapher-refresh), MV-21, MV-47, MV-53, MV-57, MV-75, MV-87, MV-146, MV-147 (doctor) — kept |
 | `test/repos/brain-first-class.test.ts:104-106` | the undeclared brain's plan output reads `(the brain)`; :100 stays `(brain==code)` | MV-12 `/brain==code/` — many matches remain |
 | `test/change/concurrency.test.ts` | apply's exact stdout accounts for the pointer line, or a grapher-free fixture | MV-25 "both live at once" — kept |
-| `test/doctor/adapters.test.ts:463` | the registry snapshot drops `graphignore` and gains `rebuild`, `askAt`, `harness.uninstall`, `uninstallFirst`, `remove` | none |
+| `test/doctor/adapters.test.ts:510` | the registry snapshot drops `graphignore` and gains `rebuild`, `askAt`, `harness.uninstall`, `uninstallFirst`, `remove` | none |
 | `test/verify/code-in-change.test.ts:208` | `.graphifyignore` stays non-code | MV-137, MV-142, MV-146, MV-147 titles — kept |
 | `test/change/vendor-state.test.ts:235` | codegraph still writes no `.graphifyignore` | none |
 | `test/init/reinit.test.ts:161` "init and doors write the same door, byte for byte" | extended with a kept install (critic gap 3) | MV-102 — kept |
+
+**Re-measured at 116a719 (T001)**, the guard alone in a scratch clone (HOME and
+GIT_CONFIG_GLOBAL isolated): 852 tests, 824 pass, 25 fail, 3 skipped — the same count, a different
+set. Red: adapters.test.ts :416 "one resolver answers for both kinds…" and :447 "`none` is no
+adapter for both kinds…" (its `adapterFor(repoNone, 'brain', kind)` for `grapher`), doctor.test.ts
+:557 "doctor: symlink door ok, stale graph warned, fresh graph quiet" (its one `@ brain` grapher
+assertion, :589, under an inline `repos: {}`), doors.test.ts :391, ecosystem-graph.test.ts :107,
+flow.test.ts :140, init.test.ts :367, equip.test.ts :44, equip-lifecycle.test.ts :86,
+grapher-gate.test.ts :90, grapher-tracked.test.ts :92, :132, :176, :236 and :247 (:105 stays
+green), harness-install.test.ts :39, :52, :71, :78, :97, :129, :149 and :160, per-root.test.ts
+:134 "a config naming only top-level adapters renders no roots anywhere", and binary-lookup.test.ts
+:258 "a copy in api's node_modules/.bin runs in api and leaves the brain's missing". Green with
+the guard alone: every test in vendor-state, grapher-refresh, brain-only, constitution-state,
+sdd-gates and repos/check, and equip.test.ts :86 and :145. The `@ brain` counts above are
+`grep -c` counts, not the red set: at 116a719 doctor.test.ts has 17 `@ brain` lines, 16 of them
+SDD or project-law lines.
+
+**Re-measured at 15eed61 (S4)**, after US1 and US2, the guard alone in a scratch clone: 861
+tests, 836 pass, 22 fail, 3 skipped — doors.test.ts :391, init.test.ts :367 and
+ecosystem-graph.test.ts :107 green, as planned; flow.test.ts :140 green only with T048. With
+every known grapher in `nonCodeGlobs` as whole harness directories, MV-147's
+code-in-change.test.ts :318 turned red (`.codex/config.toml is code`): a grapher no root
+resolves is taken by name instead (data-model.md *Derivations*).
 
 The fixture: `makeScratchEcosystem(tmp, { brainIsCode?: true })` adds `brain: .` and a tracked
 `src/app.ts`; the default stays code-less, which #3's SDD tests depend on.
@@ -733,6 +815,8 @@ a `managed: false` one included; the code-less follow hook has the same reach (c
 A repo-scope test in the hook is rejected (R10); MV-125 is not amended, since this change adds a
 reach MV-140 already had rather than falsifying a sentence MV-125 states of the lifecycle's
 surfaces — the operator may prefer a seventeenth note (listed as unresolved in the hand-off).
+**Superseded at review (R22)**: MV-125 carries a note saying its "never written" does not cover
+the post-edit refresh.
 
 ## R21. The human's questions, at the design's defaults
 
@@ -744,5 +828,56 @@ surfaces — the operator may prefer a seventeenth note (listed as unresolved in
    brain, and codegraph's printed-query telemetry disclosure: **`codegraph-worktrees-and-verbs`**.
 4. A change → spec-directory edge in `ecosystem.json`: **out of scope, no owner** (1 of 3
    questions reached the slug through ecosystem.json in inv, 3 of 3 in ver-M).
-5. This brain's one-time graph diff (−4,477 nodes, mostly `specs/` and `.multivac/`, plus the
-   new `.graphifyignore`): **reviewed within this change** (T072).
+5. This brain's one-time graph diff (−4,477 nodes at 92c4c08, −4,583 at 116a719 (T001), mostly `specs/` and `.multivac/`, plus the
+   new `.graphifyignore`): **reviewed within this change** (T072, S6: 6,066 → 1,542 nodes in a
+   scratch clone of the branch — `src` 613, `test` 470, `site` 218, `skills` 52 and the root
+   documents; 0 under a recorded line; 59 more than T001's 1,483, mostly this branch's own additions).
+
+## R22. Review fixes (after S7)
+
+The review of 116a719..6cae0ad found where the code, the law and these artifacts disagreed.
+Decisions, where more than one fix was open:
+
+- **Freshness reads declarations (FR-014).** The door and flow.md said "refreshed after your
+  edits" of `brainRefreshGrapher`'s grapher while `brainHook` found the binary unreachable and
+  `doors` wired nothing. Making the door ask `brainHook` would make a committed file depend on this
+  machine's PATH, which MV-93 forbids ("Declarations, never disk"), would change `whereLines`'
+  signature, which #6 extends, and would still leave the brain==code door as it has always been
+  ("installed when the binary is present"). So the door and flow.md read declarations, as #6's
+  FR-H5 predicate does; `doors` and `doctor` say where this machine cannot wire the hook; FR-014,
+  MV-148's rule, MV-140's and MV-122's notes say so, and the gap is a ceiling. The SC-011 test pins
+  that the door and flow.md are the same bytes wired or not.
+- **A restored land is retried by land (FR-029, US4-4).** Close refreshes the repo's own checkout,
+  which records none of the lines land restored, so it never forces for them; the warning names
+  "the next `change land` naming <k>", and close writes no ignore file (critic gap 5).
+- **Land names what it may not write.** Besides an untracked file: one committed only on the
+  repo's own branch (named as such), one edited at the branch checkout (appending would carry the
+  edit into multivac's commit, MV-46), and one the branch checkout ignores (its `git add` failed the
+  graph commit). Each writes nothing and the graph lands alone; a failed graph commit now stops
+  that repo's push line (`commitBookkeeping` returns whether it committed).
+- **What a kept install is said to do (MV-143).** The section only where a platform found writes
+  it into the door (the door: `sectionDoors`' rule; `doctor`: any `section` but `none`), hooks only
+  where a platform found is marked `hooks` (claude, gemini — new registry data; MV-131's leg on
+  claude's entry now reads it with or without the field, said in MV-148's note on MV-131). The door
+  names `graphify-out/` only where it or the artifact is there, else what was found.
+- **Kept out, and answers (MV-61, MV-140).** The brain==code line says the law, the changes and
+  their specs are kept out only for a grapher with an ignore file or `codeOnly` (new registry data,
+  codegraph's measured no-Markdown index), and a grapher with no query verb gets no line.
+- **Unverified names (MV-59).** `doctor`'s refresh path says nothing runs one; `doors` prints
+  `unverifiedGrapher` where no repo resolves it; flow.md names it unverified.
+- **`managed: false` (FR-025).** In a code-less brain flow.md gives a grapher only such repos
+  resolve the declared-no-code-root row, through `askedGraphers` (MV-125's leg keeps `.managed`
+  reads in detect.ts).
+- **Quoting (FR-007).** Kept wider than the spec said — whitespace or a quote, `'\''` inside —
+  and the spec and contract amended, with a test path holding a quote.
+- **Ceilings reworded**: a change's worktree holds its base's committed graph; the forced rebuild
+  bypasses the shrink guard for the whole rebuild once a recorded line holds a node, unwarned.
+
+The law: three more notes — MV-87 (MV-134's "the brain and the repos the change names" and MV-146's
+"The grapher half is unchanged"), MV-93 (the shared rendering, and the door's no-filesystem rule)
+and MV-125 (the hook's reach) — so nineteen, `count=19`, and the change's `touches` lists them;
+MV-25's, MV-122's, MV-124's, MV-128's, MV-131's, MV-134's, MV-140's and MV-143's notes narrowed;
+MV-148's rule, mechanical list (the nine legs T071 added are now described) and ceilings amended;
+MV-140 gains a leg on flow.md's gate sentence (`refuses while \$\{who\} has no`), which neither
+ternary leg pinned. Docs: DESIGN.md's per-root section and `init`'s idiom, init.ts's comment,
+the getting-started guide and both copies of the multivac skill.

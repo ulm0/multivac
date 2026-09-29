@@ -20,7 +20,7 @@ import type { Config } from '../types.js';
 import { CHANGES_DIR, CONFIG_PATH, DEFAULT_CHANNEL, ECOSYSTEM_PATH, LAW_PATH } from '../lib/config.js';
 import { collectBrainAnchors, parseClaimRows } from '../anchor/parse.js';
 import { parseChange } from '../change/file.js';
-import { adapterFor, sddGoverning } from '../adapters/detect.js';
+import { adapterFor, askedGraphers, sddGoverning } from '../adapters/detect.js';
 import { grapherSpec } from '../adapters/registry.js';
 
 type Attrs = Record<string, string | number | boolean | null>;
@@ -128,11 +128,20 @@ export async function writeEcosystem(brain: string, cfg: Config): Promise<boolea
   return true;
 }
 
-/** The door line naming the graph, with graphify's `--graph` verbs where graphify resolves for `key`. */
+/**
+ * The door line naming the graph, with graphify's `--graph` verbs where an
+ * agent reading that door has graphify to ask with. MV-148: for the brain,
+ * where graphify is among the graphers asked from it (`askedGraphers`) — a
+ * brain that holds no code resolves no grapher of its own, and its code repos'
+ * graphify, or the ecosystem's declaration alone, is what puts the binary in
+ * the agent's hands. A consumer asks what resolves for its own key: widening
+ * it would give a codegraph repo graphify's verbs.
+ */
 export function ecosystemGraphLines(cfg: Config, key: string, prefix: string): string[] {
   const at = `${prefix}${ECOSYSTEM_PATH}`;
   const head = `- How the repos, the law's rows, their anchors and the changes relate is \`${at}\`, rendered from the brain's declarations`;
-  return adapterFor(cfg, key, 'grapher') === 'graphify'
+  const graphify = key === 'brain' ? askedGraphers(cfg).has('graphify') : adapterFor(cfg, key, 'grapher') === 'graphify';
+  return graphify
     ? [`${head}. Ask it: \`graphify query "<question>" --graph ${at}\`, \`graphify explain "<row id or change slug>" --graph ${at}\`, \`graphify path "<A>" "<B>" --graph ${at}\`.`]
     : [`${head}, as plain node-link JSON.`];
 }

@@ -373,6 +373,12 @@ test('the scaffolded door names the declared grapher — MV-102', async () => {
   const door = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
   assert.match(door, /graphify/);
   assert.match(door, /graphify query/);
+  // MV-148: an empty repo is a brain that holds no code, so the grapher is
+  // named through the ecosystem graph's verbs and the line saying no code repo
+  // resolves it yet — never as a graph of this repo.
+  assert.match(door, /`graphify query "<question>" --graph \.multivac\/ecosystem\.json`/);
+  assert.match(door, /^ {2}- `graphify` at `graphify-out\/graph\.json`: no writable code repo resolves it yet/m);
+  assert.doesNotMatch(door, /A code graph is kept fresh for you/);
 });
 
 test('the scaffolded door lists the declared sibling repos — MV-102', async () => {

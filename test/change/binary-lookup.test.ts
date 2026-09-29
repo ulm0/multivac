@@ -257,8 +257,9 @@ test('a declared grapher that is missing says where it was declared, and names n
 
 test("a copy in api's node_modules/.bin runs in api and leaves the brain's missing", async () => {
   const tmp = mkdtempSync(join(tmpdir(), 'mvac-lookup-sib-'));
-  const eco = makeScratchEcosystem(tmp);
-  writeFileSync(join(eco.brain, '.multivac/config.yml'), 'doors: [agents]\ngrapher: graphify\nrepos:\n  api: ../acme-api\n');
+  // MV-148: a brain that holds code, so it resolves the grapher and looks for it.
+  const eco = makeScratchEcosystem(tmp, { brainIsCode: true });
+  writeFileSync(join(eco.brain, '.multivac/config.yml'), 'doors: [agents]\ngrapher: graphify\nrepos:\n  brain: .\n  api: ../acme-api\n');
   stubs(join(eco.repos.api, 'node_modules', '.bin'), 'local', join(tmp, 'ran'));
   await onPath(join(tmp, 'empty'), async () => {
     // `repos sync` reaches every declared repo; a change reaches only the ones it names (MV-134).

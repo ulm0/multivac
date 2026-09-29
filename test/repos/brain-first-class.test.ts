@@ -99,11 +99,15 @@ test('change: brain is a lifecycle repo key, declared or not', async () => {
   assert.equal(plan.code, 0);
   assert.match(plan.out, /brain: .*\(brain==code\)/);
 
-  // undeclared brain: the reserved handle still resolves to the brain root
+  // undeclared brain: the reserved handle still resolves to the brain root —
+  // which holds no code now that no repos entry is it (MV-148)
   writeFileSync(join(brain, '.multivac/config.yml'), 'doors: [agents]\n');
   const bare = await capture(() => change.run(['plan', 'law-row'], ctx));
   assert.equal(bare.code, 0);
-  assert.match(bare.out, /brain==code/);
+  assert.match(bare.out, /^brain: .* \(the brain\)$/m);
+  assert.doesNotMatch(bare.out, /brain==code/);
+  // With no grapher declared there is no graph to say anything about.
+  assert.doesNotMatch(bare.out, /no repos entry is the brain/);
 
   writeFileSync(join(brain, '.multivac/config.yml'), BRAIN_IS_CODE);
   const applied = await capture(() => change.run(['apply', 'law-row'], ctx));
