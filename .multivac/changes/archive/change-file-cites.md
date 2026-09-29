@@ -1,6 +1,6 @@
 ---
 slug: change-file-cites
-status: open
+status: archived
 horizon: next
 repos:
   brain:

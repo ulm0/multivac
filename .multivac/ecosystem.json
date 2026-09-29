@@ -113,8 +113,8 @@
    "id": "change:change-file-cites",
    "label": "change-file-cites",
    "file_type": "change",
-   "source_file": ".multivac/changes/change-file-cites.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/change-file-cites.md",
+   "status": "archived",
    "horizon": "next",
    "issue": null
   },
