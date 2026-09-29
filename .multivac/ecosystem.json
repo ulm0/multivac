@@ -8023,9 +8023,53 @@
   },
   {
    "source": "change:verify-rooted-and-quiet",
+   "target": "law:MV-112",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:verify-rooted-and-quiet",
+   "target": "law:MV-127",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:verify-rooted-and-quiet",
+   "target": "law:MV-138",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:verify-rooted-and-quiet",
+   "target": "law:MV-150",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:verify-rooted-and-quiet",
    "target": "law:MV-151",
    "relation": "adds",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:verify-rooted-and-quiet",
+   "target": "law:MV-151",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:verify-rooted-and-quiet",
+   "target": "law:MV-53",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:verify-rooted-and-quiet",
+   "target": "repo:brain",
+   "relation": "lands_in",
+   "confidence": "EXTRACTED",
+   "stage": 1,
+   "status": "branched"
   },
   {
    "source": "change:verify-untracked-and-pending",
