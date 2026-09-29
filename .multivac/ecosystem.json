@@ -4882,9 +4882,119 @@
   },
   {
    "source": "change:graph-answers-where-asked",
+   "target": "law:MV-103",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-122",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-124",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-128",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-129",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-131",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-132",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-134",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-137",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-139",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-140",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-143",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
    "target": "law:MV-148",
    "relation": "adds",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-148",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-25",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-50",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-52",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "law:MV-90",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:graph-answers-where-asked",
+   "target": "repo:brain",
+   "relation": "lands_in",
+   "confidence": "EXTRACTED",
+   "stage": 1,
+   "status": "branched"
   },
   {
    "source": "change:graph-navigation-honest",
