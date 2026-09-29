@@ -1428,3 +1428,4 @@ checks them on every commit.
 <!-- @anchor MV-149 brain:site/content/docs/reference/graphers-and-sdd.md /^### A change's own codegraph index$/ unique -->
 <!-- @anchor MV-149 brain:site/content/docs/reference/graphers-and-sdd.md /^### One post-edit hook per grapher$/ unique -->
 <!-- @anchor MV-149 brain:.multivac/invariants.md /Amended [0-9-]+ by MV-149/ count=10 -->
+| MV-150 | RESERVED by change change-file-cites — state the rule here before close. | open | proposed | 2026-09-29 | [changes/change-file-cites.md](changes/change-file-cites.md) |

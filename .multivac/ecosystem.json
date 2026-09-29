@@ -114,7 +114,7 @@
    "label": "change-file-cites",
    "file_type": "change",
    "source_file": ".multivac/changes/change-file-cites.md",
-   "status": "planned",
+   "status": "open",
    "horizon": "next",
    "issue": null
   },
@@ -3250,6 +3250,15 @@
    "authority": "specified"
   },
   {
+   "id": "law:MV-150",
+   "label": "MV-150",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1431",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
    "id": "law:MV-16",
    "label": "MV-16",
    "file_type": "law",
@@ -4295,6 +4304,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:change-file-cites",
+   "target": "law:MV-150",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:changes-do-not-collide",
@@ -13416,6 +13431,12 @@
    "mode": "present",
    "source_file": ".multivac/invariants.md",
    "source_location": "L78"
+  },
+  {
+   "source": "law:MV-150",
+   "target": "change:change-file-cites",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-16",
