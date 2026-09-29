@@ -4,7 +4,7 @@ status: open
 horizon: next
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
