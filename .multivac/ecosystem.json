@@ -168,7 +168,7 @@
    "label": "codegraph-worktrees-and-verbs",
    "file_type": "change",
    "source_file": ".multivac/changes/codegraph-worktrees-and-verbs.md",
-   "status": "planned",
+   "status": "open",
    "horizon": "next",
    "issue": null
   },
@@ -3211,6 +3211,15 @@
    "authority": "open"
   },
   {
+   "id": "law:MV-149",
+   "label": "MV-149",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1391",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
    "id": "law:MV-15",
    "label": "MV-15",
    "file_type": "law",
@@ -4417,6 +4426,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:codegraph-worktrees-and-verbs",
+   "target": "law:MV-149",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:constitution-state",
@@ -13082,6 +13097,12 @@
    "mode": "unique",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1387"
+  },
+  {
+   "source": "law:MV-149",
+   "target": "change:codegraph-worktrees-and-verbs",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-15",

@@ -1,12 +1,13 @@
 ---
 slug: codegraph-worktrees-and-verbs
-status: planned
+status: open
 horizon: next
 repos: {}
 landing_order: []
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-149
   retires: []
 claims: []
 ---

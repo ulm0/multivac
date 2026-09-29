@@ -1388,3 +1388,4 @@ checks them on every commit.
 <!-- @anchor MV-148 brain:site/content/docs/reference/graphers-and-sdd.md /^### A brain that holds no code$/ unique -->
 <!-- @anchor MV-148 brain:site/content/docs/reference/graphers-and-sdd.md /^### Where to ask the graph$/ unique -->
 <!-- @anchor MV-148 brain:.multivac/invariants.md /Amended [0-9-]+ by MV-148/ count=19 -->
+| MV-149 | RESERVED by change codegraph-worktrees-and-verbs — state the rule here before close. | open | proposed | 2026-09-29 | [changes/codegraph-worktrees-and-verbs.md](changes/codegraph-worktrees-and-verbs.md) |
