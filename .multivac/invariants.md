@@ -1473,3 +1473,4 @@ checks them on every commit.
 <!-- @anchor MV-150 brain:test/change/lifecycle-polish.test.ts /land and verify name a claim close would orphan/ -->
 <!-- @anchor MV-150 brain:site/content/docs/reference/commands.md /claims do not cite the law this change makes/ unique -->
 <!-- @anchor MV-150 brain:.multivac/invariants.md /Amended 2026-09-29 by MV-150/ count=4 -->
+| MV-151 | RESERVED by change verify-rooted-and-quiet — state the rule here before close. | open | proposed | 2026-09-29 | [changes/verify-rooted-and-quiet.md](changes/verify-rooted-and-quiet.md) |

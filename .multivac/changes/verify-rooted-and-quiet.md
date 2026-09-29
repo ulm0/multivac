@@ -1,12 +1,13 @@
 ---
 slug: verify-rooted-and-quiet
-status: planned
+status: open
 horizon: later
 repos: {}
 landing_order: []
 invariants:
   touches: []
-  adds: []
+  adds:
+    - MV-151
   retires: []
 claims: []
 ---

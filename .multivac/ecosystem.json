@@ -1167,7 +1167,7 @@
    "label": "verify-rooted-and-quiet",
    "file_type": "change",
    "source_file": ".multivac/changes/verify-rooted-and-quiet.md",
-   "status": "planned",
+   "status": "open",
    "horizon": "later",
    "issue": null
   },
@@ -3290,6 +3290,15 @@
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1442",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
+   "id": "law:MV-151",
+   "label": "MV-151",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1476",
    "state": "proposed",
    "authority": "open"
   },
@@ -8011,6 +8020,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:verify-rooted-and-quiet",
+   "target": "law:MV-151",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:verify-untracked-and-pending",
@@ -13691,6 +13706,12 @@
    "mode": "absent",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1463"
+  },
+  {
+   "source": "law:MV-151",
+   "target": "change:verify-rooted-and-quiet",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-16",
