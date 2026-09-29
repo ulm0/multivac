@@ -347,8 +347,8 @@
    "id": "change:graph-answers-where-asked",
    "label": "graph-answers-where-asked",
    "file_type": "change",
-   "source_file": ".multivac/changes/graph-answers-where-asked.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/graph-answers-where-asked.md",
+   "status": "archived",
    "horizon": "now",
    "issue": null
   },

@@ -1,6 +1,6 @@
 ---
 slug: graph-answers-where-asked
-status: open
+status: archived
 horizon: now
 repos:
   brain:
@@ -99,3 +99,5 @@ and `zeta()` and holds `specs/add.spec.ts`; `api` one function.
   skipped; `verify --strict` 148 of 148 anchored, 0 blocking; 19 notes by MV-148 (SC-019, SC-025).
 - **T076.** In a scratch clone of e8a8906, a plain `graphify update .` exited 0: 1,542 nodes, the
   same ids, 4,242 links (4,228 before), `built_at_commit` e8a8906; copied back.
+
+Specified in `specs/075-graph-answers-where-asked/` (speckit).
