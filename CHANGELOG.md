@@ -10,7 +10,7 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
-## Unreleased
+## 0.15.0 — 2026-09-30
 
 Three behaviours changed in a way that can newly refuse what used to pass: a
 brain that was loading, an opsx brain's slugs and archives, and a `change close`
