@@ -1,6 +1,6 @@
 ---
 slug: skill-cites-references
-status: open
+status: archived
 horizon: later
 repos:
   brain:
@@ -149,3 +149,5 @@ Walked 2026-09-30 in scratch with this change's build (its `src/` is the merged 
 - `skill-reaches-every-harness`: a brain without the `claude` target is told by `init` and by its empty door to load a skill multivac never wrote (Walk G).
 - `consumer-commands-name-the-brain`: in a code repo, `change new` still advises `multivac init .` (Walk D, rc 2); *Where you are* guards the agent until it names the brain.
 - quickstart.md's Walk D builds `ro` from `web`'s own remote, which makes every run in `web` ask for `--repo`; a future walk gives `ro` a remote of its own.
+
+Specified in `specs/079-skill-cites-references/` (speckit).

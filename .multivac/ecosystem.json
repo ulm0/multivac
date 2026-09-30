@@ -599,8 +599,8 @@
    "id": "change:skill-cites-references",
    "label": "skill-cites-references",
    "file_type": "change",
-   "source_file": ".multivac/changes/skill-cites-references.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/skill-cites-references.md",
+   "status": "archived",
    "horizon": "later",
    "issue": null
   },
