@@ -8174,8 +8174,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_apply_base_test",
-      "community": 41,
-      "community_name": "loadChange",
+      "community": 39,
+      "community_name": "apply-base.test.ts",
       "norm_label": "apply-base.test.ts"
     },
     {
@@ -8185,8 +8185,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "test_change_apply_base_test_git",
-      "community": 41,
-      "community_name": "loadChange",
+      "community": 39,
+      "community_name": "apply-base.test.ts",
       "norm_label": "git()"
     },
     {
@@ -8196,8 +8196,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "test_change_apply_base_test_capture",
-      "community": 41,
-      "community_name": "loadChange",
+      "community": 39,
+      "community_name": "apply-base.test.ts",
       "norm_label": "capture()"
     },
     {
@@ -8207,8 +8207,8 @@
       "source_location": "L41",
       "_origin": "ast",
       "id": "test_change_apply_base_test_brainwithstaleremote",
-      "community": 41,
-      "community_name": "loadChange",
+      "community": 39,
+      "community_name": "apply-base.test.ts",
       "norm_label": "brainwithstaleremote()"
     },
     {
@@ -8218,8 +8218,8 @@
       "source_location": "L55",
       "_origin": "ast",
       "id": "test_change_apply_base_test_wt",
-      "community": 41,
-      "community_name": "loadChange",
+      "community": 39,
+      "community_name": "apply-base.test.ts",
       "norm_label": "wt()"
     },
     {
@@ -8229,8 +8229,8 @@
       "source_location": "L59",
       "_origin": "ast",
       "id": "test_change_apply_base_test_blockworktree",
-      "community": 41,
-      "community_name": "loadChange",
+      "community": 39,
+      "community_name": "apply-base.test.ts",
       "norm_label": "blockworktree()"
     },
     {
@@ -8372,8 +8372,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_brain_only_test",
-      "community": 43,
-      "community_name": "initRepo",
+      "community": 41,
+      "community_name": "loadChange",
       "norm_label": "brain-only.test.ts"
     },
     {
@@ -8383,8 +8383,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "test_change_brain_only_test_git",
-      "community": 43,
-      "community_name": "initRepo",
+      "community": 41,
+      "community_name": "loadChange",
       "norm_label": "git()"
     },
     {
@@ -8394,8 +8394,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "test_change_brain_only_test_run",
-      "community": 43,
-      "community_name": "initRepo",
+      "community": 41,
+      "community_name": "loadChange",
       "norm_label": "run()"
     },
     {
@@ -8405,8 +8405,8 @@
       "source_location": "L46",
       "_origin": "ast",
       "id": "test_change_brain_only_test_put",
-      "community": 43,
-      "community_name": "initRepo",
+      "community": 41,
+      "community_name": "loadChange",
       "norm_label": "put()"
     },
     {
@@ -8416,8 +8416,8 @@
       "source_location": "L56",
       "_origin": "ast",
       "id": "test_change_brain_only_test_eco",
-      "community": 43,
-      "community_name": "initRepo",
+      "community": 41,
+      "community_name": "loadChange",
       "norm_label": "eco()"
     },
     {
@@ -8427,8 +8427,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "test_change_brain_only_test_open",
-      "community": 43,
-      "community_name": "initRepo",
+      "community": 41,
+      "community_name": "loadChange",
       "norm_label": "open()"
     },
     {
@@ -8438,8 +8438,8 @@
       "source_location": "L83",
       "_origin": "ast",
       "id": "test_change_brain_only_test_specifyruns",
-      "community": 43,
-      "community_name": "initRepo",
+      "community": 41,
+      "community_name": "loadChange",
       "norm_label": "specifyruns()"
     },
     {
@@ -9835,8 +9835,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_change_managed_repos_test",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "managed-repos.test.ts"
     },
     {
@@ -9846,8 +9846,8 @@
       "source_location": "L32",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_withpath",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "withpath()"
     },
     {
@@ -9857,8 +9857,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_inenv",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "inenv()"
     },
     {
@@ -9879,8 +9879,8 @@
       "source_location": "L62",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_write",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "write()"
     },
     {
@@ -9890,8 +9890,8 @@
       "source_location": "L68",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_git",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "git()"
     },
     {
@@ -9901,8 +9901,8 @@
       "source_location": "L71",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_sibling",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "sibling"
     },
     {
@@ -9912,8 +9912,8 @@
       "source_location": "L80",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_eco",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "eco()"
     },
     {
@@ -9934,8 +9934,8 @@
       "source_location": "L330",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_walked",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "walked"
     },
     {
@@ -9956,8 +9956,8 @@
       "source_location": "L358",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_gatelines",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "gatelines()"
     },
     {
@@ -9978,8 +9978,8 @@
       "source_location": "L431",
       "_origin": "ast",
       "id": "test_change_managed_repos_test_snapshot",
-      "community": 39,
-      "community_name": "managed-repos.test.ts",
+      "community": 43,
+      "community_name": "initRepo",
       "norm_label": "snapshot()"
     },
     {
@@ -14570,36 +14570,36 @@
       "norm_label": "friction"
     },
     {
-      "label": "AGENTS.md",
+      "label": "CLAUDE.md",
       "file_type": "document",
-      "source_file": "AGENTS.md",
+      "source_file": "CLAUDE.md",
       "source_location": "L1",
       "_origin": "ast",
       "id": "claude",
       "community": 303,
-      "community_name": "AGENTS.md",
-      "norm_label": "agents.md"
+      "community_name": "CLAUDE.md",
+      "norm_label": "claude.md"
     },
     {
       "label": "multivac \u2014 brain door",
       "file_type": "document",
-      "source_file": "AGENTS.md",
+      "source_file": "CLAUDE.md",
       "source_location": "L2",
       "_origin": "ast",
       "id": "claude_multivac_brain_door",
       "community": 303,
-      "community_name": "AGENTS.md",
+      "community_name": "CLAUDE.md",
       "norm_label": "multivac \u2014 brain door"
     },
     {
       "label": "graphify",
       "file_type": "document",
-      "source_file": "AGENTS.md",
+      "source_file": "CLAUDE.md",
       "source_location": "L28",
       "_origin": "ast",
       "id": "claude_graphify",
       "community": 303,
-      "community_name": "AGENTS.md",
+      "community_name": "CLAUDE.md",
       "norm_label": "graphify"
     },
     {
@@ -14625,15 +14625,15 @@
       "norm_label": "changelog"
     },
     {
-      "label": "Unreleased",
+      "label": "0.15.0 \u2014 2026-09-30",
       "file_type": "document",
       "source_file": "CHANGELOG.md",
       "source_location": "L13",
       "_origin": "ast",
-      "id": "changelog_unreleased",
+      "id": "changelog_0_15_0_2026_09_30",
       "community": 85,
       "community_name": "Changelog",
-      "norm_label": "unreleased"
+      "norm_label": "0.15.0 \u2014 2026-09-30"
     },
     {
       "label": "0.14.1 \u2014 2026-09-17",
@@ -70340,7 +70340,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "AGENTS.md",
+      "source_file": "CLAUDE.md",
       "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
@@ -70351,7 +70351,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "AGENTS.md",
+      "source_file": "CLAUDE.md",
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
@@ -70445,6 +70445,17 @@
       "_origin": "ast",
       "source": "changelog_changelog",
       "target": "changelog_0_14_1_2026_09_17",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CHANGELOG.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "_origin": "ast",
+      "source": "changelog_changelog",
+      "target": "changelog_0_15_0_2026_09_30",
       "confidence_score": 1.0
     },
     {
@@ -70555,17 +70566,6 @@
       "_origin": "ast",
       "source": "changelog_changelog",
       "target": "changelog_0_9_0_2026_08_18",
-      "confidence_score": 1.0
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CHANGELOG.md",
-      "source_location": "L13",
-      "weight": 1.0,
-      "_origin": "ast",
-      "source": "changelog_changelog",
-      "target": "changelog_unreleased",
       "confidence_score": 1.0
     },
     {
@@ -74211,5 +74211,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "a1345d81542cf3186ff3d1bb89128a2e9630ac7f"
+  "built_at_commit": "caef04d4d33f5f5949f9e6e06a86d64f5048a459"
 }
