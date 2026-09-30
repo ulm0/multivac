@@ -23,12 +23,33 @@ export const bold = wrap('1');
 export const ACID = '38;5;191';
 export const acid = wrap(ACID);
 
+/**
+ * MV-151. A quiet `verify` holds both streams in the order they were written,
+ * its own lines and every callee's, and replays them when it prints in full,
+ * so the run under `2>&1` reads byte for byte as it always did. `warned`
+ * counts every warning from the process's start, tapped or not: a quiet run
+ * compares it before and after, and any one forces the whole report.
+ */
+let tap: ((err: boolean, line: string) => void) | null = null;
+let warned = 0;
+
+/** MV-151. Route `say` and `warn` through `t`; null restores the console. */
+export function tapOutput(t: ((err: boolean, line: string) => void) | null): void {
+  tap = t;
+}
+
+/** MV-151. How many warnings this process has printed or held. */
+export const warnings = (): number => warned;
+
 export function say(line: string): void {
-  console.log(line);
+  if (tap) tap(false, line);
+  else console.log(line);
 }
 
 export function warn(line: string): void {
-  console.error(line);
+  warned++;
+  if (tap) tap(true, line);
+  else console.error(line);
 }
 
 /** Names as a sentence says them: `a`, `a and b`, `a, b and c`. */

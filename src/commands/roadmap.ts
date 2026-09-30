@@ -42,6 +42,8 @@ import {
 import { say, warn } from '../lib/out.js';
 import { sddSlugWhy } from '../adapters/sdd.js';
 import { commitBookkeeping } from './change.js';
+import { rootedBrain } from './verify.js';
+import { samePath } from '../lib/paths.js';
 import type { Command, Config } from '../types.js';
 
 interface Entry {
@@ -296,6 +298,7 @@ const ARGS = {
 
 export const roadmap: Command = {
   name: 'roadmap',
+  rooted: true,
   help: 'the changes that have not started yet — list them, record one',
   usage: [
     'usage: multivac roadmap [add <slug> "<title>"] [--horizon now|next|later]',
@@ -328,7 +331,10 @@ export const roadmap: Command = {
       warn(`roadmap: unknown horizon "${String(parsed.horizon)}" — use ${HORIZONS.join(', ')}`);
       return 2;
     }
-    const brain = ctx.cwd;
+    // MV-151: the brain that holds where it was asked, named when it is not
+    // here — from `src` it listed "empty" beside a planned change.
+    const brain = await rootedBrain(ctx.cwd);
+    if (!samePath(brain, ctx.cwd)) say(`root: ${brain} (asked from ${ctx.cwd})`);
     if (pos.length === 0) {
       if (horizonGiven) {
         warn('roadmap: --horizon applies to `roadmap add` — the listing shows every horizon');

@@ -87,8 +87,22 @@ and a green run in the brain is a statement about the ecosystem as published,
 not about whatever is checked out locally. `--worktree` reads local state
 across every repo instead, on purpose, when that is the question.
 
-Every run prints a `read` line per repo naming the ref and its sha. Quote that
-line when a result is surprising — it usually explains it.
+A run prints a `read` line per repo, or on a quiet run a clause of its one
+line, naming the ref and its sha. Quote that line when a result is surprising —
+it usually explains it.
+
+**Quiet.** A session start and a commit through the git hooks run quiet
+(`--quiet`, or `MULTIVAC_QUIET=1`): one line, the summary first, when nothing
+is off. A read that is not plain — parked, fell back, never fetched, behind —
+prints its full line beneath it; anything else off prints the whole report.
+One line is not less checked: it is the same run, with nothing to show you.
+Run `mvac verify` yourself when you want every line.
+
+**Where it runs from does not matter.** From any directory of a checkout,
+verify reads that checkout's root — the brain, a brain change worktree, a
+mount, or the consumer around its mount — and a full report printed away
+from that root names it in a `root` line; the paths and commands in the
+report are relative to it.
 
 ## The lines that are not claims
 

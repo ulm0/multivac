@@ -34,6 +34,8 @@ import { writeEcosystem } from '../doors/ecosystem.js';
 import { renderConsumerDoor } from '../doors/consumer.js';
 import { mergeClaudeSettings, type RefreshHook } from '../doors/settings.js';
 import { installHooks } from '../hooks/install.js';
+import { rootedBrain } from './verify.js';
+import { samePath } from '../lib/paths.js';
 import { gitlinkInIndex, lsTreeGitlink } from '../lib/git.js';
 import { leftoverGraphs } from '../lib/repo-state.js';
 import {
@@ -349,7 +351,10 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     return 2;
   }
   const adopt = parseArgs(argv, ARGS).adopt === true;
-  const brainDir = ctx.cwd;
+  // MV-151: from a subdirectory, the brain that holds it, named once — it
+  // advised `init .` there, which would scaffold a second brain inside it.
+  const brainDir = await rootedBrain(ctx.cwd);
+  if (!samePath(brainDir, ctx.cwd)) say(`root: ${brainDir} (asked from ${ctx.cwd})`);
   let config: Config;
   try {
     config = await loadConfig(brainDir);
@@ -482,6 +487,7 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
 
 export const doorsCommand: Command = {
   name: 'doors',
+  rooted: true,
   help: 'project doors + install git hooks into the brain and declared repos',
   usage: [
     'usage: multivac doors [--adopt]',

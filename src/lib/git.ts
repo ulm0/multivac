@@ -409,3 +409,36 @@ export const normUrl = (u: string): string =>
     .replace(/^[a-z+]+:\/\/(?:[^@/]+@)?/, '')
     .replace(/^(?:[^@/]+@)?([^:/]+):/, '$1/')
     .toLowerCase();
+
+/**
+ * MV-151. `toplevel` refuses with this, quoting git's own cause, for anything
+ * but "no work tree here": a refusal read as "not a repository" was answered
+ * with advice about somewhere else (dubious ownership got the init hint).
+ */
+export class ToplevelError extends Error {}
+
+/**
+ * MV-151. The work tree that holds `dir`, asked with the ambient pointers
+ * dropped: under an inherited GIT_DIR git answers for THAT repository's view
+ * of the cwd instead (measured). Null only when git says there is no work
+ * tree — "not a git repository", or asked from inside a git directory; every
+ * other refusal (dubious ownership, a missing directory) throws.
+ */
+export async function toplevel(dir: string): Promise<string | null> {
+  try {
+    const { stdout } = await execFileP('git', ['-C', dir, 'rev-parse', '--show-toplevel'], { env: cleanEnv() });
+    return stdout.trim() || null;
+  } catch (e) {
+    const err = e as { stderr?: string; message: string };
+    const cause = gitFailure(err.stderr, err.message);
+    if (/not a git repository|must be run in a work tree/.test(cause)) return null;
+    throw new ToplevelError(`git rev-parse --show-toplevel failed in ${dir}: ${cause}`);
+  }
+}
+
+/** MV-151. The superproject whose submodule `top` is, or null. Same environment rule. */
+export async function superproject(top: string): Promise<string | null> {
+  return execFileP('git', ['-C', top, 'rev-parse', '--show-superproject-working-tree'], { env: cleanEnv() })
+    .then(({ stdout }) => stdout.trim() || null)
+    .catch(() => null);
+}

@@ -16,12 +16,14 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, writeFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { main } from '../../src/cli.js';
 import { commands } from '../../src/commands/index.js';
 import { versionNotice, PROJECTED_PATH } from '../../src/lib/version.js';
+import { makeScratchEcosystem } from '../helpers/fixture.js';
 
 async function run(argv: string[], cwd: string): Promise<{ code: number; out: string }> {
   const lines: string[] = [];
@@ -123,4 +125,57 @@ test('a directory that is not a brain says nothing (MV-86)', async () => {
   assert.doesNotMatch(out, /brought to|no record/, 'noticed at a non-brain');
   assert.equal(existsSync(join(dir, PROJECTED_PATH)), false);
   rmSync(dir, { recursive: true, force: true });
+});
+
+test('a subdirectory and a consumer hear the floor the brain declares — MV-151', async () => {
+  const git = (cwd: string, ...args: string[]): void => {
+    execFileSync('git', ['-C', cwd, ...args], { stdio: 'ignore' });
+  };
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-skew-root-')));
+  const floor = /requires >=99\.0\.0 and you are running/;
+  const noticeLines = (out: string): string[] => out.split('\n').filter((l) => l.startsWith('mvac: '));
+
+  // A floor above any binary, declared in the brain and carried by its mount.
+  const e = makeScratchEcosystem(join(tmp, 'floor'));
+  appendFileSync(join(e.brain, '.multivac/config.yml'), 'requires: ">=99.0.0"\n');
+  git(e.brain, 'add', '-A');
+  git(e.brain, 'commit', '-qm', 'floor');
+  execFileSync('git', ['clone', '-q', e.brain, join(e.repos.api, '.brain')], { stdio: 'ignore' });
+  const where = [e.brain, join(e.brain, '.multivac'), e.repos.api, join(e.repos.api, 'src')];
+  const codes: number[] = [];
+  for (const d of where) {
+    const r = await run(['verify', '--check'], d);
+    assert.equal(noticeLines(r.out).filter((l) => floor.test(l)).length, 1, `${d}: ${r.out}`);
+    codes.push(r.code);
+  }
+  // A command that is not rooted reads the directory's own config, as before.
+  assert.equal(noticeLines((await run(['change'], join(e.brain, '.multivac'))).out).length, 0);
+  assert.equal(noticeLines((await run(['change'], e.brain)).out).filter((l) => floor.test(l)).length, 1);
+
+  // No exit code moves: the same runs without the floor.
+  for (const dir of [e.brain, join(e.repos.api, '.brain')]) {
+    const cfg = join(dir, '.multivac/config.yml');
+    writeFileSync(cfg, readFileSync(cfg, 'utf8').replace('requires: ">=99.0.0"\n', ''));
+  }
+  for (const [i, d] of where.entries()) assert.equal((await run(['verify', '--check'], d)).code, codes[i], d);
+
+  // No record and no floor: a consumer hears nothing — the record's fix runs in
+  // the brain — while the brain and the mount, both brain checkouts, hear it.
+  const q = makeScratchEcosystem(join(tmp, 'record'));
+  execFileSync('git', ['clone', '-q', q.brain, join(q.repos.api, '.brain')], { stdio: 'ignore' });
+  assert.deepEqual(noticeLines((await run(['verify', '--check'], join(q.repos.api, 'src'))).out), []);
+  for (const d of [q.brain, join(q.repos.api, '.brain')]) {
+    const lines = noticeLines((await run(['verify', '--check'], d)).out);
+    assert.equal(lines.length, 1, d);
+    assert.match(lines[0]!, /doors --adopt/);
+  }
+
+  // A resolution that fails reads the directory's own config — none here —
+  // and the command answers as it would have.
+  mkdirSync(join(q.repos.web, '.brain'));
+  writeFileSync(join(q.repos.web, '.brain', 'README.md'), '# empty pin\n');
+  const stale = await run(['verify'], join(q.repos.web, 'src'));
+  assert.equal(stale.code, 2);
+  assert.deepEqual(noticeLines(stale.out), []);
+  assert.match(stale.out, /is mounted but is not a multivac brain/);
 });

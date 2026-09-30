@@ -190,6 +190,14 @@ export interface VerifyReport {
 
 export interface CommandContext {
   cwd: string;
+  /**
+   * MV-151. The environment a command reads its own switches from. The
+   * dispatcher passes the process's; an in-process caller passes its own, so a
+   * variable exported in the developer's shell never changes what a test asserts.
+   */
+  env?: Record<string, string | undefined>;
+  /** MV-151. A harness hook's payload on stdin, read only when asked; null when there is none. */
+  stdin?: () => Promise<string | null>;
 }
 
 /** A CLI subcommand. Dispatch is a lookup over a Command[], not a framework. */
@@ -199,4 +207,6 @@ export interface Command {
   /** Extra usage lines for `--help` / `multivac help <name>`; optional. */
   usage?: string[];
   run(argv: string[], ctx: CommandContext): Promise<number>;
+  /** MV-151. Runs at the root `resolveRoot` finds, so the dispatcher's notice reads that brain. */
+  rooted?: true;
 }

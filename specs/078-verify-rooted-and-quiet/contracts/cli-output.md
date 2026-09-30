@@ -2,9 +2,10 @@
 
 Lines are printed exactly; tests pin the load-bearing substrings. ANSI colour is stripped here:
 `root`, like `read`, is printed dimmed. `<…>` is a placeholder; `…` elides text the line
-already prints today. The samples of this brain are its output at `62d4588` (branch
-`claude/amazing-franklin-mjvzu0`), re-measured at apply on the tree with the three earlier
-changes merged. Everything not named here prints byte for byte as before.
+already prints today. The samples of this brain are its main checkout's output (branch
+`claude/amazing-franklin-mjvzu0`), drafted at `62d4588` and re-measured at apply (T001) on
+`915889f`, the tree with the three earlier changes merged: 151 claims, 150 anchored, MV-151
+unanchored while it is only reserved. Everything not named here prints byte for byte as before.
 
 ## Where a run roots
 
@@ -56,12 +57,12 @@ carries one line after its header lines and before the first `read` line:
 (this brain, 348 B + 49 B):
 
 ```text
-148 claims · 147 anchored (99%)
-  unanchored: MV-148
+151 claims · 150 anchored (99%)
+  unanchored: MV-151
   root      /home/user/multivac (asked from src)
-  read      brain: working tree on claude/amazing-franklin-mjvzu0 @ 62d4588 — the brain's own repo, the commit this run gates
+  read      brain: working tree on claude/amazing-franklin-mjvzu0 @ 915889f — the brain's own repo, the commit this run gates
 
-  ok        147
+  ok        150
   enact     not answered — nothing staged, so no commit is being composed; MV-81's check reads the index against HEAD
 
 0 blocking broken · exit 0
@@ -131,13 +132,13 @@ without quiet, both streams in the order they were written.
 195 B:
 
 ```text
-0 blocking broken · exit 0 · 148 claims · 147 anchored (99%) · unanchored: MV-148 · read brain claude/amazing-franklin-mjvzu0 @ 62d4588 (working tree) · enact not answered (nothing staged)
+0 blocking broken · exit 0 · 151 claims · 150 anchored (99%) · unanchored: MV-151 · read brain claude/amazing-franklin-mjvzu0 @ 915889f (working tree) · enact not answered (nothing staged)
 ```
 
-A code commit on an open change's branch, 219 B:
+A code commit on an open change's branch, 215 B with this change's slug (219 B with graph-answers-where-asked's, as measured):
 
 ```text
-0 blocking broken · exit 0 · 148 claims · 147 anchored (99%) · unanchored: MV-148 · read brain graph-answers-where-asked @ <sha> (working tree) · enact none (law untouched) · code → graph-answers-where-asked
+0 blocking broken · exit 0 · 151 claims · 150 anchored (99%) · unanchored: MV-151 · read brain verify-rooted-and-quiet @ <sha> (working tree) · enact none (law untouched) · code → verify-rooted-and-quiet
 ```
 
 A code-less brain with two siblings at their channel:

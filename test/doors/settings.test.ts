@@ -513,3 +513,26 @@ test('refreshKey reads the artifact from both hook forms, and the brain guard is
   assert.equal(refreshKey('[ ! -e "$t/.multivac/config.yml" ] && exit 0'), undefined);
   assert.equal(refreshKey(refreshHookCmd('graphify update .')), undefined, 'keyless: written before the test existed');
 });
+
+test('an older doors over a newer projection leaves settings.json byte-identical — MV-151', () => {
+  // MV-151 keys quiet and the post-edit follow on the harness's own payload,
+  // never on the command: the gates keep the bytes every release has written,
+  // so an older `doors` — whose merge is this one, since the change leaves
+  // settings.ts alone — owns both strings and appends no second gate.
+  const gates = (text: string): { session: string[]; edit: string[] } => {
+    const hooks = JSON.parse(text).hooks as Record<string, { hooks: { command: string }[] }[]>;
+    const commands = (ev: string): string[] => (hooks[ev] ?? []).flatMap((e) => e.hooks.map((h) => h.command));
+    return {
+      session: commands('SessionStart').filter((c) => c.startsWith('mvac verify')),
+      edit: commands('PostToolUse').filter((c) => c.startsWith('mvac verify')),
+    };
+  };
+  for (const refreshes of [[], [graphifyHook()], [graphifyHook(true)], [graphifyHook(true), codegraphHook(true)]]) {
+    const projected = mergeClaudeSettings(null, { refreshes }).text;
+    assert.deepEqual(gates(projected), { session: ['mvac verify 2>&1 || true'], edit: ['mvac verify >&2 || exit 2'] });
+    assert.doesNotMatch(projected, /MULTIVAC_QUIET|--quiet/);
+    const again = mergeClaudeSettings(projected, { refreshes }).text;
+    assert.equal(again, projected, JSON.stringify(refreshes));
+    assert.deepEqual(gates(again), gates(projected));
+  }
+});

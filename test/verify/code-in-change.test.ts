@@ -8,7 +8,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
-import { initRepo } from '../helpers/fixture.js';
+import { initRepo, scrubbedEnv } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { verify } from '../../src/commands/verify.js';
 import { count } from '../../src/commands/count.js';
@@ -419,7 +419,7 @@ test('a real git merge runs pre-merge-commit before MERGE_HEAD exists, and is ju
   const cli = join(process.cwd(), 'dist/cli.js');
   put(b, '.git/hooks/pre-merge-commit', `#!/bin/sh\nexec '${process.execPath}' '${cli}' verify\n`);
   execFileSync('chmod', ['+x', join(b, '.git/hooks/pre-merge-commit')]);
-  const merge = (br: string) => spawnSync('git', ['-C', b, 'merge', '--no-ff', '-q', br, '-m', `merge ${br}`], { encoding: 'utf8' });
+  const merge = (br: string) => spawnSync('git', ['-C', b, 'merge', '--no-ff', '-q', br, '-m', `merge ${br}`], { encoding: 'utf8', env: scrubbedEnv() });
   const ok = merge('feat');
   assert.equal(ok.status, 0, ok.stdout + ok.stderr);
   assert.match(ok.stdout + ok.stderr, /lands in open change feat/);

@@ -10,6 +10,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   statSync,
   symlinkSync,
@@ -20,7 +21,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
-import { doctorReport } from '../../src/commands/doctor.js';
+import { doctorCommand, doctorReport } from '../../src/commands/doctor.js';
 import { installHooks } from '../../src/hooks/install.js';
 import { grapherSpec, sddSpec } from '../../src/adapters/registry.js';
 import { leftoverGraphs } from '../../src/lib/repo-state.js';
@@ -1504,4 +1505,56 @@ test('doctor: a mount staged but not committed is not called missing — MV-127'
   const pins = line(lines, 'pins');
   assert.match(pins, /api: brain mount staged, not committed — commit it in/);
   assert.doesNotMatch(pins, /api: no brain mount/);
+});
+
+test('doctor in a brain change worktree finds the siblings the main checkout has — MV-151', async () => {
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-doc-wt-')));
+  const eco = makeScratchEcosystem(tmp);
+  const g = (cwd: string, ...args: string[]): string =>
+    execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  writeFileSync(
+    join(eco.brain, '.multivac/config.yml'),
+    'doors: [agents]\nrepos:\n  api:\n    path: ../acme-api\n    url: git@acme.example:acme/api.git\n  web:\n    path: ../acme-web\n    url: git@acme.example:acme/web.git\n',
+  );
+  g(eco.brain, 'add', '-A');
+  g(eco.brain, 'commit', '-qm', 'urls');
+  // Clones of what the brain declares: each sibling's origin is its url.
+  g(eco.repos.api, 'remote', 'add', 'origin', 'git@acme.example:acme/api.git');
+  g(eco.repos.web, 'remote', 'add', 'origin', 'git@acme.example:acme/web.git');
+  const wt = join(eco.brain, '.multivac/worktrees/demo/brain');
+  g(eco.brain, 'worktree', 'add', '-q', '-b', 'demo', wt);
+  // Beside the main checkout, not beside the worktree: found, never cloned again.
+  const found = await doctorReport(wt);
+  assert.match(line(found.lines, 'repos'), /^repos +2\/2 cloned/);
+  assert.doesNotMatch(found.lines.join('\n'), /git clone/);
+  // The change's own sibling worktree is the one read.
+  g(eco.repos.api, 'worktree', 'add', '-q', '-b', 'demo', join(eco.brain, '.multivac/worktrees/demo/api'));
+  assert.match(line((await doctorReport(wt)).lines, 'branches'), /api: on demo @ [0-9a-f]{7}/);
+  // Missing both ways: the clone advice names the main checkout.
+  rmSync(eco.repos.web, { recursive: true, force: true });
+  const missing = line((await doctorReport(wt)).lines, 'repos');
+  assert.match(missing, new RegExp(`web missing → \`multivac repos sync\` in ${eco.brain} \\(git clone git@acme\\.example:acme/web\\.git \\.\\./acme-web\\)`));
+  // From the main checkout the advice is today's.
+  assert.match(line((await doctorReport(eco.brain)).lines, 'repos'), /web missing → `multivac repos sync` \(git clone /);
+});
+
+test('doctor from a subdirectory reports the brain that holds it and names it — MV-151', async () => {
+  const eco = makeScratchEcosystem(realpathSync(mkdtempSync(join(tmpdir(), 'mvac-doc-sub-'))), { brainIsCode: true });
+  const src = join(eco.brain, 'src');
+  const lines: string[] = [];
+  const orig = { log: console.log, error: console.error };
+  console.log = console.error = (...a: unknown[]) => {
+    lines.push(a.map(String).join(' '));
+  };
+  let code: number;
+  try {
+    code = await doctorCommand.run([], { cwd: src });
+  } finally {
+    console.log = orig.log;
+    console.error = orig.error;
+  }
+  assert.equal(code, 0, lines.join('\n'));
+  assert.equal(lines[0], `root      ${eco.brain} (asked from ${src})`);
+  assert.equal(lines.filter((l) => l.startsWith('root      ')).length, 1);
+  assert.doesNotMatch(lines.join('\n'), /config invalid/);
 });

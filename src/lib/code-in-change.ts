@@ -24,6 +24,8 @@ import { currentBranch, run as git } from './git.js';
 export interface CodeLine {
   text: string;
   gates: boolean;
+  /** MV-151. The line as a clause of a quiet run, or null when it must print the whole report. Required. */
+  quiet: string | null;
 }
 
 /**
@@ -252,6 +254,7 @@ export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | 
   const unanswered = (why: string): CodeLine => ({
     text: `  ${o.strict ? red(label) : dim(label)} not answered — ${why}${o.strict ? ' · blocking under --strict' : ''}`,
     gates: o.strict,
+    quiet: null,
   });
 
   const paths = o.range
@@ -302,10 +305,12 @@ export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | 
       return {
         text: `  ${red(label)} ${n} on ${cand}, whose change does not declare ${repoKey} — add ${repoKey} to its repos:, or commit this on the branch of a change that does · blocking`,
         gates: true,
+        quiet: null,
       };
     }
     const skipped = ch.sdd_skipped?.length ? ` · SDD skipped at ${ch.sdd_skipped.join(', ')}` : '';
-    return { text: `  ${dim(label)} ${n} lands in open change ${slug}${skipped}`, gates: false };
+    // MV-151: a skipped SDD step is off; a clean landing is the clause `code → <slug>`.
+    return { text: `  ${dim(label)} ${n} lands in open change ${slug}${skipped}`, gates: false, quiet: skipped ? null : `code → ${slug}` };
   }
   const where = o.range ? `branch ${o.range.branch}` : candidates.length > 0 ? `${candidates.join(', ')}` : 'a detached HEAD';
   const fix = `start a change (\`multivac change new <slug>\`, then \`change apply\`) and commit on its branch`;
@@ -313,7 +318,8 @@ export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | 
     return {
       text: `  ${dim(label)} ${n} on ${where}, which is no open change in the mounted brain — ${fix}; the mount can lag, so \`verify --strict\` in CI decides`,
       gates: false,
+      quiet: null,
     };
   }
-  return { text: `  ${red(label)} ${n} on ${where}, which is no open change declaring ${repoKey} — ${fix} · blocking`, gates: true };
+  return { text: `  ${red(label)} ${n} on ${where}, which is no open change declaring ${repoKey} — ${fix} · blocking`, gates: true, quiet: null };
 }

@@ -231,6 +231,40 @@ an older multivac cannot read. Read the first five items before upgrading.
 
 **Fixed**
 
+- **A run reads the checkout that holds where it was asked (MV-151).** `verify`
+  took its starting directory for the root. From a subdirectory of a brain or a
+  consumer it exited 2 advising `multivac init .`, which would git-init a second
+  brain there; from a brain change worktree's subdirectory it judged the main
+  checkout's law and passed a row the worktree added; a monorepo subproject
+  holding its own mount lost its verdict below its own directory, and a brain
+  that declares `mount: docs/brain` was never found. `verify` now resolves the
+  root first — the nearest `.multivac/config.yml` up to the git toplevel, asked
+  with the ambient `GIT_*` dropped, else the consumer its change worktree or
+  mount names, else the stale pin or the door — and a full report printed away
+  from that root names it in one `root` line. `count`, `doctor`, `doors` and
+  `roadmap` root the same way, so `doctor` no longer reports "config invalid"
+  from `src/` and `roadmap` no longer lists "empty" there.
+  - **A brain change worktree reads the change's own siblings.** Each sibling is
+    read in the change's own worktree for it, else where the main checkout
+    reads it; one missing both ways names the main checkout for
+    `repos sync`, which typed in the worktree cloned the ecosystem into
+    `.multivac/worktrees/`. `doctor` reads them the same way.
+  - **A mount is judged as the brain it is.** Every brain gate holds inside a
+    consumer's mount; a sibling missing beside it names the host once and never
+    advises `repos sync`, which typed there clones the ecosystem into the
+    consumer.
+  - **Nothing is advised about another directory.** Outside a work tree nothing
+    is walked; below a toplevel no brain governs the run says so instead of
+    advising `init`; a submodule of a governed repository names it; a git
+    refusal such as dubious ownership is quoted, exit 2, not read as "no
+    repository"; and every command refused below a brain names that brain:
+    `no .multivac/config.yml in <dir> — it is inside the brain at <brain>; run
+    this there`.
+  - **The version floor reaches every run that reads the brain.** The notice
+    reads the brain of the root the command reads, so a `requires:` floor is
+    heard from a subdirectory and from a consumer; a consumer hears only the
+    floor, since the record's fix, `doors --adopt`, runs in the brain.
+
 - **`change close` lands the brain's specs whatever the flags say (MV-146,
   amending MV-144).** Under `--no-sdd` or `sdd_auto: false` the spec directory
   was left untracked; after `openspec archive` the moved-from
@@ -302,6 +336,22 @@ an older multivac cannot read. Read the first five items before upgrading.
   writes, measured per tool version.
 
 **Changed**
+
+- **One line when nothing is off (MV-151).** `verify --quiet`, or
+  `MULTIVAC_QUIET=1`, prints one line — the summary first, then the header, each
+  plain read with its ref, sha and age, the `enact` answer and the change the
+  code lands in — and the whole report, byte for byte and both streams in their
+  order, the moment anything is off: a leg that is not `ok`, a staged law, any
+  `config` line, a warning, an unparsable open change file, an anchor naming no
+  row. A read that is not plain and a pin that does not gate print beneath the
+  line. The git hooks `doors` writes export `MULTIVAC_QUIET=1`, so a clean commit
+  says one line; re-run `doors` to regenerate them. A binary older than this
+  ignores the variable and prints in full. The claude harness hooks keep their
+  commands byte for byte: `verify` reads the harness's own hook payload, so a
+  session start is quiet and a post-edit run follows the edited file into the
+  checkout that governs it — an edit in a change worktree from a session at the
+  main checkout is now judged there. Those two harness behaviours were read from
+  the harness binary with a simulated payload and await a live session.
 
 - **Cursor reads `AGENTS.md`, so multivac projects nothing else for it
   (MV-143).** The `.cursor/rules/multivac.mdc` stub was a second door that could

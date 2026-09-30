@@ -8,6 +8,7 @@ import { commands, usageFor } from './commands/index.js';
 import { ConfigError } from './lib/config.js';
 import { warn, say } from './lib/out.js';
 import { paint, selfVersion as version, versionNotice } from './lib/version.js';
+import { resolveRoot } from './commands/verify.js';
 
 function usage(): void {
   say('multivac <command> [args]');
@@ -21,8 +22,16 @@ function usage(): void {
   }
 }
 
-/** Exported for tests: the whole dispatch, no process globals. */
-export async function main(argv: string[], cwd: string): Promise<number> {
+/**
+ * Exported for tests: the whole dispatch, no process globals. MV-151: `io` is
+ * the environment and the stdin reader a command may read, and only as given —
+ * the entry point passes the process's, an in-process caller its own or none.
+ */
+export async function main(
+  argv: string[],
+  cwd: string,
+  io: { env?: Record<string, string | undefined>; stdin?: () => Promise<string | null> } = {},
+): Promise<number> {
   const first = argv[0];
   if (first === undefined || first === '--help' || first === '-h') {
     usage();
@@ -39,15 +48,24 @@ export async function main(argv: string[], cwd: string): Promise<number> {
   // The whole block is guarded: a NOTICE must never be able to take down the
   // command it decorates. Found by its own test, which runs from dist-test/
   // where `version()` cannot find package.json and threw for every command.
+  const cmd = commands.find((c) => c.name === first);
   try {
-    const raw = readFileSync(join(cwd, '.multivac/config.yml'), 'utf8');
-    const n = versionNotice(cwd, version(), raw);
+    // MV-151: a rooted command reads the brain of the root it will read — from
+    // a subdirectory, a change worktree or a consumer, the brain it verifies
+    // against — so a floor that brain declares reaches every such run. A
+    // resolution that fails reads this directory, as before.
+    const root = cmd?.rooted ? await resolveRoot(cwd).catch(() => null) : null;
+    const brain = root !== null && (root.kind === 'brain' || root.kind === 'consumer') ? root.brain : cwd;
+    const raw = readFileSync(join(brain, '.multivac/config.yml'), 'utf8');
+    const found = versionNotice(brain, version(), raw);
+    // In a consumer only the floor speaks: the record's fix, `doors --adopt`,
+    // runs in the brain, and advice aimed at another checkout is not printed.
+    const n = root?.kind === 'consumer' && found?.level !== 'red' ? null : found;
     if (n) warn(paint(n));
   } catch {
     // Not a brain, or the version is unreadable. Either way there is nothing
     // to say, and saying nothing is correct — never a crash, never a guess.
   }
-  const cmd = commands.find((c) => c.name === first);
   if (!cmd) {
     warn(`unknown command "${first}" — run \`multivac --help\` for the list`);
     return 2;
@@ -69,12 +87,38 @@ export async function main(argv: string[], cwd: string): Promise<number> {
   // never reach it: for them an unloadable config IS the diagnosis they were
   // asked for, so they catch their own and keep exit 1.
   try {
-    return await cmd.run(rest, { cwd });
+    return await cmd.run(rest, { cwd, env: io.env, stdin: io.stdin });
   } catch (e) {
     if (!(e instanceof ConfigError)) throw e;
     warn(e.message);
     return 2;
   }
+}
+
+/**
+ * MV-151. stdin, whole, for a harness hook's payload: null on a terminal, and
+ * null after two seconds on a pipe nobody closes rather than a gate that hangs.
+ * Called only when `verify` asks, which it does only under a declared hook
+ * payload's marker variable; the harness closes stdin at once.
+ */
+function readStdin(): Promise<string | null> {
+  if (process.stdin.isTTY) return Promise.resolve(null);
+  return new Promise((done) => {
+    const chunks: Buffer[] = [];
+    const t = setTimeout(() => {
+      process.stdin.destroy();
+      done(null);
+    }, 2000);
+    process.stdin.on('data', (c: Buffer) => chunks.push(c));
+    process.stdin.on('end', () => {
+      clearTimeout(t);
+      done(Buffer.concat(chunks).toString('utf8'));
+    });
+    process.stdin.on('error', () => {
+      clearTimeout(t);
+      done(null);
+    });
+  });
 }
 
 // Run only as an entry point (bin/direct node), never on import from a test.
@@ -86,7 +130,7 @@ try {
   isEntry = false;
 }
 if (isEntry) {
-  main(process.argv.slice(2), process.cwd()).then(
+  main(process.argv.slice(2), process.cwd(), { env: process.env, stdin: readStdin }).then(
     (code) => {
       process.exitCode = code;
     },

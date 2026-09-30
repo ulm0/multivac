@@ -47,7 +47,8 @@ refuses work for not having been planned first (MV-89).
 ## Steady state: the rules
 
 1. **Verify runs without you.** Hooks fire `mvac verify` at session start
-   and at commit. Never skip it, never `--no-verify`. A broken blocking leg
+   and at commit — one line when nothing is off, the whole report the moment
+   anything is. Never skip it, never `--no-verify`. A broken blocking leg
    means the brain and the code disagree — resolve that before writing code
    on top of it. A lying brain does not produce ugly docs; it produces
    confidently wrong code across N repos.
@@ -56,8 +57,10 @@ refuses work for not having been planned first (MV-89).
    judged at its **channel ref** — the ecosystem as published — while the
    brain's own repo is judged at its working tree; from a code repo with the
    brain mounted, its own working tree, the content you are about to commit
-   there. verify prints one `read` line per repo naming the ref or branch and
-   its sha, so you never have to guess which bytes a red came from. A
+   there — from any directory of the checkout, its root, named in a `root`
+   line when you asked from elsewhere. verify prints one `read` line per repo
+   (a quiet run folds the plain ones into its one line) naming the ref or
+   branch and its sha, so you never have to guess which bytes a red came from. A
    sibling parked off its channel is named there and in `mvac doctor`'s
    `branches` line. `mvac verify --worktree` asks the other question on
    purpose: local state across every repo. If a `read` line says a channel

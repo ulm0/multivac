@@ -19,6 +19,25 @@ export type DoorKind =
   /** A tool-owned file: optional frontmatter, then the managed block. */
   | 'stub';
 
+/**
+ * MV-151. How a harness tells a hook command what fired it, as measured in its
+ * own binary: a variable set only in hook processes, and the JSON on stdin —
+ * the field naming the event, the two events multivac's gates run on, and the
+ * dotted paths of the edited file and of the session's directory. `verify`
+ * reads stdin only when `env` is set, so a terminal, CI and a git hook run
+ * from the agent's shell never read it. Data, never a harness name: `verify`
+ * dispatches on these fields, and a target that declares none keeps the
+ * session's directory and the full report after every edit.
+ */
+export interface HookPayload {
+  env: string;
+  event: string;
+  session: string;
+  edit: string;
+  file: string;
+  cwd: string;
+}
+
 /** One harness target: what `doors` writes for it. */
 export interface DoorTarget {
   /** The file the harness reads, repo-relative. */
@@ -38,9 +57,10 @@ export interface DoorTarget {
    * and — when the harness fires a hook after a file edit — `postEdit`, the
    * matcher naming its file-editing tools. A target declaring `postEdit` is
    * where the grapher refresh is installed; a harness without one refreshes
-   * at `change close` only.
+   * at `change close` only. `payload` (MV-151) is what the harness hands each
+   * hook; it is never written anywhere — `doors` reads `path` and `postEdit`.
    */
-  hookConfig?: { path: string; shape: string; postEdit?: string };
+  hookConfig?: { path: string; shape: string; postEdit?: string; payload?: HookPayload };
   /** Path whose presence makes `init` propose this target. */
   detect?: string;
   /**
@@ -619,6 +639,13 @@ export const doorTargets: Record<string, DoorTarget> = {
       shape:
         'hooks.SessionStart + hooks.PostToolUse -> mvac verify; hooks.PostToolUse -> the grapher refresh, when one is declared and installed',
       postEdit: 'Edit|Write|MultiEdit',
+      // MV-151, read in Claude Code 2.1.283's binary: hook processes receive
+      // CLAUDE_PROJECT_DIR (the agent's own Bash tool does not); payloads carry
+      // hook_event_name "SessionStart" with its source and "PostToolUse" with
+      // tool_name and tool_input, beside session_id, transcript_path and cwd;
+      // hooks for forwarded commands start in the home directory, where the
+      // binary says a guard must use $CLAUDE_PROJECT_DIR or the cwd field.
+      payload: { env: 'CLAUDE_PROJECT_DIR', event: 'hook_event_name', session: 'SessionStart', edit: 'PostToolUse', file: 'tool_input.file_path', cwd: 'cwd' },
     },
     detect: 'CLAUDE.md',
   },

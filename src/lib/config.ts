@@ -1,7 +1,8 @@
 // Load and validate .multivac/config.yml. Every error says how to fix it.
 
+import { existsSync } from 'node:fs';
 import { access, lstat, readdir, readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
 import { NO_ADAPTER, sddDeclarationRefusal } from '../adapters/detect.js';
@@ -337,6 +338,22 @@ export async function loadConfig(brainDir: string, opts: LoadOpts = {}): Promise
 }
 
 /**
+ * MV-151. The brain whose checkout holds `dir`, found without git so every
+ * command's refusal stays cheap: the nearest ancestor holding a config, never
+ * past the first directory holding `.git` (a file in a linked worktree, a
+ * directory in a clone) — the checkout's root. Null at once when `dir` itself
+ * holds one: a checkout root with no brain gets today's advice.
+ */
+export function enclosingBrain(dir: string): string | null {
+  const start = resolve(dir);
+  if (existsSync(join(start, '.git'))) return null;
+  for (let d = dirname(start); ; d = dirname(d)) {
+    if (existsSync(join(d, CONFIG_PATH))) return d;
+    if (existsSync(join(d, '.git')) || dirname(d) === d) return null;
+  }
+}
+
+/**
  * Parse and validate the config, WITHOUT the layout check `loadConfig` adds.
  * `init` reads the grapher vocabulary here before it migrates anything
  * (MV-122): through `loadConfig` a legacy brain would read as unreadable, and
@@ -348,8 +365,13 @@ export async function readConfig(brainDir: string): Promise<Config> {
   try {
     raw = await readFile(file, 'utf8');
   } catch {
+    // MV-151: below a brain, `init .` would git-init a second brain inside
+    // it — every command's refusal names the brain that holds the directory.
+    const holder = enclosingBrain(brainDir);
     throw new ConfigError(
-      `no ${CONFIG_PATH} in ${brainDir} — run \`multivac init .\` to create it`,
+      holder !== null
+        ? `no ${CONFIG_PATH} in ${brainDir} — it is inside the brain at ${holder}; run this there`
+        : `no ${CONFIG_PATH} in ${brainDir} — run \`multivac init .\` to create it`,
     );
   }
   let doc: unknown;

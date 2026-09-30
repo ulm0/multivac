@@ -628,12 +628,22 @@ because it teaches people to route around it.
 | --- | --- | --- |
 | brain-scoped, per declared repo | that repo's **channel ref** (`channel:`, else the global, else `origin/main`), via `git ls-tree` + one `git cat-file --batch` | the brain's law is a statement about the state everyone shares. Someone mid-task elsewhere is not a violation |
 | brain-scoped, the **brain's own repo** | its **working tree** | the brain is where the author is working; its law must gate its own commit |
-| consumer-scoped (cwd is a code repo with the brain mounted) | its **working tree** | that is the content about to be committed there |
+| consumer-scoped (run anywhere in a code repo's checkout) | its **working tree** | that is the content about to be committed there |
+
+Which context a run is in is decided by where it is asked from, and from any
+directory of a checkout the answer is that checkout's (MV-151): `verify` resolves
+the root — the nearest brain up to the git toplevel, else the consumer its mount
+or change worktree names — before it reads any config, and a report printed
+away from that root names it in one `root` line. It used to take its starting
+directory for the root, so from `src/` it advised `init .`, and from a brain
+change worktree's subdirectory it judged the main checkout's law.
 
 Three properties keep it from becoming a second kind of lie:
 
 - **Both runs state what they read.** One `read` line per repo, naming the
-  ref or the branch and its short sha, on every run. This is the load-bearing
+  ref or the branch and its short sha — on a full report its own line, on a
+  quiet run (MV-151) a clause of the one line with the same ref, sha and age,
+  and a read that is not plain keeps its line. This is the load-bearing
   half: the old behaviour was defensible, being silent about it was not. An
   operator must never wonder which bytes produced a verdict.
 - **An unresolvable channel ref falls back to the working tree and says so**
@@ -1006,7 +1016,7 @@ the agent reads them:
 | class | loaded | carries |
 | --- | --- | --- |
 | **door** | always — first read of the session | pointers + law: where the brain is, what binds, run `verify` |
-| **hooks** | never read — they fire | enforcement: `pre-commit` / `pre-push`, harness hooks |
+| **hooks** | fired, and read when they speak — a clean run is one quiet line, anything off prints in full | enforcement: `pre-commit` / `pre-push`, harness hooks |
 | **skill** | on demand | the operating manual |
 
 The skill carries everything procedural the door must not: how to write an

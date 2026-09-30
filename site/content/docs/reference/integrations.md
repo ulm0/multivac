@@ -123,8 +123,12 @@ and entry it does not own:
 ```
 
 `SessionStart` catches a lying brain before the agent conceives code on top
-of it; `PostToolUse` re-checks after every edit. Both run the **default**
-policy, not `--strict`.
+of it, in one line when nothing is off and in full otherwise; `PostToolUse`
+re-checks after every edit, in the checkout of the file written when a brain
+governs it, and says nothing while it is green. Both run the **default**
+policy, not `--strict`, and neither command carries a switch: `verify` reads
+the harness's own hook payload (see
+[hooks](/docs/reference/hooks/#harness-hooks--the-early-ceiling)).
 
 The skill directory is a **mirror**, not an accretion: every run deletes
 anything under `.claude/skills/multivac/` that the package no longer ships —
@@ -275,7 +279,7 @@ differ by *when the agent reads them*:
 | class | loaded | carries |
 | --- | --- | --- |
 | **door** | always — first read of the session | pointers and law: where the brain is, what binds, run `verify` |
-| **hooks** | never read — they fire | enforcement: git `pre-commit`/`pre-push`, harness hooks |
+| **hooks** | fired, and read when they speak — a clean run is one quiet line, anything off prints in full | enforcement: git `pre-commit`/`pre-push`, harness hooks |
 | **skill** | on demand | the operating manual: anchor grammar, the change lifecycle, the interview |
 
 Only `claude` currently has all three. Git hooks are installed for **every**

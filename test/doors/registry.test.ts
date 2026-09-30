@@ -375,3 +375,19 @@ test("a recorded slug grammar is the tool's own, measured", () => {
   // spec-kit's feature directory takes any short name the lifecycle takes.
   assert.equal(sddSpec('speckit')!.slug, undefined);
 });
+
+test('a hook payload names every field, and only the measured harness declares one — MV-151', () => {
+  // Data read from the harness's own binary, never inferred from a name: a
+  // target that declares no payload keeps the session's directory and the
+  // full report after every edit.
+  assert.deepEqual(doorTargets.claude.hookConfig?.payload, {
+    env: 'CLAUDE_PROJECT_DIR',
+    event: 'hook_event_name',
+    session: 'SessionStart',
+    edit: 'PostToolUse',
+    file: 'tool_input.file_path',
+    cwd: 'cwd',
+  });
+  const declaring = names.filter((n) => doorTargets[n].hookConfig?.payload !== undefined);
+  assert.deepEqual(declaring, ['claude']);
+});

@@ -82,6 +82,35 @@ and contracts/cli-output.md is adapted in T001. MV-151 is allocated by `change n
 closes (MV-26); if another ID is reserved, T001 substitutes it everywhere, the count leg on the
 notes included.
 
+**Re-anchored at apply (T001, on 564aed4 = main 915889f plus this change's speckit files).**
+MV-148, MV-149 and MV-150 are stated; MV-151 is the reserved ID. MV-150 is filed `proposed` and
+carries "MV-86's `requires:` floor makes the brain loud and does not reach a consumer's run", so
+its note is written and the notes number five. #7's `OpenChanges.changes`,
+`Evaluated.closeRefusals` and the finished line's `close refuses until: <first>[ (+N more)] —
+then: multivac change close <slug>` variant are in verify.ts (`finishedChanges` :154, the print
+site in `runVerify` :1207–:1222); #6's `installHookConfig(dir, hookConfig, refreshes, notices)`
+(doors.ts :164) reads `hookConfig.path` and `hookConfig.postEdit` only. Lines this change edits:
+verify.ts `stalenessLines` :181, `configLine` :328, `lawDeath` :376, `enactmentLine` :422,
+`mountedRefusalLine` :553, `RepoSource` :562, `resolveSources` :644, `worktreeBrain` :742,
+`findMount` :761, `findStaleMount` :789, `resolveRepoKey` :807, `evaluateCore` :878, `ARGS`
+:1020, `runVerify` :1033 (the lookup cascade :1066–:1121); cli.ts `main` :25, the notice
+:41–:48; doctor.ts `presentRepoDirs` :104, `reposLine` :790, `branchesLine` :828, `pinsLine`
+:875, `untrackedLine` :1114, `doctorCommand` :1251; doors.ts `run` :343 (`const brainDir =
+ctx.cwd;` :352); roadmap.ts `run`'s `const brain = ctx.cwd;`; registry.ts `DoorTarget` :23,
+`hookConfig` :43, the claude target's `hookConfig` :617; install.ts `shim()` :203; config.ts
+`readConfig` :345. **Measured**: the main checkout's green report is still 348 B (`151 claims ·
+150 anchored (99%)`, `unanchored: MV-151`, read line `on claude/amazing-franklin-mjvzu0 @
+915889f`), and from `src`, `src/commands`, `.multivac`, `.multivac/hooks`, `test/verify` and
+`.multivac/worktrees` today exits 2 with 90, 99, 96, 102, 98 and 106 B; from the change
+worktree's own `src` today exits 0 scoped to repo "brain" against the main checkout's law — the
+false green of US2, live in this very worktree. `.claude/settings.json` holds 1,511 B: the
+session gate 24 B, the edit gate 25 B, one graphify refresh hook (#6, keyed on
+`graphify-out/graph.json`, exiting 0 when the edited file is in no repository) of 500 B, and
+graphify's two guard hooks (26 and 24 B); SHA-1 `b55ff42d…` before and after this change. The
+suite: 954 tests, 951 pass, 3 skipped. R16's "today" counts all reproduce (3, 3, 5, 0, 22; 1,
+2, 1, 3; 0, 0, 3; `sddDeclaration: 'report'` 2 + 1). The tests that spawn the built CLI now
+also include test/init/equip.test.ts :177, :256, :284, :340 and :366 (T009).
+
 **How the hook edits compose with #5's and #6's.** This change writes no settings.json string
 and no refresh hook: the payload is read inside the edit gate's own `verify` process, and each
 hook process the harness starts — the gate, #5's follow-only refresh hook, each of #6's

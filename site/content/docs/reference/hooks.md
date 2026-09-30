@@ -86,6 +86,9 @@ elif [ -f "$root/.pre-commit-config.yaml" ]; then
     echo "multivac: .pre-commit-config.yaml present but pre-commit is not installed — the project's gate did NOT run. Fix: install pre-commit (pipx install pre-commit, or brew install pre-commit)" >&2
   fi
 fi
+# One line when nothing is off; the full report otherwise. An env var, not a
+# flag: a binary that predates it ignores it and prints in full.
+export MULTIVAC_QUIET=1
 # The build is used only when this repo IS multivac: `dist/cli.js` plus
 # node_modules describes most Node CLI repos, and running THEIR binary as
 # multivac is the tool executing somebody else's program under its own name.
@@ -103,6 +106,14 @@ fi
 echo "multivac: hooks INACTIVE — no runnable multivac, nothing was verified. Fix: install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)" >&2
 exit 0
 ```
+
+The `export` makes the run quiet: a commit with nothing off prints one line,
+and anything off prints the whole report — see
+[`verify --quiet`](../commands#--quiet-one-line-when-nothing-is-off). It is a
+variable rather than a flag so that a multivac older than the shim, which does
+not know it, ignores it and prints in full instead of refusing an unknown flag
+and blocking the commit. A hook you wire by hand, like the chain line below,
+keeps the full report.
 
 The `prev` block is the chain: a repo that already had a `.git/hooks/pre-commit`
 — a pre-commit framework install, a lefthook install, a hand-written gate —
@@ -267,8 +278,11 @@ every key and entry it does not own:
 
 `SessionStart` is the earliest useful moment: the agent is about to read the
 brain, and this tells it whether the brain is currently true. `PostToolUse`
-re-checks after every write, so a change that breaks a claim surfaces in the
-same turn that made it, not three files later.
+re-checks after every write, in the checkout of the file written when a brain
+governs it (read from the harness payload; the command above is unchanged), so
+a change that breaks a claim surfaces in the same turn that made it, not three
+files later — including an edit made in a change worktree from a session that
+sits at the main checkout.
 
 **The wrappers are the delivery, not decoration.** Claude Code feeds the model
 only exit-0 stdout at `SessionStart` and only exit-2 stderr at `PostToolUse`;
@@ -283,8 +297,24 @@ broke, a binary that has gone — because after an agent's edit each of those is
 the agent's to answer. The edit is already on disk: the block is a forced read
 in the same turn, not a revert.
 
-A green run says nothing on either event, deliberately. A gate that speaks when
-it has nothing to say teaches the reader to stop reading it.
+After an edit a green run says nothing; at session start it is one line —
+summary, header, reads, enact. A gate that speaks at length when it has nothing
+to say teaches the reader to stop reading it.
+
+**The commands carry no switch.** Claude Code hands every hook the event and,
+after an edit, the file written, as JSON on stdin, and sets
+`CLAUDE_PROJECT_DIR` only in hook processes. `verify` reads that payload only
+when the variable is set and no directory was named: the session event makes
+the run quiet and starts it at the session's directory (the payload's `cwd`,
+because a hook the harness forwards starts in your home directory); the edit
+event roots the run at the edited file when a consumer, a door or a brain that
+is its own repository governs it, and otherwise at the session's directory. A
+brain committed inside another repository — a test fixture, often red on
+purpose — is never followed into. Putting the switch in the command instead
+would quote it into every red delivery and, under an older `doors`, add a
+second gate beside the first. That the harness delivers the quiet line and
+follows a worktree edit was read from its own binary with a simulated payload;
+a live session is the confirmation.
 
 The merge is idempotent — re-running `doors` does not duplicate entries — and
 defensive. A settings file that is not valid JSON is left alone and reported:

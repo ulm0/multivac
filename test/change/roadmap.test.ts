@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initRepo, makeScratchEcosystem } from '../helpers/fixture.js';
@@ -349,4 +349,18 @@ test('the roadmap command reaches no network', () => {
   for (const forbidden of [/\bfetch\s*\(/, /node:https?/, /\bhttps?:\/\//, /XMLHttpRequest/]) {
     assert.equal(forbidden.test(src), false, `roadmap.ts matches ${forbidden}`);
   }
+});
+
+test("roadmap from a subdirectory lists the brain's changes and names the root — MV-151", async () => {
+  // From `src` the listing read that directory: "empty", beside a planned change.
+  const own = makeScratchEcosystem(realpathSync(mkdtempSync(join(tmpdir(), 'mvac-roadmap-root-'))));
+  assert.equal(await roadmap.run(['add', 'later-thing', 'A later thing'], { cwd: own.brain }), 0);
+  const src = join(own.brain, 'src');
+  mkdirSync(src, { recursive: true });
+  const c = await capture(() => roadmap.run([], { cwd: src }));
+  assert.equal(c.code, 0, c.out);
+  const lines = c.out.split('\n');
+  assert.equal(lines[0], `root: ${own.brain} (asked from ${src})`);
+  assert.equal(lines[1], 'roadmap: 1 planned');
+  assert.equal(lines.filter((l) => l.startsWith('root: ')).length, 1);
 });

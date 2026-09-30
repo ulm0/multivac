@@ -9,7 +9,7 @@ in [contracts/cli-output.md](contracts/cli-output.md); the measurements they are
 are in [research.md](research.md).
 
 ```bash
-WT=<this change's worktree>; SCR=<scratch>; BASE_REV=<T001's pre-change head>
+WT=<this change's worktree>; SCR=<scratch>; BASE_REV=564aed4   # T001's pre-change head (main 915889f + the speckit files)
 unset MULTIVAC_QUIET CLAUDE_PROJECT_DIR
 export HOME=$SCR/home GIT_CONFIG_GLOBAL=$SCR/gitconfig DO_NOT_TRACK=1 OPENSPEC_TELEMETRY=0 CODEGRAPH_TELEMETRY=0
 mkdir -p $HOME $SCR/bin $SCR/oldbin && git config --global user.name t && git config --global user.email t@t \
@@ -124,7 +124,7 @@ leg) — and the critic's `$CR/mkeco-same.sh <dir>`, the same with keys equal to
 ## Walk J — the suite, the law, the replay (SC-027, SC-041, SC-042)
 
 1. `cd $WT && corepack pnpm test 2>&1 | tail -8` and `cd $WT && MULTIVAC_QUIET=1 CLAUDE_PROJECT_DIR=/x corepack pnpm test 2>&1 | tail -8` — the same counts, 0 failures in both.
-2. `cd $WT && $MV verify --strict | strip | tail -3` — every claim anchored, `0 blocking broken · exit 0`; `cd $WT && grep -c 'Amended 2026-09-29 by MV-151' .multivac/invariants.md` — 5 (4 without MV-150's note).
+2. `cd $WT && $MV verify --strict | strip | tail -3` — every claim anchored, `0 blocking broken · exit 0`; `cd $WT && $MV count 'brain:.multivac/invariants.md /Amended 2026-09-29 by MV-151/'` — 5 (4 without MV-150's note); a plain `grep -c` says 6, because the count leg's own line carries the phrase and the matcher skips anchor lines.
 3. `cd $WT && $MV count 'brain:site/content/** /mv-[0-9]+/i' && $MV count 'brain:site/content/** /[0-9]+\.[0-9]+\.[0-9]+/' && $MV count 'brain:src/hooks/install.ts /graph|refresh/'` — 0 matches each.
 4. The replay: `bash $CR/hist.sh` with `MV` as the new binary, over this brain's agent-made commits — 6 of 13 fold, about 1,033 B saved; each commit that prints in full has the law staged (SC-027).
 

@@ -10,6 +10,7 @@ import {
   readFileSync,
   readdirSync,
   readlinkSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -843,4 +844,54 @@ test('a consumer door names the brain\'s SDD in one line, and none where nothing
   // Opted out, or nothing gated: no line at all.
   assert.equal(renderConsumerDoor(cfg, 'web').includes('SDD'), false);
   assert.equal(renderConsumerDoor({ ...cfg, sddAuto: false }, 'api').includes('SDD'), false);
+});
+
+test('every shim exports MULTIVAC_QUIET after its chain block and before its runners — MV-151', async () => {
+  const repo = mkdtempSync(join(tmpdir(), 'mvac-doors-quiet-'));
+  gitInit(repo);
+  await installHooks(repo, { strictPrePush: false });
+  for (const name of ['pre-commit', 'pre-merge-commit', 'pre-push']) {
+    const lines = read(repo, '.multivac/hooks', name).split('\n');
+    const at = lines.indexOf('export MULTIVAC_QUIET=1');
+    assert.ok(at > 0, `${name} exports the switch`);
+    assert.equal(lines.filter((l) => l === 'export MULTIVAC_QUIET=1').length, 1, name);
+    assert.deepEqual(lines.slice(at - 2, at), [
+      '# One line when nothing is off; the full report otherwise. An env var, not a',
+      '# flag: a binary that predates it ignores it and prints in full.',
+    ]);
+    // After the chain block (or the non-chain `root=` line), before the runners.
+    assert.ok(lines[at - 3] === 'fi' || lines[at - 3]!.startsWith('root='), `${name}: ${lines[at - 3]}`);
+    assert.match(lines[at + 1]!, /^# The build is used only when this repo IS multivac/);
+    assert.ok(!lines.slice(0, at).some((l) => /exec (node|npx|mvac)/.test(l)), `${name}: no runner before the export`);
+    // A shim lands in every repo of every ecosystem, where a row ID means nothing.
+    assert.doesNotMatch(lines.join('\n'), /MV-[0-9]+/);
+  }
+});
+
+test('doors from a subdirectory projects the brain that holds it and names it once — MV-151', async () => {
+  const own = makeScratchEcosystem(realpathSync(mkdtempSync(join(tmpdir(), 'mvac-doors-root-'))));
+  const src = join(own.brain, 'src');
+  mkdirSync(src, { recursive: true });
+  const at = async (cwd: string): Promise<{ code: number; out: string[] }> => {
+    const out: string[] = [];
+    const orig = { log: console.log, error: console.error };
+    console.log = console.error = (line: string) => out.push(String(line));
+    try {
+      return { code: await doorsCommand.run([], { cwd }), out };
+    } finally {
+      console.log = orig.log;
+      console.error = orig.error;
+    }
+  };
+  const below = await at(src);
+  assert.equal(below.code, 0, below.out.join('\n'));
+  assert.equal(below.out[0], `root: ${own.brain} (asked from ${src})`);
+  assert.equal(below.out.filter((l) => l.startsWith('root: ')).length, 1);
+  assert.doesNotMatch(below.out.join('\n'), /multivac init/);
+  const projected = read(own.brain, 'AGENTS.md');
+  const atRoot = await at(own.brain);
+  assert.equal(atRoot.code, 0);
+  assert.equal(atRoot.out.filter((l) => l.startsWith('root: ')).length, 0);
+  assert.deepEqual(atRoot.out, below.out.slice(1), 'the projection is the run at the root');
+  assert.equal(read(own.brain, 'AGENTS.md'), projected);
 });

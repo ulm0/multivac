@@ -13,7 +13,7 @@ import { delimiter, dirname, join } from 'node:path';
 import { init } from '../../src/commands/init.js';
 import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
-import { gitInit, initRepo, vendorPath } from '../helpers/fixture.js';
+import { gitInit, initRepo, scrubbedEnv, vendorPath } from '../helpers/fixture.js';
 
 const vendors = vendorPath();
 const bare = [dirname(process.execPath), '/usr/bin', '/bin'].join(delimiter);
@@ -178,7 +178,7 @@ test('step zero names what init wrote, never the user\'s work, never -A — MV-1
   execFileSync('sh', ['-c', `git -c user.email=t@acme.example -c user.name=t ${cmd.replace(/^git /, '').replace(/ && git commit/, ' && git -c user.email=t@acme.example -c user.name=t commit')}`], {
     cwd: dir,
     stdio: 'ignore',
-    env: { ...process.env, PATH: [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':') },
+    env: scrubbedEnv({ PATH: [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':') }),
   });
   const status = execFileSync('git', ['status', '--porcelain'], { cwd: dir, encoding: 'utf8' });
   assert.match(status, /^ M README\.md$/m);
@@ -257,7 +257,7 @@ test("a fresh opsx brain's step zero passes its own gate — MV-142, MV-144", as
   execFileSync('sh', ['-c', `git -c user.email=t@acme.example -c user.name=t ${cmd.replace(/^git /, '').replace(/ && git commit/, ' && git -c user.email=t@acme.example -c user.name=t commit')}`], {
     cwd: dir,
     stdio: 'ignore',
-    env: { ...process.env, PATH: [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':') },
+    env: scrubbedEnv({ PATH: [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':') }),
   });
   const status = execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], { cwd: dir, encoding: 'utf8' });
   assert.equal(status, '', 'all of it committed');
@@ -284,7 +284,7 @@ test('bodies an earlier init left leave through any commit — MV-142, MV-144, M
   writeFileSync(join(hookBin, 'mvac'), `#!/bin/sh\nexec '${process.execPath}' '${join(process.cwd(), 'dist/cli.js')}' "$@"\n`, { mode: 0o755 });
   const hooked = [hookBin, dirname(process.execPath), '/usr/bin', '/bin'].join(':');
   const sh = (cmd: string, path = hooked): void => {
-    execFileSync('sh', ['-c', cmd], { cwd: dir, stdio: 'pipe', env: { ...process.env, PATH: path } });
+    execFileSync('sh', ['-c', cmd], { cwd: dir, stdio: 'pipe', env: scrubbedEnv({ PATH: path }) });
   };
   const zero = out.split('\n').find((l) => /0\. commit what was just written/.test(l)) ?? '';
   sh(zero.replace(/^.*?0\. commit what was just written: /, ''));
@@ -340,7 +340,7 @@ test('bodies an earlier init left leave through any commit — MV-142, MV-144, M
   const strict = spawnSync(process.execPath, [join(process.cwd(), 'dist/cli.js'), 'verify', '--strict'], {
     cwd: dir,
     encoding: 'utf8',
-    env: { ...process.env, PATH: hooked },
+    env: scrubbedEnv({ PATH: hooked }),
   });
   assert.equal(strict.status, 0, `${strict.stdout}${strict.stderr}`);
   assert.ok(!(await doctorReport(dir)).lines.some((l) => l.includes('an earlier init left')), 'none left, no line');
@@ -369,7 +369,7 @@ test('a fresh claude-door brain gives its first unused reservation back — MV-4
   execFileSync('sh', ['-c', `${zero.replace(/^.*?0\. commit what was just written: /, '')} -q`], {
     cwd: dir,
     stdio: 'pipe',
-    env: { ...process.env, PATH: hooked },
+    env: scrubbedEnv({ PATH: hooked }),
   });
   assert.match(readFileSync(join(dir, '.claude/skills/multivac/references/anchors.md'), 'utf8'), /@anchor INV-01 /, 'the example this test is about');
 
@@ -390,7 +390,7 @@ test('a fresh claude-door brain gives its first unused reservation back — MV-4
         .replace(/^repos: \{\}$/m, 'repos:\n  brain:\n    status: landed')
         .replace(/^landing_order: \[\]$/m, 'landing_order:\n  - - brain'),
     );
-    execFileSync('git', ['commit', '-qam', 'leak: landed'], { cwd: dir, stdio: 'pipe', env: { ...process.env, PATH: hooked } });
+    execFileSync('git', ['commit', '-qam', 'leak: landed'], { cwd: dir, stdio: 'pipe', env: scrubbedEnv({ PATH: hooked }) });
     closed = await change.run(['close', 'leak'], { cwd: dir });
   } finally {
     console.log = orig.log;

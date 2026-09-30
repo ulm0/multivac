@@ -695,6 +695,20 @@ $ mvac verify
 no .multivac/config.yml in /private/tmp — run `multivac init .` to create it
 ```
 
+The `init` advice is given only where no brain holds the directory. Below a
+brain every command's refusal names it, and `verify`, which reads the checkout
+that holds where it is asked, says where it stands when nothing governs it —
+see [Where a run roots](../commands#where-a-run-roots):
+
+```txt
+$ cd src && mvac repos sync
+no .multivac/config.yml in /home/you/brain/src — it is inside the brain at /home/you/brain; run this there
+$ cd ~/notes && mvac verify
+/home/you/notes is inside /home/you, which no brain governs — nothing was verified
+$ cd /tmp/scratch && mvac verify
+/tmp/scratch is in no git repository — nothing was verified; the brain at /tmp/scratch/brain verifies from there
+```
+
 ## `.multivac/projected.yml` — not config
 
 A second file lives beside the config, and it is **not** yours to edit:

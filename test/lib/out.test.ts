@@ -5,7 +5,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { quoteFailure } from '../../src/lib/out.js';
+import { quoteFailure, say, tapOutput, warn, warnings } from '../../src/lib/out.js';
 import { GRAPHIFY_0929_READONLY, SPECKIT_106_NO_CLAUDE } from '../helpers/recorded.js';
 
 const BOX = /[\u2500-\u259F]/;
@@ -67,4 +67,33 @@ test('a line that is its own cause is quoted as itself', () => {
     quoteFailure(failed('', '\n  ERROR: cannot write out/graph.json: ENOENT\n')),
     'ERROR: cannot write out/graph.json: ENOENT',
   );
+});
+
+test('a tap holds both streams in order and counts every warning — MV-151', () => {
+  const held: Array<[boolean, string]> = [];
+  const before = warnings();
+  tapOutput((err, line) => held.push([err, line]));
+  try {
+    say('one');
+    warn('two');
+    say('three');
+  } finally {
+    tapOutput(null);
+  }
+  assert.deepEqual(held, [
+    [false, 'one'],
+    [true, 'two'],
+    [false, 'three'],
+  ]);
+  assert.equal(warnings(), before + 1, 'a held warning counts');
+  // Untapped, a warning still counts, and nothing more is held.
+  const err = console.error;
+  console.error = () => {};
+  try {
+    warn('four');
+  } finally {
+    console.error = err;
+  }
+  assert.equal(warnings(), before + 2, 'a printed warning counts');
+  assert.equal(held.length, 3, 'with the tap removed nothing is held');
 });

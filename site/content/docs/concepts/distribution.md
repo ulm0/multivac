@@ -132,7 +132,7 @@ What multivac installs into a repo splits by when the agent reads it:
 | class | loaded | carries |
 | --- | --- | --- |
 | **door** | always — first read of the session | pointers + law: where the brain is, what binds, run `verify` |
-| **hooks** | never read — they fire | enforcement: `pre-commit` / `pre-push`, harness hooks |
+| **hooks** | fired, and read when they speak — a clean run is one quiet line, anything off prints in full | enforcement: `pre-commit` / `pre-push`, harness hooks |
 | **skill** | on demand | the operating manual |
 
 The skill carries everything procedural the door must not: how to write an

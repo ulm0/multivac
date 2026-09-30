@@ -7,6 +7,21 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { SPECKIT_INTEGRATION_JSON } from './recorded.js';
 
+/**
+ * MV-151. The process environment without the two switches a developer may
+ * export — `MULTIVAC_QUIET` folds a green report to one line and
+ * `CLAUDE_PROJECT_DIR` makes `verify` read a hook payload on stdin — merged
+ * with `extra`. Every test that spawns the built CLI, directly or through a
+ * git hook it writes, spawns with this: a test must not depend on the host's
+ * shell (Constitution IV).
+ */
+export function scrubbedEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  delete env.MULTIVAC_QUIET;
+  delete env.CLAUDE_PROJECT_DIR;
+  return { ...env, ...extra };
+}
+
 export interface ScratchEcosystem {
   brain: string;
   repos: { api: string; web: string };

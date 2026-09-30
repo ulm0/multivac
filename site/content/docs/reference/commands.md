@@ -175,7 +175,7 @@ A valued flag whose value is missing — or whose value is itself a flag — is
 refused too, rather than binding the next token or an empty string:
 
 ```txt
---repo needs a value — verify takes [dir], --strict, --check, --worktree, --repo <key>
+--repo needs a value — verify takes [dir], --strict, --check, --worktree, --repo <key>, --range <base>..<head>, --branch <name>, --quiet
 ```
 
 The equals form is for long names only. A short alias is not split by the
@@ -344,10 +344,12 @@ Nothing it writes is law — the report says so in its own header. Your agent
 reads it and drafts `proposed` rows. See
 [Session zero](../../guide/session-zero).
 
-## `verify [dir] [--strict] [--check] [--worktree] [--repo <key>] [--range <base>..<head> --branch <name>]`
+## `verify [dir] [--strict] [--check] [--worktree] [--repo <key>] [--range <base>..<head> --branch <name>] [--quiet]`
 
 The core. Checks every anchor in the brain against the declared repos.
-Deterministic, offline, sub-second by design. `dir` defaults to `.`.
+Deterministic, offline, sub-second by design. `dir` defaults to `.` and may be
+any directory of a checkout: the run reads the checkout that holds it — see
+[Where a run roots](#where-a-run-roots).
 
 ```txt
 $ mvac verify
@@ -364,9 +366,9 @@ $ mvac verify
 0 blocking broken · exit 0
 ```
 
-Two of those lines are printed by **every** run, whatever the claims say. A
-`read` line per repo names the ref or branch and its sha, so what was read is
-never inferred. And one `enact` line asks whether a row is enacted alone in the
+Two of those lines are printed by **every** run, whatever the claims say — on
+a quiet run as clauses of its one line. A `read` line per repo names the ref or
+branch and its sha, so what was read is never inferred. And one `enact` line asks whether a row is enacted alone in the
 commit being composed: a row reaching `active` beside the code it anchors is
 refused, a row enacted alone is named, and when nothing is staged the line says
 the question could not be asked rather than implying an answer.
@@ -401,6 +403,41 @@ answers about a commit nobody is making.
 | `--check` | never writes: a `moved` leg is reported instead of self-healed. |
 | `--worktree` | read every declared repo's **working tree** instead of its channel ref — local state across the whole ecosystem, on purpose. |
 | `--repo <key>` | scope to one declared repo. **Only meaningful from a consumer repo** — from a brain it is ignored with a warning. |
+| `--quiet` | one line when nothing is off; the whole report otherwise — see below. `MULTIVAC_QUIET=1` asks the same. |
+
+### `--quiet`: one line when nothing is off
+
+A quiet run prints **one line** when every line of the report has a quiet
+form, and the whole report, byte for byte, the moment anything is off:
+
+```txt
+$ mvac verify --quiet
+0 blocking broken · exit 0 · 12 claims · 12 anchored (100%) · read api origin/main @ 1a2b3c4 (last fetch 2h ago), brain main @ abc1234 (working tree) · enact not answered (nothing staged)
+```
+
+The summary leads, so a reader or a script that looks for `<n> blocking broken
+· exit <n>` at a line start finds it where the full report puts it. Then the
+header, each plain read with the same ref or branch, sha and fetch age, the
+`enact` answer with its reason, and `code → <slug>` when the commit's code
+lands in an open change. A consumer's line carries `brain at <dir>` and `enact
+not answered (decided in the brain)`.
+
+A read that is not plain — fell back, `--worktree`, off channel, parked, never
+fetched here, behind its own channel, mid-merge, not on disk — prints its full
+`read` line beneath the one line, and so does a `stale` pin that does not gate.
+Everything else that is off prints the whole report, both streams in the order
+they were written: a leg or count line other than `ok`, a finished change, a
+gating stale pin, a staged law, an enactment or a refusal, any `config` line, a
+mounted SDD refusal, the law's death, the pending and drift summaries, a `code`
+line other than a clean landing, an open change file that does not parse, an
+anchor naming no row, any warning, and a non-zero exit. The exit code is the
+same either way.
+
+Quiet is asked for, never inferred: `--quiet`; `MULTIVAC_QUIET=1` in the
+environment, which the git hooks `doors` writes export, so a clean commit says
+one line; or the harness's session-start hook (see
+[hooks](../hooks#harness-hooks--the-early-ceiling)). A plain `mvac verify` stays
+loud: read the `read` lines before you read the verdicts.
 
 ### What each run reads
 
@@ -409,9 +446,9 @@ is about to commit.** Two contexts, two scopes:
 
 | run | what it reads | why |
 | --- | --- | --- |
-| **brain-scoped** (cwd is the brain) | each declared repo at its **channel ref** — `channel:` on the entry, else the global, else `origin/main` | the brain's law is about the state everyone shares. A teammate mid-task on a WIP branch in a sibling repo is not a violation |
+| **brain-scoped** (run anywhere in the brain's checkout) | each declared repo at its **channel ref** — `channel:` on the entry, else the global, else `origin/main` | the brain's law is about the state everyone shares. A teammate mid-task on a WIP branch in a sibling repo is not a violation |
 | the **brain's own repo**, in the same run | its **working tree** | this is where the author is working, and the brain's law must gate the brain's own commit |
-| **consumer-scoped** (cwd is a code repo with the brain mounted) | its **working tree** | that is the content about to be committed *there* |
+| **consumer-scoped** (run anywhere in a code repo's checkout, the brain mounted in it) | its **working tree** | that is the content about to be committed *there* |
 
 Before this, every repo was read as a working tree, from everywhere. A
 sibling parked on a branch turned the brain's law red for a reason that had
@@ -420,9 +457,11 @@ over with `--no-verify`, which is the enforcement floor lost to a tool being
 wrong.
 
 **Every run says which bytes it read.** One `read` line per repo naming the
-ref or the branch and its short sha; a checkout parked off its channel is
-named as such, so an off-channel repo is legible rather than a silent premise
-behind a mysterious verdict.
+ref or the branch and its short sha — on a quiet run a plain read is a clause
+of its one line, with the same ref, sha and age, and any other prints its
+line in full; a checkout parked off its channel is named as such, so an
+off-channel repo is legible rather than a silent premise behind a mysterious
+verdict.
 
 **A channel ref is a local snapshot, so its age is on the line.** `verify` never
 touches the network: `origin/main` is whatever the last `mvac repos sync`
@@ -646,11 +685,78 @@ $ mvac verify
 The anchor line in `invariants.md` now reads `api:src/loyalty.ts`.
 Review it like any other diff.
 
+### Where a run roots
+
+`verify` answers for the checkout that holds the directory it is asked from —
+`[dir]`, or the working directory — and resolves that root before it reads any
+config. From any directory of a checkout the verdict and the report are the
+root's. In order:
+
+1. **A brain** — the nearest `.multivac/config.yml` from the directory up to
+   its git toplevel. A brain's subdirectory, a brain change worktree and a
+   consumer's mount are all brains, judged brain-scoped with every brain gate.
+2. **A consumer's change worktree** — a toplevel at
+   `<brain>/.multivac/worktrees/<slug>/<key>` (below).
+3. **A consumer through its mount** — the nearest directory below the
+   toplevel whose child brain names it by its own `mount:` (a monorepo
+   subproject holding its own `.brain`); else the toplevel's mount, `.brain`
+   outright or a single child brain; else the one `.gitmodules` path below the
+   first level whose brain names it (`mount: docs/brain`); else the directory's
+   own child brain.
+4. **A stale pin**, at the directory and then at the toplevel; then **a door**
+   with no brain in reach (below).
+
+The toplevel is asked with the ambient `GIT_*` variables dropped, so an
+inherited `GIT_DIR` never answers for another repository. A report printed
+away from its root names the root in one line after its header, because the
+paths and commands in it are relative to that root. A symlinked path to the
+root is the root:
+
+```txt
+$ cd src && mvac verify
+12 claims · 12 anchored (100%)
+  root      /home/you/brain (asked from src)
+  read      brain: working tree on main @ abc1234 — the brain's own repo, the commit this run gates
+…
+```
+
+A brain change worktree reads each sibling in the change's own worktree for
+it, `<brain>/.multivac/worktrees/<slug>/<key>`, when that exists — found by key,
+whatever path the brain declares — else where the main checkout reads it. A
+sibling missing both ways says `` run `multivac repos sync` in <main checkout> ``,
+never in the worktree. Inside a consumer's mount a missing sibling names the
+host once and never advises `repos sync`, which typed there would clone the
+ecosystem into the consumer:
+
+```txt
+  read      web: not on disk beside this mount — nothing read; verify in /home/you/api for its verdict, or from a brain checkout
+```
+
+Where nothing governs the directory, nothing is walked and no advice names
+another directory; each of these exits 2:
+
+```txt
+/home/you/work is in no git repository — nothing was verified; the brain at /home/you/work/brain verifies from there
+/home/you/notes is inside /home/you, which no brain governs — nothing was verified
+/home/you/api/vendor/lib is a submodule of /home/you/api, which multivac verifies from there — nothing was verified here
+git rev-parse --show-toplevel failed in /home/you/api: fatal: detected dubious ownership in repository at '/home/you/api'
+```
+
+And every command's refusal for a missing `.multivac/config.yml` names the
+brain whose checkout holds the directory, rather than advising an `init` that
+would create a second brain inside it:
+
+```txt
+$ cd src && mvac change new points-expire "Points expire"
+no .multivac/config.yml in /home/you/brain/src — it is inside the brain at /home/you/brain; run this there
+```
+
 ### From a consumer repo
 
-`verify` run in a repo with no `.multivac/config.yml` looks for a mounted
-brain in a direct child directory — `.brain` wins outright — and scopes to
-that repo's anchors plus `*` anchors:
+`verify` run anywhere in a code repo's checkout, with no `.multivac/config.yml`
+between the directory and the toplevel, finds the brain mounted in it — `.brain`
+wins outright — and scopes to that repo's anchors plus `*` anchors; from a
+subdirectory the report adds its `root` line:
 
 ```txt
 $ cd ../api && mvac verify
@@ -687,8 +793,9 @@ $ mvac verify --repo nope
 A change worktree is found from its path first. `change apply` puts a
 sibling repo's worktree at `<brain>/.multivac/worktrees/<slug>/<key>`, and the
 brain mount inside it is a submodule nobody initialised. So in that checkout,
-`verify` takes the brain, the change and the key from the path, and reads the
-brain itself, which does not lag the way a pin can:
+from any directory of it, `verify` takes the brain, the change and the key from
+the path of its toplevel, and reads the brain itself, which does not lag the
+way a pin can:
 
 ```txt
 $ cd ~/eco/brain/.multivac/worktrees/points-expire/api && mvac verify
@@ -723,8 +830,10 @@ installed: warn loudly, let the commit through. It is recognised by the header
 line in the hook script multivac wrote, so a hook of your own in
 `.multivac/hooks/` does not count.
 
-**Otherwise** — a repo multivac never touched — it gets the `run multivac init .`
-hint, and exit 2.
+**Otherwise** — a repo multivac never touched — its toplevel gets the
+`run multivac init .` hint, and exit 2; a directory below it is told that no
+brain governs it, and a submodule of a governed repository is told which one
+verifies it (see [Where a run roots](#where-a-run-roots)).
 
 ### Pin staleness
 
@@ -760,7 +869,10 @@ $ mvac count 'api:db/migrations/*.sql /balance/'
 Same bytes, too, not only the same parser: `count` resolves the repos it reads
 through the function `verify` uses, so a sibling is read at its channel ref and
 the brain at its working tree, and it prints the same `read` line per
-repo. It used to build its own handles with no ref — so it read working
+repo. It roots the same way too, from any directory of a checkout: in a
+consumer, or a consumer's change worktree, its own key is read as the
+checkout's working tree, in the sentence `verify` prints there, and a repo
+with a door but no brain in reach has nothing to count against, exit 2. It used to build its own handles with no ref — so it read working
 trees while the gate read channels, and a number pinned from it could disagree
 with the number that gates, with nothing on screen to explain the gap.
 
@@ -809,6 +921,9 @@ payments: notice: not found at ../payments — run `multivac repos sync` to clon
 ledger: not managed, read-only — nothing projected …
 mounts     api: no brain mount at .brain — unverified there until `multivac repos sync`
 ```
+
+Run from a subdirectory, `doors` projects the brain that holds it and says so
+first, `root: <brain> (asked from <dir>)`.
 
 For the brain and each declared repo on disk: writes the managed block in
 `AGENTS.md`, projects each declared door target, installs the skill and harness
@@ -895,7 +1010,11 @@ no code, the brain's node carries no grapher and no graph.
 
 ## `doctor [--strict]`
 
-Read-only diagnosis. Never mutates, never clones.
+Read-only diagnosis. Never mutates, never clones. From a subdirectory it
+reports the brain that holds it and names it first, `root      <brain> (asked
+from <dir>)`; from a brain change worktree each sibling is the one the change's
+own worktree or the main checkout holds, and a missing one's clone advice names
+the main checkout.
 
 ```txt
 $ mvac doctor
@@ -1161,7 +1280,9 @@ Horizons print in the order `now`, `next`, `later`, nearest first. Slugs are
 ordered by codepoint within a horizon — never by locale, which would make the
 listing's order a property of the machine that printed it. A horizon holding
 nothing is omitted rather than printed empty. The `in flight:` line counts open
-changes separately, so intention is never read as progress.
+changes separately, so intention is never read as progress. From a subdirectory
+it lists the brain that holds it, after one line naming it: `root: <brain>
+(asked from <dir>)`.
 
 An empty roadmap says so, and names the command that fills it:
 
@@ -1964,10 +2085,21 @@ unknown command "frobnicate" — run `multivac --help` for the list
 
 ```txt
 $ mvac verify --loud
-unknown flag "--loud" — verify takes [dir], --strict, --check, --worktree, --repo <key>
+unknown flag "--loud" — verify takes [dir], --strict, --check, --worktree, --repo <key>, --range <base>..<head>, --branch <name>, --quiet
 ```
 
 ```txt
 $ mvac verify
 no .multivac/config.yml in /home/you/somewhere — run `multivac init .` to create it
+```
+
+Below a brain, the same refusal names it instead; below a repository no brain
+governs, or outside any repository, `verify` says so — see
+[Where a run roots](#where-a-run-roots):
+
+```txt
+$ mvac change new points-expire "Points expire"
+no .multivac/config.yml in /home/you/brain/src — it is inside the brain at /home/you/brain; run this there
+$ mvac verify
+/home/you/notes is inside /home/you, which no brain governs — nothing was verified
 ```

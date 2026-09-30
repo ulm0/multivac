@@ -75,7 +75,8 @@ import {
 import { collectBrainAnchors } from '../anchor/parse.js';
 import type { ParseResult } from '../anchor/parse.js';
 import { excludeGlobs, makeMatcher } from '../lib/glob.js';
-import { ENACTMENT_UNGATEABLE } from './verify.js';
+import { ENACTMENT_UNGATEABLE, rootedBrain, siblingBase, siblingDir } from './verify.js';
+import { samePath } from '../lib/paths.js';
 
 const BEGIN = '<!-- multivac:begin -->';
 const label = (s: string): string => s.padEnd(11);
@@ -103,9 +104,10 @@ function fmtAge(ms: number): string {
 
 async function presentRepoDirs(brain: string, cfg: Config): Promise<string[]> {
   const dirs: string[] = [];
-  for (const e of Object.values(cfg.repos)) {
+  for (const [key, e] of Object.entries(cfg.repos)) {
     if (e.isBrain) continue; // the brain dir is always searched separately
-    const d = resolve(brain, e.path);
+    // MV-151: from a brain change worktree, the change's own sibling first.
+    const d = siblingDir(brain, key, e.path);
     if (await pathExists(d)) dirs.push(d);
   }
   return dirs;
@@ -793,8 +795,11 @@ async function reposLine(brain: string, cfg: Config): Promise<string> {
   const missing: string[] = [];
   const notes: string[] = [];
   let cloned = 0;
+  // MV-151: read from a brain change worktree, a sibling is the change's own
+  // worktree for it, else the main checkout's, and `repos sync` runs there.
+  const base = siblingBase(brain);
   for (const [key, e] of entries) {
-    const dir = resolve(brain, e.path);
+    const dir = e.isBrain ? brain : siblingDir(brain, key, e.path);
     // MV-125: a fact about scope, noted whether or not the repo is on disk.
     const why = e.isBrain ? null : await readOnly(cfg, key, dir);
     if (why) notes.push(`${key}: ${why}, read-only`);
@@ -810,7 +815,7 @@ async function reposLine(brain: string, cfg: Config): Promise<string> {
     } else {
       missing.push(
         e.url
-          ? `${key} missing → \`multivac repos sync\` (git clone ${e.url} ${e.path})`
+          ? `${key} missing → \`multivac repos sync\`${base === brain ? '' : ` in ${base}`} (git clone ${e.url} ${e.path})`
           : `${key} missing, no url — add url: under repos.${key} in ${CONFIG_PATH}`,
       );
     }
@@ -830,7 +835,7 @@ async function branchesLine(brain: string, cfg: Config): Promise<string> {
   if (entries.length === 0) return `none declared — add repos: to ${CONFIG_PATH}`;
   const parts: string[] = [];
   for (const [key, e] of entries) {
-    const dir = e.isBrain ? brain : resolve(brain, e.path);
+    const dir = e.isBrain ? brain : siblingDir(brain, key, e.path);
     if (!(await pathExists(dir))) {
       parts.push(`${key}: not cloned`);
       continue;
@@ -882,7 +887,7 @@ async function pinsLine(brain: string, cfg: Config): Promise<string> {
   }
   const parts: string[] = [];
   for (const [key, e] of entries) {
-    const dir = resolve(brain, e.path);
+    const dir = e.isBrain ? brain : siblingDir(brain, key, e.path);
     // MV-125: a repo multivac does not own mounts nothing for it, and every fix
     // below — a submodule add or update — is a write there.
     const why = await readOnly(cfg, key, dir);
@@ -1126,7 +1131,7 @@ async function untrackedLine(brain: string, cfg: Config, anchors: Anchor[]): Pro
       brainKeys.push(key); // an alias for this same tree
       continue;
     }
-    const dir = resolve(brain, e.path);
+    const dir = siblingDir(brain, key, e.path);
     if (await pathExists(dir)) scopes.push({ name: key, dir, keys: [key, '*'] });
   }
   const flagged: string[] = [];
@@ -1250,6 +1255,7 @@ const ARGS = {
 
 export const doctorCommand: Command = {
   name: 'doctor',
+  rooted: true,
   help: 'what is declared, what was found, what is degraded, how to fix it',
   usage: [
     'usage: multivac doctor [--strict]',
@@ -1270,7 +1276,11 @@ export const doctorCommand: Command = {
       return 2;
     }
     const strict = parseArgs(argv, ARGS).strict === true;
-    const { lines, exit } = await doctorReport(ctx.cwd, strict);
+    // MV-151: from a subdirectory, the brain that holds it, named once — it
+    // said "config invalid" there and exited 1, a false diagnosis.
+    const brain = await rootedBrain(ctx.cwd);
+    if (!samePath(brain, ctx.cwd)) say(`root      ${brain} (asked from ${ctx.cwd})`);
+    const { lines, exit } = await doctorReport(brain, strict);
     for (const l of lines) say(l);
     return exit;
   },
