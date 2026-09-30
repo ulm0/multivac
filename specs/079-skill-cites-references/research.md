@@ -323,9 +323,16 @@ plan (read from `c6/artifacts/076-*/research.md:805`, `c7/artifacts/077-*/resear
 3. Pinned and 0 → nothing here. Hits → fixed here, pinned on MV-152, and the change body names
    the owner that missed them. 0 and unpinned → pinned on MV-152.
 
-**Rationale**: the owners' regexes are narrower than the families (MV-150 omits "relaxed in
-code…"; MV-149 pins the graph saving only when followed by "takes many"), so a per-family rule
-would either double-pin or leave alternatives unguarded.
+**Rationale**: the owners' regexes are narrower than the families (MV-149 pins the graph saving
+only when followed by "takes many"), so a per-family rule would either double-pin or leave
+alternatives unguarded.
+
+**As merged** (read at T004 on `6cf0d06`): MV-150's leg is `brain:{*.md,.specify/memory/*.md,
+site/content/**,skills/**,.claude/skills/multivac/**} !CHANGELOG.md /ended (up )?consistent|checks
+law and code|anywhere the change touched|relaxed in code instead of|got quietly relaxed/ absent`, so
+it reads every root `*.md` and pins "relaxed in code…" too: of A1 only `earlier and stricter place`
+is left to MV-152. MV-151 carries A4's leg as drafted, and MV-149's `brain:site/content/** /get no
+refresh and no commit/ absent` pins A8's copy line.
 
 ## R8. The retired-sentence families
 
@@ -425,7 +432,9 @@ brain-driven-development.md +17; getting-started.md +16; commands.md −1.
   the backstop (same wording, PATCH), recording #7's miss.
 - **The Compliance line** (:132, critic gap 6): "checked by `multivac verify` on every commit"
   becomes "checked by `multivac verify` on each commit where the hooks are armed, and in CI".
-  #7's FR-021 does not list it. **Decision**: if #7's PATCH took it, nothing; otherwise this
+  #7's FR-021 does not list it. As merged (3.0.2) the line reads "`multivac verify` gates its
+  blocking legs on every commit where the pre-commit hook and CI run it, and reports the rest":
+  #7's PATCH took it, and T034 edits nothing. **Decision**: if #7's PATCH took it, nothing; otherwise this
   change amends it in place with a PATCH (3.0.2 → 3.0.3), Last Amended the day of the commit, no
   Sync Impact Report; the human re-grades. Folding it into #7's 3.0.2 is preferable (one
   amendment) and is the orchestrator's to hand off.

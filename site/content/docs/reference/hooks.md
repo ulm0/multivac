@@ -9,7 +9,7 @@ strictness.
 
 | rung | reach | when it fires | policy |
 | --- | --- | --- | --- |
-| **git hooks** | **universal** — every repo `doors` touches, every harness, no harness at all | `pre-commit`, `pre-push` | default (`--strict` on push, optionally) |
+| **git hooks** | **universal** — every repo `doors` touches, every harness, no harness at all | `pre-commit`, `pre-push`, `pre-merge-commit` | default (`--strict` on push, optionally) |
 | **harness hooks** | only harnesses that have them — today, `claude` | session start, after every edit | default |
 
 The floor is universal and late. The ceiling is narrow and early. Neither

@@ -4,10 +4,13 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { parseAnchors } from '../src/anchor/parse.js';
+import { renderBrainDoor } from '../src/doors/brain.js';
+import { renderConsumerDoor } from '../src/doors/consumer.js';
+import type { Config } from '../src/types.js';
 
 // compiled to dist-test/test/, so repo root is two levels up
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -19,6 +22,7 @@ const FILES = [
   'references/interview.md',
   'references/anchors.md',
   'references/change.md',
+  'references/verify.md',
 ];
 
 const packContents = FILES.map((rel) => ({
@@ -85,4 +89,154 @@ test('every example anchor line parses and compiles in the tool dialect', () => 
     }
   }
   assert.ok(found >= 6, `expected at least 6 example anchors, found ${found}`);
+});
+
+// MV-152. The door is loaded in every session and the lifecycle prints its own
+// lines, so a clause the pack repeats is paid twice and drifts once. The doors
+// are rendered here by the real renderers from literal configs — `isBrain` is
+// set by hand because only loadConfig derives it, and a config without it
+// renders a brain that holds no code — and each fixture proves its shape by a
+// marker its door must carry. Clauses are the door's lines split on ` — `,
+// `; ` and `. `, whitespace-normalised, thirty characters or more; the pack is
+// every .md under the skill directory, normalised the same way. A paraphrase
+// passes: this catches the verbatim copy a door edit leaves behind.
+const norm = (text: string): string => text.replace(/\s+/g, ' ');
+
+const BASE: Config = {
+  doors: ['agents', 'claude'],
+  sddAuto: true,
+  grapherAuto: true,
+  graphers: {},
+  authorities: [],
+  blocking: ['absent', 'count', 'each'],
+  staleness: 'report',
+  strictPrePush: false,
+  mount: '.brain',
+  repos: {},
+};
+const BRAIN = { path: '.', isBrain: true };
+const WEB = { path: '../web', url: 'git@x:web.git' };
+const API = { path: '../api', url: 'git@x:api.git' };
+const MYGRAPH = { mygraph: { artifact: 'out/g.json', refresh: 'mygraph build' } };
+
+interface DoorFixture {
+  name: string;
+  door: string;
+  /** A substring the door must carry: the fixture renders the shape it names. */
+  marker: string;
+  /** A substring the door must not carry, where the shape is an absence. */
+  lacks?: string;
+}
+
+const DOOR_FIXTURES: DoorFixture[] = [
+  {
+    name: 'spec-kit + graphify, the brain holds code',
+    door: renderBrainDoor({ ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { brain: BRAIN, web: WEB } }, 1),
+    marker: 'It is also the code it governs',
+  },
+  {
+    name: 'openspec + codegraph, the brain holds code',
+    door: renderBrainDoor({ ...BASE, sdd: 'opsx', grapher: 'codegraph', repos: { brain: BRAIN, web: WEB } }, 1),
+    marker: '`codegraph callers <symbol>`',
+  },
+  {
+    name: 'no adapter',
+    door: renderBrainDoor({ ...BASE, repos: { brain: BRAIN, web: WEB } }, 1),
+    marker: 'as plain node-link JSON',
+    lacks: '[proof:',
+  },
+  {
+    name: 'code-less, spec-kit + graphify over two code repos',
+    door: renderBrainDoor({ ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { web: WEB, api: API } }, 1),
+    marker: 'This brain holds no code, so it keeps no code graph',
+  },
+  {
+    name: 'spec-kit under sdd_auto: false',
+    door: renderBrainDoor({ ...BASE, sdd: 'speckit', sddAuto: false, repos: { brain: BRAIN, web: WEB } }, 1),
+    marker: '`sdd_auto: false` — nothing is printed and nothing is gated',
+    lacks: 'REFUSES',
+  },
+  {
+    name: 'a grapher declared under graphers:, the brain holds code',
+    door: renderBrainDoor({ ...BASE, grapher: 'mygraph', graphers: MYGRAPH, repos: { brain: BRAIN, web: WEB } }, 1),
+    marker: '`mygraph` has NO query command',
+  },
+  {
+    name: 'an empty brain',
+    door: renderBrainDoor({ ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { brain: BRAIN } }, 0),
+    marker: 'brain empty — load the multivac skill to fill it.',
+  },
+  {
+    name: 'code-less, graphers per repo only',
+    door: renderBrainDoor(
+      { ...BASE, sdd: 'speckit', repos: { web: { ...WEB, grapher: 'codegraph' }, api: { ...API, grapher: 'graphify' } } },
+      1,
+    ),
+    marker: '`codegraph query <symbol> -p <checkout>`',
+  },
+  {
+    name: 'code-less, mixed graphers',
+    door: renderBrainDoor(
+      { ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { web: { ...WEB, grapher: 'codegraph' }, api: API } },
+      1,
+    ),
+    marker: '--graph <checkout>/graphify-out/graph.json',
+  },
+  {
+    name: 'consumer: one code repo under spec-kit',
+    door: renderConsumerDoor({ ...BASE, sdd: 'speckit', repos: { web: WEB } }, 'web'),
+    marker: "The brain's `speckit` SDD runs in the brain checkout",
+  },
+  {
+    name: 'consumer: two code repos under spec-kit + graphify',
+    door: renderConsumerDoor({ ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { web: WEB, api: API } }, 'web'),
+    marker: 'A code graph is kept fresh for you by `graphify`',
+  },
+  {
+    name: 'consumer: sdd_auto: false',
+    door: renderConsumerDoor({ ...BASE, sdd: 'speckit', sddAuto: false, repos: { web: WEB, api: API } }, 'api'),
+    marker: 'its brain is mounted at',
+    lacks: 'SDD runs in the brain checkout',
+  },
+  {
+    name: 'consumer: codegraph declared per repo',
+    door: renderConsumerDoor({ ...BASE, repos: { web: { ...WEB, grapher: 'codegraph' } } }, 'web'),
+    marker: '`codegraph callers <symbol>`',
+  },
+];
+
+function doorClauses(door: string): string[] {
+  const out = new Set<string>();
+  for (const line of door.split('\n')) {
+    for (const part of norm(line.trim().replace(/^-\s*/, '')).split(/ — |; |\. /)) {
+      const clause = part.trim();
+      if (clause.length >= 30) out.add(clause);
+    }
+  }
+  return [...out];
+}
+
+function packFiles(dir: string): string[] {
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile() && e.name.endsWith('.md'))
+    .map((e) => join(e.parentPath, e.name));
+}
+
+test('the pack restates no clause a door renders — MV-152', () => {
+  const pack = norm(packFiles(SKILL_DIR).map((f) => readFileSync(f, 'utf8')).join(' '));
+  // Nine brain shapes and four consumer shapes: fewer is a fixture lost.
+  assert.ok(DOOR_FIXTURES.length >= 13, `expected at least 13 doors, found ${DOOR_FIXTURES.length}`);
+  const problems: string[] = [];
+  for (const f of DOOR_FIXTURES) {
+    if (!f.door.includes(f.marker)) {
+      problems.push(`${f.name}: the door does not carry "${f.marker}" — the fixture does not render the shape it names`);
+    }
+    if (f.lacks !== undefined && f.door.includes(f.lacks)) {
+      problems.push(`${f.name}: the door carries "${f.lacks}" — the fixture does not render the shape it names`);
+    }
+    for (const clause of doorClauses(f.door)) {
+      if (pack.includes(clause)) problems.push(`${f.name}: ${clause}`);
+    }
+  }
+  assert.deepEqual(problems, []);
 });

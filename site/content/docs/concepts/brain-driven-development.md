@@ -70,7 +70,7 @@ the commit.
 | layer | mechanism | coverage | strength |
 | --- | --- | --- | --- |
 | 0 | the door instructs: run `multivac verify` before acting | any agent that reads `AGENTS.md` | weak — obedience |
-| 1 | **git hooks**: `pre-commit` / `pre-push` run `verify` (default policy: only blocking modes gate) | **universal** — everything that commits | strong |
+| 1 | **git hooks**: `pre-commit`, `pre-push` and `pre-merge-commit` run `verify` (default policy: only blocking modes gate) | **universal** — everything that commits | strong |
 | 2 | harness hooks (session start, post-edit), shipped as data per harness | per harness | best UX — catches before the commit |
 
 One rung asks and two enforce; there is no third, on purpose. Both enforcing
@@ -92,9 +92,9 @@ is the floor every commit passes. A hook can be skipped, so where the forge
 requires it, the merge request pipeline runs the same `verify` over every
 commit in the request.
 
-The hooks travel with the clone: `multivac init` points `core.hooksPath` at a
-versioned `.multivac/hooks/` directory, so there is no install step to
-forget. The model is git-native throughout — anchors evaluate via
+The hooks travel with the clone: `multivac init` and `multivac doors` point
+`core.hooksPath` at a versioned `.multivac/hooks/` directory in each clone.
+The model is git-native throughout — anchors evaluate via
 `git ls-files`, distribution is pin + staleness, the change is branch/MR — so
 `init` runs `git init` where missing, and a gitless brain is degraded
 enforcement, flagged by `multivac doctor`.

@@ -6,11 +6,11 @@ re-verifies them on every push. Contributions go through the same loop.
 
 ## Touching the site
 
-The site's discoverability surface is checked on every commit, and a change
-that removes it fails (MV-100). Concretely: every section landing authors its
-own `description`, the site declares a fallback so no page can be
-description-less, a card image is declared, the crawler file names the sitemap,
-and the origin stays absolute.
+The site's discoverability surface is checked on each commit where the hooks
+are armed, and in CI, and a change that removes it fails (MV-100). Concretely:
+every section landing authors its own `description`, the site declares a
+fallback so no page can be description-less, a card image is declared, the
+crawler file names the sitemap, and the origin stays absolute.
 
 The check walks the content tree rather than reading a list, so a section added
 next week is covered without anybody remembering to add it. If you add one,

@@ -236,10 +236,11 @@ brain: Claude's on a search and an in-project read, Gemini's on every read.
 
 ### What the graph answers
 
-Keeping an artifact fresh is the cheap half. The half that pays for it is the
-agent asking the graph instead of grepping the tree — so the brain door names
-the tool's **own query verbs**, and multivac never paraphrases them into a
-generic "query the graph". They are not the same verb wearing two names:
+Keeping an artifact fresh is the cheap half. The other half is the agent
+asking the graph instead of grepping the tree, for an answer about what reaches
+what rather than for fewer bytes — so the brain door names the tool's **own
+query verbs**, and multivac never paraphrases them into a generic "query the
+graph". They are not the same verb wearing two names:
 
 | | `graphify` | `codegraph` |
 | --- | --- | --- |

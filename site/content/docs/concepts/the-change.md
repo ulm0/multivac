@@ -66,9 +66,11 @@ claims** and refuses to archive until:
 That scope is deliberate and it is narrower than it sounds: `close` evaluates
 the **claim IDs the change declared**, not the rows under `touches` or
 `retires`, and it never runs an unscoped verify. An amended row that nobody
-listed as a claim is not re-checked here — the pre-commit hook is what catches
-it, on every commit, which is the earlier and stricter place. Declare the rows
-you amend as claims if you want `close` to be the one that answers.
+listed as a claim is not re-checked here: `verify` reports it on each commit
+where the hooks are armed, and refuses it only where its leg's mode blocks (by
+default `absent`, `count` and `each`) or under `--strict`, as CI runs it.
+Declare the rows you amend as claims if you want `close` to be the one that
+answers.
 
 Where an SDD is declared, the code comes through the change as well. A commit
 or a merge of code outside the branch of an open change that declares the repo
@@ -83,8 +85,9 @@ after, when anyone remembers.
 ## The ritual
 
 Closing a change is a **ceremony**, and only half of it is mechanical.
-multivac executes that half — the landing order held, every declared claim
-resolves and cites a row of the law that states its rule. The other
+multivac executes that half — the landing order held, every declared repo
+landed, every declared claim resolves and cites a row of the law that states
+its rule. The other
 half is the team's: who reviews what, who gets told, what ships before what
 when the reason is not technical. No tool can invent those, and none can
 check them.
@@ -95,16 +98,14 @@ change is archived:
 
 ```txt
 $ mvac change close points-expire
-INV-02: ok
-archived -> .multivac/changes/archive/points-expire.md
-archived — commit this on a branch; nothing lands on main directly:
-  git -C ~/eco/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
-  then open MR close-points-expire -> main
-
+…
 ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
   - [ ] tell support before the flag flips
   - [ ] the public site ships before the backend
 ```
+
+What `close` prints before the ritual — the claims, the archive and the commit
+to make — is in the [commands reference](../../reference/commands/#close).
 
 **Printed, not verified.** Nothing gates on the ritual, nothing parses it; an
 empty or absent ritual prints nothing at all. `init` scaffolds the file with

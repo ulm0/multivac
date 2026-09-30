@@ -294,7 +294,8 @@ never in the worktree: an archive left only there never reaches the brain, and
 `close` refuses it by name.
 
 A brain with no code of its own has no branch to carry them to: the spec
-directory stays in the brain checkout, and `close` commits it. The steps still
+directory stays in the brain checkout, and `close` names it in the archive
+commit it prints. The steps still
 run from there, and the code goes only into the code repos' worktrees — `plan`
 says so, naming where. With two changes open in one brain, `plan` and `apply`
 also point spec-kit's `.specify/feature.json` at the right change's directory
@@ -432,7 +433,8 @@ state.
 **Amend**: an invariant is never relaxed in code. Open a change declaring
 it in `invariants.touches`, update the row (dated) in the same change,
 change the code in the same change. Claim the row, and close verifies its
-amended legs; claimed or not, the pre-commit hook checks them on every commit.
+amended legs; claimed or not, `verify` reports them on each commit where the
+hooks are armed, and refuses one only in a blocking mode or under `--strict`.
 
 **Retire**: a change like any other, and the tombstone is authored, never
 derived:
@@ -440,18 +442,18 @@ derived:
 1. Declare the retirement in `invariants.retires`.
 2. Flip the row's state to `retired`. Keep the ID and the row — IDs are
    never renumbered, never reused; history stays in git.
-3. Its existing legs stop being evaluated. Do not invert them — inverting
-   an enactment leg would demand the enactment itself disappear.
+3. Its legs other than `absent` stop being evaluated. Do not invert them —
+   inverting an enactment leg would demand the enactment itself disappear.
 4. Write NEW `absent` legs on that row for the dead mechanism's
    identifiers — the names someone would grep for, in every surface where
    they could resurface:
 
    ```markdown
-   | INV-19 | RETIRED — cart reservation holds stock. | specified | retired | 2026-08-13 | journal |
+   | INV-19 | RETIRED — cart reservation holds stock. | specified | retired | 2026-08-13 | map |
    <!-- @anchor INV-19 api:src/**/*.ts /reserveStock/ absent -->
    <!-- @anchor INV-19 *:AGENTS.md /(^|[^[:alnum:]_])stock[[:space:]]+reservation([^[:alnum:]_]|$)/i absent -->
    ```
 
 5. In the same change, remove the dead mechanism's remains from the code
-   and the doors — the new legs hold you to it at close when the change
-   claims the row.
+   and the doors. From then on the new `absent` legs gate every run: a
+   retired row's tombstone blocks by default.

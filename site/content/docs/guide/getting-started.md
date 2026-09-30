@@ -56,8 +56,8 @@ AGENTS.md                    the door — first thing any agent reads
 where harnesses read it; everything else it owns lives under `.multivac/`,
 out of the way of your own content. `git init` runs only when
 the directory is not already a repo. `core.hooksPath` is pointed at
-`.multivac/hooks/`, so the hooks are versioned and travel with the clone —
-no install step to forget.
+`.multivac/hooks/`, so the hooks are versioned and travel with the clone;
+`multivac doors` arms them in each new clone.
 
 On a repo that already has opinions, `init` checks before it writes: a
 `.gitignore` that would swallow the brain gets explicit negations appended

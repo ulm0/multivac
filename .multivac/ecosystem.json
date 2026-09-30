@@ -1335,6 +1335,13 @@
    "repo": "brain"
   },
   {
+   "id": "glob:brain:site/content/docs/concepts/composition.md",
+   "label": "brain:site/content/docs/concepts/composition.md",
+   "file_type": "anchor",
+   "source_file": "site/content/docs/concepts/composition.md",
+   "repo": "brain"
+  },
+  {
    "id": "glob:brain:site/content/docs/concepts/invariants.md",
    "label": "brain:site/content/docs/concepts/invariants.md",
    "file_type": "anchor",
@@ -2581,6 +2588,13 @@
    "repo": "brain"
   },
   {
+   "id": "glob:brain:test/skill.test.ts",
+   "label": "brain:test/skill.test.ts",
+   "file_type": "anchor",
+   "source_file": "test/skill.test.ts",
+   "repo": "brain"
+  },
+  {
    "id": "glob:brain:test/verify/code-in-change.test.ts",
    "label": "brain:test/verify/code-in-change.test.ts",
    "file_type": "anchor",
@@ -2669,6 +2683,13 @@
    "label": "brain:{*.md,site/content/**,skills/**,.claude/skills/**}",
    "file_type": "anchor",
    "source_file": "{*.md,site/content/**,skills/**,.claude/skills/**}",
+   "repo": "brain"
+  },
+  {
+   "id": "glob:brain:{*.md,site/content/**}",
+   "label": "brain:{*.md,site/content/**}",
+   "file_type": "anchor",
+   "source_file": "{*.md,site/content/**}",
    "repo": "brain"
   },
   {
@@ -8292,7 +8313,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 15
+   "legs": 16
   },
   {
    "source": "glob:brain:LICENSE",
@@ -8340,6 +8361,12 @@
    "relation": "in_repo",
    "confidence": "EXTRACTED",
    "legs": 3
+  },
+  {
+   "source": "glob:brain:site/content/docs/concepts/composition.md",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "glob:brain:site/content/docs/concepts/invariants.md",
@@ -8457,7 +8484,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 5
+   "legs": 8
   },
   {
    "source": "glob:brain:skills/multivac/references/change.md",
@@ -8471,7 +8498,7 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 3
+   "legs": 4
   },
   {
    "source": "glob:brain:skills/multivac/references/interview.md",
@@ -8483,7 +8510,8 @@
    "source": "glob:brain:skills/multivac/references/verify.md",
    "target": "repo:brain",
    "relation": "in_repo",
-   "confidence": "EXTRACTED"
+   "confidence": "EXTRACTED",
+   "legs": 2
   },
   {
    "source": "glob:brain:src/**",
@@ -9520,6 +9548,13 @@
    "legs": 2
   },
   {
+   "source": "glob:brain:test/skill.test.ts",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED",
+   "legs": 2
+  },
+  {
    "source": "glob:brain:test/verify/code-in-change.test.ts",
    "target": "repo:brain",
    "relation": "in_repo",
@@ -9599,10 +9634,17 @@
    "source": "glob:brain:{*.md,.specify/memory/*.md,site/content/**,skills/**,.claude/skills/multivac/**}",
    "target": "repo:brain",
    "relation": "in_repo",
-   "confidence": "EXTRACTED"
+   "confidence": "EXTRACTED",
+   "legs": 5
   },
   {
    "source": "glob:brain:{*.md,site/content/**,skills/**,.claude/skills/**}",
+   "target": "repo:brain",
+   "relation": "in_repo",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "glob:brain:{*.md,site/content/**}",
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED"
@@ -9631,14 +9673,14 @@
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 3
+   "legs": 4
   },
   {
    "source": "glob:brain:{DESIGN.md,site/content/**}",
    "target": "repo:brain",
    "relation": "in_repo",
    "confidence": "EXTRACTED",
-   "legs": 2
+   "legs": 3
   },
   {
    "source": "glob:brain:{site/**,CHANGELOG.md}",
@@ -14176,6 +14218,99 @@
    "target": "change:skill-cites-references",
    "relation": "enacted_by",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:DESIGN.md",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1552"
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:site/content/docs/concepts/composition.md",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1553"
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:skills/multivac/SKILL.md",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1539",
+   "legs": 3
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:skills/multivac/references/discovery.md",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1542"
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:skills/multivac/references/verify.md",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "unique",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1543"
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:test/skill.test.ts",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "present",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1544",
+   "legs": 2
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:{*.md,.specify/memory/*.md,site/content/**,skills/**,.claude/skills/multivac/**}",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "absent",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1546",
+   "legs": 4
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:{*.md,site/content/**}",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "absent",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1554"
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:{DESIGN.md,site/content/**/*.md}",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "absent",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1550"
+  },
+  {
+   "source": "law:MV-152",
+   "target": "glob:brain:{DESIGN.md,site/content/**}",
+   "relation": "anchors",
+   "confidence": "EXTRACTED",
+   "mode": "absent",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1551"
   },
   {
    "source": "law:MV-16",

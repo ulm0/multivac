@@ -160,8 +160,9 @@ what today gets checked after (when anyone remembers).
 ### The ritual: the half of the ceremony no tool can check
 
 Closing a change is a **ceremony**, and only half of it is mechanical.
-multivac executes that half: the landing order held, every declared claim
-resolves and cites a row of the law that states its rule. The other
+multivac executes that half: the landing order held, every declared repo
+landed, every declared claim resolves and cites a row of the law that states
+its rule. The other
 half belongs to the team — who reviews what, who gets told, what ships before
 what when the reason is not technical. No tool can invent those, and none can
 check them.
@@ -354,9 +355,9 @@ lose the product. So `multivac init` runs `git init` when missing, and `multivac
 doctor` flags a gitless brain as degraded enforcement.
 
 Implementation detail that matters: `.git/hooks/` is not versioned. `multivac
-init` points `core.hooksPath` at a versioned directory —
-`.multivac/hooks/` — so the hook travels with the clone and there is no
-install step to forget.
+init` points `core.hooksPath` at a versioned directory — `.multivac/hooks/` —
+so the scripts travel with the clone, and `doors` arms them in each one
+(`core.hooksPath` is per-clone git config).
 
 But a repo multivac did not write often has gates of its own, and taking
 `core.hooksPath` over them silently disarms the project's real enforcement
@@ -726,12 +727,13 @@ One exit matrix, no second answer:
 | finished change — every declared claim resolves, every declared repo landed | reported, exit 0 | exit 1 |
 | leg of a `drift` law row (recorded finding) | exit 0 | exit 0 |
 
-Who invokes what: git hooks (`pre-commit`, `pre-push`) and harness hooks run
-the **default** policy — only blocking modes gate, so a mid-refactor commit
-never dies on a moved presence check. `--strict` adds the presence and
-uniqueness legs to the gating set, and `strict_pre_push: true` is where it
-belongs: a commit is cheap to amend, a push is the last hop out of the
-machine, so a team that wants that hop held to the harder bar arms it there.
+Who invokes what: git hooks (`pre-commit`, `pre-push`, `pre-merge-commit`) and
+harness hooks run the **default** policy — only blocking modes gate, so a
+mid-refactor commit never dies on a moved presence check. `--strict` adds the
+presence and uniqueness legs to the gating set, and `strict_pre_push: true` is
+where it belongs: a commit is cheap to amend, a push is the last hop out of
+the machine, so a team that wants that hop held to the harder bar arms it
+there.
 
 ```
 $ npx multivac verify
@@ -795,9 +797,10 @@ enact that alone.
 States: `proposed → active → amended → retired`.
 
 - **Amend**: never relaxed in code — changed in the law first, same change,
-  dated. `multivac change` declares "amends INV-xx"; `close` verifies each
-  declared claim against its anchors and its row, so a change claims the row it
-  amends to have close answer for it — the pre-commit hook checks it either way.
+  dated. `multivac change` declares "amends INV-xx"; `close` verifies the rows
+  the change claims, so claim the row you amend; `verify` reports every other
+  row on each commit where the hooks are armed, and refuses one only in a
+  blocking mode or under `--strict`.
 - **Retire**: the row is not deleted — it is marked `retired`, keeps its ID,
   and its existing legs stop being evaluated. The tombstone is **authored,
   not derived**: retiring writes new `absent` legs on that row for the dead
@@ -1016,20 +1019,21 @@ the agent reads them:
 | class | loaded | carries |
 | --- | --- | --- |
 | **door** | always — first read of the session | pointers + law: where the brain is, what binds, run `verify` |
-| **hooks** | fired, and read when they speak — a clean run is one quiet line, anything off prints in full | enforcement: `pre-commit` / `pre-push`, harness hooks |
+| **hooks** | fired, and read when they speak — a clean run is one quiet line, anything off prints in full | enforcement: the `pre-commit`, `pre-push` and `pre-merge-commit` shims, harness hooks |
 | **skill** | on demand | the operating manual |
 
-The skill carries everything procedural the door must not: how to write an
-anchor, the change lifecycle, the retire/tombstone procedure, the `seed`
-validation flow — and the **interview protocol**. The door stays ~60 lines
-precisely because the manual moved out of it, loaded only when the agent is
-about to operate multivac. The interview shipping as a skill run by the
-user's own agent is the same no-embedded-LLM rule as everywhere else, now
-with a uniform shape.
+The skill carries what no command prints: anchor judgement, the `moved` and
+`broken` forks, the retire/tombstone procedure, the `seed` validation flow —
+and the **interview protocol** — and for the rest it names the command or the
+door line that prints it. The door stays short precisely because the manual
+moved out of it, loaded only when the agent is about to operate multivac.
+multivac installs it only for Claude Code, the one target whose registry entry
+carries a skill; the door's session-zero line still tells every agent to load
+it. The interview shipping as a skill run by the user's own agent is the same
+no-embedded-LLM rule as everywhere else, now with a uniform shape.
 
 Skills live in the tool-shipped targets registry alongside doors and hooks;
-`doors` installs and updates them, under the managed-block rule where the
-target format allows.
+`doors` mirrors the skill directory into each target that carries one.
 
 ### The managed block
 
@@ -1044,8 +1048,8 @@ The rest of the file is the user's. Regeneration replaces only the block; a
 missing file is created whole, with the block. The motivating case is the
 common one: consumer repos arrive with rich hand-written `AGENTS.md` files,
 and a tool that overwrites them loses the adoption argument in the first
-minute. The rule covers every file multivac writes into — doors, and skills
-where the target format allows.
+minute. The rule covers every door file multivac writes into; the skill
+directory is not a door, and `doors` mirrors it whole.
 
 On the name `doors`: a metaphor coined in this session, not an established
 term. It explains in one sentence — "the door is the file your agent reads
@@ -1161,8 +1165,9 @@ repos:
    every command stays green. `doctor` reports a still-ignored brain path as
    a WARNING with the fix.
 4. Points **`core.hooksPath`** at `.multivac/hooks/` and writes the
-   `pre-commit` / `pre-push` scripts there, so the hooks travel with the
-   clone and there is no install step to forget — unless the repo already
+   `pre-commit`, `pre-push` and `pre-merge-commit` scripts there, so the
+   scripts travel with the clone, and `doors` arms them in each one
+   (`core.hooksPath` is per-clone git config) — unless the repo already
    has a hook set-up, in which case init chains it or installs alongside,
    and never repoints (see "Enforcement").
 
@@ -1189,7 +1194,7 @@ human enacts) — `verify` never interprets the labels mechanically.
 
 ## Dependencies
 
-**`multivac` never installs anything, and no absent adapter turns `verify` red.**
+**`multivac` never installs a tool's binary, and no absent adapter turns `verify` red.**
 If the core depended on graphify or speckit, it wouldn't run anywhere clean —
 and the session hook must run everywhere.
 
@@ -1198,6 +1203,45 @@ and the session hook must run everywhere.
 | declared and present | adapter active |
 | declared and absent | `verify`, `doctor`, `doors`: notice, **exit 0**; `init`, `repos sync`, `change`: refuse with **exit 1** where the tool would run (MV-128, MV-129) |
 | not declared | nothing, not even a notice |
+
+### Adapter first, fallback always (2026-09-30)
+
+**A declared tool carries the work it was built for; multivac adds the gate,
+the pointer and the few files it says it writes — skeleton templates once,
+ignore lines, the refresh hook, the graph at land. With no tool declared, the
+work runs as it did before.** The budget is the agent's context: what a session
+reads before it starts, what each lifecycle point prints, what a question
+costs. A move counts only where it keeps every guarantee, holds in every
+configuration below, and was measured. Each row states its own numbers; this
+section copies none.
+
+- **The door** reaches its harness before any vendor writes there, and claims a
+  vendor's section only where a platform writes it (MV-143).
+- **The SDD** lives in the brain alone: installed once, its steps printed once
+  per lifecycle point, its project document written once (MV-146); what it
+  writes for a change lands with the change (MV-144); openspec runs through its
+  own terminal verbs (MV-147). Under `sdd_auto: false` the door keeps the steps
+  and nothing is printed or gated; with no SDD the lifecycle binds on its own
+  and code is not refused outside a change (MV-137).
+- **The grapher** is asked where the code is: a brain that holds no code keeps
+  no code graph, and the door and `change apply` name each checkout's graph
+  with the flag that reaches it (MV-148). graphify's graph is committed at
+  land; codegraph's index is built in each checkout, synced at land and never
+  committed, and its door lists the verbs that were run with what each misses
+  (MV-149); a grapher declared under `graphers:` is refreshed and committed and
+  has no verbs, so the agent greps; an unverified name gets the `doors` notice
+  and nothing runs; with none, the agent searches the tree. What a graph
+  returns is an answer about what reaches what, for the checkout asked as of
+  its last refresh — after each edit where the harness has a post-edit hook,
+  otherwise at land and close — and not a byte saving: sometimes more than a
+  narrowed grep, sometimes less.
+- **The change file** cites the law: a claim is its row's ID, and `close`
+  refuses a claim that cites no stated row the change adds, touches or retires
+  (MV-150).
+- **`verify`** reads the checkout that holds where it was asked, and says one
+  line when nothing is off (MV-151).
+- **The skill** carries what no command prints and names the surface that
+  prints the rest; multivac installs it only for Claude Code (MV-152).
 
 ### Artifact ≠ binary
 

@@ -209,6 +209,7 @@ AGENTS.md                    the door — managed block only, never clobbered
 .multivac/ritual.md          the closing ceremony, empty
 .multivac/hooks/pre-commit   runs `mvac verify` on every commit
 .multivac/hooks/pre-push     same, on push
+.multivac/hooks/pre-merge-commit  same, on a local merge
 .multivac/.gitignore         ignores .multivac/cache/ and .multivac/worktrees/
 .multivac/cache/             gitignored
 ```
@@ -1018,7 +1019,7 @@ the main checkout.
 
 ```txt
 $ mvac doctor
-doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: .cursor/rules/multivac.mdc ok
+doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: AGENTS.md ok (read natively)
 grapher    graphify @ brain: missing (no graphify-out/graph.json) → run `graphify update .` there
 grapher    graphify @ api: missing (no graphify-out/graph.json) → run `graphify update .` there
 repos      1/2 cloned · payments missing → `multivac repos sync` (git clone git@example.com:acme/payments.git ../payments)
@@ -1908,7 +1909,7 @@ $ mvac change close points-expire
 INV-07: ok
 archived -> .multivac/changes/archive/points-expire.md
 graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
-archived — commit this: git -C /home/you/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md graphify-out/graph.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
+archived — commit this: git -C /home/you/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md graphify-out/graph.json .multivac/ecosystem.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/api)
 payments: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/payments)
 
@@ -2000,9 +2001,9 @@ INV-07: states a rule this abandoned change never verified — delete the row fr
 ```
 
 The printed commit — closing or abandoning — is **scoped to the closing
-change's paths**: the archived file, the old change path, the law table when a
-reservation was released, the graphs, and what the declared SDD wrote in the
-brain for this slug, whatever `sdd_auto` and `--no-sdd` say: the spec, the
+change's paths**: the archived file, the old change path, the law table, the
+brain's graph where the refresh changed it, `.multivac/ecosystem.json`, and
+what the declared SDD wrote in the brain for this slug, whatever `sdd_auto` and `--no-sdd` say: the spec, the
 plan, the task list, an archived proposal, deletions included, and each main
 spec an archive merged into that carries the merge — one that does not, such as
 after an archive made without merging, is named dirty and not staged. Every gate in the lifecycle demanded one of those
@@ -2035,7 +2036,7 @@ wording says which case you are in:
 
   ```txt
   archived — commit this on a branch; nothing lands on main directly:
-    git -C /home/you/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
+    git -C /home/you/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md .multivac/ecosystem.json && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
     then open MR close-points-expire -> main
   ```
 

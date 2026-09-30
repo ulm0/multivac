@@ -150,21 +150,23 @@ declaring something absent — the first is "we do not use one", the second is
 | default | `true` |
 | example | `sdd_auto: false` |
 
-Whether the declared `sdd` adapter runs automatically at `change new`,
-`change apply` and `change close`.
+Whether the declared `sdd` adapter prints its steps and gates on their
+artifacts at `change new`, `change plan`, `change apply` and `change land`,
+and `change close` on the tool's task ledger.
 
-**Without it:** the workflow is automatic. Set it to `false` to keep the
-adapter declared — `doctor` still reports it — while running its steps by
-hand:
+**Without it:** each lifecycle point prints its steps and the next command
+refuses without their artifacts. Set it to `false` to keep the adapter
+declared — `doctor` still reports it — while running its steps by hand:
 
 ```txt
 sdd        opsx @ brain: installed · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
 ```
 
 `--no-sdd` on a single `change` invocation does the same thing once, without
-editing the config. Neither stops `change close` from committing the brain's
-spec directories for the change and citing them in its body: the switch skips
-the steps and their gates, never what was already written.
+editing the config. Neither stops `change close` from naming the brain's spec
+directories for the change in the archive commit it prints and citing them in
+its body: the switch skips the steps and their gates, never what was already
+written.
 
 ### `grapher`
 

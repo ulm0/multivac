@@ -386,6 +386,20 @@ an older multivac cannot read. Read the first five items before upgrading.
   in the change's worktrees.
 - **`ecosystem.json`'s `sdd` on a repo node is the SDD that governs its code
   (MV-146)** — the brain's, or null for a repo that says `sdd: none`.
+- **The skill carries what no command prints (MV-152).** Its body states the
+  rhythm, where you are, seven rules and where to read what; each reference
+  keeps the judgement no command prints and names what prints the rest — the
+  brain door, the lifecycle's lines and refusals, `verify`'s lines,
+  `mvac help anchor`, `mvac help verify`, the seed report. A change session
+  loads 9,897 bytes of skill instead of 31,138, and the pack is 25,453 bytes
+  instead of 56,542. A session in a code repo is told to write code in the
+  worktree `change apply` printed and to run `change`, `roadmap` and `seed` in
+  the brain's own checkout, never in the mount. The skill, the root documents
+  and the pages no longer say a graph pays for itself in fewer bytes, list two
+  git shims of three, name a Cursor rules file as written, promise no install
+  step to forget, say `close` commits a code-less brain's specs, or call the
+  pre-commit hook the earlier and stricter check. Run `multivac doors` to
+  re-project the skill.
 
 ## 0.14.1 — 2026-09-17
 

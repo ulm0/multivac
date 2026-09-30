@@ -16,9 +16,9 @@ the product for them. Ask, compress, read back, file as proposed.
    if they volunteer it.
 3. **The non-negotiables, and WHY.** "What must never happen, even if the
    code would allow it?" For each: who decided, and what breaks if it's
-   violated. The WHY is the row's authority and the journal's first entry —
-   a rule without a why is a convention, not law. Push once ("is that a
-   preference or a promise?"), then take their answer.
+   violated. The WHY is the row's authority — a rule without a why is a
+   convention, not law. Push once ("is that a preference or a promise?"),
+   then take their answer.
 4. **What is published or promised externally.** Pricing pages, API docs,
    contracts, SLAs. These outrank everything internal: the code can change
    by decision, a published promise only by a site change. Mark them with
@@ -44,12 +44,11 @@ brain that lies from day one — the exact thing verify exists to prevent.
 
 ## How output lands
 
-- **Door sections**: NOT into the managed block. `doors` regenerates that
-  block whole, from `.multivac/config.yml` and the adapter registry, on
-  every run — anything written inside it is gone at the next `multivac
-  doors`. The loop and the boundary list go OUTSIDE the markers in
-  `AGENTS.md`, where the tool never writes, or onto their own page that the
-  door links to.
+- **Door sections**: NOT into the managed block. `doors` rewrites that
+  block whole on every run, so anything written inside it is gone at the
+  next `multivac doors`. The loop and the boundary list go OUTSIDE the
+  markers in `AGENTS.md`, where the tool never writes, or onto their own page
+  that the door links to.
 - **Map page**: the boundaries, one page.
 - **Project document**: after you read back the non-negotiables, write the
   brain's project document if its SDD declares one (spec-kit:
@@ -68,8 +67,7 @@ brain that lies from day one — the exact thing verify exists to prevent.
   mvac change new "first slice"
   ```
 
-  Declare the repos (they may not exist — greenfield apply creates them,
-  first commit and door included), the landing order, and the claims the
-  slice makes true with their anchors. From here follow the change
-  lifecycle (`change.md`). The brain precedes the code, and the first
+  Declare the repos (they may not exist yet), the landing order, and the
+  claims the slice makes true with their anchors. From here follow the
+  change lifecycle (`change.md`). The brain precedes the code, and the first
   session inside any new repo already knows the law.

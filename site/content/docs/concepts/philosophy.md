@@ -86,9 +86,9 @@ multivac validates and files what it produces and never calls a model itself.
 ## The ritual
 
 Closing a change has two halves. One is mechanical, and multivac runs it:
-the landing order held, and every claim the change promised resolves green
-and cites a row of the law that states its rule. `mvac change close` refuses
-until that half passes.
+the landing order held, every declared repo landed, and every claim the
+change promised resolves green and cites a row of the law that states its
+rule. `mvac change close` refuses until that half passes.
 
 The other half is the team's, and no tool can invent or check it — who
 reviews what, who gets told, what ships before what when the reason is not
@@ -98,16 +98,14 @@ gate passes:
 
 ```txt
 $ mvac change close points-expire
-INV-07: ok
-archived -> .multivac/changes/archive/points-expire.md
-archived — commit this on a branch; nothing lands on main directly:
-  git -C ~/eco/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
-  then open MR close-points-expire -> main
-
+…
 ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
   - [ ] The branch is pushed and an MR is open — nothing lands on main directly.
   - [ ] The MR description states the landing order and names every claim.
 ```
+
+What `close` prints before the ritual is in the
+[commands reference](../../reference/commands/#close).
 
 Printed, never parsed, never gating. An empty or absent ritual prints
 nothing. It gets its own file rather than a section of the law because the

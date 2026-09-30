@@ -18,14 +18,18 @@ told, what ships before what — as a checklist, never as a gate. Deterministic
 core, no API key required; git is the enforcement floor.
 
 Declare a spec-driven development tool (spec-kit or OpenSpec) and a code graph
-(graphify or codegraph), and multivac installs the spec tool in the brain, where
-every change's specs are written, and the graph in every code repo it sets up,
-and in the brain when it holds code; it gates each change on the tool's own
-artifacts, commits a shared graph (graphify's) on the change's branch, builds
-a local index (codegraph's) in each change worktree and syncs it without
-committing it, and refuses code that reaches a repo outside a change. The
-brain also keeps `.multivac/ecosystem.json`, a graph of how its repos, law rows
-and changes relate.
+(graphify or codegraph), and each carries its own work while multivac adds the
+gate and the pointer. The spec tool is installed in the brain, where every
+change's specs are written, and each change is gated on its own artifacts; the
+graph is installed in every code repo multivac sets up, and in the brain when
+it holds code, with a shared graph (graphify's) committed on the change's
+branch and a local index (codegraph's) built in each change worktree and never
+committed. With the spec tool declared and its automation on, multivac
+refuses code that reaches a repo outside a change. Declare neither and it works
+as before: the lifecycle binds on its own, code is not refused outside a
+change, and your agent searches the tree. The brain also keeps
+`.multivac/ecosystem.json`, a graph of how its repos, law rows and changes
+relate.
 
 **Status: released, and early.** It is on npm — [CHANGELOG.md](CHANGELOG.md)
 says what each release contained. The day-one capability is implemented and
