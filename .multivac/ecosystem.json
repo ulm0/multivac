@@ -1166,8 +1166,8 @@
    "id": "change:verify-rooted-and-quiet",
    "label": "verify-rooted-and-quiet",
    "file_type": "change",
-   "source_file": ".multivac/changes/verify-rooted-and-quiet.md",
-   "status": "open",
+   "source_file": ".multivac/changes/archive/verify-rooted-and-quiet.md",
+   "status": "archived",
    "horizon": "later",
    "issue": null
   },

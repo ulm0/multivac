@@ -1,6 +1,6 @@
 ---
 slug: verify-rooted-and-quiet
-status: open
+status: archived
 horizon: later
 repos:
   brain:
