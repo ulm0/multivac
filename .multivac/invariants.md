@@ -1535,3 +1535,4 @@ checks them on every commit.
 <!-- @anchor MV-151 brain:test/doors/doors.test.ts /every shim exports MULTIVAC_QUIET after its chain block and before its runners/ unique -->
 <!-- @anchor MV-151 brain:site/content/docs/reference/commands.md /^### Where a run roots$/ unique -->
 <!-- @anchor MV-151 brain:.multivac/invariants.md /Amended 2026-09-29 by MV-151/ count=5 -->
+| MV-152 | RESERVED by change skill-cites-references — state the rule here before close. | open | proposed | 2026-09-30 | [changes/skill-cites-references.md](changes/skill-cites-references.md) |

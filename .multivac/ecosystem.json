@@ -600,7 +600,7 @@
    "label": "skill-cites-references",
    "file_type": "change",
    "source_file": ".multivac/changes/skill-cites-references.md",
-   "status": "planned",
+   "status": "open",
    "horizon": "later",
    "issue": null
   },
@@ -3362,6 +3362,15 @@
    "file_type": "law",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1476",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
+   "id": "law:MV-152",
+   "label": "MV-152",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1538",
    "state": "proposed",
    "authority": "open"
   },
@@ -6159,6 +6168,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:skill-cites-references",
+   "target": "law:MV-152",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:speckit-writes-once",
@@ -14141,6 +14156,12 @@
    "mode": "absent",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1517"
+  },
+  {
+   "source": "law:MV-152",
+   "target": "change:skill-cites-references",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-16",
