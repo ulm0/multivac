@@ -2,22 +2,20 @@
 slug: skill-cites-references
 status: open
 horizon: later
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: planned
+landing_order:
+  - - brain
 invariants:
   touches: []
   adds:
     - MV-152
   retires: []
-claims: []
+claims:
+  - MV-152
 ---
 
 # Skill core plus references; final docs pass
 
-Why this matters, written while you still remember. This file is the change
-it will become: starting it keeps this prose and adds the branch, the reserved
-invariant id and the rest of the frontmatter.
-
-    multivac change new skill-cites-references
-
-Until then it reserves nothing and blocks nothing.
+The skill restated what the door and the lifecycle output already say, and the docs still carried sentences the token-savings plan made false or redundant.
