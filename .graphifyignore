@@ -1,0 +1,13 @@
+/.agents/
+/.claude/
+/.codex/
+/.copilot/
+/.cursor/
+/.gemini/
+/.husky/
+/.multivac/
+/.opencode/
+/.specify/
+/openspec/
+/specs/
+# multivac: kept out of the graph — /.agents/ /.claude/ /.codex/ /.copilot/ /.cursor/ /.gemini/ /.husky/ /.multivac/ /.opencode/ /.specify/ /openspec/ /specs/

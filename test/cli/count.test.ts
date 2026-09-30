@@ -5,12 +5,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem, type ScratchEcosystem } from '../helpers/fixture.js';
 import { count } from '../../src/commands/count.js';
 import { verify } from '../../src/commands/verify.js';
+import { SHIM_HEADER } from '../../src/hooks/install.js';
 
 function eco(): ScratchEcosystem {
   return makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-count-')));
@@ -147,4 +148,37 @@ test('count says what it read, and reads what verify reads — MV-109', async ()
 
   assert.match(c.out, /read {6}api:/, 'count did not say what it read');
   assert.doesNotMatch(c.out, /b\.ts/, 'count read the working tree, not the channel');
+});
+
+test('count from a subdirectory, a worktree or a consumer reads what verify reads there — MV-151', async () => {
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-count-rooted-')));
+  // A brain that holds code, from its src and from its change worktree's src.
+  const b = makeScratchEcosystem(join(tmp, 'b'), { brainIsCode: true });
+  writeFileSync(join(b.brain, '.gitignore'), '.multivac/worktrees/\n');
+  commitFile(b.brain, 'src/app.ts', 'export const app = "acme-brain";\n');
+  const spec = 'brain:src/*.ts /acme-brain/';
+  const wt = join(b.brain, '.multivac/worktrees/demo/brain');
+  execFileSync('git', ['-C', b.brain, 'worktree', 'add', '-q', '-b', 'demo', wt], { stdio: 'ignore' });
+  for (const d of [join(b.brain, 'src'), join(wt, 'src')]) {
+    const r = await run([spec], d);
+    assert.equal(r.code, 0, `${d}: ${r.out}`);
+    assert.match(r.out, /^ {2}read {6}brain: working tree on (main|demo) @ [0-9a-f]{7} — /m);
+    assert.match(r.out, /^ {2}src\/app\.ts {2}1$/m);
+  }
+  // A consumer, and its change worktree: its own key is this checkout.
+  const c = makeScratchEcosystem(join(tmp, 'c'));
+  execFileSync('git', ['clone', '-q', c.brain, join(c.repos.api, '.brain')], { stdio: 'ignore' });
+  const cwt = join(c.brain, '.multivac/worktrees/demo/api');
+  execFileSync('git', ['-C', c.repos.api, 'worktree', 'add', '-q', '-b', 'demo', cwt], { stdio: 'ignore' });
+  for (const d of [c.repos.api, join(cwt, 'src')]) {
+    const r = await run(['api:db/**/*.sql /accounts/'], d);
+    assert.equal(r.code, 0, `${d}: ${r.out}`);
+    assert.match(r.out, /^ {2}read {6}api: working tree on (main|demo) @ [0-9a-f]{7} — this checkout, the content about to be committed here$/m);
+  }
+  // A door with no brain in reach: nothing to count against.
+  mkdirSync(join(c.repos.web, '.multivac', 'hooks'), { recursive: true });
+  writeFileSync(join(c.repos.web, '.multivac', 'hooks', 'pre-commit'), `#!/bin/sh\n${SHIM_HEADER}\nexec mvac verify\n`);
+  const door = await run(['web:src/*.ts /x/'], join(c.repos.web, 'src'));
+  assert.equal(door.code, 2);
+  assert.equal(door.out, `${c.repos.web} carries a multivac door but no brain is mounted here — nothing to count against`);
 });

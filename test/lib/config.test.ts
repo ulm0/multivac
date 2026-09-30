@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { loadConfig } from '../../src/lib/config.js';
+import { ConfigError, loadConfig } from '../../src/lib/config.js';
+import { sddNames } from '../../src/adapters/registry.js';
+import { verify } from '../../src/commands/verify.js';
 
 test('an unknown config key is refused by name, with its near miss — MV-114', () => {
   // `strict_prepush: true` loaded clean and armed nothing, and doctor still
@@ -103,4 +105,100 @@ test('brain_url loads, a misspelling is refused, an empty one is refused — MV-
 
   write('doors: [agents]\nrepos:\n  brain: .\n');
   assert.equal((await loadConfig(dir)).brainUrl, undefined, 'undeclared is undeclared');
+});
+
+// MV-146. The SDD lives in the brain alone, so a declaration that resolves in
+// no root is a config nothing honours: refused at load, naming the key, the fix
+// and the change the edit needs (MV-97). Exit 2 is the load's, through verify.
+
+async function refusedAtLoad(body: string): Promise<{ message: string; code: number; out: string }> {
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-sdd-decl-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  writeFileSync(join(dir, '.multivac/config.yml'), body);
+  let message = '';
+  await assert.rejects(() => loadConfig(dir), (e: Error) => {
+    message = e.message;
+    return e instanceof ConfigError;
+  });
+  const lines: string[] = [];
+  const orig = { log: console.log, error: console.error };
+  console.log = console.error = (...a: unknown[]) => { lines.push(a.map(String).join(' ')); };
+  let code: number;
+  try {
+    code = await verify.run([], { cwd: dir });
+  } finally {
+    console.log = orig.log;
+    console.error = orig.error;
+  }
+  return { message, code, out: lines.join('\n') };
+}
+
+const CHANGE_FOR_EDIT = 'then open a change for the config edit: `multivac change new <slug>`';
+
+test("a code repo's sdd: takes only none; a tool there is refused at load, naming the key — MV-146", async () => {
+  for (const tool of ['speckit', 'opsx']) {
+    const r = await refusedAtLoad(`doors: [agents]\nsdd: speckit\nrepos:\n  brain: .\n  web:\n    path: ../web\n    sdd: ${tool}\n`);
+    assert.equal(r.code, 2, r.out);
+    assert.ok(r.message.startsWith(`repos.web.sdd: ${tool} — REFUSED: the SDD lives in the brain alone`), r.message);
+    assert.ok(r.message.includes('Fix: remove repos.web.sdd or set it to none in .multivac/config.yml'), r.message);
+    assert.ok(r.message.endsWith(CHANGE_FOR_EDIT), r.message);
+    assert.ok(r.out.includes(r.message), 'verify prints the refusal it exits on');
+  }
+  // With no SDD anywhere else, too: the code repo's tool would run nowhere.
+  const alone = await refusedAtLoad('doors: [agents]\nrepos:\n  web:\n    path: ../web\n    sdd: speckit\n');
+  assert.match(alone.message, /^repos\.web\.sdd: speckit — REFUSED/);
+
+  // `none` exempts the repo's code, and an empty value stays unset: both load.
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-sdd-none-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  for (const v of ['none', "''"]) {
+    writeFileSync(join(dir, '.multivac/config.yml'), `doors: [agents]\nsdd: speckit\nrepos:\n  brain: .\n  web:\n    path: ../web\n    sdd: ${v}\n`);
+    const cfg = await loadConfig(dir);
+    assert.equal(cfg.sddRefusal, undefined, v);
+  }
+});
+
+test("a top-level SDD the brain's own entry contradicts is refused; one it repeats loads — MV-146", async () => {
+  for (const own of ['opsx', 'none']) {
+    const r = await refusedAtLoad(`doors: [agents]\nsdd: speckit\nrepos:\n  core:\n    path: .\n    sdd: ${own}\n  api: ../api\n`);
+    assert.equal(r.code, 2, r.out);
+    assert.equal(
+      r.message,
+      `sdd: speckit — REFUSED: the brain's own entry repos.core.sdd says ${own}, so speckit resolves in no root. Fix: make them agree in .multivac/config.yml, ${CHANGE_FOR_EDIT}`,
+    );
+  }
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-sdd-agree-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  for (const body of [
+    'doors: [agents]\nsdd: speckit\nrepos:\n  core:\n    path: .\n    sdd: speckit\n',
+    // The brain entry alone, with no top level: it names the one root it runs in.
+    'doors: [agents]\nrepos:\n  core:\n    path: .\n    sdd: opsx\n',
+    // A top-level none under the brain's own tool: the brain's entry decides.
+    'doors: [agents]\nsdd: none\nrepos:\n  core:\n    path: .\n    sdd: opsx\n',
+  ]) {
+    writeFileSync(join(dir, '.multivac/config.yml'), body);
+    assert.equal((await loadConfig(dir)).sddRefusal, undefined, body);
+  }
+});
+
+test('an SDD name the registry does not know is refused by the key that declares it — MV-146', async () => {
+  const top = await refusedAtLoad('doors: [agents]\nsdd: acme-sdd\nrepos:\n  brain: .\n');
+  assert.equal(top.code, 2, top.out);
+  assert.equal(
+    top.message,
+    `sdd: acme-sdd — REFUSED: no SDD adapter is named acme-sdd (known: ${sddNames.join(', ')}). Fix: correct sdd: in .multivac/config.yml, ${CHANGE_FOR_EDIT}`,
+  );
+  const own = await refusedAtLoad('doors: [agents]\nrepos:\n  core:\n    path: .\n    sdd: acme-sdd\n');
+  assert.match(own.message, /^repos\.core\.sdd: acme-sdd — REFUSED: no SDD adapter is named acme-sdd .* Fix: correct repos\.core\.sdd: in \.multivac\/config\.yml/);
+});
+
+test("a consumer's read of its mounted brain records the refusal instead of throwing — MV-146", async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-sdd-report-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  writeFileSync(join(dir, '.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nrepos:\n  web:\n    path: ../web\n    sdd: opsx\n');
+  const cfg = await loadConfig(dir, { sddDeclaration: 'report' });
+  assert.match(cfg.sddRefusal ?? '', /^repos\.web\.sdd: opsx — REFUSED/);
+  assert.equal(cfg.repos.web.path, '../web', 'the rest of the config is loaded as declared');
+  // The default is refuse, and saying so explicitly changes nothing.
+  await assert.rejects(() => loadConfig(dir, { sddDeclaration: 'refuse' }), ConfigError);
 });

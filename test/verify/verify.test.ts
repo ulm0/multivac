@@ -362,12 +362,17 @@ test('config rejects the reserved repo keys "brain" and "*"', async () => {
 
 // --- untracked files and pending claims (DOGFOOD-01 annoying 2 + 3) ---
 
-/** Write a change file into the brain. dir "" = open changes/, "archive" = closed. */
+/**
+ * Write a change file into the brain. dir "" = open changes/, "archive" = closed.
+ * MV-150: a claim cites a row its change declares, so the claimed rows are
+ * touched unless `touches` says otherwise; the claims stay legacy maps, so
+ * every test here also reads a statement written before claims were IDs.
+ */
 function writeChange(
   brain: string,
   slug: string,
   claimIds: string[],
-  opts: { status?: 'open' | 'archived'; dir?: string; repoStatus?: string } = {},
+  opts: { status?: 'open' | 'archived'; dir?: string; repoStatus?: string; touches?: string[] } = {},
 ): void {
   const dir = join(brain, '.multivac/changes', opts.dir ?? '');
   mkdirSync(dir, { recursive: true });
@@ -383,7 +388,7 @@ function writeChange(
       'landing_order:',
       '  - - api',
       'invariants:',
-      '  touches: []',
+      `  touches: [${(opts.touches ?? claimIds).join(', ')}]`,
       '  adds: []',
       '  retires: []',
       'claims:',
@@ -516,6 +521,48 @@ test('an empty declaration is not finished by vacuity, and neither is an unlande
   assert.doesNotMatch(out, /finished/);
   // the unanchored row is still named as such — it is reported, not resolved
   assert.match(out, /unanchored: INV-33/);
+});
+
+test('a finished change names what close would refuse first, never a bare close — MV-150', async () => {
+  const e = eco();
+  // Finished by MV-80's three conditions, and close would still refuse it: its
+  // claim cites a row the change neither adds, touches nor retires. The line
+  // names that refusal before the command, so it never sends an operator to a
+  // close the same binary rejects — and it is still finished, still counted.
+  writeChange(e.brain, 'cites-aside', ['INV-35'], { repoStatus: 'landed', touches: [] });
+  setLaw(
+    e.brain,
+    '| INV-35 | accounts table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-35 api:db/migrations/*.sql /create[[:space:]]+table[[:space:]]+accounts/i -->',
+  );
+  const strict = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(strict.code, 1);
+  assert.match(
+    strict.out,
+    /finished, not pending — close refuses until: INV-35: claimed, but this change neither adds, touches nor retires it — .* — then: multivac change close cites-aside · blocking$/m,
+  );
+  assert.doesNotMatch(strict.out, /close it: multivac change close cites-aside/);
+  assert.match(strict.out, /1 blocking broken · exit 1 · 1 finished change unclosed/);
+  assert.ok(agrees(strict.code, strict.out), strict.out);
+
+  // Two refusals: the first, and how many more.
+  writeChange(e.brain, 'cites-aside', ['INV-35', 'INV-36'], { repoStatus: 'landed', touches: [] });
+  setLaw(
+    e.brain,
+    '| INV-35 | accounts table exists | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-35 api:db/migrations/*.sql /create[[:space:]]+table[[:space:]]+accounts/i -->',
+    '| INV-36 | the server listens on 8080 | published | active | 2026-01-01 | x |',
+    '<!-- @anchor INV-36 api:src/server.ts /port = 8080/ -->',
+  );
+  const two = await captured(() => runVerify(e.brain, '--strict'));
+  assert.match(two.out, /close refuses until: INV-35: claimed, .* \(\+1 more\) — then: multivac change close cites-aside · blocking$/m);
+
+  // Declared, it is today's line, word for word.
+  writeChange(e.brain, 'cites-aside', ['INV-35'], { repoStatus: 'landed' });
+  const clean = await captured(() => runVerify(e.brain, '--strict'));
+  assert.equal(clean.code, 1);
+  assert.match(clean.out, /finished, not pending — close it: multivac change close cites-aside · blocking$/m);
+  assert.doesNotMatch(clean.out, /close refuses until/);
 });
 
 test('a closed change confers nothing: archived and non-open claims still gate', async () => {

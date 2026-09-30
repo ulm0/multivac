@@ -9,8 +9,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem, publishRepo } from '../helpers/fixture.js';
+import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { change } from '../../src/commands/change.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
+import { verify } from '../../src/commands/verify.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -75,7 +77,10 @@ test('the scaffold teaches: commented example with the status enum, and new prin
   assert.match(out, /three edits before plan:/);
   assert.match(out, /1\. repos: \{ api: \{ status: planned \} \}\s+# status: planned\|branched\|committed\|mr\|landed/);
   assert.match(out, /2\. landing_order: \[\[api\]\]/);
-  assert.match(out, /3\. claims: \[\{ id: ACME-2, statement: "\.\.\." \}\]/);
+  assert.match(out, /3\. claims: \[ACME-2\]\s+# the rows close verifies; each states its rule/);
+  // MV-150: a claim is its row's ID — nothing new writes, prints or teaches a restatement
+  assert.doesNotMatch(out, /statement/);
+  assert.doesNotMatch(body, /statement:|Statements are prose/);
   // the bookkeeping went in as one commit on the current branch
   assert.match(out, /committed: change open: teach-me — reserves ACME-2/);
   assert.equal(git(b, 'status', '--porcelain', '--', '.multivac/changes/teach-me.md', '.multivac/invariants.md'), '');
@@ -190,11 +195,16 @@ function publishedBrain(publishCode: boolean, extraRepos = ''): string {
   return eco.brain;
 }
 
-/** Declare the change and point it at ACME-1, the row `publishedBrain` anchors. */
+/**
+ * Declare the change and point it at ACME-1, the row `publishedBrain` anchors.
+ * MV-150: a clean change — it touches the row it claims, and the claim is the
+ * row's ID — so land has nothing of close's to announce.
+ */
 async function claimAcme1(b: string, slug: string): Promise<void> {
   await declare(b, slug);
   const parsed = await loadChange(b, slug);
-  parsed.change.claims = [{ id: 'ACME-1', statement: 'points expire after a year' }];
+  parsed.change.invariants.touches = ['ACME-1'];
+  parsed.change.claims = [{ id: 'ACME-1' }];
   await saveChange(b, parsed);
 }
 
@@ -421,4 +431,475 @@ test('with no SDD declared the archive pathspec is what it always was — MV-144
     add,
     /add -- \.multivac\/changes\/archive\/no-sdd-here\.md \.multivac\/changes\/no-sdd-here\.md \.multivac\/invariants\.md \.multivac\/ecosystem\.json &&/,
   );
+});
+
+// --- MV-146: close lands the brain's specs whatever the flags say, and cites them ---
+
+/** The pathspec of the commit close printed, and the result of running its `add`. */
+function runPrintedAdd(b: string, out: string): string[] {
+  const add = out.split('\n').find((l) => l.includes('add -- '))!;
+  const pathspec = add.slice(add.indexOf('add --') + 7, add.indexOf('&& git commit')).trim().split(/\s+/);
+  git(b, 'add', '--', ...pathspec);
+  return pathspec;
+}
+
+/** Paths git still reports under `under` that are not staged. */
+const unstaged = (b: string, under: string): string[] =>
+  git(b, 'status', '--porcelain', '-uall')
+    .split('\n')
+    .filter((l) => l.includes(under) && (l[1] !== ' ' || l.startsWith('??')));
+
+/** A code-less brain with spec-kit installed, governing api; `extra` lines go above `repos:`. */
+function codeBrain(extra: string[] = []): string {
+  const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-polish-code-')));
+  const b = eco.brain;
+  writeFileSync(join(b, '.multivac/config.yml'), ['doors: [agents]', 'sdd: speckit', ...extra, 'repos:', '  api: ../acme-api', ''].join('\n'));
+  mkdirSync(join(b, '.specify/memory'), { recursive: true });
+  writeFileSync(join(b, '.specify/integration.json'), SPECKIT_INTEGRATION_JSON);
+  writeFileSync(join(b, '.specify/memory/constitution.md'), '# Constitution\n\nOne principle: ship what you can check.\n');
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'sdd declared');
+  return b;
+}
+
+test('close cites and stages the directory, whatever --no-sdd says', async () => {
+  for (const [label, extra, flags] of [
+    ['--no-sdd', [], ['--no-sdd']],
+    ['sdd_auto: false', ['sdd_auto: false'], []],
+  ] as const) {
+    const b = codeBrain([...extra]);
+    const slug = 'cite-me';
+    assert.equal(await change.run(['new', slug, 'Cite me'], { cwd: b }), 0, label);
+    const parsed = await loadChange(b, slug);
+    parsed.change.repos = { api: { status: 'landed' } };
+    parsed.change.landing_order = [['api']];
+    parsed.change.invariants.adds = [];
+    await saveChange(b, parsed);
+    const before = (await loadChange(b, slug)).body;
+    featureDir(b, '001', slug);
+
+    const { code, out } = await capture(() => change.run(['close', slug, ...flags], { cwd: b }));
+    assert.equal(code, 0, `${label}\n${out}`);
+    // The flags skip the steps and their gates; they never meant "leave what
+    // was written uncommitted".
+    assert.ok(runPrintedAdd(b, out).includes('specs/001-cite-me'), `${label}\n${out}`);
+    assert.deepEqual(unstaged(b, 'specs/001-cite-me'), [], label);
+    // The archived body is the body it held, byte for byte, and one line more.
+    const archived = readFileSync(join(b, '.multivac/changes/archive', `${slug}.md`), 'utf8');
+    const body = archived.slice(archived.indexOf('\n---\n') + 6);
+    assert.ok(body.startsWith(before), label);
+    assert.equal(body.slice(before.length), '\nSpecified in `specs/001-cite-me/` (speckit).\n', label);
+    // No steps ran, so nothing is said about a directory that is there.
+    assert.doesNotMatch(out, /nothing cited/, label);
+  }
+});
+
+test('a close that finds no directory says it cited nothing, and only with the steps on', async () => {
+  const b = sddBrain();
+  await declare(b, 'no-dir');
+  assert.equal(await change.run(['land', 'no-dir', '--landed', 'brain'], { cwd: b }), 0);
+  const { code, out } = await capture(() => change.run(['close', 'no-dir'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.match(out, /^sdd speckit: no directory for no-dir in the brain or its worktree — nothing cited$/m);
+  const archived = readFileSync(join(b, '.multivac/changes/archive/no-dir.md'), 'utf8');
+  assert.doesNotMatch(archived, /Specified in/);
+
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'settle');
+  await declare(b, 'no-dir-skipped');
+  assert.equal(await change.run(['land', 'no-dir-skipped', '--landed', 'brain', '--no-sdd'], { cwd: b }), 0);
+  const skipped = await capture(() => change.run(['close', 'no-dir-skipped', '--no-sdd'], { cwd: b }));
+  assert.equal(skipped.code, 0, skipped.out);
+  assert.doesNotMatch(skipped.out, /nothing cited/);
+});
+
+/** Requirement blocks as `openspec instructions` guides a delta to carry them. */
+const WEEKLY = [
+  '### Requirement: Billing cadence',
+  'The system SHALL bill weekly.',
+  '',
+  '#### Scenario: Weekly bill',
+  '- **WHEN** a week ends',
+  '- **THEN** one bill is sent',
+].join('\n');
+const REFUND = [
+  '### Requirement: Refund window',
+  'The system SHALL refund within 30 days.',
+  '',
+  '#### Scenario: Refund',
+  '- **WHEN** a customer asks within 30 days',
+  '- **THEN** the payment is refunded',
+].join('\n');
+
+/**
+ * An opsx brain==code brain whose change `slug` is proposed, committed and
+ * landed: a MODIFIED delta for `billing`, whose main spec exists, and an ADDED
+ * one for the new capability `refunds`, each written with `eol`.
+ */
+async function opsxProposed(slug: string, eol = '\n'): Promise<{ b: string; arch: string; moved: string }> {
+  const b = brain();
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\nsdd: opsx\nrepos:\n  brain: .\n');
+  mkdirSync(join(b, 'openspec/specs/billing'), { recursive: true });
+  writeFileSync(join(b, 'openspec/config.yaml'), 'schema: spec-driven\n');
+  writeFileSync(
+    join(b, 'openspec/specs/billing/spec.md'),
+    '# billing Specification\n\n## Requirements\n\n### Requirement: Billing cadence\nThe system SHALL bill monthly.\n',
+  );
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'opsx installed, one main spec');
+  await declare(b, slug);
+  // The change as `openspec instructions` guided it, committed — the way
+  // brain==code lands it through the change's branch.
+  const moved = join(b, 'openspec/changes', slug);
+  for (const [f, body] of [
+    ['proposal.md', '# Bill weekly\n'],
+    ['tasks.md', '- [x] 1.1 bill weekly\n'],
+    ['specs/billing/spec.md', `## MODIFIED Requirements\n\n${WEEKLY}\n`],
+    ['specs/refunds/spec.md', `## ADDED Requirements\n\n${REFUND}\n`],
+  ]) {
+    mkdirSync(join(moved, f, '..'), { recursive: true });
+    writeFileSync(join(moved, f), body.split('\n').join(eol));
+  }
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'the change, proposed');
+  assert.equal(await change.run(['land', slug, '--landed', 'brain', '--no-sdd'], { cwd: b }), 0);
+  // Every archive moves the directory under a dated one, merged or not.
+  const arch = `openspec/changes/archive/2026-09-28-${slug}`;
+  mkdirSync(join(b, 'openspec/changes/archive'), { recursive: true });
+  execFileSync('mv', [moved, join(b, arch)]);
+  return { b, arch, moved: `openspec/changes/${slug}` };
+}
+
+test('an opsx archive lands with the specs it merged and the directory it moved', async () => {
+  // A CRLF twin too: openspec 1.13.2 merges a CRLF delta and writes it LF,
+  // so no block is in the main spec byte for byte, and the merge still lands.
+  for (const eol of ['\n', '\r\n']) {
+    const { b, arch, moved } = await opsxProposed('bill-weekly', eol);
+    // What `openspec archive bill-weekly --json --yes` does, measured on 1.13.2:
+    // each capability delta is merged into the main specs, block by block —
+    // an existing one changed, a new one created — and written LF.
+    writeFileSync(
+      join(b, 'openspec/specs/billing/spec.md'),
+      `# billing Specification\n\n## Requirements\n\n${WEEKLY}\n`,
+    );
+    mkdirSync(join(b, 'openspec/specs/refunds'), { recursive: true });
+    writeFileSync(
+      join(b, 'openspec/specs/refunds/spec.md'),
+      `# refunds Specification\n\n## Purpose\nTBD - created by archiving change bill-weekly. Update Purpose after archive.\n\n## Requirements\n\n${REFUND}\n`,
+    );
+
+    const { code, out } = await capture(() => change.run(['close', 'bill-weekly'], { cwd: b }));
+    assert.equal(code, 0, out);
+    assert.doesNotMatch(out, /is dirty and was not staged/, JSON.stringify(eol));
+    const pathspec = runPrintedAdd(b, out);
+    // Each merged main spec by its file: the archive merged `<cap>/spec.md`, and
+    // nothing else in the capability's directory is this close's.
+    for (const p of [arch, moved, 'openspec/specs/billing/spec.md', 'openspec/specs/refunds/spec.md']) {
+      assert.ok(pathspec.includes(p), `${JSON.stringify(eol)}: ${p} in ${pathspec.join(' ')}`);
+    }
+    // After the printed add, nothing of the change is left out of the commit.
+    for (const under of ['bill-weekly', 'openspec/specs/']) assert.deepEqual(unstaged(b, under), [], under);
+    assert.match(
+      readFileSync(join(b, '.multivac/changes/archive/bill-weekly.md'), 'utf8'),
+      /\nSpecified in `openspec\/changes\/archive\/2026-09-28-bill-weekly\/` \(opsx\)\.\n$/,
+    );
+  }
+});
+
+test('a main spec the archive did not merge into is named, not staged', async () => {
+  // MV-147: `openspec archive <slug> --json --skip-specs` moves the change and
+  // leaves every main spec as it was (1.13.2) — a human's uncommitted line in
+  // one, and a human's untracked draft of the new capability, are theirs. A
+  // CRLF delta is read as the merge reads it, never as a delta with no block.
+  for (const eol of ['\n', '\r\n']) {
+    const { b, arch, moved } = await opsxProposed('bill-skip', eol);
+    writeFileSync(
+      join(b, 'openspec/specs/billing/spec.md'),
+      '# billing Specification\n\n## Requirements\n\n### Requirement: Billing cadence\nThe system SHALL bill monthly.\n\nA human note, uncommitted.\n',
+    );
+    mkdirSync(join(b, 'openspec/specs/refunds'), { recursive: true });
+    writeFileSync(join(b, 'openspec/specs/refunds/spec.md'), '# refunds, a draft by a human\n');
+
+    const { code, out } = await capture(() => change.run(['close', 'bill-skip'], { cwd: b }));
+    assert.equal(code, 0, out);
+    for (const p of ['openspec/specs/billing/spec.md', 'openspec/specs/refunds/spec.md']) {
+      assert.match(
+        out,
+        new RegExp(`^sdd opsx: ${p.replace(/[./]/g, '\\$&')} is dirty and was not staged — it is not this change's to commit$`, 'm'),
+        JSON.stringify(eol),
+      );
+    }
+    const pathspec = runPrintedAdd(b, out);
+    assert.ok(!pathspec.some((p) => p.startsWith('openspec/specs')), pathspec.join(' '));
+    // The archive and the directory it moved still land.
+    for (const p of [arch, moved]) assert.ok(pathspec.includes(p), `${p} in ${pathspec.join(' ')}`);
+    assert.match(git(b, 'status', '--porcelain', '-uall'), /^ M openspec\/specs\/billing\/spec\.md$/m);
+    assert.match(git(b, 'status', '--porcelain', '-uall'), /^\?\? openspec\/specs\/refunds\/spec\.md$/m);
+  }
+});
+
+test('--abandon stages the slug\'s directory and cites it too', async () => {
+  const b = sddBrain();
+  assert.equal(await change.run(['new', 'drop-it', 'Drop it'], { cwd: b }), 0);
+  const before = (await loadChange(b, 'drop-it')).body;
+  featureDir(b, '004', 'drop-it');
+  const { code, out } = await capture(() => change.run(['close', 'drop-it', '--abandon'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.match(out, /^commit it: git -C .* add -- \.multivac\/changes\/archive\/drop-it\.md \.multivac\/changes\/drop-it\.md \.multivac\/invariants\.md specs\/004-drop-it && git commit -m "Abandon the drop-it change"$/m);
+  const archived = readFileSync(join(b, '.multivac/changes/archive/drop-it.md'), 'utf8');
+  const body = archived.slice(archived.indexOf('\n---\n') + 6);
+  assert.ok(body.startsWith(before));
+  assert.equal(body.slice(before.length), '\nSpecified in `specs/004-drop-it/` (speckit).\n');
+});
+
+test('a legacy claim keeps its statement through apply, land and close — MV-15, MV-150', async () => {
+  // A change in flight when claims became IDs keeps its restatement: an older
+  // multivac cannot read the bare form, so nothing converts it, and every
+  // rewrite on the way to the archive gives it back the way it was written.
+  const b = brain();
+  writeFileSync(join(b, 'points.ts'), 'export const expiresAt = 365;\n');
+  const law = join(b, '.multivac/invariants.md');
+  writeFileSync(law, `${readFileSync(law, 'utf8')}<!-- @anchor ACME-1 brain:points.ts /expiresAt/ -->\n`);
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'ACME-1 anchored');
+  await declare(b, 'kept-prose');
+  const parsed = await loadChange(b, 'kept-prose');
+  parsed.change.invariants.touches = ['ACME-1'];
+  parsed.change.claims = [{
+    id: 'ACME-1',
+    statement: 'points expire: after a year # a run of words long enough to be folded at the default eighty columns',
+  }];
+  await saveChange(b, parsed);
+  const file = join(b, '.multivac/changes/kept-prose.md');
+  const statementOf = (text: string): string => /^ {4}statement: .*$/m.exec(text)?.[0] ?? '(none)';
+  const declared = statementOf(readFileSync(file, 'utf8'));
+  assert.match(declared, /^ {4}statement: "points expire: after a year # a run/);
+
+  assert.equal(await change.run(['apply', 'kept-prose'], { cwd: b }), 0);
+  assert.equal(statementOf(readFileSync(file, 'utf8')), declared, 'apply');
+  assert.equal(await change.run(['land', 'kept-prose', '--landed', 'brain'], { cwd: b }), 0);
+  assert.equal(statementOf(readFileSync(file, 'utf8')), declared, 'land');
+  const { code, out } = await capture(() => change.run(['close', 'kept-prose'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.equal(statementOf(readFileSync(join(b, '.multivac/changes/archive/kept-prose.md'), 'utf8')), declared, 'close');
+});
+
+/** Both streams, split: close says its refusals on stderr. */
+const captureAll = async (fn: () => Promise<number>): Promise<{ code: number; out: string; err: string }> => {
+  const out: string[] = [];
+  const err: string[] = [];
+  const log = console.log;
+  const error = console.error;
+  console.log = (l: string) => out.push(String(l));
+  console.error = (l: string) => err.push(String(l));
+  try {
+    return { code: await fn(), out: out.join('\n'), err: err.join('\n') };
+  } finally {
+    console.log = log;
+    console.error = error;
+  }
+};
+
+/**
+ * MV-150: a landed change on a `publishedBrain` claiming the row it reserved,
+ * anchored from the law at points.ts, committed — and the row still RESERVED
+ * here. Returns the reserved ID.
+ */
+async function claimReserved(b: string, slug: string): Promise<string> {
+  assert.equal(await change.run(['new', slug, 'Cite it'], { cwd: b }), 0);
+  const parsed = await loadChange(b, slug);
+  const id = parsed.change.invariants.adds[0];
+  parsed.change.repos = { brain: { status: 'landed' } };
+  parsed.change.landing_order = [['brain']];
+  parsed.change.claims = [{ id }];
+  await saveChange(b, parsed);
+  const law = join(b, '.multivac/invariants.md');
+  writeFileSync(law, `${readFileSync(law, 'utf8')}<!-- @anchor ${id} brain:points.ts /expiresAt/ -->\n`);
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', `${slug}: claim the reserved row`);
+  return id;
+}
+
+/** Another clone states `slug`'s row and publishes it on `branches`; `b` fetches and does not pull. */
+function stateUpstream(b: string, slug: string, branches: string[]): void {
+  const other = mkdtempSync(join(tmpdir(), 'mvac-upstream-'));
+  execFileSync('git', ['clone', '-q', git(b, 'remote', 'get-url', 'origin'), other], { stdio: 'ignore' });
+  const law = join(other, '.multivac/invariants.md');
+  writeFileSync(
+    law,
+    readFileSync(law, 'utf8').replace(new RegExp(`RESERVED by change ${slug} — [^|]*`), 'points expire on the day. '),
+  );
+  git(other, 'commit', '-q', '-am', `state the ${slug} row`);
+  for (const br of branches) git(other, 'push', '-q', 'origin', `HEAD:${br}`);
+  git(b, 'fetch', '-q', 'origin');
+}
+
+test('a row stated upstream is pulled, not stated twice — MV-150', async () => {
+  // The row was stated on the change's branch and merged on the forge; this
+  // checkout fetched and did not pull. "State it" would write the rule a
+  // second time, and the merge would conflict on that copy.
+  const b = publishedBrain(true);
+  const id = await claimReserved(b, 'pull-first');
+  git(b, 'push', '-q', 'origin', 'main');
+  stateUpstream(b, 'pull-first', ['main']);
+
+  const refused = await captureAll(() => change.run(['close', 'pull-first'], { cwd: b }));
+
+  assert.equal(refused.code, 1, refused.out + refused.err);
+  assert.ok(
+    refused.err.split('\n').includes(
+      `${id}: its row states no rule here, but origin/main states it (1 commit(s) this checkout lacks) — pull, then re-run close`,
+    ),
+    refused.err,
+  );
+  assert.doesNotMatch(refused.err, /state it in \.multivac\/invariants\.md/);
+
+  git(b, 'pull', '-q', '--ff-only', 'origin', 'main');
+  const closed = await captureAll(() => change.run(['close', 'pull-first'], { cwd: b }));
+  assert.equal(closed.code, 0, closed.out + closed.err);
+});
+
+test("a brain entry's own channel is the ref land and close read — MV-150", async () => {
+  // MV-53: `channel:` on the entry, else the global, else origin/main — for
+  // the brain's own entry too. Read as the global alone, a brain published at
+  // trunk was told to state a row trunk already states.
+  const b = publishedBrain(true);
+  const config = join(b, '.multivac/config.yml');
+  writeFileSync(config, 'doors: [agents]\nrepos:\n  brain:\n    path: .\n    channel: origin/trunk\n');
+  git(b, 'commit', '-q', '-am', 'the brain is published at trunk');
+  const id = await claimReserved(b, 'at-trunk');
+  git(b, 'push', '-q', 'origin', 'main', 'main:trunk');
+  stateUpstream(b, 'at-trunk', ['trunk', 'main']);
+  const pull = (ref: string): string =>
+    `${id}: its row states no rule here, but ${ref} states it (1 commit(s) this checkout lacks) — pull, then re-run close`;
+
+  const atTrunk = await captureAll(() => change.run(['close', 'at-trunk'], { cwd: b }));
+  assert.equal(atTrunk.code, 1, atTrunk.out + atTrunk.err);
+  assert.ok(atTrunk.err.split('\n').includes(pull('origin/trunk')), atTrunk.err);
+  const landTrunk = await captureAll(() => change.run(['land', 'at-trunk'], { cwd: b }));
+  assert.match(landTrunk.out, /^channel: (every|not every) declared claim resolves at origin\/trunk [0-9a-f]{7} /m);
+  // ...and verify's read line names the same ref: three surfaces, one channel.
+  const readTrunk = await captureAll(() => verify.run([], { cwd: b }));
+  assert.match(readTrunk.out, /brain: working tree .*; 1 behind its own channel origin\/trunk @ [0-9a-f]{7}/, readTrunk.out);
+
+  // No `channel:` on the entry: both read origin/main, as before.
+  writeFileSync(config, 'doors: [agents]\nrepos:\n  brain: .\n');
+  git(b, 'commit', '-q', '-am', 'the brain is published at main');
+  const atMain = await captureAll(() => change.run(['close', 'at-trunk'], { cwd: b }));
+  assert.equal(atMain.code, 1, atMain.out + atMain.err);
+  assert.ok(atMain.err.split('\n').includes(pull('origin/main')), atMain.err);
+  const landMain = await captureAll(() => change.run(['land', 'at-trunk'], { cwd: b }));
+  assert.match(landMain.out, /^channel: (every|not every) declared claim resolves at origin\/main [0-9a-f]{7} /m);
+  const readMain = await captureAll(() => verify.run([], { cwd: b }));
+  assert.match(readMain.out, /brain: working tree .*; 1 behind its own channel origin\/main @ [0-9a-f]{7}/, readMain.out);
+  assert.doesNotMatch(readMain.out, /origin\/trunk/);
+});
+
+/** A change on a `publishedBrain` claiming the row it reserved, anchored at points.ts from the law — not yet landed. */
+async function openReserved(b: string, slug: string): Promise<string> {
+  const id = await claimReserved(b, slug);
+  const parsed = await loadChange(b, slug);
+  parsed.change.repos = { brain: { status: 'planned' } };
+  await saveChange(b, parsed);
+  git(b, 'commit', '-q', '-am', `${slug}: not landed yet`);
+  return id;
+}
+
+test('landing the last repo names what close will refuse — MV-150', async () => {
+  // The gate arms here, and the next command it names is close. If close would
+  // refuse, saying "run close" is an instruction the same binary rejects.
+  const b = publishedBrain(true);
+  const id = await openReserved(b, 'cite-late');
+  const armed = /refuses cite-late as unclosed \(MV-80\), here and in CI, until: multivac change close cite-late/;
+
+  const one = await capture(() => change.run(['land', 'cite-late', '--landed', 'brain'], { cwd: b }));
+  assert.equal(one.code, 0, one.out);
+  const lines = one.out.split('\n');
+  const at = lines.findIndex((l) => armed.test(l));
+  assert.ok(at >= 0, one.out);
+  assert.equal(
+    lines[at + 1],
+    `  close refuses until: ${id}: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md`,
+  );
+  assert.equal(lines.at(-1), 'all stages landed — fix the line close refuses on above, then: multivac change close cite-late');
+  assert.doesNotMatch(one.out, /run `multivac change close cite-late`/);
+
+  // Two refusals: each named, and the last line counts them.
+  const two = await loadChange(b, 'cite-late');
+  two.change.claims = [{ id }, { id: 'NOPE-9' }];
+  await saveChange(b, two);
+  const both = await capture(() => change.run(['land', 'cite-late'], { cwd: b }));
+  assert.equal(both.code, 0, both.out);
+  assert.match(both.out, /^ {2}close refuses until: NOPE-9: no row in \.multivac\/invariants\.md — /m);
+  assert.equal(both.out.split('\n').filter((l) => l.startsWith('  close refuses until: ')).length, 2);
+  assert.equal(both.out.split('\n').at(-1), 'all stages landed — fix the 2 lines close refuses on above, then: multivac change close cite-late');
+
+  // Stated and cited: today's line, and nothing of close's to say.
+  const law = join(b, '.multivac/invariants.md');
+  writeFileSync(law, readFileSync(law, 'utf8').replace(/RESERVED by change cite-late — [^|]*/, 'points expire on the day. '));
+  const clean = await loadChange(b, 'cite-late');
+  clean.change.claims = [{ id }];
+  await saveChange(b, clean);
+  const ok = await capture(() => change.run(['land', 'cite-late'], { cwd: b }));
+  assert.equal(ok.code, 0, ok.out);
+  assert.doesNotMatch(ok.out, /close refuses until/);
+  assert.equal(ok.out.split('\n').at(-1), 'all stages landed — run `multivac change close cite-late`');
+});
+
+test('land before pull names the pull, never a second statement — MV-150', async () => {
+  // The row was stated and merged on the forge; this checkout fetched and did
+  // not pull. Land is where the author would otherwise write the rule again.
+  const b = publishedBrain(true);
+  const id = await openReserved(b, 'land-first');
+  git(b, 'push', '-q', 'origin', 'main');
+  stateUpstream(b, 'land-first', ['main']);
+
+  const { code, out } = await capture(() => change.run(['land', 'land-first', '--landed', 'brain'], { cwd: b }));
+  assert.equal(code, 0, out);
+  assert.ok(
+    out.split('\n').includes(
+      `  close refuses until: ${id}: its row states no rule here, but origin/main states it (1 commit(s) this checkout lacks) — pull, then re-run close`,
+    ),
+    out,
+  );
+  assert.doesNotMatch(out, /state it in \.multivac\/invariants\.md/);
+  assert.equal(out.split('\n').at(-1), 'all stages landed — fix the line close refuses on above, then: multivac change close land-first');
+});
+
+test('land and verify name a claim close would orphan — MV-150', async () => {
+  // Stated, green, and anchored only in the change file close archives: close
+  // refuses it (MV-117), so land and the finished line say so first.
+  const b = publishedBrain(true);
+  assert.equal(await change.run(['new', 'orp', 'Orphan'], { cwd: b }), 0);
+  const parsed = await loadChange(b, 'orp');
+  const id = parsed.change.invariants.adds[0];
+  parsed.change.repos = { brain: { status: 'planned' } };
+  parsed.change.landing_order = [['brain']];
+  parsed.change.claims = [{ id }];
+  parsed.body += `\n<!-- @anchor ${id} brain:points.ts /expiresAt/ -->\n`;
+  await saveChange(b, parsed);
+  const law = join(b, '.multivac/invariants.md');
+  writeFileSync(law, readFileSync(law, 'utf8').replace(/RESERVED by change orp — [^|]*/, 'points expire on the day. '));
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'orp: stated, anchored in its change file');
+  const orphan = `${id}: anchored only in .multivac/changes/orp.md, which close archives — move the anchor beside the code it pins`;
+
+  const land = await capture(() => change.run(['land', 'orp', '--landed', 'brain'], { cwd: b }));
+  assert.equal(land.code, 0, land.out);
+  assert.ok(land.out.split('\n').includes(`  close refuses until: ${orphan}`), land.out);
+
+  const strict = await captureAll(() => verify.run(['--strict'], { cwd: b }));
+  assert.equal(strict.code, 1, strict.out + strict.err);
+  assert.match(
+    strict.out,
+    new RegExp(`finished, not pending — close refuses until: ${orphan.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} — then: multivac change close orp · blocking$`, 'm'),
+  );
+
+  const close = await captureAll(() => change.run(['close', 'orp'], { cwd: b }));
+  assert.equal(close.code, 1, close.out + close.err);
+  assert.match(
+    close.err,
+    new RegExp(`^close refused — ${id} is anchored ONLY in \\.multivac/changes/orp\\.md, which this close archives: the claim would be green now and unanchored from the next run on\\. Move the anchor beside the code it pins, then re-run close$`, 'm'),
+  );
+  assert.doesNotMatch(close.err, /claims do not cite the law this change makes/);
 });

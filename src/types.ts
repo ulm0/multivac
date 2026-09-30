@@ -44,12 +44,13 @@ export interface RepoEntry {
   url?: string;
   grapher?: string;
   /**
-   * This repo's SDD adapter, in the same shape as `grapher` above; `adapterFor`
-   * is the one reader of both (MV-122). The literal `none` means this repo has
-   * no SDD flow: it is never scaffolded, never gated, and never reported as
-   * lacking anything (MV-87). Not every repo in an ecosystem wants a
-   * spec-driven flow, and scaffolding one that does not is writing into
-   * somebody's checkout for no reason.
+   * The same shape as `grapher` above, and read only through `detect.ts`
+   * (MV-122). The SDD lives in the brain alone (MV-146): on the brain's own
+   * entry this is the brain's SDD; on a code repo's entry it takes only
+   * `none`, which exempts that repo's code from the change gate (MV-137) and
+   * does nothing else — `sddGoverning` reads it. A tool named on a code repo,
+   * or a brain entry contradicting the top level, is refused by `loadConfig`
+   * through `sddDeclarationRefusal`. An empty value reads as unset.
    */
   sdd?: string;
   channel?: string;
@@ -116,6 +117,12 @@ export interface Config {
    */
   brainUrl?: string;
   repos: Record<string, RepoEntry>;
+  /**
+   * MV-146. An SDD declaration that resolves in no root, recorded instead of
+   * thrown when a consumer loads its mounted brain with
+   * `{ sddDeclaration: 'report' }`. Absent on every other load: there it throws.
+   */
+  sddRefusal?: string;
 }
 
 /**
@@ -183,6 +190,14 @@ export interface VerifyReport {
 
 export interface CommandContext {
   cwd: string;
+  /**
+   * MV-151. The environment a command reads its own switches from. The
+   * dispatcher passes the process's; an in-process caller passes its own, so a
+   * variable exported in the developer's shell never changes what a test asserts.
+   */
+  env?: Record<string, string | undefined>;
+  /** MV-151. A harness hook's payload on stdin, read only when asked; null when there is none. */
+  stdin?: () => Promise<string | null>;
 }
 
 /** A CLI subcommand. Dispatch is a lookup over a Command[], not a framework. */
@@ -192,4 +207,6 @@ export interface Command {
   /** Extra usage lines for `--help` / `multivac help <name>`; optional. */
   usage?: string[];
   run(argv: string[], ctx: CommandContext): Promise<number>;
+  /** MV-151. Runs at the root `resolveRoot` finds, so the dispatcher's notice reads that brain. */
+  rooted?: true;
 }

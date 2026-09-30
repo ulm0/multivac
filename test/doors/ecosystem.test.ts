@@ -105,16 +105,19 @@ test('staleness: block still adds its clause', async () => {
 
 // --- US3: the adapters that apply here ---
 
-test('a sibling door names the declared SDD tool and its flow', async () => {
+// MV-146: the SDD runs in the brain alone. A sibling's door says where, in
+// one line, and carries none of the flow a session there may not run.
+test('a sibling door names where the brain\'s SDD runs, in one line, and none of its flow', async () => {
   const { cfg } = await eco([...MULTI, 'sdd: speckit']);
   const door = renderConsumerDoor(cfg, 'api');
-  assert.match(door, /Features gate through the `speckit` SDD/);
-  assert.match(door, /change new` → run \/speckit\.specify/);
-  // The scaffolding clause says what the lifecycle does — no single step named.
-  assert.match(door, /the change lifecycle runs the tool's own init where it is missing, or says why it could not/);
+  assert.match(door, /^- The brain's `speckit` SDD runs in the brain checkout, never in this mount: specs, plans and tasks are written there\. Code here lands only on the branch of an open change declaring this repo; `verify --strict` refuses it anywhere else\.$/m);
+  assert.equal(door.split('\n').filter((l) => l.includes('speckit')).length, 1);
+  assert.equal(door.includes('Features gate'), false);
+  assert.equal(door.includes('change new` →'), false);
+  assert.equal(door.includes("runs the tool's own init"), false);
 });
 
-test('a repo that opts out of the SDD gets no block, and its siblings keep theirs', async () => {
+test('no sibling carries a block; an exempt sibling carries no line', async () => {
   const { cfg } = await eco([
     'doors: [agents]',
     'sdd: speckit',
@@ -125,9 +128,11 @@ test('a repo that opts out of the SDD gets no block, and its siblings keep their
     '  web: ../acme-web',
   ]);
   assert.equal(renderConsumerDoor(cfg, 'api').includes('speckit'), false);
-  // No block at all, not a block about a tool called `none` (MV-122).
-  assert.equal(renderConsumerDoor(cfg, 'api').includes('Features gate'), false);
-  assert.match(renderConsumerDoor(cfg, 'web'), /Features gate through the `speckit` SDD/);
+  // No line at all, not one about a tool called `none` (MV-122).
+  assert.equal(renderConsumerDoor(cfg, 'api').includes('SDD'), false);
+  const web = renderConsumerDoor(cfg, 'web');
+  assert.match(web, /The brain's `speckit` SDD runs in the brain checkout/);
+  assert.equal(web.includes('Features gate'), false);
 });
 
 test("the brain's door is unchanged by the extraction", async () => {

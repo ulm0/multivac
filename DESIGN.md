@@ -95,7 +95,8 @@ Four fields:
    ships".
 3. **Which invariants it touches**, under the rule already written: an
    invariant is never relaxed in code — it is changed in the law first.
-4. **Which claims it makes true**, and with them, their anchors.
+4. **Which claims it makes true** — each its row's ID, the row stating the
+   rule — and with them, their anchors.
 
 A change is a **file in the brain**: `.multivac/changes/<slug>.md`, carrying the four
 declared fields — repos, the landing-order graph, invariants touched, claims
@@ -159,8 +160,9 @@ what today gets checked after (when anyone remembers).
 ### The ritual: the half of the ceremony no tool can check
 
 Closing a change is a **ceremony**, and only half of it is mechanical.
-multivac executes that half: the landing order held, every declared claim
-resolves, no invariant was relaxed in code instead of in the law. The other
+multivac executes that half: the landing order held, every declared repo
+landed, every declared claim resolves and cites a row of the law that states
+its rule. The other
 half belongs to the team — who reviews what, who gets told, what ships before
 what when the reason is not technical. No tool can invent those, and none can
 check them.
@@ -201,16 +203,28 @@ refused by name with the exact command that unblocks it — never git's raw
 stderr. And a branch that already exists is switched to and reported: `apply`
 is re-runnable.
 
-### The tool owns the frontmatter, so prose can be prose
+### The tool owns the frontmatter, and a claim is an ID
 
-A claim statement is a sentence, and sentences contain colons: `staleness:
-block` typed into a value is valid prose and invalid YAML. Since the lifecycle
-is the writer, **the writer does the quoting**: every save serializes through
-one function that quotes what needs quoting and never folds a long statement
-onto continuation lines, so a statement comes back exactly as written. When a
-hand-edited file does break, the error is the teaching kind — the file line,
-the offending source line, and the quoted rewrite to type — never the parser's
-raw complaint about compact mappings.
+A claim cites its row: `claims: [INV-02]`. The row is the statement (MV-111) —
+the one place the rule is written, and the one place anything reads it — so the
+change file carries no second copy to drift from it, and `close` checks that
+each claim cites a row this change adds, touches or retires, and that the row
+states its rule. A legacy `statement:`, written before claims were IDs, still
+parses and round-trips unchanged: the lifecycle is the writer, and every save
+serializes through one function that quotes what needs quoting and never folds a
+long value onto continuation lines, so it comes back exactly as written. Nothing
+creates one any more. When a hand-edited file does break — a colon typed into a
+value is valid prose and invalid YAML — the error is the teaching kind: the file
+line, the offending source line, and the quoted rewrite to type, never the
+parser's raw complaint about compact mappings.
+
+The body below the closing `---` is the human's. With an SDD declared, the
+lifecycle writes exactly one line there: `change close` appends
+``Specified in `<dir>/` (<sdd>).``, naming the change's spec directory, unless
+the body already names it. The line rides close's own commit — the one that
+stages that directory — so the archive's link to its why lands with the why it
+points at, and a body keeps what it held while planned, or one sentence, instead
+of restating the spec. A planned body is still kept byte for byte (MV-89).
 
 ### The tool already ran by hand, twice
 
@@ -341,9 +355,9 @@ lose the product. So `multivac init` runs `git init` when missing, and `multivac
 doctor` flags a gitless brain as degraded enforcement.
 
 Implementation detail that matters: `.git/hooks/` is not versioned. `multivac
-init` points `core.hooksPath` at a versioned directory —
-`.multivac/hooks/` — so the hook travels with the clone and there is no
-install step to forget.
+init` points `core.hooksPath` at a versioned directory — `.multivac/hooks/` —
+so the scripts travel with the clone, and `doors` arms them in each one
+(`core.hooksPath` is per-clone git config).
 
 But a repo multivac did not write often has gates of its own, and taking
 `core.hooksPath` over them silently disarms the project's real enforcement
@@ -615,12 +629,22 @@ because it teaches people to route around it.
 | --- | --- | --- |
 | brain-scoped, per declared repo | that repo's **channel ref** (`channel:`, else the global, else `origin/main`), via `git ls-tree` + one `git cat-file --batch` | the brain's law is a statement about the state everyone shares. Someone mid-task elsewhere is not a violation |
 | brain-scoped, the **brain's own repo** | its **working tree** | the brain is where the author is working; its law must gate its own commit |
-| consumer-scoped (cwd is a code repo with the brain mounted) | its **working tree** | that is the content about to be committed there |
+| consumer-scoped (run anywhere in a code repo's checkout) | its **working tree** | that is the content about to be committed there |
+
+Which context a run is in is decided by where it is asked from, and from any
+directory of a checkout the answer is that checkout's (MV-151): `verify` resolves
+the root — the nearest brain up to the git toplevel, else the consumer its mount
+or change worktree names — before it reads any config, and a report printed
+away from that root names it in one `root` line. It used to take its starting
+directory for the root, so from `src/` it advised `init .`, and from a brain
+change worktree's subdirectory it judged the main checkout's law.
 
 Three properties keep it from becoming a second kind of lie:
 
 - **Both runs state what they read.** One `read` line per repo, naming the
-  ref or the branch and its short sha, on every run. This is the load-bearing
+  ref or the branch and its short sha — on a full report its own line, on a
+  quiet run (MV-151) a clause of the one line with the same ref, sha and age,
+  and a read that is not plain keeps its line. This is the load-bearing
   half: the old behaviour was defensible, being silent about it was not. An
   operator must never wonder which bytes produced a verdict.
 - **An unresolvable channel ref falls back to the working tree and says so**
@@ -703,12 +727,13 @@ One exit matrix, no second answer:
 | finished change — every declared claim resolves, every declared repo landed | reported, exit 0 | exit 1 |
 | leg of a `drift` law row (recorded finding) | exit 0 | exit 0 |
 
-Who invokes what: git hooks (`pre-commit`, `pre-push`) and harness hooks run
-the **default** policy — only blocking modes gate, so a mid-refactor commit
-never dies on a moved presence check. `--strict` adds the presence and
-uniqueness legs to the gating set, and `strict_pre_push: true` is where it
-belongs: a commit is cheap to amend, a push is the last hop out of the
-machine, so a team that wants that hop held to the harder bar arms it there.
+Who invokes what: git hooks (`pre-commit`, `pre-push`, `pre-merge-commit`) and
+harness hooks run the **default** policy — only blocking modes gate, so a
+mid-refactor commit never dies on a moved presence check. `--strict` adds the
+presence and uniqueness legs to the gating set, and `strict_pre_push: true` is
+where it belongs: a commit is cheap to amend, a push is the last hop out of
+the machine, so a team that wants that hop held to the harder bar arms it
+there.
 
 ```
 $ npx multivac verify
@@ -772,8 +797,10 @@ enact that alone.
 States: `proposed → active → amended → retired`.
 
 - **Amend**: never relaxed in code — changed in the law first, same change,
-  dated. `multivac change` declares "amends INV-xx"; `close` checks law and code
-  ended up consistent.
+  dated. `multivac change` declares "amends INV-xx"; `close` verifies the rows
+  the change claims, so claim the row you amend; `verify` reports every other
+  row on each commit where the hooks are armed, and refuses one only in a
+  blocking mode or under `--strict`.
 - **Retire**: the row is not deleted — it is marked `retired`, keeps its ID,
   and its existing legs stop being evaluated. The tombstone is **authored,
   not derived**: retiring writes new `absent` legs on that row for the dead
@@ -866,8 +893,9 @@ no mount, pin or staleness check against it; `verify` reaches it through the
 implicit `brain` handle, so `*` legs scan that directory once, not once per
 key; `change` accepts `brain` as a repo key in the change file — declared in
 the config or not — and branches in place. `init` writes the idiom above when
-the repo it initializes already has tracked source, and the commented example
-when it does not.
+the repo it initializes holds any file outside `.multivac/`, tracked or
+untracked and not ignored (a README-only repo included), and the commented
+example when it does not.
 
 `brain` and `*` stay reserved: `*` is every repo in an anchor leg, and a
 `brain` key pointing anywhere other than the brain root is refused (it would
@@ -991,20 +1019,21 @@ the agent reads them:
 | class | loaded | carries |
 | --- | --- | --- |
 | **door** | always — first read of the session | pointers + law: where the brain is, what binds, run `verify` |
-| **hooks** | never read — they fire | enforcement: `pre-commit` / `pre-push`, harness hooks |
+| **hooks** | fired, and read when they speak — a clean run is one quiet line, anything off prints in full | enforcement: the `pre-commit`, `pre-push` and `pre-merge-commit` shims, harness hooks |
 | **skill** | on demand | the operating manual |
 
-The skill carries everything procedural the door must not: how to write an
-anchor, the change lifecycle, the retire/tombstone procedure, the `seed`
-validation flow — and the **interview protocol**. The door stays ~60 lines
-precisely because the manual moved out of it, loaded only when the agent is
-about to operate multivac. The interview shipping as a skill run by the
-user's own agent is the same no-embedded-LLM rule as everywhere else, now
-with a uniform shape.
+The skill carries what no command prints: anchor judgement, the `moved` and
+`broken` forks, the retire/tombstone procedure, the `seed` validation flow —
+and the **interview protocol** — and for the rest it names the command or the
+door line that prints it. The door stays short precisely because the manual
+moved out of it, loaded only when the agent is about to operate multivac.
+multivac installs it only for Claude Code, the one target whose registry entry
+carries a skill; the door's session-zero line still tells every agent to load
+it. The interview shipping as a skill run by the user's own agent is the same
+no-embedded-LLM rule as everywhere else, now with a uniform shape.
 
 Skills live in the tool-shipped targets registry alongside doors and hooks;
-`doors` installs and updates them, under the managed-block rule where the
-target format allows.
+`doors` mirrors the skill directory into each target that carries one.
 
 ### The managed block
 
@@ -1019,8 +1048,8 @@ The rest of the file is the user's. Regeneration replaces only the block; a
 missing file is created whole, with the block. The motivating case is the
 common one: consumer repos arrive with rich hand-written `AGENTS.md` files,
 and a tool that overwrites them loses the adoption argument in the first
-minute. The rule covers every file multivac writes into — doors, and skills
-where the target format allows.
+minute. The rule covers every door file multivac writes into; the skill
+directory is not a door, and `doors` mirrors it whole.
 
 On the name `doors`: a metaphor coined in this session, not an established
 term. It explains in one sentence — "the door is the file your agent reads
@@ -1136,8 +1165,9 @@ repos:
    every command stays green. `doctor` reports a still-ignored brain path as
    a WARNING with the fix.
 4. Points **`core.hooksPath`** at `.multivac/hooks/` and writes the
-   `pre-commit` / `pre-push` scripts there, so the hooks travel with the
-   clone and there is no install step to forget — unless the repo already
+   `pre-commit`, `pre-push` and `pre-merge-commit` scripts there, so the
+   scripts travel with the clone, and `doors` arms them in each one
+   (`core.hooksPath` is per-clone git config) — unless the repo already
    has a hook set-up, in which case init chains it or installs alongside,
    and never repoints (see "Enforcement").
 
@@ -1164,7 +1194,7 @@ human enacts) — `verify` never interprets the labels mechanically.
 
 ## Dependencies
 
-**`multivac` never installs anything, and no absent adapter turns `verify` red.**
+**`multivac` never installs a tool's binary, and no absent adapter turns `verify` red.**
 If the core depended on graphify or speckit, it wouldn't run anywhere clean —
 and the session hook must run everywhere.
 
@@ -1173,6 +1203,45 @@ and the session hook must run everywhere.
 | declared and present | adapter active |
 | declared and absent | `verify`, `doctor`, `doors`: notice, **exit 0**; `init`, `repos sync`, `change`: refuse with **exit 1** where the tool would run (MV-128, MV-129) |
 | not declared | nothing, not even a notice |
+
+### Adapter first, fallback always (2026-09-30)
+
+**A declared tool carries the work it was built for; multivac adds the gate,
+the pointer and the few files it says it writes — skeleton templates once,
+ignore lines, the refresh hook, the graph at land. With no tool declared, the
+work runs as it did before.** The budget is the agent's context: what a session
+reads before it starts, what each lifecycle point prints, what a question
+costs. A move counts only where it keeps every guarantee, holds in every
+configuration below, and was measured. Each row states its own numbers; this
+section copies none.
+
+- **The door** reaches its harness before any vendor writes there, and claims a
+  vendor's section only where a platform writes it (MV-143).
+- **The SDD** lives in the brain alone: installed once, its steps printed once
+  per lifecycle point, its project document written once (MV-146); what it
+  writes for a change lands with the change (MV-144); openspec runs through its
+  own terminal verbs (MV-147). Under `sdd_auto: false` the door keeps the steps
+  and nothing is printed or gated; with no SDD the lifecycle binds on its own
+  and code is not refused outside a change (MV-137).
+- **The grapher** is asked where the code is: a brain that holds no code keeps
+  no code graph, and the door and `change apply` name each checkout's graph
+  with the flag that reaches it (MV-148). graphify's graph is committed at
+  land; codegraph's index is built in each checkout, synced at land and never
+  committed, and its door lists the verbs that were run with what each misses
+  (MV-149); a grapher declared under `graphers:` is refreshed and committed and
+  has no verbs, so the agent greps; an unverified name gets the `doors` notice
+  and nothing runs; with none, the agent searches the tree. What a graph
+  returns is an answer about what reaches what, for the checkout asked as of
+  its last refresh — after each edit where the harness has a post-edit hook,
+  otherwise at land and close — and not a byte saving: sometimes more than a
+  narrowed grep, sometimes less.
+- **The change file** cites the law: a claim is its row's ID, and `close`
+  refuses a claim that cites no stated row the change adds, touches or retires
+  (MV-150).
+- **`verify`** reads the checkout that holds where it was asked, and says one
+  line when nothing is off (MV-151).
+- **The skill** carries what no command prints and names the surface that
+  prints the rest; multivac installs it only for Claude Code (MV-152).
 
 ### Artifact ≠ binary
 
@@ -1194,9 +1263,10 @@ offline probe now reads each entry's state file — spec-kit's
 database — and answers installed, missing, partial or unevaluable. The scaffold
 runs only where missing, a partial root is warned rather than re-initialised,
 and a graph is rebuilt wherever it is not installed. Each entry also declares
-its shared and local paths and its opt-out environment, which every vendor run
-carries; codegraph's database is local, so the tracked gate, which reads HEAD,
-never asks for it.
+its shared and local paths and its opt-out environment, which every run
+multivac makes carries and none of the commands it prints (MV-147) — the
+agent runs those in its own environment; codegraph's database is local, so the
+tracked gate, which reads HEAD, never asks for it.
 
 If you cloned the repo, the adapter works even with the tool not installed.
 The binary is only needed to **invoke** (`graphify update`, `openspec
@@ -1223,8 +1293,9 @@ name (`doors: [agents, claude]`, `sdd: opsx`, `grapher: graphify`).
 
 ### Every adapter question is asked per root (2026-08-17)
 
-**A root is the brain plus each declared repo on disk, and one root's artifact
-never answers for another's.** Measured in an ecosystem of six: a
+**A root is the brain plus each declared repo on disk — for a grapher, the
+brain only where it holds code — and one root's artifact never answers for
+another's.** Measured in an ecosystem of six: a
 single sibling repo somebody had run `specify init` in by hand made the
 scaffold return before it touched anything — the brain included — because
 presence was asked of the whole list and answered by the first hit; `doctor`
@@ -1251,12 +1322,76 @@ Nothing here moves a subprocess out of the change lifecycle, and nothing
 derives a command from a tool's name: a tool that declares no init still gets
 none, stated once per root where the tool is missing.
 
+Since 2026-09-28 the SDD half of this answers for one root, the brain; the
+next section says why. Since 2026-09-29 the brain is a grapher's root only
+where a repos entry is the brain (MV-148): a brain that holds none keeps no
+code graph, and each code repo keeps its own.
+
+### The SDD lives in the brain (2026-09-28)
+
+**With an SDD declared, the SDD lives in the brain alone, and what it costs is
+paid once.** A top-level `sdd:` used to reach every declared repo — one install,
+one door block and one constitution per code repo — while the specs of every
+change were written in the brain. Measured with spec-kit: `repos sync` wrote 30
+files, about 240 KB, into each code repo; each code repo's door carried a 2.8 KB
+step block into every session; `change plan` refused until every code repo had
+written a constitution no step of any change would read; and the first `apply`
+committed the vendor's files onto each code repo's branch (MV-146).
+
+- **Where it runs, and what it governs, are two questions.** `adapterFor`
+  resolves the SDD for the brain root only — the `brain` handle, or the entry
+  that is the brain under any key. `sddGoverning` answers which SDD governs a
+  repo's CODE: the brain's, unless that repo says `sdd: none`, the one value a
+  code repo's `sdd:` takes. The code gate (MV-137) reads the second. Answering
+  both with the first switched the gate off in every code repo, measured:
+  `verify --strict` exit 1 became 0.
+- **A declaration that resolves nowhere is refused at load.** A tool in a code
+  repo's `sdd:`, a top-level tool the brain's own entry contradicts, and a name
+  the registry does not know would each be a silent no-op, so loading the
+  config fails naming the key and the fix. A consumer reading its mounted brain
+  prints the refusal instead, gating only under `--strict`: a mount can lag its
+  brain, and the config is its owner's to fix.
+- **Where the proofs are.** A step's artifact is looked for in the brain and in
+  the change's worktree the brain's own entry names — but a step printed at
+  `land` runs after every stage has merged, so its proof is read in the brain
+  checkout alone, and one found only in the worktree is refused by name
+  (MV-147). A match left in a code repo
+  by habit is named in the refusal, never read. spec-kit keeps one feature
+  pointer per checkout, so `change plan` and `change apply` point it at the
+  slug's directory and say when it named another: two changes in one checkout
+  otherwise planned into each other's directory.
+- **Where the code goes.** The steps `change plan` names run from the brain
+  checkout before `change apply` carries the slug's directory; that checkout
+  holds no code of a change naming a code repo, `change plan` says so, and code
+  is written only in the change's worktrees, where the code gate reads it.
+  opsx's apply step runs where `openspec/changes/<slug>/` is, which its line
+  names (MV-147).
+- **Written once.** A fresh spec-kit scaffold writes skeleton templates to
+  `.specify/templates/overrides/`, the directory every spec-kit resolver reads
+  first — only when it is absent, only from the version measured on, and never
+  again — so the specify, plan and tasks steps read about 4 KB of template per
+  change instead of 18. The constitution commits no amendment report: spec-kit
+  itself calls the report review scratch, and git keeps the record.
+- **Printed once, cited once.** Each lifecycle point prints its steps and then,
+  once, the instruction to run them through. `change close`, whatever
+  `sdd_auto` and `--no-sdd` say, stages the brain's slug directories — deletions
+  included, and each main spec an archive merged into that carries the merge;
+  one that does not is named dirty and left out (MV-147) — and appends the one
+  line citing the directory (see *The tool owns the frontmatter*).
+
+An install an earlier release left in a code repo is reported by `doctor` and
+`repos check`, with its removal, and never fails either. Every known SDD's
+install paths are not code in any repo, so removing one commits on any branch.
+Two things stay ungateable and are said so: whether an agent commits an
+amendment report, and whether a change body restates its spec.
+
 ### Automation by default (owner decision, 2026-08-13)
 
 Three normative rules, applying to the brain and to every declared repo
 multivac may write in (not `managed: false`, not a shallow clone, MV-125):
 
-- **SDD runs inside the change lifecycle, in the SDD's own shape.** When an
+- **SDD runs inside the change lifecycle, in the SDD's own shape**, and in the
+  brain alone (see *The SDD lives in the brain*). When an
   adapter is declared, the lifecycle drives **that tool's flow** — not a fixed
   propose/apply/archive triple, which was OpenSpec's shape imposed on every
   other tool. The registry carries, per tool, an **ordered `steps` array of
@@ -1276,18 +1411,19 @@ multivac may write in (not `managed: false`, not a shallow clone, MV-125):
   `*` segment allowed for tools that number their own feature directory.
   `change plan` refuses without the propose-equivalent, `change apply` without
   the plan/tasks artifact, `change close` without the archive-equivalent, each
-  refusal naming the exact agent command, the path it looked for and the repos
-  it looked in — the brain and each declared repo on disk that resolves to
-  that tool (MV-122) and is not read-only (MV-125), since a change's specs often live in the code
-  repo — while a pass names the repo the artifact was found in. Three
+  refusal naming the exact agent command, the path it looked for and where
+  it looked — the brain and the change's worktree its own entry names, since
+  the SDD lives in the brain alone (MV-146), with a match left in a code repo
+  named and never read, and a land step's proof read in the brain checkout
+  alone (MV-147) — while a pass names where the artifact was found. Three
   rules keep it honest: a step whose tool leaves nothing behind
   (`/speckit.analyze` writes zero bytes by design; a clean `/speckit.converge`
   is forbidden to touch `tasks.md`) is declared **ungateable** with its reason
   and is never gated, and a lifecycle point no step can prove **says so**
   instead of passing quietly; where a tool ships its own validator its
   **verdict is reused** (`openspec validate --json`), never reimplemented —
-  the lifecycle shells out for validation only, never to fake an agent-run
-  step; and the project-level document is **gated on existing, never on its
+  the lifecycle shells out for its validator and its scaffold only, never to
+  fake an agent-run step; and the project-level document is **gated on existing, never on its
   content** (owner decision, 2026-08-16) — `doctor` calls it missing, present,
   or STALE against the law's newest row, and **`change plan` refuses while it
   is missing or unreadable, empty, or still carrying the tool's own template
@@ -1308,7 +1444,13 @@ multivac may write in (not `managed: false`, not a shallow clone, MV-125):
   declared and its binary found — on PATH or in that repo's
   `node_modules/.bin`, the one lookup of MV-123 — `doors` installs it as the **harness's
   post-edit hook** — for a harness that has one — fire-and-forget, coalesced
-  behind a lock, never failing an edit and never adding latency to it.
+  behind a lock, never failing an edit and never adding latency to it. There
+  is one post-edit hook per grapher, each keyed by the artifact its toplevel
+  test names: the brain's own where it holds code, and a hook that only
+  follows for each other grapher the code repos resolve, running in the edited
+  file's repo when that repo holds its artifact and is not a checkout of the
+  brain, and otherwise exiting having run nothing (MV-148, MV-149). No hook
+  refreshes anything for a file in no repository.
   `change close` runs the same refresh as the **safety net**, for edits made
   outside a harness. **Git hooks never refresh**: the shims run `verify` only,
   because an ergonomic convenience does not belong on a gate. Nothing is ever

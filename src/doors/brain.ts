@@ -3,9 +3,9 @@
 import { ecosystemGraphLines } from './ecosystem.js';
 import type { Config } from '../types.js';
 import { doorTargets, grapherSpec, sddSpec, type AdapterSpec } from '../adapters/registry.js';
-import { proofOf } from '../adapters/sdd.js';
 import { parseClaimRows } from '../anchor/parse.js';
-import { adapterFor } from '../adapters/detect.js';
+import { adapterFor, askedGraphers, brainHoldsCode, hookRefreshes } from '../adapters/detect.js';
+import type { LeftoverGraph } from '../lib/repo-state.js';
 
 /**
  * Count non-retired data rows in the law table.
@@ -26,8 +26,13 @@ export function countActiveInvariants(md: string): number {
  * empty-brain door long before the first `doors` run — a constitution the
  * agent is only told about on the SECOND command is a constitution nobody
  * writes.
+ *
+ * MV-146: the brain's door alone prints these, so the law is named at the
+ * brain's own path. Under `sdd_auto: false` nothing refuses over the
+ * document, and the door no longer says anything does: the imperative stays,
+ * because the document is the project's law whether or not a gate asks for it.
  */
-export function projectLawLines(sdd: string, lawPrefix = ''): string[] {
+export function projectLawLines(sdd: string, sddAuto = true): string[] {
   const spec = sddSpec(sdd);
   if (!spec) return [];
   const lines: string[] = [];
@@ -41,17 +46,18 @@ export function projectLawLines(sdd: string, lawPrefix = ''): string[] {
     // line said CREATE IT IF ABSENT in capitals and nothing checked it, which
     // is the gap MV-76 closes. Now it names what refuses.
     lines.push(
-      `  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT — \`change plan\` refuses while it is missing, empty or still the template.`,
+      sddAuto
+        ? `  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT — \`change plan\` refuses while it is missing, empty or still the template.`
+        : `  - project law \`${p.artifact}\` — ${p.run}. CREATE IT IF ABSENT.`,
     );
     lines.push(`    revisit: ${p.revisit}`);
   }
   if ((spec.projectSteps ?? []).length === 0) {
     lines.push('  - this tool has no project-level document — nothing to write once and amend');
   } else {
-    // MV-135: which one wins, said where the document is named. MV-143: at the
-    // path THIS root can open — a consumer reads the law under its mount, and
-    // the brain's own relative path resolves to nothing there.
-    lines.push(`  - where a project document and an active row of \`${lawPrefix}.multivac/invariants.md\` disagree, the row wins: amend the document, or change the row through a change`);
+    // MV-135: which one wins, said where the document is named — and only the
+    // brain's door names it now (MV-146), at the path the brain opens.
+    lines.push('  - where a project document and an active row of `.multivac/invariants.md` disagree, the row wins: amend the document, or change the row through a change');
   }
   return lines;
 }
@@ -88,6 +94,35 @@ export function sectionDoors(config: Config, spec: AdapterSpec): string[] {
   });
 }
 
+/**
+ * The door's one instruction to use the graph, without its period: each door
+ * block ends it as its sentence needs (MV-61, MV-148). One constant, so the
+ * words are spelled once whichever block prints them.
+ */
+const ASK = 'ASK IT BEFORE READING THE TREE RAW';
+
+/**
+ * MV-140: when a graph is refreshed, spelled once for every door block. "After
+ * your edits" only where a hook is declared to make it true — a declared
+ * harness's post-edit hook, and one of the brain's hooks declared to run that
+ * grapher, one per grapher (MV-148, MV-149); elsewhere the lifecycle is the
+ * refresh.
+ * Declared, never probed: the door is committed and makes no filesystem check
+ * (MV-93), so whether this machine found the binary and wired the hook is
+ * `doors`' notice and `doctor`'s refresh path — as a brain==code door's has
+ * always been ("installed when the binary is present").
+ */
+function freshness(hooked: boolean): string {
+  return hooked
+    ? 'refreshed after your edits'
+    : 'refreshed at `change land` and `change close`';
+}
+
+/** A grapher with no query verb, said once for every door block (MV-61). */
+function noQueryLine(name: string, indent: string): string {
+  return `${indent}- \`${name}\` has NO query command: the artifact is written but nothing reads it back. Do not invent one.`;
+}
+
 export function grapherLines(config: Config, name: string | undefined): string[] {
   // MV-90: the same rendering serves the brain's door and every consumer's, so
   // the two cannot drift. Every caller passes what `adapterFor` resolved for
@@ -100,9 +135,7 @@ export function grapherLines(config: Config, name: string | undefined): string[]
   if (!spec) return [];
   // MV-140: "after your edits" only where a declared harness has the post-edit
   // hook that makes it true; elsewhere the lifecycle is the refresh.
-  const fresh = config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit)
-    ? 'refreshed after your edits'
-    : 'refreshed at `change land` and `change close`';
+  const fresh = freshness(config.doors.some((d) => doorTargets[d]?.hookConfig?.postEdit));
   const lines = [
     `- A code graph is kept fresh for you by \`${name}\` at \`${spec.artifacts[0]}\` — ` +
       // A shared artifact is committed on the change's branch by `change land`
@@ -112,7 +145,7 @@ export function grapherLines(config: Config, name: string | undefined): string[]
         ? `${fresh}; it is built in each checkout, so never commit it.`
         : `${fresh}, and committed on the change branch by \`change land\`.`),
   ];
-  const ask = 'ASK IT BEFORE READING THE TREE RAW.';
+  const ask = `${ASK}.`;
   // MV-140 (I-55): where the tool's own install writes its section into a
   // declared door, that section carries the verbs and when to use them; the
   // door names the commands and points there instead of saying it twice.
@@ -127,14 +160,14 @@ export function grapherLines(config: Config, name: string | undefined): string[]
       `  ${ask} ${spec.queries.map((q) => `\`${q.run.split(' "')[0]}\``).join(', ')} — how and when to use each is in the \`## ${name}\` section ${name}'s own install writes into this file.`,
     );
   } else if (spec.queries && spec.queries.length > 0) {
-    lines.push(
-      `  ${ask} It answers in one call what grep takes many, and it is this tool's verbs, not a generic one:`,
-    );
+    // MV-149: the header claims no saving over grep. Measured, `codegraph
+    // query` printed more than a narrowed definition grep for 311 of 318
+    // functions, and asking graphify cost 2.1 to 2.6 times a narrowed grep
+    // (MV-148); each verb's line says what it answers, and what it misses.
+    lines.push(`  ${ask} These are this tool's own verbs, not a generic one — each line says what it answers:`);
     for (const q of spec.queries) lines.push(`  - \`${q.run}\` — ${q.answers}`);
   } else {
-    lines.push(
-      `  - \`${name}\` has NO query command: the artifact is written but nothing reads it back. Do not invent one.`,
-    );
+    lines.push(noQueryLine(name, '  '));
   }
   return lines;
 }
@@ -142,16 +175,16 @@ export function grapherLines(config: Config, name: string | undefined): string[]
 /**
  * The declared SDD tool, its project-level document and its per-change flow.
  *
- * MV-93: one rendering, used by the brain's door and by every consumer's — the
- * shape `grapherLines` established under MV-90, and for the same reason. Two
- * renderings of one block is how the two come to disagree, and a door is the
- * surface where disagreement is least visible: nobody diffs two AGENTS.md.
+ * MV-93 made this one rendering for the brain's door and every consumer's, the
+ * shape `grapherLines` established under MV-90. MV-146: the SDD runs in the
+ * brain alone, so only the brain's door carries the block; a consumer door
+ * says in one line where it runs (`renderConsumerDoor`).
  *
- * Every caller passes what `adapterFor` resolved for THAT root (MV-122), so a
- * root that resolves `none` gets no block rather than one about a tool of
+ * The caller passes what `adapterFor` resolved for the brain (MV-122), so a
+ * brain that resolves `none` gets no block rather than one about a tool of
  * that name.
  */
-export function sddLines(config: Config, name: string | undefined, lawPrefix = ''): string[] {
+export function sddLines(config: Config, name: string | undefined): string[] {
   if (!name) return [];
   const spec = sddSpec(name);
   const lines = [
@@ -163,11 +196,14 @@ export function sddLines(config: Config, name: string | undefined, lawPrefix = '
   // The project-level document: the law of the project, not of one change.
   // Written once, then amended as the product moves — so the door tells the
   // agent to create it when it is not there.
-  lines.push(...projectLawLines(name, lawPrefix));
+  lines.push(...projectLawLines(name, config.sddAuto));
   // The per-change flow, in the tool's own order and length. Each line ends
-  // with what proves it ran, or with why nothing ever can.
+  // with the artifact that proves it ran, or `[ungateable]`. MV-146: the
+  // reason nothing can prove a step is printed whole where the step comes up —
+  // the lifecycle, `doctor` and flow.md — and no longer in every session's
+  // door; nor is the refusing command, which the lifecycle names when it refuses.
   for (const s of spec?.steps ?? []) {
-    lines.push(`  - \`change ${s.at}\` → ${s.run} [${proofOf(s)}]`);
+    lines.push(`  - \`change ${s.at}\` → ${s.run}${s.artifact ? ` [proof: ${s.artifact}]` : ' [ungateable]'}`);
   }
   // MV-93, and stated exactly this weakly on purpose. The scaffold runs from
   // FOUR lifecycle points, not one, and on three paths it reports instead of
@@ -175,17 +211,209 @@ export function sddLines(config: Config, name: string | undefined, lawPrefix = '
   // MV-123's lookup does not find (PATH, then that root's node_modules/.bin),
   // and the init exiting without writing the artifact. A door that says
   // "`change plan` scaffolds it" is Principle II broken in the file an agent
-  // reads first.
+  // reads first. And under `sdd_auto: false` the scaffold does not run at all
+  // (MV-146), so the door does not say it does.
   lines.push(
-    '  the change lifecycle runs the tool\'s own init where it is missing, or says why it could not',
+    config.sddAuto
+      ? '  the change lifecycle runs the tool\'s own init where it is missing, or says why it could not'
+      : '  under `sdd_auto: false` no command runs the tool\'s own init where it is missing — run it in the brain yourself',
   );
   return lines;
 }
 
-/** Render the brain door block body (no markers). */
-export function renderBrainDoor(config: Config, activeInvariants: number): string {
+/**
+ * MV-148. Where an agent in the brain asks each code repo's graph, as door
+ * lines: per grapher in `groups` (`askedGraphers`, config order), the repos
+ * that resolve it with their declared paths, and every verb with the flag
+ * (`askAt`) that points it at a checkout. The bare verb asks the graph in the
+ * session's directory, which is the brain; there a brain that keeps no code
+ * graph has none to answer, and one that kept a graph answered questions
+ * about the code from the skills and the specs. Asked with the flag, web's
+ * graph answered from the brain byte for byte as from inside web.
+ *
+ * A graph is named at `<checkout>`: in a change, the worktree `change apply`
+ * prints holds the branch's own — a committed graph on the branch, a local
+ * index built there by apply (MV-149). Where apply could not build one it
+ * printed no such flag, and a worktree without an index asked with the flag
+ * answers from the nearest index above it, silently, or fails: the group
+ * says so beside the worktree's index, never without it. Every block says the
+ * answers' paths are relative to the checkout the flag names, since a path
+ * read from the brain would otherwise be taken as the brain's.
+ *
+ * `holds` picks the head: the brain holds code, and these are its siblings.
+ * `listed` names the brain's own grapher where `grapherLines` listed its verbs
+ * above (no vendor section cited): its sibling group says those verbs apply
+ * with the flag appended instead of listing them again (MV-149). Where the
+ * brain's lines cite the section, which names the bare verb, they are listed.
+ * An unverified grapher gets no group (MV-59: `doors` prints the notice); a
+ * grapher no writable code repo resolves gets one line and no verb; no group
+ * rendered, no head. The vendor's own section is never cited here: it names
+ * the bare verb.
+ */
+export function whereLines(
+  config: Config,
+  groups: Map<string, string[]>,
+  holds: boolean,
+  listed?: string,
+): string[] {
+  // "After your edits there" only where a hook of the brain is declared to run
+  // this grapher (MV-140's rule, with MV-148's and MV-149's hooks): elsewhere the lifecycle
+  // refreshes it. Declarations only (MV-93), and the one question every
+  // surface asks (MV-149's `hookRefreshes`).
+  const lines: string[] = [];
+  for (const [name, keys] of groups) {
+    const spec = grapherSpec(name, config.graphers);
+    if (!spec) continue;
+    const at = `  - \`${name}\` at \`${spec.artifacts[0]}\``;
+    if (keys.length === 0) {
+      lines.push(`${at}: no writable code repo resolves it yet — each one that does gets its own when \`repos sync\` or a change reaches it`);
+      continue;
+    }
+    const repos = keys.map((k) => `${k}: \`${config.repos[k]?.path}\``).join(', ');
+    const fresh = hookRefreshes(config, name) ? `${freshness(true)} there` : freshness(false);
+    const local = spec.artifactKind === 'local';
+    const flag = spec.askAt?.split(' ')[0];
+    // MV-149: `change apply` builds each worktree's index and prints its
+    // flag; the door says so only with the condition beside it, since a
+    // worktree apply could not index answers from the index above it. The
+    // clause a leg reads is a quoted string, never inside a template literal.
+    const unindexed = flag
+      ? `, which prints \`its index: ${spec.askAt!.replace('{checkout}', '<worktree>')}\`; ` +
+        'where `apply` printed no such line, ' +
+        `\`${flag}\` at that worktree answers from the nearest index above it, or fails`
+      : '';
+    lines.push(
+      `${at} (${repos}), ${fresh}` +
+        (local
+          ? `; built in each checkout, never committed — each change worktree's by \`change apply\`${unindexed}:`
+          : ', and committed on the change branch by `change land`:'),
+    );
+    const aim = spec.askAt?.replace('{checkout}', '<checkout>');
+    if (name === listed && aim && spec.queries && spec.queries.length > 0) {
+      lines.push(`    - the verbs above, each with \`${aim}\` appended`);
+    } else if (spec.queries && spec.queries.length > 0) {
+      for (const q of spec.queries) lines.push(`    - \`${q.run}${aim ? ` ${aim}` : ''}\` — ${q.answers}`);
+    } else {
+      lines.push(noQueryLine(name, '    '));
+    }
+  }
+  if (lines.length === 0) return [];
+  const head = holds
+    ? '- The other code repos keep their own graphs.'
+    : '- This brain holds no code, so it keeps no code graph: each code repo keeps its own.';
+  return [
+    `${head} ${ASK}, from here, with each verb's flag pointed at a repo below — in a change, the flag \`change apply\` printed under that repo's checkout; paths in its answers are relative to the checkout the flag names.`,
+    ...lines,
+  ];
+}
+
+/**
+ * MV-148. The line a brain that holds code adds under its own grapher lines —
+ * after `grapherLines`, never inside it: every consumer door shares that
+ * rendering (MV-90), and a consumer's graph is not the brain's. The brain's
+ * graph leaves the law, the changes and their specs out where something keeps
+ * them out — the grapher's ignore file, or a grapher measured to index no
+ * Markdown (`codeOnly`); the ecosystem graph relates those. A change's
+ * worktree holds the branch's own committed graph, which the bare verb in this
+ * checkout never reads: measured, the trunk's graph lacked 27 source symbols
+ * of a worktree's, and 73 of 185 moved ones sat more than 60 lines from where
+ * the trunk put them. A local index is built in each worktree by `change
+ * apply`, which prints the flag where it did (MV-149). A grapher with
+ * no `askAt` gets the first sentence alone, and one with no query verb no
+ * line: nothing reads its artifact back, as the line above it says (MV-61).
+ */
+function holdsCodeLine(spec: AdapterSpec): string | null {
+  if (!spec.queries || spec.queries.length === 0) return null;
+  const first =
+    spec.graphignoreFile !== undefined || spec.codeOnly
+      ? '  It answers for this checkout, with the law, the changes and their specs kept out of it: the ecosystem graph above relates them.'
+      : '  It answers for this checkout; the ecosystem graph above relates the law, the changes and their specs.';
+  if (!spec.askAt) return first;
+  const worktree = spec.askAt.replace('{checkout}', '<worktree>');
+  // MV-149: `change apply` builds the index of each worktree it makes, and
+  // says so where it did; where it printed no such line the flag borrows
+  // this checkout's. codegraph, asked from here with the flag at a worktree
+  // that has none, prints a notice telling the agent to run `codegraph init`
+  // "here", which rebuilds this checkout's index — hence the last sentence.
+  // Quoted strings, never a template literal, where the legs read backticks.
+  return spec.artifactKind === 'local'
+    ? `${first} \`change apply\` builds each change worktree its own index and prints \`its index: ${worktree}\`; paths in its answers are relative to that worktree. ` +
+        'Where `apply` printed no such line, ' +
+        `\`${spec.askAt.split(' ')[0]}\` there answers from this checkout's index, without the branch's edits. ` +
+        'Never run the `codegraph init` its notices suggest.'
+    : `${first} A change's worktree has its own, as of its last refresh: add \`${worktree}\` (\`change apply\` prints it); paths in its answers are relative to that worktree.`;
+}
+
+/**
+ * MV-148. The brain door's code-graph block. A brain that holds no code
+ * resolves no grapher of its own: the block is where each code repo's graph is
+ * asked. One that holds code keeps the grapher lines every consumer door
+ * renders, adds its worktrees' form, and lists its sibling code repos the same
+ * way — a sibling on its own grapher pointed at the verbs listed above rather
+ * than listing them again (MV-149).
+ */
+function brainGraphLines(config: Config, holds: boolean): string[] {
+  if (!holds) return whereLines(config, askedGraphers(config), false);
+  const name = adapterFor(config, 'brain', 'grapher');
+  const own = grapherLines(config, name);
+  const spec = name === undefined ? null : grapherSpec(name, config.graphers);
+  const line = own.length > 0 && spec ? holdsCodeLine(spec) : null;
+  if (line !== null) own.push(line);
+  // MV-149: the verbs `grapherLines` listed above, where it cited no section.
+  const listed =
+    spec && spec.queries && spec.queries.length > 0 && sectionDoors(config, spec).length === 0 ? name : undefined;
+  const siblings = new Map<string, string[]>();
+  for (const [n, keys] of askedGraphers(config)) {
+    const rest = keys.filter((k) => !config.repos[k]?.isBrain);
+    if (rest.length > 0) siblings.set(n, rest);
+  }
+  return [...own, ...whereLines(config, siblings, true, listed)];
+}
+
+/**
+ * MV-148. The door line for a grapher install kept in a brain that holds no
+ * code: the bare verb in the brain answers from it — from the skills and the
+ * specs, not the code. Kept until a human removes it (`doctor` prints how);
+ * the line goes with it. It names the artifact's top directory where the
+ * artifact or that directory is there, else the first thing found. MV-143:
+ * the vendor's section is named only where a platform found writes it into
+ * this file — by the rule `sectionDoors` reads — and its hooks only where a
+ * platform found writes one that sends the agent to the graph (`hooks`):
+ * graphify's `agents` platform writes a skill and neither. `above` only where
+ * the door lists a code repo's graph: with no grapher asked from the brain it
+ * lists none, and the line pointed at graphs nowhere on the page.
+ */
+function leftoverLine(config: Config, left: LeftoverGraph, listed: boolean): string | null {
+  const spec = grapherSpec(left.name, config.graphers);
+  if (!spec) return null;
+  const art = spec.artifacts[0];
+  const top = art.includes('/') ? `${art.split('/')[0]}/` : art;
+  const found = Object.entries(spec.harness?.platforms ?? {}).filter(([, p]) => left.platforms.includes(p.key));
+  const at = left.artifact !== undefined || left.stateDir !== undefined ? top : (left.ignoreFile ?? found[0]?.[1].probe ?? top);
+  const section = found.some(
+    ([d, p]) => p.section === 'canonical' || (p.section === 'own-door' && config.doors.includes(d) && doorTargets[d]?.kind === 'symlink'),
+  );
+  const hooks = found.some(([, p]) => p.hooks);
+  const points = section
+    ? `the \`## ${left.name}\` section below${hooks ? ` and ${left.name}'s own hooks point` : ' points'} at it`
+    : hooks
+      ? `${left.name}'s own hooks point at it`
+      : null;
+  const ask = `ask the code repos' graphs${listed ? ' above' : ''} instead`;
+  return points !== null
+    ? `- \`${at}\` here is a leftover that holds no code: ${points} — ${ask}; \`multivac doctor\` prints its removal.`
+    : `- \`${at}\` here is a leftover that holds no code — ${ask}; \`multivac doctor\` prints its removal.`;
+}
+
+/**
+ * Render the brain door block body (no markers). `leftovers` is
+ * `leftoverGraphs` over the brain, which BOTH `init` and `doors` pass, so the
+ * two write one door (MV-102, MV-148).
+ */
+export function renderBrainDoor(config: Config, activeInvariants: number, leftovers: LeftoverGraph[] = []): string {
   const entries = Object.entries(config.repos);
-  const brainIsCode = entries.some(([, r]) => r.isBrain);
+  const brainIsCode = brainHoldsCode(config);
+  const graphLines = brainGraphLines(config, brainIsCode);
   // brain==code entries are this repo: they belong in the sentence, not the list.
   const repoLines = entries
     .filter(([, r]) => !r.isBrain)
@@ -202,7 +430,8 @@ export function renderBrainDoor(config: Config, activeInvariants: number): strin
     '- The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.',
     '- Check the law against the code before acting: `multivac verify`.',
     ...ecosystemGraphLines(config, 'brain', ''),
-    ...grapherLines(config, adapterFor(config, 'brain', 'grapher')),
+    ...graphLines,
+    ...leftovers.map((l) => leftoverLine(config, l, graphLines.length > 0)).filter((l): l is string => l !== null),
   ];
   lines.push(...sddLines(config, adapterFor(config, 'brain', 'sdd')));
   if (activeInvariants === 0) {

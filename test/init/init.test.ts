@@ -348,7 +348,9 @@ test('init closes on session zero whole: repos first, sync, both flows with the 
   mkdirSync(join(withSdd, '.multivac'), { recursive: true });
   writeFileSync(join(withSdd, '.multivac/config.yml'), 'doors: [agents]\nsdd: speckit\nsdd_auto: false\nrepos: {}\n');
   const gated = await capture(() => init.run([], { cwd: withSdd }));
-  assert.match(gated.out, /^init: {3}4\. write each repo's project document from the human's principles — `multivac repos check` names every one not written$/m);
+  // MV-146: one document, the brain's — the SDD runs there alone.
+  assert.match(gated.out, /^init: {3}4\. write the brain's project document from the human's principles — `multivac repos check` names it while it is not written$/m);
+  assert.doesNotMatch(gated.out, /each repo's project document/);
   assert.match(gated.out, /^init: {3}5\. a human enacts each row/m);
 });
 
@@ -371,6 +373,12 @@ test('the scaffolded door names the declared grapher — MV-102', async () => {
   const door = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
   assert.match(door, /graphify/);
   assert.match(door, /graphify query/);
+  // MV-148: an empty repo is a brain that holds no code, so the grapher is
+  // named through the ecosystem graph's verbs and the line saying no code repo
+  // resolves it yet — never as a graph of this repo.
+  assert.match(door, /`graphify query "<question>" --graph \.multivac\/ecosystem\.json`/);
+  assert.match(door, /^ {2}- `graphify` at `graphify-out\/graph\.json`: no writable code repo resolves it yet/m);
+  assert.doesNotMatch(door, /A code graph is kept fresh for you/);
 });
 
 test('the scaffolded door lists the declared sibling repos — MV-102', async () => {

@@ -33,7 +33,8 @@ export function ritualSeed(config: AdapterDecls & { mount?: string } = {}): stri
     'Somebody who did not write it read it, and said so out loud.',
     'What this taught that is not yet law is written down somewhere a person will find it.',
   ];
-  // Some root resolves an SDD (MV-122): a repo's own counts, and `none` does not.
+  // The brain resolves an SDD (MV-122): its own entry's counts, and `none` does
+  // not; a code repo resolves none since MV-146.
   if (adaptersByRoot(config, 'sdd').size > 0) {
     candidates.push(
       'The spec is still true of the code: a better design found while implementing went back into the spec, with its reason.',

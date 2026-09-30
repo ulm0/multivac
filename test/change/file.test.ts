@@ -10,6 +10,7 @@ import {
   serializeChange,
 } from '../../src/change/file.js';
 import { repointLawLinks } from '../../src/change/file.js';
+import { citeLine, citeSpec } from '../../src/change/cite.js';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -201,4 +202,101 @@ test('repointing a brain with no law file is a no-op, never a crash', async () =
   const brain = mkdtempSync(join(tmpdir(), 'mvac-repoint-none-'));
   assert.equal(await repointLawLinks(brain, 'whatever'), 0);
   rmSync(brain, { recursive: true, force: true });
+});
+
+// --- MV-146: the body cites its spec, and nothing else in it is written ---
+
+test('citeSpec appends one line after the untrimmed body, and the body is a byte prefix of what is archived', () => {
+  for (const body of ['# Points expire\n\nWhy, in a sentence.\n', '# No newline at the end', '# Trailing blank lines\n\n\n', '']) {
+    const cited = citeSpec(body, 'specs/001-points-expire', 'speckit');
+    assert.ok(cited.startsWith(body), JSON.stringify(body));
+    assert.equal(cited.slice(body.length), '\nSpecified in `specs/001-points-expire/` (speckit).\n');
+    // It survives the file: serialized, parsed, the same bytes.
+    assert.equal(parseChange(serializeChange(sample, cited), 'test').body, cited);
+    // And a second close writes it once.
+    assert.equal(citeSpec(cited, 'specs/001-points-expire', 'speckit'), cited);
+  }
+});
+
+test('citeSpec leaves a body that already names the directory untouched', () => {
+  for (const body of [
+    '# Points expire\n\nSpec, plan and tasks: specs/001-points-expire/.\n',
+    '# Points expire\n\nSee `specs/001-points-expire/spec.md`.\n',
+  ]) {
+    assert.equal(citeSpec(body, 'specs/001-points-expire', 'speckit'), body);
+  }
+  // A name that only starts the same is not the directory.
+  const other = '# Points\n\nSee specs/001-points-expire-later/.\n';
+  assert.notEqual(citeSpec(other, 'specs/001-points-expire', 'speckit'), other);
+  // opsx cites where its archive put the change.
+  assert.match(
+    citeSpec('# Bill weekly\n', 'openspec/changes/archive/2026-09-28-bill-weekly', 'opsx'),
+    /\nSpecified in `openspec\/changes\/archive\/2026-09-28-bill-weekly\/` \(opsx\)\.\n$/,
+  );
+});
+
+test('the scaffold says close appends only the line citing the directory', () => {
+  const { body } = scaffoldChange('foo', 'Foo title');
+  assert.match(body, /below the closing ---, is yours: with an SDD declared, `change close` only\nappends the line citing its directory\.\n$/);
+  // What `change new` prints about the body carries no instruction to continue:
+  // that belongs to the steps, once (MV-95).
+  assert.match(citeLine('speckit'), /^sdd speckit: the why, the design and the tasks go into its files — .*`change close` cites the directory; do not cite it yourself$/);
+  assert.doesNotMatch(citeLine('speckit'), /continue|without asking/);
+});
+
+test("a claim is its row's ID — MV-150", () => {
+  const fm = (claims: string): string =>
+    `---\nslug: t\nstatus: open\nrepos: {}\nlanding_order: []\ninvariants:\n  touches: []\n  adds: []\n  retires: []\n${claims}---\n\n# b\n`;
+  // The bare ID is the form every command writes.
+  const bare = parseChange(fm('claims:\n  - MV-1\n'), 't');
+  assert.deepEqual(bare.change.claims, [{ id: 'MV-1' }]);
+  assert.equal(serializeChange(bare.change, bare.body), fm('claims:\n  - MV-1\n'));
+  assert.doesNotMatch(serializeChange(bare.change, bare.body), /statement/);
+  // A map holding only its ID is read, and written back bare.
+  const map = parseChange(fm('claims:\n  - id: MV-2\n'), 't');
+  assert.deepEqual(map.change.claims, [{ id: 'MV-2' }]);
+  assert.equal(serializeChange(map.change, map.body), fm('claims:\n  - MV-2\n'));
+  // A legacy statement beside a bare ID comes back byte for byte, never created.
+  const mixed = fm('claims:\n  - MV-1\n  - id: MV-13\n    statement: "legacy: prose # kept"\n');
+  const m = parseChange(mixed, 't');
+  assert.deepEqual(m.change.claims, [{ id: 'MV-1' }, { id: 'MV-13', statement: 'legacy: prose # kept' }]);
+  assert.equal(serializeChange(m.change, m.body), mixed);
+  // Anything else is no claim: refused by every reader, whatever it does with a stray key.
+  for (const bad of [
+    'claims:\n  - statement: x\n',
+    'claims:\n  - 1\n',
+    'claims: MV-1\n',
+    'claims:\n  - id: MV-1\n    statement: 3\n',
+    'claims:\n  - id: ""\n',
+    'claims:\n  - ""\n',
+  ]) {
+    for (const opts of [{}, { claimKeys: 'refuse' as const }]) {
+      assert.throws(
+        () => parseChange(fm(bad), 't', opts),
+        (e: unknown) => e instanceof ChangeError && /claims: \[<ID>\]/.test(e.message),
+        `${JSON.stringify(bad)} ${JSON.stringify(opts)}`,
+      );
+    }
+  }
+  // A stray key inside a claim: a writer refuses it by name, a reader names it
+  // and reads the claim without it.
+  const stray = fm('claims:\n  - id: MV-1\n    statment: Points carry an expiry.\n');
+  const named = 'claim MV-1: unknown key "statment" — a claim is its row\'s ID; state the rule in the row';
+  assert.throws(
+    () => parseChange(stray, 't', { claimKeys: 'refuse' }),
+    (e: unknown) => e instanceof ChangeError && e.message === `t: ${named} — fix the frontmatter`,
+  );
+  const said: string[] = [];
+  const err = console.error;
+  console.error = (...a: unknown[]) => { said.push(a.map(String).join(' ')); };
+  let read: ReturnType<typeof parseChange>;
+  try {
+    read = parseChange(stray, 't');
+  } finally {
+    console.error = err;
+  }
+  assert.deepEqual(read.change.claims, [{ id: 'MV-1' }]);
+  assert.deepEqual(said, [
+    `t: ${named} (read without it here; every command that rewrites the file refuses it until it goes)`,
+  ]);
 });

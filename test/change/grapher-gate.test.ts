@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeScratchEcosystem } from '../helpers/fixture.js';
+import { makeScratchEcosystem, type ScratchOpts } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { loadConfig } from '../../src/lib/config.js';
@@ -35,10 +35,17 @@ const capture = async (fn: () => Promise<number>): Promise<{ code: number; out: 
   }
 };
 
-/** A brain with two declared repos and a declared grapher, ready to close. */
-function ecosystem(cfgExtra: string[], repoExtra: string[] = []): { brain: string; ctx: { cwd: string }; slug: string } {
+/**
+ * A brain with two declared repos and a declared grapher, ready to close; with
+ * `brainIsCode`, a brain that holds code (MV-148), which the gate judges too.
+ */
+function ecosystem(
+  cfgExtra: string[],
+  repoExtra: string[] = [],
+  opts: ScratchOpts = {},
+): { brain: string; ctx: { cwd: string }; slug: string } {
   const tmp = mkdtempSync(join(tmpdir(), 'mvac-ggate-'));
-  const eco = makeScratchEcosystem(tmp);
+  const eco = makeScratchEcosystem(tmp, opts);
   writeFileSync(
     join(eco.brain, '.multivac/config.yml'),
     [
@@ -53,6 +60,7 @@ function ecosystem(cfgExtra: string[], repoExtra: string[] = []): { brain: strin
       '    install: install it however that tool says',
       ...cfgExtra,
       'repos:',
+      ...(opts.brainIsCode ? ['  brain: .'] : []),
       '  api: ../acme-api',
       '  web: ../acme-web',
       ...repoExtra,
@@ -88,17 +96,31 @@ const graph = (dir: string): void => {
 // --- US1: the gate ---
 
 test('close refuses while declared roots have no graph, naming every one at once', async () => {
+  // MV-148: a brain no repos entry declares holds no code, so it is no root
+  // of the grapher's: the gate names the code repos and never the brain.
   const { brain, ctx, slug } = ecosystem(['grapher: writes-nothing']);
   await readyToClose(brain, ctx, slug);
   const c = await capture(() => change.run(['close', slug], ctx));
   assert.equal(c.code, 1);
-  assert.match(c.out, /graph: `change close points-expire` refused — 3 roots have no graph/);
-  for (const scope of ['brain', 'api', 'web']) {
+  assert.match(c.out, /graph: `change close points-expire` refused — 2 roots have no graph/);
+  for (const scope of ['api', 'web']) {
     assert.match(c.out, new RegExp(`  ${scope}: no graph-out/graph\\.json — \`true\` there`));
   }
+  assert.doesNotMatch(c.out, /  brain: no graph-out/);
+  assert.equal(existsSync(join(brain, 'graph-out')), false, 'nothing was built in the brain');
   assert.match(c.out, /--no-grapher` for one run, `grapher_auto: false`/);
   // Refused means refused: the change is still open and still there.
   assert.ok(existsSync(join(brain, '.multivac/changes', `${slug}.md`)));
+
+  // A brain that holds code is a root like any other, and is named with them.
+  const code = ecosystem(['grapher: writes-nothing'], [], { brainIsCode: true });
+  await readyToClose(code.brain, code.ctx, code.slug);
+  const d = await capture(() => change.run(['close', code.slug], code.ctx));
+  assert.equal(d.code, 1);
+  assert.match(d.out, /graph: `change close points-expire` refused — 3 roots have no graph/);
+  for (const scope of ['brain', 'api', 'web']) {
+    assert.match(d.out, new RegExp(`  ${scope}: no graph-out/graph\\.json — \`true\` there`));
+  }
 });
 
 test('close proceeds when every declared root holds a graph', async () => {

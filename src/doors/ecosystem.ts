@@ -20,7 +20,7 @@ import type { Config } from '../types.js';
 import { CHANGES_DIR, CONFIG_PATH, DEFAULT_CHANNEL, ECOSYSTEM_PATH, LAW_PATH } from '../lib/config.js';
 import { collectBrainAnchors, parseClaimRows } from '../anchor/parse.js';
 import { parseChange } from '../change/file.js';
-import { adapterFor } from '../adapters/detect.js';
+import { adapterFor, askedGraphers, sddGoverning } from '../adapters/detect.js';
 import { grapherSpec } from '../adapters/registry.js';
 
 type Attrs = Record<string, string | number | boolean | null>;
@@ -47,12 +47,15 @@ export async function renderEcosystem(brain: string, cfg: Config): Promise<strin
   const brainKey = Object.entries(cfg.repos).find(([, e]) => e.isBrain)?.[0];
   const repoId = (k: string): string => (k === brainKey ? 'repo:brain' : `repo:${k}`);
   const others = Object.keys(cfg.repos).filter((k) => !cfg.repos[k].isBrain).sort(cmp);
-  node('repo:brain', { label: 'brain', file_type: 'repo', source_file: CONFIG_PATH, sdd: adapterFor(cfg, 'brain', 'sdd') ?? null, ...graphOf('brain') });
+  // MV-146: a repo node's `sdd` is the SDD whose rules govern its code, which
+  // runs in the brain — not one installed there — and null where the repo
+  // opts out with `none`.
+  node('repo:brain', { label: 'brain', file_type: 'repo', source_file: CONFIG_PATH, sdd: sddGoverning(cfg, 'brain') ?? null, ...graphOf('brain') });
   for (const k of others) {
     const e = cfg.repos[k];
     node(`repo:${k}`, {
       label: k, file_type: 'repo', source_file: CONFIG_PATH, path: e.path, url: e.url ?? null, role: e.role ?? null,
-      channel: e.channel ?? cfg.channel ?? DEFAULT_CHANNEL, sdd: adapterFor(cfg, k, 'sdd') ?? null, ...graphOf(k),
+      channel: e.channel ?? cfg.channel ?? DEFAULT_CHANNEL, sdd: sddGoverning(cfg, k) ?? null, ...graphOf(k),
     });
     link('repo:brain', `repo:${k}`, 'declares');
     link(`repo:${k}`, 'repo:brain', 'mounts', { at: cfg.mount });
@@ -125,11 +128,20 @@ export async function writeEcosystem(brain: string, cfg: Config): Promise<boolea
   return true;
 }
 
-/** The door line naming the graph, with graphify's `--graph` verbs where graphify resolves for `key`. */
+/**
+ * The door line naming the graph, with graphify's `--graph` verbs where an
+ * agent reading that door has graphify to ask with. MV-148: for the brain,
+ * where graphify is among the graphers asked from it (`askedGraphers`) — a
+ * brain that holds no code resolves no grapher of its own, and its code repos'
+ * graphify, or the ecosystem's declaration alone, is what puts the binary in
+ * the agent's hands. A consumer asks what resolves for its own key: widening
+ * it would give a codegraph repo graphify's verbs.
+ */
 export function ecosystemGraphLines(cfg: Config, key: string, prefix: string): string[] {
   const at = `${prefix}${ECOSYSTEM_PATH}`;
   const head = `- How the repos, the law's rows, their anchors and the changes relate is \`${at}\`, rendered from the brain's declarations`;
-  return adapterFor(cfg, key, 'grapher') === 'graphify'
+  const graphify = key === 'brain' ? askedGraphers(cfg).has('graphify') : adapterFor(cfg, key, 'grapher') === 'graphify';
+  return graphify
     ? [`${head}. Ask it: \`graphify query "<question>" --graph ${at}\`, \`graphify explain "<row id or change slug>" --graph ${at}\`, \`graphify path "<A>" "<B>" --graph ${at}\`.`]
     : [`${head}, as plain node-link JSON.`];
 }

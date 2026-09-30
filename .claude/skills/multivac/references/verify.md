@@ -1,113 +1,76 @@
 # Reading `mvac verify`
 
-`--help` tells you the flags. This tells you what to do with the answer,
-which is the part that needs judgement.
-
-Verify answers exactly one question: **is what the law claims still true of
-the code?** It runs no tests, lints nothing, compiles nothing, and calls no
-model. Every line it prints is about a claim, never about quality.
-
-## The outcomes
-
-| line | means | what you do |
-| --- | --- | --- |
-| `ok` | every leg of the claim resolved | nothing |
-| `moved` | the pattern is gone from the declared glob but found elsewhere, and the anchor was rewritten to point there | **review it like any other edit** — see below |
-| `broken` | the pattern is not where the claim says, and not anywhere the self-heal would accept | decide: fix the code, or amend the law |
-| `pending` | a claim declared by an open change whose code is not written yet | nothing — this is the intended order |
-| `vacuous` | the glob matched no tracked file, so the leg asserted nothing | fix the glob — a leg over nothing is not a passing leg |
-| `unevaluated` | a declared repo is not on disk, so its legs were not read | `multivac repos sync`, then re-read |
-
-Six states, not four. `vacuous` and `unevaluated` are the two that look like
-silence: neither is a pass, and the summary counts them separately so that a
-run judging nothing cannot be mistaken for a run judging everything.
-
-`pending` is not a failure and never gates. Declaring the claims before the
-code exists is the flow, not a mistake: `close` is what refuses until they
-hold.
+Verify answers one question: **is what the law claims still true of the
+code?** It runs no tests and judges no quality. Every verdict line names its
+state, whether it blocks, and the fix; `vacuous` and `unevaluated` are never a
+pass. `mvac help verify` has the flags; this page is the judgement the lines
+cannot carry.
 
 ## `moved` is where the thinking is
 
-A rewritten anchor is a normal edit on your branch and it is also the one
-outcome that can quietly launder a mistake. Read the diff and ask which of
-these two happened:
+A rewritten anchor is a normal edit on your branch, and the one outcome that
+can quietly launder a mistake. Read the diff and ask which happened:
 
-- **A rename or a file move.** The mechanism is the same, it lives somewhere
-  else, the anchor now says so. Let it ride.
-- **A second, different site.** The original call site was *deleted* and the
-  pattern happens to also match somewhere unrelated. The anchor now points at
-  code that was never the subject of the claim, and the claim reads green
-  while the thing it guarded is gone.
+- **A rename or a file move.** The mechanism is the same and lives elsewhere.
+  Let it ride on the same branch.
+- **A second, different site.** The original was *deleted* and the pattern
+  also matches somewhere unrelated: the claim reads green while the thing it
+  guarded is gone.
 
-The second is rare and expensive. Two questions separate them: does the new
-location do the same job, and did the old one disappear in this same change?
-If the answer to either is no, do not keep the rewrite — restore the code, or
-amend the claim deliberately.
-
-`--check` never writes, so a run you only want to *read* — a review pass, a
-read-only checkout — reports the move instead of taking it.
+Does the new location do the same job, and did the old one disappear in this
+same change? If either answer is no, do not keep the rewrite: restore the code,
+or amend the claim deliberately. `--check` reports a move instead of taking it.
 
 ## `broken` is a fork, not an error
 
-A broken leg means the law and the code disagree. Nothing in the output tells
-you which one is wrong, and guessing is the failure mode. Ask the human when
-it is not obvious from the change you are making:
+The law and the code disagree, and nothing in the output says which is wrong.
+Ask the human when your change does not make it obvious:
 
 - **The code drifted.** The claim is still what the product promises. Fix the
-  code, not the anchor. Rewriting an anchor to match broken code is how a law
+  code, never the anchor: rewriting an anchor to match broken code is how a law
   table becomes decoration.
-- **The claim aged.** The product genuinely changed. Then this is a change,
-  with a row edit and a date, in the same commit as the code — never an anchor
-  quietly re-pointed to make the run green.
+- **The claim aged.** The product changed. Then it is a change: the row edited
+  and dated, in the same commit as the code — never an anchor quietly
+  re-pointed to make the run green.
 
-An `absent` leg breaking is the one case with no fork: a tombstone breaking
-means a mechanism declared dead has come back. That is always the code's
-problem.
-
-## What gates and what only reports
-
-Blocking by default: `absent`, `count`, `each`. Reporting: `present`,
-`unique`, until `--strict`.
-
-The asymmetry is deliberate and worth repeating to a human who asks why their
-commit went through with red in the output — a rename mid-refactor should not
-kill a commit, and calling a mechanism that was retired should.
+A broken `absent` leg has no fork: a mechanism declared dead came back, and
+that is always the code's problem. `absent`, `count` and `each` block; `present`
+and `unique` report until `--strict`. Tell a human who asks why red went
+through: a rename mid-refactor should not kill a commit, and calling a retired
+mechanism should.
 
 ## Where it reads from
 
-This one surprises people, so say it out loud when you report a result:
+From the brain, siblings are read at their channel ref, the ecosystem as
+published, and the brain at its working tree; from a code repo, its own working
+tree, the content about to be committed there. `--worktree` reads local state
+everywhere, on purpose. From any directory of a checkout the run is its root's,
+and a full report printed away from the root names it in a `root` line. A
+session start and a commit through the git shims run quiet (`--quiet`, or
+`MULTIVAC_QUIET=1`, which the shims export): one line when nothing is off, a
+read that is not plain printed in full beneath it, and the whole report the
+moment anything else is off.
 
-- **From the brain:** sibling repos are read at their **channel ref**
-  (`origin/main` by default), the brain at its working tree.
-- **From a consumer repo:** its working tree — the content about to be
-  committed there.
+A run prints a `read` line per repo, or on a quiet run a clause of its one
+line; quote it when a result surprises. A `read` line states a fact, not what
+to do about it:
 
-So a sibling parked on a half-finished branch cannot redden the brain's law,
-and a green run in the brain is a statement about the ecosystem as published,
-not about whatever is checked out locally. `--worktree` reads local state
-across every repo instead, on purpose, when that is the question.
-
-Every run prints a `read` line per repo naming the ref and its sha. Quote that
-line when a result is surprising — it usually explains it.
+- **FELL BACK to the working tree**: that verdict is about somebody's local
+  branch. Fetch before you believe it.
+- **An old `last fetch`**: verify never fetches, so a fix already merged
+  upstream is not in the bytes judged. `mvac repos sync` refreshes every repo.
+- **The brain behind its own channel**: an out-of-date law is judging a current
+  ecosystem. Pull the brain before you believe any red.
 
 ## The lines that are not claims
 
-Three lines sit under the claims, and each one answers a question about the
-commit rather than about the law:
-
-- **`enact`**: whether this commit makes a row `active` beside the code it
-  anchors (MV-81). A refusal here means the enactment goes in its own commit.
-- **`code`**: where the SDD is declared, whether the code being committed or
-  merged lands on the branch of an open change that declares this repo
-  (MV-137). A refusal names the branch; the fix is to start the change and
-  commit in its worktree, never to skip the hook. In CI the same line judges a
-  range: `verify --strict --range <base>..<head> --branch <name>`.
-- **`ecosystem`**: `.multivac/ecosystem.json` no longer matches the brain's
-  declarations (MV-139). It never gates; `multivac doors` renders it, and every
-  lifecycle commit in the brain carries it.
+`enact`, `code` and `ecosystem` answer questions about the commit, not the law,
+and each says its fix. A `code` refusal is never a reason to skip the hook:
+start the change and commit in its worktree. In CI the same line judges a
+range: `verify --strict --range <base>..<head> --branch <name>`.
 
 ## Reporting a run to a human
 
-Give the verdict, not the transcript. The exit code, the count, and then only
-the legs that need a decision. A wall of `ok` lines is noise; a `broken` leg
+Give the verdict, not the transcript: the exit code, the count, then only the
+legs that need a decision. A wall of `ok` lines is noise; a `broken` leg
 without the two options above is a problem handed over half-analysed.

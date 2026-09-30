@@ -230,6 +230,13 @@ function shim(args: string, chain: HookName | null): string {
           'fi',
         ]
       : ['root=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0']),
+    // MV-151: quiet reaches every commit through the shim, as a variable — a
+    // binary that predates it ignores it, where an unknown flag would exit 2
+    // and lock the commit. The lines written name no row: this shim lands in
+    // every repo of every ecosystem, where a row ID means nothing.
+    '# One line when nothing is off; the full report otherwise. An env var, not a',
+    '# flag: a binary that predates it ignores it and prints in full.',
+    'export MULTIVAC_QUIET=1',
     '# The build is used only when this repo IS multivac: `dist/cli.js` plus',
     '# node_modules describes most Node CLI repos, and running THEIR binary as',
     '# multivac is the tool executing somebody else\'s program under its own name.',

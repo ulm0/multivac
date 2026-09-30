@@ -50,6 +50,8 @@ yours, not multivac's.
 Scaffolds the brain in `dir` (default `.`).
 
 ```txt
+$ ls
+src
 $ mvac init . --provider claude,cursor --grapher graphify
   ╭───────────────╮
   │  ●   ●   ○    │   multivac
@@ -57,22 +59,31 @@ $ mvac init . --provider claude,cursor --grapher graphify
   ╰───────────────╯
 
 init: git init — the brain is git-native
-init: wrote .multivac/config.yml — declare your repos under repos:
+init: wrote .multivac/config.yml — brain==code (repos: brain: .); add sibling repos there
 init: wrote AGENTS.md — the door; your agent reads it first
 init: wrote .multivac/invariants.md — the law table, zero rows
-init: wrote .multivac/ritual.md — empty; what you write there, `change close` prints
+init: wrote .multivac/ritual.md — candidates, all commented; uncomment what your team owes each other
+init: wrote .multivac/ecosystem.json — how repos, rows, anchors and changes relate; generated
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
 brain: door + hooks updated
-graph graphify @ brain: wrote .graphifyignore (+5) and .gitignore (+2) before the first build
+brain: .multivac/flow.md — what your declarations oblige, sorted; generated, binds nothing
+brain: .multivac/ecosystem.json — how repos, rows, anchors and changes relate; generated
+brain: brain==code — the brain door is this repo's door
+graph graphify @ brain: wrote .graphifyignore (+11) and .gitignore (+2) before the first build
 graph graphify @ brain: built (`graphify update .`) — artifact left uncommitted
+graph graphify @ brain: wrote .gitignore (+1) before its first project install
+graph graphify @ brain: installed into agents (`graphify install --project --platform agents`)
+graph graphify @ brain: installed into claude (`graphify install --project --platform claude`)
+graph graphify @ brain: cursor skipped — AGENTS.md already carries the `## graphify` section
+graph graphify @ brain: .claude/settings.json named graphify by an absolute path — rewritten to `graphify`, found on PATH
 
 init: done — the brain is scaffolded and empty. Session zero fills it:
 init:   before step 0, declare every repo this brain governs under `repos:` in .multivac/config.yml — once committed, the config changes only inside a change
-init:   0. commit what was just written: git add -- .claude .cursor .gitignore .graphifyignore .multivac AGENTS.md CLAUDE.md graphify-out/graph.json && git commit -m "multivac init"
+init:   0. commit what was just written: git add -- .agents .claude .gitignore .graphifyignore .multivac AGENTS.md CLAUDE.md graphify-out/graph.json && git commit -m "multivac init"
 init:   1. load the multivac skill in your agent — it carries both protocols
 init:   2. `multivac repos sync` — clones every declared repo and installs its declared tools
-init:   3. discovery, for code that exists — `multivac seed` inventories it, then draft proposed claims from it
-init:      interview, for code that does not — the law comes from a human, claim by claim ← this repo holds none
+init:   3. discovery, for code that exists — `multivac seed` inventories it, then draft proposed claims from it ← this repo holds code
+init:      interview, for code that does not — the law comes from a human, claim by claim
 init:   4. a human enacts each row in .multivac/invariants.md, then `multivac doors` and `multivac verify`
 ```
 
@@ -82,23 +93,44 @@ have to act on. Piped output and `NO_COLOR` get the same text with no ANSI.
 
 The numbered lines are session zero, in order. `repos:` comes before the
 first commit, because a config modified after it needs an open change. Both
-flows are printed, and the one that fits this directory is marked: tracked
-source means discovery, an empty repo means the interview. A new brain for code
-that lives in other repos is empty, so the mark is a hint, not a choice. The
-project-document step appears when the declared SDD gates one. Both protocols
+flows are printed, and the one that fits this directory is marked: source,
+tracked or not, means discovery, an empty repo means the interview. A new brain
+for code that lives in other repos is empty, so the mark is a hint, not a
+choice. The
+step that writes the brain's project document appears when the declared SDD
+gates one; no code repo is asked for its own. Both protocols
 live in the skill; `init` points at them and restates neither.
+
+**The brain gets a graph only when it holds code.** `init` decides that once,
+before it writes anything: in a git repository, whether git lists any file
+outside `.multivac/`, tracked or untracked and not ignored; outside one, whether
+anything but `.multivac` and `.git` is there. Above, `src/app.ts` did, so the
+config declares `brain: .` and the graph is built. A repo holding only a README,
+a LICENSE or a `.gitignore` counts as code too. In an empty directory the
+grapher is still declared, for the code repos, and nothing of it is written in
+the brain — no binary is looked up, so it need not be installed there:
+
+```txt
+init: graphify is declared, and this brain holds no code (no repos entry is the brain), so no graph is built here — each code repo gets its own when `repos sync` or a change reaches it
+```
+
+See [A brain that holds no code](../graphers-and-sdd#a-brain-that-holds-no-code).
 
 | flag | takes | effect |
 | --- | --- | --- |
 | `--provider a,b` | comma-separated registry names | appended to `doors:` in the config (`agents` is always included) |
 | `--sdd name` | `opsx` \| `speckit` | written as `sdd:` in the config, and the tool's own init runs in the brain |
-| `--grapher name` | `graphify` \| `codegraph`, or a name under `graphers:` in the config already there | written as `grapher:` in the config, and the first graph is built in the brain; any other name is refused before anything is created |
+| `--grapher name` | `graphify` \| `codegraph`, or a name under `graphers:` in the config already there | written as `grapher:` in the config, and the first graph is built in the brain when it holds code; any other name is refused before anything is created |
 | `--quiet` | — | no report, no banner; refusals still go to stderr |
 
 **Declared at init, installed at init.** With `--sdd` or `--grapher`, or with a
 config that already declares them, `init` finishes by running the tool's own
-init and the graph's first build in the brain, the same way `change` does.
-A tool that is already installed there is not run again.
+init and, in the brain when it holds code, the graph's first build, the same
+way `change` does.
+A tool that is already installed there is not run again. For spec-kit, the run
+that installs it also writes multivac's skeleton templates, as
+[the scaffold](../graphers-and-sdd#the-scaffold-declaring-a-tool-that-has-never-run-here)
+describes.
 
 A tool `init` is about to run and cannot find is refused **before anything is
 written**, `git init` included, with exit 1 and where to get it:
@@ -109,7 +141,7 @@ init refused — speckit: `specify` found on neither PATH nor brain's node_modul
 ```
 
 Nothing is required for a tool `init` would not run: one already installed,
-or an SDD under `sdd_auto: false`.
+an SDD under `sdd_auto: false`, or a grapher in a brain that holds no code.
 
 **Step 0 commits what `init` wrote, and only that.** It lists the paths `init`
 created or changed, leaving out the tools' per-checkout outputs, so uncommitted
@@ -143,7 +175,7 @@ A valued flag whose value is missing — or whose value is itself a flag — is
 refused too, rather than binding the next token or an empty string:
 
 ```txt
---repo needs a value — verify takes [dir], --strict, --check, --worktree, --repo <key>
+--repo needs a value — verify takes [dir], --strict, --check, --worktree, --repo <key>, --range <base>..<head>, --branch <name>, --quiet
 ```
 
 The equals form is for long names only. A short alias is not split by the
@@ -177,6 +209,7 @@ AGENTS.md                    the door — managed block only, never clobbered
 .multivac/ritual.md          the closing ceremony, empty
 .multivac/hooks/pre-commit   runs `mvac verify` on every commit
 .multivac/hooks/pre-push     same, on push
+.multivac/hooks/pre-merge-commit  same, on a local merge
 .multivac/.gitignore         ignores .multivac/cache/ and .multivac/worktrees/
 .multivac/cache/             gitignored
 ```
@@ -297,9 +330,11 @@ files plus a count. No LLM, no interpretation. Repos not on disk are listed
 under a `skipped` section with the sync command; `seed` never clones.
 
 Each present repo also gets a `### setup` section: whether its declared graph
-is built, and whether its project document is written, each with the command
-that fixes it. `seed` reads the vendor's files for this and never runs a
-vendor.
+is built, with the command that fixes it. The SDD's project document is the
+brain's, so it is reported once — in the brain's own entry when the brain is
+also a code repo, or in a `## brain` section of its own when it holds no code —
+and never for a code repo. `seed` reads the vendor's files for this and never
+runs a vendor.
 
 The report ends with three **open questions** — debt or intent, law or
 taste, which authority wins — instantiated against the gates, prose, deploy
@@ -310,10 +345,12 @@ Nothing it writes is law — the report says so in its own header. Your agent
 reads it and drafts `proposed` rows. See
 [Session zero](../../guide/session-zero).
 
-## `verify [dir] [--strict] [--check] [--worktree] [--repo <key>] [--range <base>..<head> --branch <name>]`
+## `verify [dir] [--strict] [--check] [--worktree] [--repo <key>] [--range <base>..<head> --branch <name>] [--quiet]`
 
 The core. Checks every anchor in the brain against the declared repos.
-Deterministic, offline, sub-second by design. `dir` defaults to `.`.
+Deterministic, offline, sub-second by design. `dir` defaults to `.` and may be
+any directory of a checkout: the run reads the checkout that holds it — see
+[Where a run roots](#where-a-run-roots).
 
 ```txt
 $ mvac verify
@@ -330,9 +367,9 @@ $ mvac verify
 0 blocking broken · exit 0
 ```
 
-Two of those lines are printed by **every** run, whatever the claims say. A
-`read` line per repo names the ref or branch and its sha, so what was read is
-never inferred. And one `enact` line asks whether a row is enacted alone in the
+Two of those lines are printed by **every** run, whatever the claims say — on
+a quiet run as clauses of its one line. A `read` line per repo names the ref or
+branch and its sha, so what was read is never inferred. And one `enact` line asks whether a row is enacted alone in the
 commit being composed: a row reaching `active` beside the code it anchors is
 refused, a row enacted alone is named, and when nothing is staged the line says
 the question could not be asked rather than implying an answer.
@@ -367,6 +404,41 @@ answers about a commit nobody is making.
 | `--check` | never writes: a `moved` leg is reported instead of self-healed. |
 | `--worktree` | read every declared repo's **working tree** instead of its channel ref — local state across the whole ecosystem, on purpose. |
 | `--repo <key>` | scope to one declared repo. **Only meaningful from a consumer repo** — from a brain it is ignored with a warning. |
+| `--quiet` | one line when nothing is off; the whole report otherwise — see below. `MULTIVAC_QUIET=1` asks the same. |
+
+### `--quiet`: one line when nothing is off
+
+A quiet run prints **one line** when every line of the report has a quiet
+form, and the whole report, byte for byte, the moment anything is off:
+
+```txt
+$ mvac verify --quiet
+0 blocking broken · exit 0 · 12 claims · 12 anchored (100%) · read api origin/main @ 1a2b3c4 (last fetch 2h ago), brain main @ abc1234 (working tree) · enact not answered (nothing staged)
+```
+
+The summary leads, so a reader or a script that looks for `<n> blocking broken
+· exit <n>` at a line start finds it where the full report puts it. Then the
+header, each plain read with the same ref or branch, sha and fetch age, the
+`enact` answer with its reason, and `code → <slug>` when the commit's code
+lands in an open change. A consumer's line carries `brain at <dir>` and `enact
+not answered (decided in the brain)`.
+
+A read that is not plain — fell back, `--worktree`, off channel, parked, never
+fetched here, behind its own channel, mid-merge, not on disk — prints its full
+`read` line beneath the one line, and so does a `stale` pin that does not gate.
+Everything else that is off prints the whole report, both streams in the order
+they were written: a leg or count line other than `ok`, a finished change, a
+gating stale pin, a staged law, an enactment or a refusal, any `config` line, a
+mounted SDD refusal, the law's death, the pending and drift summaries, a `code`
+line other than a clean landing, an open change file that does not parse, an
+anchor naming no row, any warning, and a non-zero exit. The exit code is the
+same either way.
+
+Quiet is asked for, never inferred: `--quiet`; `MULTIVAC_QUIET=1` in the
+environment, which the git hooks `doors` writes export, so a clean commit says
+one line; or the harness's session-start hook (see
+[hooks](../hooks#harness-hooks--the-early-ceiling)). A plain `mvac verify` stays
+loud: read the `read` lines before you read the verdicts.
 
 ### What each run reads
 
@@ -375,9 +447,9 @@ is about to commit.** Two contexts, two scopes:
 
 | run | what it reads | why |
 | --- | --- | --- |
-| **brain-scoped** (cwd is the brain) | each declared repo at its **channel ref** — `channel:` on the entry, else the global, else `origin/main` | the brain's law is about the state everyone shares. A teammate mid-task on a WIP branch in a sibling repo is not a violation |
+| **brain-scoped** (run anywhere in the brain's checkout) | each declared repo at its **channel ref** — `channel:` on the entry, else the global, else `origin/main` | the brain's law is about the state everyone shares. A teammate mid-task on a WIP branch in a sibling repo is not a violation |
 | the **brain's own repo**, in the same run | its **working tree** | this is where the author is working, and the brain's law must gate the brain's own commit |
-| **consumer-scoped** (cwd is a code repo with the brain mounted) | its **working tree** | that is the content about to be committed *there* |
+| **consumer-scoped** (run anywhere in a code repo's checkout, the brain mounted in it) | its **working tree** | that is the content about to be committed *there* |
 
 Before this, every repo was read as a working tree, from everywhere. A
 sibling parked on a branch turned the brain's law red for a reason that had
@@ -386,9 +458,11 @@ over with `--no-verify`, which is the enforcement floor lost to a tool being
 wrong.
 
 **Every run says which bytes it read.** One `read` line per repo naming the
-ref or the branch and its short sha; a checkout parked off its channel is
-named as such, so an off-channel repo is legible rather than a silent premise
-behind a mysterious verdict.
+ref or the branch and its short sha — on a quiet run a plain read is a clause
+of its one line, with the same ref, sha and age, and any other prints its
+line in full; a checkout parked off its channel is named as such, so an
+off-channel repo is legible rather than a silent premise behind a mysterious
+verdict.
 
 **A channel ref is a local snapshot, so its age is on the line.** `verify` never
 touches the network: `origin/main` is whatever the last `mvac repos sync`
@@ -506,6 +580,18 @@ finished  points-expire — every declared claim resolves and every declared rep
 1 blocking broken · exit 1 · 1 finished change unclosed
 ```
 
+When `close` would still refuse the change on what its claims cite — a claim
+whose row states no rule yet, a claim anchored only in its change file — the
+line never sends you to it: it names the first line close refuses on, and how
+many more, before the command. The counts and the exit are the same:
+
+```txt
+finished  points-expire — every declared claim resolves and every declared repo is landed (1 claim whose failure this run would not gate); finished, not pending — close refuses until: INV-02: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md — then: multivac change close points-expire · blocking
+```
+
+The line reads this checkout only: a brain behind its channel is named on the
+read line, and the pull is `land`'s and `close`'s to say.
+
 The default policy prints the same line and exits 0: a pre-commit hook is not
 where you are told to go run another command. A change declaring no claims is
 never finished — a universal over nothing is true of a change scaffolded
@@ -600,11 +686,78 @@ $ mvac verify
 The anchor line in `invariants.md` now reads `api:src/loyalty.ts`.
 Review it like any other diff.
 
+### Where a run roots
+
+`verify` answers for the checkout that holds the directory it is asked from —
+`[dir]`, or the working directory — and resolves that root before it reads any
+config. From any directory of a checkout the verdict and the report are the
+root's. In order:
+
+1. **A brain** — the nearest `.multivac/config.yml` from the directory up to
+   its git toplevel. A brain's subdirectory, a brain change worktree and a
+   consumer's mount are all brains, judged brain-scoped with every brain gate.
+2. **A consumer's change worktree** — a toplevel at
+   `<brain>/.multivac/worktrees/<slug>/<key>` (below).
+3. **A consumer through its mount** — the nearest directory below the
+   toplevel whose child brain names it by its own `mount:` (a monorepo
+   subproject holding its own `.brain`); else the toplevel's mount, `.brain`
+   outright or a single child brain; else the one `.gitmodules` path below the
+   first level whose brain names it (`mount: docs/brain`); else the directory's
+   own child brain.
+4. **A stale pin**, at the directory and then at the toplevel; then **a door**
+   with no brain in reach (below).
+
+The toplevel is asked with the ambient `GIT_*` variables dropped, so an
+inherited `GIT_DIR` never answers for another repository. A report printed
+away from its root names the root in one line after its header, because the
+paths and commands in it are relative to that root. A symlinked path to the
+root is the root:
+
+```txt
+$ cd src && mvac verify
+12 claims · 12 anchored (100%)
+  root      /home/you/brain (asked from src)
+  read      brain: working tree on main @ abc1234 — the brain's own repo, the commit this run gates
+…
+```
+
+A brain change worktree reads each sibling in the change's own worktree for
+it, `<brain>/.multivac/worktrees/<slug>/<key>`, when that exists — found by key,
+whatever path the brain declares — else where the main checkout reads it. A
+sibling missing both ways says `` run `multivac repos sync` in <main checkout> ``,
+never in the worktree. Inside a consumer's mount a missing sibling names the
+host once and never advises `repos sync`, which typed there would clone the
+ecosystem into the consumer:
+
+```txt
+  read      web: not on disk beside this mount — nothing read; verify in /home/you/api for its verdict, or from a brain checkout
+```
+
+Where nothing governs the directory, nothing is walked and no advice names
+another directory; each of these exits 2:
+
+```txt
+/home/you/work is in no git repository — nothing was verified; the brain at /home/you/work/brain verifies from there
+/home/you/notes is inside /home/you, which no brain governs — nothing was verified
+/home/you/api/vendor/lib is a submodule of /home/you/api, which multivac verifies from there — nothing was verified here
+git rev-parse --show-toplevel failed in /home/you/api: fatal: detected dubious ownership in repository at '/home/you/api'
+```
+
+And every command's refusal for a missing `.multivac/config.yml` names the
+brain whose checkout holds the directory, rather than advising an `init` that
+would create a second brain inside it:
+
+```txt
+$ cd src && mvac change new points-expire "Points expire"
+no .multivac/config.yml in /home/you/brain/src — it is inside the brain at /home/you/brain; run this there
+```
+
 ### From a consumer repo
 
-`verify` run in a repo with no `.multivac/config.yml` looks for a mounted
-brain in a direct child directory — `.brain` wins outright — and scopes to
-that repo's anchors plus `*` anchors:
+`verify` run anywhere in a code repo's checkout, with no `.multivac/config.yml`
+between the directory and the toplevel, finds the brain mounted in it — `.brain`
+wins outright — and scopes to that repo's anchors plus `*` anchors; from a
+subdirectory the report adds its `root` line:
 
 ```txt
 $ cd ../api && mvac verify
@@ -615,6 +768,16 @@ scoped to repo "api" · brain at /home/you/api/.brain
   ok          3
 
 0 blocking broken · exit 0
+```
+
+A mounted brain whose config the brain itself would refuse — an SDD declaration
+that resolves in no root, see [`sdd`](../configuration#sdd) — does not stop
+this run. The mount can lag its brain, and the config is its owner's to fix, so
+`verify` prints the refusal as one line and blocks on it only under `--strict`;
+`count` prints the same line and counts:
+
+```txt
+  sdd       repos.web.sdd: opsx — REFUSED: the SDD lives in the brain alone, … — in the mounted brain's config; its owner fixes it
 ```
 
 The repo key is resolved by matching the entry's path, its `url` against
@@ -631,8 +794,9 @@ $ mvac verify --repo nope
 A change worktree is found from its path first. `change apply` puts a
 sibling repo's worktree at `<brain>/.multivac/worktrees/<slug>/<key>`, and the
 brain mount inside it is a submodule nobody initialised. So in that checkout,
-`verify` takes the brain, the change and the key from the path, and reads the
-brain itself, which does not lag the way a pin can:
+from any directory of it, `verify` takes the brain, the change and the key from
+the path of its toplevel, and reads the brain itself, which does not lag the
+way a pin can:
 
 ```txt
 $ cd ~/eco/brain/.multivac/worktrees/points-expire/api && mvac verify
@@ -667,8 +831,10 @@ installed: warn loudly, let the commit through. It is recognised by the header
 line in the hook script multivac wrote, so a hook of your own in
 `.multivac/hooks/` does not count.
 
-**Otherwise** — a repo multivac never touched — it gets the `run multivac init .`
-hint, and exit 2.
+**Otherwise** — a repo multivac never touched — its toplevel gets the
+`run multivac init .` hint, and exit 2; a directory below it is told that no
+brain governs it, and a submodule of a governed repository is told which one
+verifies it (see [Where a run roots](#where-a-run-roots)).
 
 ### Pin staleness
 
@@ -704,7 +870,10 @@ $ mvac count 'api:db/migrations/*.sql /balance/'
 Same bytes, too, not only the same parser: `count` resolves the repos it reads
 through the function `verify` uses, so a sibling is read at its channel ref and
 the brain at its working tree, and it prints the same `read` line per
-repo. It used to build its own handles with no ref — so it read working
+repo. It roots the same way too, from any directory of a checkout: in a
+consumer, or a consumer's change worktree, its own key is read as the
+checkout's working tree, in the sentence `verify` prints there, and a repo
+with a door but no brain in reach has nothing to count against, exit 2. It used to build its own handles with no ref — so it read working
 trees while the gate read channels, and a number pinned from it could disagree
 with the number that gates, with nothing on screen to explain the gap.
 
@@ -754,6 +923,9 @@ ledger: not managed, read-only — nothing projected …
 mounts     api: no brain mount at .brain — unverified there until `multivac repos sync`
 ```
 
+Run from a subdirectory, `doors` projects the brain that holds it and says so
+first, `root: <brain> (asked from <dir>)`.
+
 For the brain and each declared repo on disk: writes the managed block in
 `AGENTS.md`, projects each declared door target, installs the skill and harness
 hook config where the target declares them, and writes the git hook shims plus
@@ -801,8 +973,9 @@ has not read the table.
 
 `doors` also writes a graph of the brain's own declarations. The nodes are:
 
-- each repo, with its path, url, role, channel, SDD and grapher, and the path
-  of its own code graph;
+- each repo, with its path, url, role, channel, grapher and the path of its own
+  code graph, and the SDD that governs its code — the brain's, or none for a
+  repo that says `sdd: none`;
 - each law row, with its state, authority and line, but never its statement;
 - each anchor's glob, one per repo it reaches;
 - each change, open, planned or archived.
@@ -831,15 +1004,22 @@ Connections (3):
   <-- points-expire [claims] [EXTRACTED]
 ```
 
-The doors name it, with those verbs where graphify is the grapher.
+The doors name it, with those verbs where graphify is a grapher the brain's
+agent asks: the brain's own where it holds code, a code repo's, or the
+ecosystem's declaration while no code repo resolves one. In a brain that holds
+no code, the brain's node carries no grapher and no graph.
 
 ## `doctor [--strict]`
 
-Read-only diagnosis. Never mutates, never clones.
+Read-only diagnosis. Never mutates, never clones. From a subdirectory it
+reports the brain that holds it and names it first, `root      <brain> (asked
+from <dir>)`; from a brain change worktree each sibling is the one the change's
+own worktree or the main checkout holds, and a missing one's clone advice names
+the main checkout.
 
 ```txt
 $ mvac doctor
-doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: .cursor/rules/multivac.mdc ok
+doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: AGENTS.md ok (read natively)
 grapher    graphify @ brain: missing (no graphify-out/graph.json) → run `graphify update .` there
 grapher    graphify @ api: missing (no graphify-out/graph.json) → run `graphify update .` there
 repos      1/2 cloned · payments missing → `multivac repos sync` (git clone git@example.com:acme/payments.git ../payments)
@@ -854,9 +1034,9 @@ untracked  nothing build-critical untracked
 | line | reports |
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
-| `sdd` | one line per scope (brain + each present repo, the same shape `grapher` uses): the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on — a repo with `sdd: none` says it is out of scope rather than lacking anything, and so does a read-only one: `@ <key>: not managed, read-only` or `shallow, read-only`, with no state and no command to run. Then, once per tool: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what, and `project law @ <scope>:` per scope for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when no root resolves an `sdd`** |
-| `grapher` | one line per scope (brain + each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, `change close` as the net, and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher** |
-| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `sdd` and `grapher` lines say `out of scope, not a gap` in place of a state |
+| `sdd` | the brain's SDD, which runs nowhere else: the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on. When a code repo is declared and `sdd_auto` is on, one line names the repos whose code it governs and those exempt by `sdd: none`. A writable code repo still holding an install of any known SDD from an earlier release gets a `leftover` line — its state file, whether `HEAD` tracks it, and the removal — and never fails `doctor`. In an OpenSpec brain, the command bodies an earlier init left there are named on one line after the install line, with the `git rm -r` that removes the tracked ones and the untracked ones to delete, and never fail `doctor` (see [Command bodies an earlier init left](../graphers-and-sdd#command-bodies-an-earlier-init-left)). An enabled spec-kit preset that multivac's skeleton templates outrank is named, with the override to delete. Then: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what — or `not gated` under `sdd_auto: false` — and `project law @ brain:` for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when the brain resolves no `sdd`**: a code repo's own install of a tool the brain declares nowhere is that team's, not a leftover |
+| `grapher` | one line per scope (the brain where it holds code, plus each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. An installed root's line also names, reading only, the ignore lines multivac keeps out of the graph that its ignore file lacks, an ignore file not committed, and nodes the graph still holds under the file's lines, with the rebuild to run there — for codegraph, one of four facts about `codegraph.json`: that it does not parse to an object with an `exclude` list, that git ignores it, with the command that shows the rule, since land writes nothing there, that it is not committed, so a clone or worktree with its mount initialised indexes the mount, or the lines it lacks, which the next `change land` naming that repo adds. A writable repo still holding the artifact of a grapher it does not resolve, while that grapher's post-edit hook is wired and reaches it there, is named with the removal: that hook refreshes it on every edit there (see [One post-edit hook per grapher](../graphers-and-sdd#one-post-edit-hook-per-grapher)). A brain that holds no code gets one line saying so and how to declare it code, and a `leftover` line with its removal for each install an earlier release left there — never a refresh or an install (see [A brain that holds no code](../graphers-and-sdd#a-brain-that-holds-no-code)). Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, one per grapher the brain's session refreshes, and in a brain that holds no code whether it follows your edits into the code repos; what `change land` does with each grapher's artifact, committing a shared graph and syncing an index built in each checkout; `change close` as the net; and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher, none is asked from the brain and none is left there** |
+| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `grapher` line says `out of scope, not a gap` in place of a state |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is. A mount that is staged and not yet committed says so, instead of calling itself missing. A read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
@@ -984,18 +1164,31 @@ is it set up?
 ```txt
 $ mvac repos check
 brain     ok   cloned · speckit installed and committed · .specify/memory/constitution.md written · graphify built and committed
-api       FAIL graphify built but graphify-out/graph.json is not committed → commit it · speckit installed and committed
+api       FAIL graphify built but graphify-out/graph.json is not committed → commit it; leftover speckit install (tracked)
 payments  FAIL absent at ../payments → `multivac repos sync`
 ledger    ok   cloned — not managed, read-only: its tools are not checked
 ```
 
 A repo passes when its path exists, is a git repository of its own (not a
 folder inside another one), has a commit, and has a remote matching its `url:`
-if it declares one. Where multivac may write, it also needs:
+if it declares one. Where multivac may write, it also needs the declared graph
+built and, when it is shared, committed. The brain also needs:
 
 - the declared SDD installed and its state file committed,
-- its project document written (not missing, empty or still the template),
-- the declared graph built and, when it is shared, committed.
+- its project document written (not missing, empty or still the template).
+
+The SDD is the brain's alone, so a code repo is never asked for it. Where the
+brain declares one, a code repo that still holds an install from an earlier
+release gets `; leftover <tool> install` on its line, tracked or not, and
+passes or fails exactly as it would without it; `doctor` names the removal.
+
+A brain that holds no code — no `repos:` entry is the brain — is never asked
+for a graph. A graph an earlier release left there is a fact on its line, never
+a failure:
+
+```txt
+brain     ok   cloned; leftover graphify install (tracked)
+```
 
 A repo you do not own is checked for its clone alone. Exit 0 when every repo
 passes, 1 when one does not, 2 for an invalid config.
@@ -1008,10 +1201,12 @@ there but is not that clone, before anything is cloned, branched or bumped.
 
 ### Tools in every repo
 
-`repos sync` also installs the declared SDD and grapher in every repo it finds
-on disk and may write in: the tool's own init where it has never run, and the
-graph's first build where there is no graph. A repo where both are installed
-runs neither. A read-only repo, declared `managed: false` or a shallow clone,
+`repos sync` also installs the declared SDD in the brain and the grapher in every repo it finds
+on disk and may write in — the brain among them only where it holds code: the
+tool's own init where it has never run, and the
+graph's first build where there is no graph. The SDD reaches no code repo: its
+specs are written in the brain. A repo where its tools are installed runs
+none. A read-only repo, declared `managed: false` or a shallow clone,
 gets nothing, which is why `repos sync --shallow` on a CI machine needs no
 vendor tool.
 
@@ -1086,7 +1281,9 @@ Horizons print in the order `now`, `next`, `later`, nearest first. Slugs are
 ordered by codepoint within a horizon — never by locale, which would make the
 listing's order a property of the machine that printed it. A horizon holding
 nothing is omitted rather than printed empty. The `in flight:` line counts open
-changes separately, so intention is never read as progress.
+changes separately, so intention is never read as progress. From a subdirectory
+it lists the brain that holds it, after one line naming it: `root: <brain>
+(asked from <dir>)`.
 
 An empty roadmap says so, and names the command that fills it:
 
@@ -1124,6 +1321,14 @@ mvac: <slug> is already planned — see it with `multivac roadmap`, or start it 
 mvac: <slug> is already open — it started; nothing to record
 mvac: <slug> is already archived at .multivac/changes/archive/<slug>.md — this change is closed; start a new one with a new slug, or read it there
 mvac: unknown horizon "someday" — use now, next, later
+```
+
+A brain whose SDD takes a narrower slug refuses the rest with exit **2**,
+recording nothing — for OpenSpec, where the printed line also names the
+release it was measured on:
+
+```txt
+roadmap add: `Fix_Auth`: the brain's SDD takes no such slug — openspec … `new change` takes lowercase letters and digits in runs joined by single hyphens, and reserves `archive`
 ```
 
 ### `sync`
@@ -1199,7 +1404,17 @@ The second line is `change land <slug> api`, meaning `--landed api`. It used to
 exit **0** having recorded nothing.
 
 A slug must be letters, digits, dots or dashes. `change new "points expire"`
-derives `points-expire`.
+derives `points-expire`. A brain whose SDD takes a narrower slug refuses the
+rest before anything is written, whatever `sdd_auto` and `--no-sdd` say, since
+the change outlives both — `change new` with exit 1, `roadmap add` with exit 2.
+OpenSpec takes lowercase letters and digits in runs joined by single hyphens,
+and reserves `archive`; the printed line names the openspec release it was
+measured on where this page writes `…`, since the site's pages carry no version
+string:
+
+```txt
+`Fix_Auth`: the brain's SDD takes no such slug — openspec … `new change` takes lowercase letters and digits in runs joined by single hyphens, and reserves `archive`; `multivac change new "<title>"` derives one
+```
 
 ### `new`
 
@@ -1211,22 +1426,34 @@ reserved INV-02 — proposed row in .multivac/invariants.md, declared in invaria
 three edits before plan:
   1. repos: { api: { status: planned } }        # status: planned|branched|committed|mr|landed
   2. landing_order: [[api]]                     # stages; earlier stages land first
-  3. claims: [{ id: INV-02, statement: "..." }]  # what close verifies
+  3. claims: [INV-02]                           # the rows close verifies; each states its rule
 ```
+
+A claim is its row's ID: the row states the rule, and the change file cites
+it. A legacy `{ id, statement }` claim still parses and is written back
+unchanged; nothing creates one.
 
 Refuses to overwrite an existing change file (exit 1). It also takes the next
 free invariant ID out of the law table and writes it straight back as a
 `proposed` row naming this change — never pick an ID by hand. A `proposed` row
 never gates `verify`, and `close` releases the reservation if the change never
 used it — used meaning the rule was stated in place of the scaffolded RESERVED
-text, or an anchor names the ID. Then prints the SDD steps bound to the `new`
-point — with the artifact each will be checked for — if an `sdd` is declared
-and `sdd_auto` is on.
+text, or an anchor names the ID. Then, if the brain declares an `sdd` and
+`sdd_auto` is on, it says where the change's reasoning goes, prints the SDD
+steps bound to the `new` point — each with the artifact it will be checked for
+— and, once after the last, the instruction to run them through:
+
+```txt
+sdd speckit: the why, the design and the tasks go into its files — the change body keeps what it held while planned, or one sentence, and `change close` cites the directory; do not cite it yourself
+sdd speckit: run /speckit.specify in your agent to write the spec for points-expire — … [proof: specs/<n>-points-expire/spec.md — `change plan` refuses without it]
+sdd speckit: run /speckit.clarify if the spec still carries [NEEDS CLARIFICATION] markers [ungateable: …]
+sdd speckit: run the chain through without asking to continue — stop only for a question the tool itself raises (`--no-sdd` for one run, `sdd_auto: false` to stop printing these)
+```
 
 Before it writes anything, `new` refuses, with exit 1, when that SDD's own
-init would have to run somewhere and the tool cannot be found: every step it
-prints needs that tool. It names the repo and where to get the tool, and
-`--no-sdd` skips it for one run. A missing grapher is only a notice here;
+init would have to run in the brain and the tool cannot be found: every step it
+prints needs that tool. It names where to get the tool, and `--no-sdd` skips it
+for one run. A missing grapher is only a notice here;
 `close` is where a missing graph refuses.
 
 `plan`, `apply` and `close` **refuse** while those
@@ -1290,19 +1517,63 @@ A change declaring no repos exits 1. A repo not declared in the config is
 named and exits 1. `plan` **does** clone a declared-with-url repo that is
 missing.
 
+What `close` will refuse on the declaration itself is said here, where it is
+cheapest to fix, and gates nothing — a claim of no row, of a short row, of a
+retired row the change does not retire, of a row the change neither adds,
+touches nor retires, or of a row another change reserved. A legacy claim
+statement is named as a restatement, and kept:
+
+```txt
+claim NOPE-1: no row in .multivac/invariants.md — a claim cites a row of the law; add the row, or drop the claim — close refuses this
+claim INV-03: its statement: restates the row — kept as written; a claim is its ID, and the row states the rule (…)
+```
+
+A row that states no rule yet is the ordinary state of a change at `plan`, and
+a retiring row is retired later: `close` asks those, `plan` does not.
+
+A change may name `brain`. Where no `repos:` entry is the brain, it holds no
+code, and `plan` says what that means for a declared grapher:
+
+```txt
+brain: /home/you/brain (the brain)
+brain: named by this change, but no repos entry is the brain — no code graph is built, gated or landed here; if the change lands code in the brain, declare `brain: .` under repos: in this change
+```
+
+Where an entry is the brain, the line reads `(brain==code)` and the brain is
+graphed like any repo.
+
+With an SDD declared in the brain, `plan` also gates on the `new` point's
+artifacts, then prints the `plan` point's steps. For spec-kit it first points
+`.specify/feature.json` at this slug's directory — the tool keeps one pointer
+per checkout, and two open changes would otherwise plan into each other's — and
+says so when it named another. For a change that names a code repo it says
+where the code goes — said of the steps printed at `plan`, which run in the
+brain checkout before `apply` carries the slug's directory:
+
+```txt
+sdd speckit: .specify/feature.json named specs/002-beta; it names specs/001-points-expire now
+sdd speckit: its steps run from the brain checkout, which holds no code of this change — tasks name code paths under .multivac/worktrees/<slug>/<repo>/, and code is written only there
+```
+
 ### `apply`
 
 ```txt
 $ mvac change apply points-expire
 committed: change apply: points-expire — status branched
+payments: created /home/you/payments — git init, door written, first commit
+graph graphify @ payments: wrote .graphifyignore (+12) and .gitignore (+2) before the first build
+graph graphify @ payments: built (`graphify update .`) — artifact left uncommitted
+graph graphify @ payments: wrote .gitignore (+1) before its first project install
+graph graphify @ payments: installed into agents (`graphify install --project --platform agents`)
 api: branched points-expire from main 58383ca — local main is ahead of origin/main
 api: worktree /home/you/brain/.multivac/worktrees/points-expire/api
-payments: created /home/you/payments — git init, door written, first commit
 payments: branched points-expire from main 3105b42 — no origin/main known locally
 payments: worktree /home/you/brain/.multivac/worktrees/points-expire/payments
 work here — one checkout per repo, nobody else's tree moves:
   api: /home/you/brain/.multivac/worktrees/points-expire/api
+    its graph: --graph /home/you/brain/.multivac/worktrees/points-expire/api/graphify-out/graph.json — paths in its answers are relative to this checkout
   payments: /home/you/brain/.multivac/worktrees/points-expire/payments
+    no graph in this checkout yet (`change land` commits one) — --graph /home/you/payments/graphify-out/graph.json answers for the base, without this branch's edits; paths in its answers are relative to /home/you/payments
 then commit on branch points-expire and run `multivac change land points-expire`
 ```
 
@@ -1311,6 +1582,37 @@ One **worktree** per declared repo, at
 that is where the work happens. The shared checkout never moves: another agent
 may be running another change in the same repo, and a working tree switched
 under them puts their edits on your branch. `close` removes the worktrees.
+
+Under each checkout, one line names what reaches its graph from the brain: the
+flag at the worktree's own graph; else the repo checkout's, which answers for
+the base without this branch's edits; else that there is none yet and `change
+land` builds and commits one. Each says where its answers' paths are placed.
+A checkout whose grapher is `none` gets no line, and neither does the brain's
+own main checkout. See
+[Where to ask the graph](../graphers-and-sdd#where-to-ask-the-graph).
+
+For a repo on codegraph, whose index is built in each checkout and never
+committed, apply builds the one in each checkout it hands out, or syncs it when
+apply runs again, and names it:
+
+```txt
+web: worktree /home/you/brain/.multivac/worktrees/points-expire/web
+web: .codegraph/ added to /home/you/web/.git/info/exclude — git ignored no index here, and that file is never committed
+graph codegraph @ web worktree: built (`codegraph init`) — local artifact, never committed
+work here — one checkout per repo, nobody else's tree moves:
+  web: /home/you/brain/.multivac/worktrees/points-expire/web
+    its index: -p /home/you/brain/.multivac/worktrees/points-expire/web — refreshed after your edits; paths in its answers are relative to this checkout
+```
+
+The `info/exclude` line appears only when git did not already ignore the index
+there: that file is read by every worktree of the repository and never
+committed. `refreshed after your edits` holds where a declared harness has a
+post-edit hook and the brain's session refreshes codegraph; otherwise the line
+says the index is as of this apply and refreshed again at `change land`. Where
+apply could not build it — the binary not found from the worktree, which it
+names once — the line falls back to the repo checkout's index, for the base.
+See [A change's own codegraph
+index](../graphers-and-sdd#a-changes-own-codegraph-index).
 
 The branch under it is based on the **newer of the default branch and
 its remote-tracking ref** — decided offline, by ancestry, from refs git
@@ -1348,19 +1650,28 @@ api: cannot branch points-expire — uncommitted work would be overwritten: note
   then re-run: multivac change apply points-expire
 ```
 
-The change's SDD files are carried onto its branch. Before the bump, `apply`
-selects the uncommitted files under the SDD's shared paths and under this
-change's artifact directories. It refuses a tracked, modified one or an ignored
-one by name. After the worktree exists, it copies the rest in, commits them
-there, and removes them from the checkout:
+The change's SDD files are carried onto its branch when it has one to carry
+them to. Only the brain holds SDD files, so that is a change naming the brain's
+own entry — a brain that is its own code repo. Before the bump, `apply` selects
+the uncommitted files under the SDD's shared paths and under this change's
+artifact directories. It refuses a tracked, modified one or an ignored one by
+name. After the worktree exists, it copies the rest in, commits them there, and
+removes them from the checkout:
 
 ```txt
-api: carried 3 speckit files onto points-expire and committed them there
+brain: carried 3 speckit files onto points-expire and committed them there
 ```
 
-For spec-kit it writes the worktree's own `.specify/feature.json`. The gates of
-`plan`, `apply` and `close` look for the SDD's artifacts in the checkout, then
-in the change's worktree.
+For spec-kit it writes the worktree's own `.specify/feature.json`; where the
+directory stayed in the checkout — a brain with no code — it points the
+checkout's instead, and says so when it named another. The gates of `plan`,
+`apply` and `close` look for the SDD's artifacts in the brain checkout, then in
+the change's worktree named after the brain's own entry — except a step printed
+at `land`, which runs after the merge, so its proof is read in the brain
+checkout alone and one found only in the worktree is refused by name. In a
+brain with no code, the spec directory stays in the checkout until `close`
+commits it. OpenSpec's apply step runs where `openspec/changes/<slug>/` now is,
+which its printed line says.
 
 An existing branch is reused, not a failure:
 
@@ -1393,7 +1704,31 @@ repo landed — refused if its stage is still blocked by an earlier one.
 
 Before the push line for a ready repo, `land` refreshes its graph on the
 change branch and commits it there when it changed. A detached HEAD or an
-ignored graph is refused by name, with exit 1.
+ignored graph is refused by name, with exit 1. Before that refresh it appends
+the ignore lines the root lacks to the grapher's ignore file, committed with
+the graph where land may write that file (it names the file otherwise, and the
+graph lands alone), and rebuilds while the graph holds nodes under a line it
+recorded —
+see [the ignore lines](../graphers-and-sdd#automatic-refresh). In a brain that
+holds no code, it commits no brain graph.
+
+A repo on codegraph lands no index: land syncs it in the checkout holding the
+change's branch — or builds it there, where apply could not — after the same
+`info/exclude` step as apply, and commits none of it; a detached HEAD or
+another branch passes it by. Where land added lines to `codegraph.json`, which
+keeps the brain's mount out of the index, it commits that file alone, after the
+sync. The copy the first build wrote in a repo's own checkout is yours to
+commit: land writes nothing beside it while it is uncommitted, and `doctor`
+names it:
+
+```txt
+graph codegraph @ web: wrote codegraph.json (+1) before the refresh at `change land`
+graph codegraph @ web: refreshed (`codegraph sync`) — local artifact, never committed
+committed: graph: points-expire — codegraph keeps /.brain/ out of its index
+```
+
+A `codegraph.json` git ignores there is named, with the command that shows the
+rule, and nothing is written; land goes on.
 
 ```txt
 $ mvac change land points-expire
@@ -1463,6 +1798,26 @@ that gate on the channel, so a change left open turns main red:
 every repo is now landed — once every declared claim resolves, `verify --strict` refuses points-expire as unclosed …, here and in CI, until: multivac change close points-expire
 ```
 
+At that moment it also says what `close` would refuse on what the claims cite
+— one line each, after the armed line — and the last line names them instead
+of a bare `change close`. A row the brain's channel already states and this
+checkout lacks is named as a pull, never as a second statement:
+
+```txt
+  close refuses until: INV-02: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md
+all stages landed — fix the line close refuses on above, then: multivac change close points-expire
+```
+
+```txt
+  close refuses until: INV-02: its row states no rule here, but origin/main states it (2 commit(s) this checkout lacks) — pull, then re-run close
+```
+
+With nothing to refuse, the last line stays
+`` all stages landed — run `multivac change close points-expire` ``. The
+brain's channel is its own `repos:` entry's `channel:`, else the global
+`channel:`, else `origin/main` — the ref the `channel:` line, the pull and
+`verify`'s read line all read.
+
 A repo with no `origin` is told to land locally instead of to push:
 
 ```txt
@@ -1498,6 +1853,53 @@ INV-07: no anchors evaluated — add an anchor for the claim, then re-run close
 claims are not green — close refused; fix the red claims, then re-run close
 ```
 
+**And refuses a claim that cites nothing.** A claim is its row's ID, so the row
+is the only place its rule is written. Before anything is written, staged,
+archived or released, `close` checks what each claim cites and names, per
+claim, the first of: no row; a row short of its six columns; a retired row the
+change does not retire; a row under `invariants.retires` not yet retired; a row
+the change neither adds, touches nor retires; a row another change reserved
+and has not stated; a row that states no rule yet; a claim anchored only in the
+change file it archives. It also refuses a row under `adds` already in the law,
+and a proposed row the change owns that an anchor names and no claim cites:
+
+```txt
+INV-04: ok
+INV-04: its row states no rule yet — the row is the only place the rule is stated; state it in .multivac/invariants.md
+claims do not cite the law this change makes — close refused; fix the lines above, then re-run close
+```
+
+Every refusal comes in one run — the red claims, the citation lines and the
+orphan line — so you never close repeatedly to discover the rest. A claim of no
+row is named once, by its citation line, and never evaluated against anchors:
+
+```txt
+INV-07: no anchors evaluated — add an anchor for the claim, then re-run close
+INV-05: ok
+claims are not green — close refused; fix the red claims, then re-run close
+NOPE-99: no row in .multivac/invariants.md — a claim cites a row of the law; add the row, or drop the claim
+INV-05: claimed, but this change neither adds, touches nor retires it — drop the claim, or list it under invariants.touches if this change amends that row
+```
+
+A row the brain's channel already states — merged on the forge, fetched, not
+pulled — is named as a pull, never as a second statement; the channel is read
+offline, and only on such a refusal:
+
+```txt
+INV-01: its row states no rule here, but origin/main states it (2 commit(s) this checkout lacks) — pull, then re-run close
+```
+
+A rule the change states and nothing anchors still enters the law — coverage
+below one hundred percent is supported — and `close` says so without refusing:
+
+```txt
+INV-02: enters the law stated but unanchored — nothing verifies it; claim and anchor it to have close verify it
+```
+
+A legacy claim that still carries its `statement:` is told to move it into the
+row when the row states nothing yet. `verify`'s finished line, the last `land`
+and `plan` say what this gate will refuse before you get here.
+
 Green: the SDD `archive` step runs, the change file moves to
 `.multivac/changes/archive/`, the worktrees are removed, and the ritual is
 printed verbatim.
@@ -1507,7 +1909,7 @@ $ mvac change close points-expire
 INV-07: ok
 archived -> .multivac/changes/archive/points-expire.md
 graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
-archived — commit this: git -C /home/you/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md graphify-out/graph.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
+archived — commit this: git -C /home/you/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md graphify-out/graph.json .multivac/ecosystem.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/api)
 payments: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/payments)
 
@@ -1516,10 +1918,16 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] the public site ships before the backend
 ```
 
+This brain holds code (`brain: .`), so close refreshes its graph and the
+archive commit carries `graphify-out/graph.json`. A brain that holds none gets
+no refresh line and no graph in that commit. A worktree whose only changes are
+the grapher's own outputs — a graph refreshed after land, a query's stamp — is
+removed; one holding anything else is kept, with the command that removes it.
+
 #### The graph gate
 
-A declared grapher must have left a graph in the brain and in every repo the
-change names that is not read-only, or `close` refuses:
+A declared grapher must have left a graph in the brain where it holds code,
+and in every repo the change names that is not read-only, or `close` refuses:
 
 ```txt
 graph: `change close points-expire` refused — 2 roots have no graph
@@ -1562,8 +1970,8 @@ graph: `change close points-expire` refused — 2 roots keep their graph out of 
 abandoned change made no claims and landed nothing, so demanding an artifact
 from it would punish dropping work.
 
-The refresh that follows covers the brain and **the repos this change names**
-that are not read-only. It runs before the archive commit is printed, and a
+The refresh that follows covers the brain where it holds code and **the repos
+this change names** that are not read-only. It runs before the archive commit is printed, and a
 brain graph it changed is part of that commit. For a named repo whose graph
 changed, close prints the commit to make there. A declared repo the change does
 not name is left alone; `repos sync` builds its first graph.
@@ -1584,18 +1992,42 @@ abandoned -> .multivac/changes/archive/points-expire.md — nothing was verified
 
 Nothing is verified, on purpose: an abandoned change made no claims to verify.
 A change that *did* declare claims is refused — drop them first, or close it
-properly.
+properly. So is a change whose own proposed row states a rule: abandoning it
+would enter that rule as a proposal nobody verified. A row still reading
+RESERVED is what `--abandon` gives back, and never refuses:
 
-The printed commit is **scoped to the closing change's paths** — the archived
-file, the old change path, the law table when a reservation was released, the
-graphs, and what the declared SDD wrote in the brain for this slug: the spec, the
-plan, the task list, an archived proposal, deletions included. Every gate in the
-lifecycle demanded one of those files, so leaving them untracked would be asking
-for proof and then dropping it. A dirty file of the tool's that this change did
-not write — a project document, the tool's own config — is named on its own line
-and never staged. It is never `add -A`, which in a shared checkout would sweep
-another change's files into this archive commit. Where the commit lands depends on where the brain is
-standing, and the wording says which case you are in:
+```txt
+INV-07: states a rule this abandoned change never verified — delete the row from .multivac/invariants.md (a proposed row may be removed), or close the change properly
+```
+
+The printed commit — closing or abandoning — is **scoped to the closing
+change's paths**: the archived file, the old change path, the law table, the
+brain's graph where the refresh changed it, `.multivac/ecosystem.json`, and
+what the declared SDD wrote in the brain for this slug, whatever `sdd_auto` and `--no-sdd` say: the spec, the
+plan, the task list, an archived proposal, deletions included, and each main
+spec an archive merged into that carries the merge — one that does not, such as
+after an archive made without merging, is named dirty and not staged. Every gate in the lifecycle demanded one of those
+files, so leaving them untracked would be asking for proof and then dropping
+it; the switches skip steps and gates, never what was already written. A dirty
+file of the tool's that this change did not write — a project document, the
+tool's own config — is named on its own line and never staged. The printed
+commit is never `add -A`, which in a shared checkout would sweep another
+change's files into this archive commit.
+
+Before the archive is written, the change body gains one line citing the
+slug's directory — the first one found in the brain checkout, then in the
+change's worktree — unless the body already names it. Nothing else in the body
+is written:
+
+```txt
+Specified in `specs/001-points-expire/` (speckit).
+```
+
+With the automation on and no `--no-sdd`, a close that finds no directory says
+it cited nothing.
+
+Where the printed commit lands depends on where the brain is standing, and the
+wording says which case you are in:
 
 - on a working branch: `archived — commit this on <branch> (it lands through
   that branch's MR): git -C <brain> add -- <paths> && git commit -m "..."`
@@ -1604,7 +2036,7 @@ standing, and the wording says which case you are in:
 
   ```txt
   archived — commit this on a branch; nothing lands on main directly:
-    git -C /home/you/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
+    git -C /home/you/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md .multivac/ecosystem.json && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
     then open MR close-points-expire -> main
   ```
 
@@ -1654,10 +2086,21 @@ unknown command "frobnicate" — run `multivac --help` for the list
 
 ```txt
 $ mvac verify --loud
-unknown flag "--loud" — verify takes [dir], --strict, --check, --worktree, --repo <key>
+unknown flag "--loud" — verify takes [dir], --strict, --check, --worktree, --repo <key>, --range <base>..<head>, --branch <name>, --quiet
 ```
 
 ```txt
 $ mvac verify
 no .multivac/config.yml in /home/you/somewhere — run `multivac init .` to create it
+```
+
+Below a brain, the same refusal names it instead; below a repository no brain
+governs, or outside any repository, `verify` says so — see
+[Where a run roots](#where-a-run-roots):
+
+```txt
+$ mvac change new points-expire "Points expire"
+no .multivac/config.yml in /home/you/brain/src — it is inside the brain at /home/you/brain; run this there
+$ mvac verify
+/home/you/notes is inside /home/you, which no brain governs — nothing was verified
 ```

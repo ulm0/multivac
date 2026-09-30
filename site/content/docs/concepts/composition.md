@@ -17,12 +17,31 @@ Three different questions. None of them substitutes for another, and a tool
 that tried to answer all three would answer two of them worse than the tools
 that already exist.
 
+## Adapter first, fallback always
+
+Declare a tool and the work goes through it: multivac adds the gate, the
+pointer, and the few files it says it writes. Declare none and it works as it
+always has.
+
+- **With an SDD**, each change runs that tool's own flow, from the brain: the
+  tool is set up once there, and with automation on its steps print once at
+  each lifecycle point and the next command refuses without their artifacts.
+  The change file cites the tool's directory instead of restating it.
+- **With a grapher**, code questions go to the graph of the checkout you ask,
+  which the door and `change apply` name, in that tool's own verbs. A grapher
+  you declared yourself has no verbs, so your agent searches; so it does in a
+  repo multivac does not manage.
+
+For the SDD the reason is your agent's context: the tool already carries its
+own flow, and repeating it would be paid for on every change. For the grapher
+it is the answer, not the bytes — see below.
+
 ## Not competing is a rule here, not a posture
 
 Every place multivac touches another tool is a place it could have
 reimplemented that tool and deliberately did not. Those refusals are law,
-checked on every commit — which is a stronger claim than a paragraph in a
-README:
+checked on each commit where the hooks are armed, and in CI — which is a
+stronger claim than a paragraph in a README:
 
 - **The agent runs the steps** — an SDD's steps *instruct the agent*; multivac
   never shells out a fake `<binary> <step>` to simulate them.
@@ -63,36 +82,53 @@ With one declared, three things change:
    artifact alone accepts that silently.
 
 **The cost, stated.** Declaring an SDD in a repo where that tool has never run
-makes the change that installs it unplannable: `plan` wants an artifact from a
-chat command that does not exist until the tool's own `init` has run. Today the
-way through is one `--no-sdd`, said out loud. Recommending a tool without saying
-that would be selling you a hole.
+used to make the change that installs it unplannable: `plan` wanted an artifact
+from a chat command that did not exist until the tool's own `init` had run. The
+lifecycle now runs that init in the brain first, and prints it. The cost is the
+vendor's files in your tree: spec-kit's commands and templates for your doors,
+and for OpenSpec its `openspec/` directory and nothing else, since its steps are
+its own terminal verbs, which every harness runs alike. Recommending a tool
+without saying that would be selling you a hole.
 
 ## Why a grapher helps
 
 An agent that does not know a graph exists will grep, and grep is the wrong
-instrument for "what reaches this" — it finds strings, not paths. One graph
-query answers in a single call what a search takes many, and the answer is a
-subgraph rather than a pile of line hits.
+instrument for "what reaches this" — it finds strings, not paths. What a graph
+gives is reach and relationships: who calls a function, what may break if it
+changes, how one symbol reaches another — a subgraph or a list of callers
+rather than a pile of line hits. It is not a byte saving. Measured on
+multivac's own code, a definition looked up in the graph printed more than a
+narrowed search for almost every function, while a list of callers usually
+printed less than the search for call sites; each tool's verbs, and what each
+one misses, are in [Graphers and SDD](../../reference/graphers-and-sdd/#what-the-graph-answers).
 
-The reason it stays current is that the refresh follows **your edits, not your
-commits**: `doors` wires it into the harness's post-edit hook, backgrounded and
-coalesced behind a lock, so the map is fresh for the next question you ask it.
-`change close` runs the same refresh as a safety net for edits made outside a
-harness. Git hooks never refresh — they run `verify` only.
+The refresh follows **your edits, not your commits**, where the harness lets
+it: where the harness has a post-edit hook — today Claude Code — `doors` wires
+the refresh into it, backgrounded and coalesced behind a lock, so the map is
+fresh for the next question you ask it; elsewhere the graph is refreshed at
+`change land` and `change close`. From a brain whose code lives in other
+repos, that hook follows your edits into the repo you edited, and `doors` wires
+one hook per grapher, each only where that grapher's binary is reachable from
+every code repo that resolves it. `change close` runs the same refresh as a
+safety net for edits made outside a harness. Git hooks never refresh — they run
+`verify` only.
 
 Two constraints keep this honest. The refresh module never invokes git:
-`change land` commits the graph on the change's branch, so it merges with the
-code it describes. And a grapher multivac has not
-verified gets no derived paths and no invented verbs — it is reported
-UNVERIFIED until its contract is declared, which any project can do in its own
-config without a merge request against multivac.
+`change land` commits a graph that lives in the repo (graphify's, or one
+declared under `graphers:`) on the change's branch, so it merges with the code
+it describes; a local index (codegraph's) is rebuilt in the checkout —
+`change apply` built one in each change worktree — and never committed. And a
+grapher multivac has not verified gets no derived paths and no invented verbs —
+it is reported UNVERIFIED until its contract is declared, which any project can
+do in its own config without a merge request against multivac.
 
 ## Neither is required
 
 `verify`, `doctor` and `doors` work with no SDD and no grapher declared, make no
-network calls, and invoke no model. Adding either changes how cheaply the work
-is done well; neither is load-bearing for the law itself.
+network calls, and invoke no model. With neither declared, the lifecycle still
+binds on its own, code is not refused outside a change, and your agent searches
+the tree. Adding either changes how cheaply the work is done well; neither is
+load-bearing for the law itself.
 
 ## Next
 

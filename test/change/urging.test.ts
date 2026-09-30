@@ -8,7 +8,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { makeScratchEcosystem } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
-import { sddInstructions } from '../../src/adapters/sdd.js';
+import { proofOf, sddInstructions, stepsAt, withSlug } from '../../src/adapters/sdd.js';
+import { sddSpec } from '../../src/adapters/registry.js';
 import { loadConfig } from '../../src/lib/config.js';
 
 for (const [k, v] of Object.entries({
@@ -84,15 +85,48 @@ async function cfgWith(lines: string[]) {
   return loadConfig(e.brain);
 }
 
-test('every printed step carries the instruction to keep going, and the opt-out', async () => {
+test("each lifecycle point's steps carry the instruction once, after the last step", async () => {
+  // MV-146: the chain is the point's steps together. The same line after every
+  // step was seven copies per spec-kit change; once per point is three.
   const cfg = await cfgWith(['doors: [agents]', 'sdd: speckit', 'repos:', '  api: ../acme-api']);
-  const lines = sddInstructions(cfg, 'new', 'points-expire', false);
-  assert.ok(lines.length >= 2, 'a step and its clause');
-  const clause = lines.filter((l) => l.includes('run the chain through without asking to continue'));
-  // One clause per step, not one for the whole run.
-  assert.equal(clause.length, lines.length / 2);
-  assert.match(clause[0], /stop only for a question the tool itself raises/);
-  assert.match(clause[0], /`--no-sdd` for one run, `sdd_auto: false` to stop printing these/);
+  const isClause = (l: string): boolean => l.includes('run the chain through without asking to continue');
+  for (const [at, steps] of [['new', 2], ['plan', 2], ['apply', 3]] as const) {
+    const lines = sddInstructions(cfg, at, 'points-expire', false);
+    assert.equal(lines.filter(isClause).length, 1, `${at}: one clause`);
+    assert.equal(lines.length, steps + 1, `${at}: every step, then the clause`);
+    // After the last step, never between two: the last line is the clause.
+    assert.ok(isClause(lines[lines.length - 1]), `${at}: the clause comes last`);
+    assert.ok(lines.slice(0, -1).every((l) => /\[(proof|ungateable): /.test(l)), `${at}: the rest are steps`);
+    // Unindented, under the tool's own tag, with its opt-out on the same line.
+    assert.match(lines[lines.length - 1], /^sdd speckit: run the chain through without asking to continue — stop only for a question the tool itself raises/);
+    assert.match(lines[lines.length - 1], /`--no-sdd` for one run, `sdd_auto: false` to stop printing these/);
+  }
+  // A point that prints no step prints no instruction: there is no chain to run.
+  for (const at of ['land', 'close'] as const) {
+    const lines = sddInstructions(cfg, at, 'points-expire', false);
+    assert.deepEqual(lines, [`sdd speckit: ${at} — this tool has no agent-run ${at} step; nothing to run`]);
+  }
+
+  // MV-147: a step's guide rides on the line under it, three spaces after the
+  // tag, and the clause still comes once, last and unindented.
+  const opsx = await cfgWith(['doors: [agents]', 'sdd: opsx', 'repos:', '  api: ../acme-api']);
+  const spec = sddSpec('opsx')!;
+  for (const at of ['new', 'plan', 'apply', 'land'] as const) {
+    const want: string[] = [];
+    for (const s of stepsAt(spec, at)) {
+      want.push(`sdd opsx: ${withSlug(s.run, 'points-expire')} [${proofOf(s, 'points-expire')}]`);
+      if (s.guide) want.push(`sdd opsx:   ${withSlug(s.guide, 'points-expire')}`);
+    }
+    assert.ok(want.length > 0, `${at}: opsx prints a step`);
+    const lines = sddInstructions(opsx, at, 'points-expire', false);
+    assert.deepEqual(lines.slice(0, -1), want, `${at}: each step, then its guide`);
+    assert.equal(lines.filter(isClause).length, 1, `${at}: one clause`);
+    assert.match(lines[lines.length - 1], /^sdd opsx: run the chain through without asking to continue — /);
+  }
+  assert.ok(
+    (spec.steps ?? []).some((s) => s.guide),
+    'at least one opsx step carries a guide, or the loop above proves nothing about one',
+  );
 });
 
 test('with the automation off, neither the steps nor the clause print', async () => {

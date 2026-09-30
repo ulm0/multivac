@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initRepo, vendorPath } from '../helpers/fixture.js';
@@ -175,6 +175,27 @@ test('init and doors write the same door, byte for byte', async () => {
       `doors rewrote the door init wrote, with flags ${JSON.stringify(flags)}`,
     );
   }
+
+  // MV-148: a brain that holds no code, keeping a graphify install an earlier
+  // release left. Both commands probe it, so both write its line, byte for
+  // byte; once a human removes it, `doors` drops the line.
+  const kept = mkdtempSync(join(tmpdir(), 'mvac-reinit-kept-'));
+  initRepo(kept, {
+    '.multivac/config.yml': 'doors: [agents, claude]\ngrapher: graphify\nrepos:\n  api: ../api\n',
+    'graphify-out/graph.json': '{"nodes":[],"links":[]}\n',
+    '.claude/skills/graphify/SKILL.md': 'x\n',
+  });
+  const leftover =
+    /^- `graphify-out\/` here is a leftover that holds no code: the `## graphify` section below and graphify's own hooks point at it — ask the code repos' graphs above instead; `multivac doctor` prints its removal\.$/m;
+  await capture(() => init.run(['--quiet', kept], { cwd: kept }));
+  const initDoor = readFileSync(join(kept, 'AGENTS.md'), 'utf8');
+  assert.match(initDoor, leftover);
+  await capture(() => doorsCommand.run([], { cwd: kept }));
+  assert.equal(readFileSync(join(kept, 'AGENTS.md'), 'utf8'), initDoor, 'doors rewrote the door init wrote over a kept install');
+  rmSync(join(kept, 'graphify-out'), { recursive: true });
+  rmSync(join(kept, '.claude/skills/graphify'), { recursive: true });
+  await capture(() => doorsCommand.run([], { cwd: kept }));
+  assert.doesNotMatch(readFileSync(join(kept, 'AGENTS.md'), 'utf8'), /leftover/);
 });
 
 test('content outside the managed block survives both commands', async () => {

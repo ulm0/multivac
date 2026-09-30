@@ -6,11 +6,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initRepo, makeScratchEcosystem, shallowClone } from '../helpers/fixture.js';
-import { isShallow, lsFiles } from '../../src/lib/git.js';
+import { isShallow, lsFiles, toplevel, ToplevelError } from '../../src/lib/git.js';
 
 test('lsFiles ignores ambient GIT_DIR / GIT_INDEX_FILE', async () => {
   const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-gitenv-')));
@@ -57,4 +57,29 @@ test('isShallow reads the clone it is given, never the one GIT_DIR points at —
     if (prev === undefined) delete process.env.GIT_DIR;
     else process.env.GIT_DIR = prev;
   }
+});
+
+test('toplevel reads the work tree it is given, never the one GIT_DIR points at, and quotes any other refusal — MV-151', async () => {
+  const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-toplevel-')));
+  const eco = makeScratchEcosystem(tmp);
+  const sub = join(eco.repos.api, 'db', 'migrations');
+  const prev = process.env.GIT_DIR;
+  process.env.GIT_DIR = join(eco.repos.web, '.git');
+  try {
+    assert.equal(await toplevel(sub), eco.repos.api, 'an ambient GIT_DIR must not answer for another repo');
+  } finally {
+    if (prev === undefined) delete process.env.GIT_DIR;
+    else process.env.GIT_DIR = prev;
+  }
+  // No work tree: null, outside any repository and inside a git directory.
+  const loose = join(tmp, 'loose');
+  mkdirSync(loose);
+  assert.equal(await toplevel(loose), null);
+  assert.equal(await toplevel(join(eco.repos.api, '.git')), null);
+  // Any other refusal is quoted, never read as "no repository".
+  await assert.rejects(toplevel(join(tmp, 'missing')), (e: unknown) => {
+    assert.ok(e instanceof ToplevelError);
+    assert.match((e as Error).message, /^git rev-parse --show-toplevel failed in .*missing: fatal: /);
+    return true;
+  });
 });

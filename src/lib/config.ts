@@ -1,10 +1,11 @@
 // Load and validate .multivac/config.yml. Every error says how to fix it.
 
+import { existsSync } from 'node:fs';
 import { access, lstat, readdir, readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
-import { NO_ADAPTER } from '../adapters/detect.js';
+import { NO_ADAPTER, sddDeclarationRefusal } from '../adapters/detect.js';
 import type { Config, GrapherDecl, Mode, RepoEntry } from '../types.js';
 
 export class ConfigError extends Error {}
@@ -64,6 +65,20 @@ const exists = (p: string): Promise<boolean> => access(p).then(() => true, () =>
 export const DEFAULT_CHANNEL = 'origin/main';
 export const channelRef = (cfg: Config, entry: RepoEntry): string =>
   entry.channel ?? cfg.channel ?? DEFAULT_CHANNEL;
+
+/**
+ * MV-150: the brain's own channel — its entry's `channel:` (the `brain` key,
+ * else the brain==code entry), else the global, else origin/main, as MV-53
+ * reads every other entry. `land`'s channel line, `close`'s pull and
+ * `verify`'s read line all name this one ref: a pull at `origin/trunk` beside
+ * a channel line reading `origin/main` would attribute one brain's state to
+ * two refs. A brain whose own entry names no `channel:` reads what it read
+ * before.
+ */
+export const brainChannel = (cfg: Config): string => {
+  const own = cfg.repos.brain ?? Object.values(cfg.repos).find((e) => e.isBrain);
+  return own ? channelRef(cfg, own) : cfg.channel ?? DEFAULT_CHANNEL;
+};
 
 /** The law table's header row — the schema multivac writes and reads. */
 const LAW_HEADER = /^\|\s*ID\s*\|\s*statement\s*\|\s*authority\s*\|\s*state\s*\|\s*date\s*\|\s*source\s*\|/m;
@@ -247,7 +262,8 @@ function repoEntry(key: string, v: unknown): RepoEntry {
     grapher: optString(o.grapher, `repos.${key}.grapher`),
     // Same validator as `grapher`, on purpose: one shape for both overrides.
     // `none` is a value, not a parse case — `adapterFor` resolves it, for
-    // both keys (MV-122).
+    // both keys (MV-122). A tool here is refused once the brain entry is
+    // known, by `sddDeclarationRefusal` (MV-146), not by this parse.
     sdd: optString(o.sdd, `repos.${key}.sdd`),
     channel: optString(o.channel, `repos.${key}.channel`),
     // MV-93: the list is a list, so a role written across several lines is
@@ -294,11 +310,47 @@ function grapherDecl(name: string, v: unknown): GrapherDecl {
   };
 }
 
+/** How `loadConfig` answers an SDD declaration that resolves in no root (MV-146). */
+export interface LoadOpts {
+  /**
+   * `refuse`, the default, throws. `report` records the refusal on
+   * `sddRefusal` instead: for a consumer reading its MOUNTED brain, which can
+   * lag the brain and whose config its owner fixes — a hook there must not
+   * exit 2 over it.
+   */
+  sddDeclaration?: 'refuse' | 'report';
+}
+
 /** Load config from `<brainDir>/.multivac/config.yml`, defaults applied. */
-export async function loadConfig(brainDir: string): Promise<Config> {
+export async function loadConfig(brainDir: string, opts: LoadOpts = {}): Promise<Config> {
   const stale = await layoutError(brainDir);
   if (stale) throw new ConfigError(stale);
-  return readConfig(brainDir);
+  const cfg = await readConfig(brainDir);
+  // MV-146, once `isBrain` is derived: which entry is the brain decides where
+  // the SDD runs. The rule lives in detect.ts beside the resolver; this only
+  // decides what a refusal does to the load.
+  const refusal = sddDeclarationRefusal(cfg);
+  if (refusal !== null) {
+    if (opts.sddDeclaration !== 'report') throw new ConfigError(refusal);
+    cfg.sddRefusal = refusal;
+  }
+  return cfg;
+}
+
+/**
+ * MV-151. The brain whose checkout holds `dir`, found without git so every
+ * command's refusal stays cheap: the nearest ancestor holding a config, never
+ * past the first directory holding `.git` (a file in a linked worktree, a
+ * directory in a clone) — the checkout's root. Null at once when `dir` itself
+ * holds one: a checkout root with no brain gets today's advice.
+ */
+export function enclosingBrain(dir: string): string | null {
+  const start = resolve(dir);
+  if (existsSync(join(start, '.git'))) return null;
+  for (let d = dirname(start); ; d = dirname(d)) {
+    if (existsSync(join(d, CONFIG_PATH))) return d;
+    if (existsSync(join(d, '.git')) || dirname(d) === d) return null;
+  }
 }
 
 /**
@@ -313,8 +365,13 @@ export async function readConfig(brainDir: string): Promise<Config> {
   try {
     raw = await readFile(file, 'utf8');
   } catch {
+    // MV-151: below a brain, `init .` would git-init a second brain inside
+    // it — every command's refusal names the brain that holds the directory.
+    const holder = enclosingBrain(brainDir);
     throw new ConfigError(
-      `no ${CONFIG_PATH} in ${brainDir} — run \`multivac init .\` to create it`,
+      holder !== null
+        ? `no ${CONFIG_PATH} in ${brainDir} — it is inside the brain at ${holder}; run this there`
+        : `no ${CONFIG_PATH} in ${brainDir} — run \`multivac init .\` to create it`,
     );
   }
   let doc: unknown;
@@ -367,9 +424,10 @@ export async function readConfig(brainDir: string): Promise<Config> {
 
   // MV-90. Named after sdd_auto and parsed the same way: two adapters with two
   // vocabularies for one idea is a tax on every reader.
-  // MV-99: root-level only. Unlike sdd: and grapher:, which act on each repo's
-  // files, the tracker projects the CHANGE — and changes live only in the brain,
-  // so a per-repo override would answer a question nobody can ask.
+  // MV-99: root-level only. Unlike grapher:, which acts on each repo's files,
+  // the tracker projects the CHANGE — and changes live only in the brain, so a
+  // per-repo override would answer a question nobody can ask. (sdd: runs in the
+  // brain alone too since MV-146; a repo's own takes only `none`.)
   const tracker = optString(o.tracker, 'tracker');
 
   const grapherAuto = o.grapher_auto ?? true;

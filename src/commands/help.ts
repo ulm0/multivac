@@ -10,7 +10,8 @@ export function usageFor(c: Command): string[] {
 }
 
 // One screen, on purpose. Everything a stranger needs before the first
-// anchor, nothing else; the long form lives in the site and the skill.
+// anchor, nothing else; the long form lives in the site, and the skill's
+// anchors reference points here for the grammar and keeps the judgement.
 const ANCHOR_HELP = `the anchor grammar — one leg per line, an HTML comment in a brain .md file:
 
   <!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> ...] /<regex>/[i] [present|absent|unique|count=N|each|each!] -->

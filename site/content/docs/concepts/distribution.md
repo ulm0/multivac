@@ -25,9 +25,11 @@ It now carries:
   marked, a one-line `role` where the operator declared one, and `brain` named
   explicitly because that handle is usable in anchors and can never appear in a
   list built from `repos:`. Nothing is printed below two declared repos.
-- **the adapters that apply to this repo** — the SDD flow and the graph block,
-  resolved with the tool that applies here, rendered by the same code that
-  renders the brain's door so the two cannot drift.
+- **the adapters that apply to this repo** — the graph block, resolved with the
+  tool that applies here and rendered by the same code that renders the brain's
+  door so the two cannot drift, and one line saying the brain's SDD runs in the
+  brain checkout and where this repo's code belongs. The SDD's flow is the
+  brain's; no code repo carries it.
 
 The list describes what the ecosystem **declares**, not what this machine has
 checked out: a door that changed with which repos happen to be cloned would
@@ -83,8 +85,8 @@ Two kinds of door, not the same file renamed:
 `AGENTS.md`, projected to the rest —
 
 - **symlink** when the format is identical (`CLAUDE.md`, `GEMINI.md`);
-- **stub** when it isn't (Cursor wants `.cursor/rules/*.mdc` with
-  frontmatter; a symlink can't add frontmatter);
+- **stub** when it isn't (Copilot's `.github/copilot-instructions.md`, a file
+  you may already keep, gets a managed block pointing at `AGENTS.md`);
 - **nothing at all** when the harness already reads `AGENTS.md` — a second
   file would be a paraphrase, which is the thing this tool exists to avoid.
 
@@ -130,18 +132,21 @@ What multivac installs into a repo splits by when the agent reads it:
 | class | loaded | carries |
 | --- | --- | --- |
 | **door** | always — first read of the session | pointers + law: where the brain is, what binds, run `verify` |
-| **hooks** | never read — they fire | enforcement: `pre-commit` / `pre-push`, harness hooks |
+| **hooks** | fired, and read when they speak — a clean run is one quiet line, anything off prints in full | enforcement: the `pre-commit`, `pre-push` and `pre-merge-commit` shims, harness hooks |
 | **skill** | on demand | the operating manual |
 
-The skill carries everything procedural the door must not: how to write an
-anchor, the change lifecycle, the retire procedure, seed validation, and the
-interview protocol. The door stays ~60 lines precisely because the manual
-moved out of it. The interview shipping as a skill run by the user's own
-agent is the same no-embedded-LLM rule as everywhere else: multivac
-validates and files the output; it never calls a model itself.
+The skill carries what no command prints: how to judge an anchor, the
+`moved` and `broken` forks, the retire procedure, seed validation, and the
+interview protocol. For the rest it names the command or the door line that
+prints it. The door stays short precisely because the manual moved out of it.
+multivac installs the skill only for Claude Code, into the brain and every
+code repo it manages; the empty brain's door still tells your agent to load
+it. The interview shipping as a skill run by the user's own agent is the same
+no-embedded-LLM rule as everywhere else: multivac validates and files the
+output; it never calls a model itself.
 
 Doors, hooks, and skills live in one tool-shipped targets registry.
 `.multivac/config.yml` never defines targets; it only selects them by name.
 Adding a harness is an entry in the registry — an MR to multivac — not a
-module. `doors` installs and updates skills under the same managed-block
-rule where the target format allows.
+module. `doors` mirrors the skill directory whole: a file removed from the
+source is removed from the copy.

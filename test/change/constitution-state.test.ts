@@ -118,7 +118,7 @@ test('the plan refusal names the token that remains — MV-135', async () => {
 test('flow.md shows the project-document gate, and opsx\'s context as yours; the door says the row wins — MV-135', async () => {
   const b = brain('# Acme\n');
   const cfg = await loadConfig(b);
-  assert.match(renderFlow(cfg), /^- `change plan` refuses while `\.specify\/memory\/constitution\.md` is missing, empty or still the template, in every repo where `speckit` is installed$/m);
+  assert.match(renderFlow(cfg), /^- `change plan` refuses while `\.specify\/memory\/constitution\.md` is missing, empty or still the template, in the brain$/m);
   assert.match(renderBrainDoor(cfg, 0), /where a project document and an active row of `\.multivac\/invariants\.md` disagree, the row wins/);
 
   const opsx = { ...cfg, sdd: 'opsx' };

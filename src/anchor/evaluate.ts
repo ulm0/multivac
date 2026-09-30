@@ -21,6 +21,8 @@ export interface RepoHandle {
 
 export interface EvaluateOptions {
   brainDir: string;
+  /** MV-151. What a leg on a repo not on disk says to do; absent, `repos sync`. */
+  missing?: string;
   /** false = --check: report moved without rewriting. */
   write: boolean;
   /** claim id -> slug of the open change that declares it. Those legs pend. */
@@ -85,7 +87,7 @@ async function evalLeg(a: Anchor, targets: Target[], opts: EvaluateOptions): Pro
     return {
       anchor: a,
       state: 'unevaluated',
-      detail: 'repo not on disk — run `multivac repos sync` to clone it',
+      detail: opts.missing ?? 'repo not on disk — run `multivac repos sync` to clone it',
     };
   }
   const star = a.repoKey === '*';

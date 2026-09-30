@@ -7,6 +7,21 @@ import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { SPECKIT_INTEGRATION_JSON } from './recorded.js';
 
+/**
+ * MV-151. The process environment without the two switches a developer may
+ * export — `MULTIVAC_QUIET` folds a green report to one line and
+ * `CLAUDE_PROJECT_DIR` makes `verify` read a hook payload on stdin — merged
+ * with `extra`. Every test that spawns the built CLI, directly or through a
+ * git hook it writes, spawns with this: a test must not depend on the host's
+ * shell (Constitution IV).
+ */
+export function scrubbedEnv(extra: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = { ...process.env };
+  delete env.MULTIVAC_QUIET;
+  delete env.CLAUDE_PROJECT_DIR;
+  return { ...env, ...extra };
+}
+
 export interface ScratchEcosystem {
   brain: string;
   repos: { api: string; web: string };
@@ -99,16 +114,27 @@ ON accounts
 TO app_role;
 `;
 
+export interface ScratchOpts {
+  /**
+   * MV-148. The brain holds code: `brain: .` is declared under `repos:`, first,
+   * and the brain commits a source file. The default brain holds none — the
+   * law and the door only — which the SDD tests depend on (MV-146), and which
+   * resolves no grapher at the brain root.
+   */
+  brainIsCode?: true;
+}
+
 /** Create brain + acme-api + acme-web under tmpdir; returns absolute paths. */
-export function makeScratchEcosystem(tmpdir: string): ScratchEcosystem {
+export function makeScratchEcosystem(tmpdir: string, opts: ScratchOpts = {}): ScratchEcosystem {
   const brain = join(tmpdir, 'acme-brain');
   const api = join(tmpdir, 'acme-api');
   const web = join(tmpdir, 'acme-web');
 
   initRepo(brain, {
-    '.multivac/config.yml': CONFIG_YML,
+    '.multivac/config.yml': opts.brainIsCode ? CONFIG_YML.replace('repos:\n', 'repos:\n  brain: .\n') : CONFIG_YML,
     'AGENTS.md': '# acme brain\n\nStart here.\n',
     '.multivac/invariants.md': INVARIANTS_MD,
+    ...(opts.brainIsCode ? { 'src/app.ts': 'export const app = "acme-brain";\n' } : {}),
   });
 
   initRepo(api, {
@@ -131,16 +157,26 @@ export function makeScratchEcosystem(tmpdir: string): ScratchEcosystem {
  * host's, where the real tools may be installed and would run. `runs` is a file
  * each stub appends its argv to. The graphify stub also writes a cache file,
  * which is `local` and must stay out of anything committed.
+ *
+ * MV-149: `codegraph`, only when asked for — no default caller sees it. Its
+ * `init` writes the layout 1.6.0 writes, `.codegraph/codegraph.db` and a
+ * `.codegraph/.gitignore` of `*` and `!.gitignore`; `sync` touches the
+ * database. Each run also logs the directory it ran in and the opt-outs the
+ * entry's `env` sets (MV-124), so a test can tell a worktree's build from its
+ * repo's and a run multivac made from one it printed. `codegraphReads` makes
+ * `init` read stdin first, as 1.6.0 does with its watcher off: an open stdin
+ * holds it, a closed one reads end-of-file and goes on.
  */
 export function vendorPath(
-  tools: ('specify' | 'graphify' | 'openspec')[] = ['specify', 'graphify', 'openspec'],
+  tools: ('specify' | 'graphify' | 'openspec' | 'codegraph')[] = ['specify', 'graphify', 'openspec'],
+  opts: { codegraphReads?: boolean } = {},
 ): { path: string; runs: string } {
   const bin = mkdtempSync(join(tmpdir(), 'mvac-vendors-'));
   const runs = join(bin, 'runs.log');
-  const stub = (name: 'specify' | 'graphify' | 'openspec', body: string): void => {
+  const stub = (name: 'specify' | 'graphify' | 'openspec' | 'codegraph', body: string, log = `${name} $*`): void => {
     if (!tools.includes(name)) return;
     const p = join(bin, name);
-    writeFileSync(p, `#!/bin/sh\necho "${name} $*" >> '${runs}'\n${body}exit 0\n`);
+    writeFileSync(p, `#!/bin/sh\necho "${log}" >> '${runs}'\n${body}exit 0\n`);
     chmodSync(p, 0o755);
   };
   stub(
@@ -160,15 +196,46 @@ export function vendorPath(
       `printf '{"nodes":[],"links":[]}\\n' > graphify-out/graph.json\n` +
       `printf 'x\\n' > graphify-out/cache/entry\n`,
   );
-  // MV-144: openspec's own init installs each declared tool's commands and
-  // skills outside its store. Measured on 1.13.2, the `agents` integration
-  // writes `.agents/`, which is what makes a fresh opsx brain's step zero a
-  // code-in-change question.
+  // MV-144, MV-147: `openspec init` as 1.13.2 runs it. Whatever `--tools`
+  // says it writes `openspec/config.yaml` and two gitkeeps; outside its store
+  // it writes only what each named tool's integration does — `agents` and
+  // `codex` a skill under `.agents/skills/` beside the `.openspec-target`
+  // marker, `claude` a command body under `.claude/commands/opsx/` and a skill
+  // under `.claude/skills/` — so `--tools none` writes nothing outside
+  // `openspec/`. One body per tool stands for the six each writes. Any other
+  // verb writes nothing.
   stub(
     'openspec',
-    `mkdir -p openspec/specs .agents/skills/openspec\n` +
-      `printf 'schema: spec-driven\\n' > openspec/config.yaml\n` +
-      `printf 'openspec skill\\n' > .agents/skills/openspec/SKILL.md\n`,
+    `if [ "$1" = init ]; then\n` +
+      `  tools=""; prev=""; for a; do [ "$prev" = --tools ] && tools="$a"; prev="$a"; done\n` +
+      `  mkdir -p openspec/specs openspec/changes/archive\n` +
+      `  printf 'schema: spec-driven\\n' > openspec/config.yaml\n` +
+      `  : > openspec/specs/.gitkeep; : > openspec/changes/archive/.gitkeep\n` +
+      `  case ",$tools," in *,agents,*|*,codex,*)\n` +
+      `    mkdir -p .agents/skills/openspec-propose\n` +
+      `    printf 'openspec skill\\n' > .agents/skills/openspec-propose/SKILL.md\n` +
+      `    printf 'agents\\n' > .agents/skills/.openspec-target;; esac\n` +
+      `  case ",$tools," in *,claude,*)\n` +
+      `    mkdir -p .claude/commands/opsx .claude/skills/openspec-propose\n` +
+      `    printf 'openspec command\\n' > .claude/commands/opsx/propose.md\n` +
+      `    printf 'openspec skill\\n' > .claude/skills/openspec-propose/SKILL.md;; esac\n` +
+      `fi\n`,
+  );
+  stub(
+    'codegraph',
+    `if [ "$1" = init ]; then\n` +
+      // A watchdog, so a stdin left open fails each build in 5 s instead of
+      // holding the suite: the stub is killed, the build warns, and the test
+      // reads no index. Its stdio is detached, or the runner would wait on it.
+      (opts.codegraphReads
+        ? `  ( sleep 5; kill $$ ) </dev/null >/dev/null 2>&1 &\n  w=$!\n  read -r answer\n  kill $w 2>/dev/null\n`
+        : '') +
+      `  mkdir -p .codegraph && printf 'x' > .codegraph/codegraph.db\n` +
+      `  printf '*\\n!.gitignore\\n' > .codegraph/.gitignore\n` +
+      `elif [ "$1" = sync ]; then\n` +
+      `  touch .codegraph/codegraph.db\n` +
+      `fi\n`,
+    'codegraph $* cwd=$PWD DO_NOT_TRACK=$DO_NOT_TRACK CODEGRAPH_TELEMETRY=$CODEGRAPH_TELEMETRY CODEGRAPH_NO_DOWNLOAD=$CODEGRAPH_NO_DOWNLOAD',
   );
   // node only, never its directory: that is where a global `mvac` lives, and a
   // hook in the scratch repo would run the host's multivac instead of none.

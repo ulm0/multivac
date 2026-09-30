@@ -110,6 +110,34 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
   const docs: string[] = [];
 
   const keys = Object.keys(cfg.repos);
+  // A section's heading and, when there is one, what is set up there.
+  const section = (head: string, setup: string[]): void => {
+    lines.push('', head);
+    if (setup.length > 0) lines.push('', '### setup', '', ...setup);
+  };
+  // MV-136, MV-146: the project document, read from the file, never by
+  // running the vendor. Only the brain resolves an SDD, so only the brain has
+  // one to report: the brain's entry, below, when the brain is its own code
+  // repo, and here when it holds none and so appears among no repos.
+  const docLines = async (key: string, dir: string): Promise<string[]> => {
+    const s = adapterFor(cfg, key, 'sdd');
+    const ss = s ? sddSpec(s) : null;
+    const out: string[] = [];
+    for (const p of ss?.projectSteps ?? []) {
+      const { verdict, why } = await projectDocVerdict(dir, p);
+      if (verdict === 'written') {
+        if (!p.reportOnly) docs.push(`${keys.length > 1 || !cfg.repos[key] ? `${key}:` : ''}${p.artifact}`);
+        out.push(`- project document ${p.artifact}: written`);
+      } else {
+        out.push(`- project document ${p.artifact}: ${verdict}${why ? ` (${why})` : ''} → ${p.run}${p.reportOnly ? ' (optional)' : ''}`);
+      }
+    }
+    return out;
+  };
+  if (!Object.values(cfg.repos).some((e) => e.isBrain)) {
+    const brainDoc = await docLines('brain', brainDir);
+    if (brainDoc.length > 0) section('## brain (the brain itself, no code)', brainDoc);
+  }
   if (keys.length === 0) {
     lines.push('', 'No repos declared — add them under `repos:` in `.multivac/config.yml`.');
   }
@@ -124,7 +152,6 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
       continue;
     }
     present++;
-    lines.push('', `## ${key} (${entry.path})`);
     // MV-136: whether the repo is set up, before anyone drafts law over it —
     // read from the vendor's files, never by running the vendor.
     const setup: string[] = [];
@@ -135,18 +162,8 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
       const st = (await initState(gs, repoDir)).state;
       setup.push(`- graph ${g}: ${st === 'installed' ? 'built' : `${st}${ro ? ` — read-only (${ro}), not built by multivac` : ' → `multivac repos sync`'}`}`);
     }
-    const s = adapterFor(cfg, key, 'sdd');
-    const ss = s ? sddSpec(s) : null;
-    for (const p of ss?.projectSteps ?? []) {
-      const { verdict, why } = await projectDocVerdict(repoDir, p);
-      if (verdict === 'written') {
-        if (!p.reportOnly) docs.push(`${keys.length > 1 ? `${key}:` : ''}${p.artifact}`);
-        setup.push(`- project document ${p.artifact}: written`);
-      } else {
-        setup.push(`- project document ${p.artifact}: ${verdict}${why ? ` (${why})` : ''} → ${p.run}${p.reportOnly ? ' (optional)' : ''}`);
-      }
-    }
-    if (setup.length > 0) lines.push('', '### setup', '', ...setup);
+    setup.push(...(await docLines(key, repoDir)));
+    section(`## ${key} (${entry.path})`, setup);
     const buckets = classify(files);
     if (buckets.size === 0) {
       lines.push('', 'No boundary files found.');

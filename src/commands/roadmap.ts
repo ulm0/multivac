@@ -40,7 +40,10 @@ import {
   updateIssue,
 } from '../adapters/tracker.js';
 import { say, warn } from '../lib/out.js';
+import { sddSlugWhy } from '../adapters/sdd.js';
 import { commitBookkeeping } from './change.js';
+import { rootedBrain } from './verify.js';
+import { samePath } from '../lib/paths.js';
 import type { Command, Config } from '../types.js';
 
 interface Entry {
@@ -116,6 +119,21 @@ function list(planned: Entry[], open: string[]): void {
       ? 'in flight: no open change'
       : `in flight: ${open.length} open change${open.length > 1 ? 's' : ''} — ${open.join(', ')}`,
   );
+}
+
+/**
+ * The brain's config for the slug check, or null. `add` never needed one and
+ * never gates, so a config that cannot be read leaves the grammar unknown, as
+ * it always was, instead of failing a command that used to pass. A refused SDD
+ * declaration (MV-146) is reported, not thrown: it names the code repo that
+ * declares one, and the brain's own SDD, whose grammar this asks, stands.
+ */
+async function brainConfig(brain: string): Promise<Config | null> {
+  try {
+    return await loadConfig(brain, { sddDeclaration: 'report' });
+  } catch {
+    return null;
+  }
 }
 
 /** Record an intention. One file, one commit, no id, no branch, no law lock. */
@@ -207,7 +225,9 @@ async function sync(brain: string, cfg: Config): Promise<number> {
   for (const { file, archived } of files) {
     let parsed;
     try {
-      parsed = parseChange(await readFile(file, 'utf8'), file);
+      // MV-150: this reader writes the file back when it records an issue
+      // number, so a key inside a claim it would drop is refused, not lost.
+      parsed = parseChange(await readFile(file, 'utf8'), file, { claimKeys: 'refuse' });
     } catch {
       continue; // a broken change file is `change`'s diagnostic to raise
     }
@@ -278,6 +298,7 @@ const ARGS = {
 
 export const roadmap: Command = {
   name: 'roadmap',
+  rooted: true,
   help: 'the changes that have not started yet — list them, record one',
   usage: [
     'usage: multivac roadmap [add <slug> "<title>"] [--horizon now|next|later]',
@@ -310,7 +331,10 @@ export const roadmap: Command = {
       warn(`roadmap: unknown horizon "${String(parsed.horizon)}" — use ${HORIZONS.join(', ')}`);
       return 2;
     }
-    const brain = ctx.cwd;
+    // MV-151: the brain that holds where it was asked, named when it is not
+    // here — from `src` it listed "empty" beside a planned change.
+    const brain = await rootedBrain(ctx.cwd);
+    if (!samePath(brain, ctx.cwd)) say(`root: ${brain} (asked from ${ctx.cwd})`);
     if (pos.length === 0) {
       if (horizonGiven) {
         warn('roadmap: --horizon applies to `roadmap add` — the listing shows every horizon');
@@ -342,6 +366,15 @@ export const roadmap: Command = {
     }
     if (pos.length > 3) {
       warn(`roadmap: unexpected argument "${pos[3]}" — ${USAGE}`);
+      return 2;
+    }
+    // MV-147: the slug an intention is recorded under is the one `change new`
+    // opens it with, and that refuses a slug the brain's SDD cannot create.
+    // Refused here, as a malformed slug is, before anything is recorded.
+    const cfg = await brainConfig(brain);
+    const unfit = cfg ? sddSlugWhy(cfg, slug) : null;
+    if (unfit !== null) {
+      warn(`roadmap add: \`${slug}\`: the brain's SDD takes no such slug — ${unfit}`);
       return 2;
     }
     return await add(brain, slug, title, horizon);

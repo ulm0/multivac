@@ -12,8 +12,8 @@
 
 import { ecosystemGraphLines } from './ecosystem.js';
 import type { Config } from '../types.js';
-import { grapherLines, sddLines } from './brain.js';
-import { adapterFor } from '../adapters/detect.js';
+import { grapherLines } from './brain.js';
+import { adapterFor, sddGoverning } from '../adapters/detect.js';
 
 /**
  * The ecosystem, as the doors name it.
@@ -50,12 +50,21 @@ export function renderConsumerDoor(config: Config, repoKey: string): string {
   const mount = config.mount;
   const gate =
     config.staleness === 'block' ? ' A pin behind its channel makes `verify` exit 1 here.' : '';
-  // The adapters that apply HERE, from the one resolver every surface asks
+  // The grapher that applies HERE, from the one resolver every surface asks
   // (MV-122) — a repo that resolves `none` gets no block.
   const graph = grapherLines(config, adapterFor(config, repoKey, 'grapher'));
-  // MV-143: the law prefix this repo can open. `projectLawLines` names the law
-  // beside the project document, and in a consumer that path is under the mount.
-  const sdd = sddLines(config, adapterFor(config, repoKey, 'sdd'), `${mount}/`);
+  // MV-146: the SDD runs in the brain alone, so this door carries no step
+  // block and no project document — 2,796 bytes per session, measured, for
+  // steps no session here may run. One line says where they run and where
+  // this repo's code belongs, from the resolver that also switches the code
+  // gate on (MV-137): a repo saying `sdd: none` gets none, and with
+  // `sdd_auto: false` nothing is gated, so nothing is said.
+  const governing = config.sddAuto ? sddGoverning(config, repoKey) : undefined;
+  const sdd = governing
+    ? [
+        `- The brain's \`${governing}\` SDD runs in the brain checkout, never in this mount: specs, plans and tasks are written there. Code here lands only on the branch of an open change declaring this repo; \`verify --strict\` refuses it anywhere else.`,
+      ]
+    : [];
   return [
     '## multivac — consumer door',
     '',
@@ -68,6 +77,8 @@ export function renderConsumerDoor(config: Config, repoKey: string): string {
     'The pin stays where the last commit left it, so a present mount is not a',
     `current one — unrefreshed, you decide against the law as it was weeks ago.${gate}`,
     '',
+    // MV-143: the law at the path THIS repo can open — under the mount; the
+    // brain's own relative path resolves to nothing here.
     `- Law: \`${mount}/.multivac/invariants.md\` binds this repo. Cite rows by ID, never paraphrase without one.`,
     '- The change may cross repos: check the brain before assuming a change is local to this repo.',
     '- Run `multivac verify` before acting; git hooks run it again at commit.',

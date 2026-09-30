@@ -280,11 +280,13 @@ test('seed on a pnpm-monorepo-shaped tree reads the build graph and ignores fixt
   assert.match(report, /prior art, read it first: [^\n]*CONTRIBUTING\.md/);
 });
 
-test('seed reports each repo\'s graph and project document, and names the written ones in question 3 — MV-136', async () => {
+test('seed reports each repo\'s graph and the brain\'s project document, and names the written ones in question 3 — MV-136', async () => {
   const tmp = mkdtempSync(join(tmpdir(), 'mvac-seed-setup-'));
   const brain = join(tmp, 'brain');
   const api = join(tmp, 'api');
   const web = join(tmp, 'web');
+  // api and web hold spec-kit installs an earlier release left: MV-146 runs
+  // the SDD in the brain alone, so neither's constitution is reported.
   initRepo(api, {
     '.pre-commit-config.yaml': 'repos: []\n',
     'docs/adr/0001-x.md': '# ADR\n',
@@ -300,12 +302,19 @@ test('seed reports each repo\'s graph and project document, and names the writte
   initRepo(brain, {
     '.multivac/config.yml': 'doors: [agents]\nsdd: speckit\ngrapher: graphify\nrepos:\n  api: ../api\n  web: ../web\n',
     '.multivac/invariants.md': '# Invariants\n',
+    '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
+    '.specify/memory/constitution.md': '# Acme Constitution\n\n### I. Law first\n',
   });
   assert.equal(await seed.run([], { cwd: brain }), 0);
   const report = readFileSync(join(brain, '.multivac/seed-report.md'), 'utf8');
   const section = (key: string): string => report.slice(report.indexOf(`## ${key} (`), report.indexOf('\n## ', report.indexOf(`## ${key} (`) + 1));
-  assert.match(section('api'), /### setup\n\n- graph graphify: built\n- project document \.specify\/memory\/constitution\.md: written/);
+  // The brain holds no code, so it is no declared repo: its document gets a
+  // section of its own, and no boundary inventory.
+  assert.match(section('brain'), /### setup\n\n- project document \.specify\/memory\/constitution\.md: written\n/);
+  assert.match(section('api'), /### setup\n\n- graph graphify: built\n/);
+  assert.doesNotMatch(section('api'), /project document/);
   assert.match(section('web'), /- graph graphify: missing → `multivac repos sync`/);
-  assert.match(section('web'), /- project document \.specify\/memory\/constitution\.md: template \(placeholders remain: \[PROJECT_NAME\]\) → run \/speckit\.constitution/);
-  assert.match(report, /Written project documents: api:\.specify\/memory\/constitution\.md — where one and an active row disagree, the row wins/);
+  assert.doesNotMatch(section('web'), /project document/);
+  assert.match(report, /Written project documents: brain:\.specify\/memory\/constitution\.md — where one and an active row disagree, the row wins/);
+  assert.doesNotMatch(report, /api:\.specify\/memory\/constitution\.md/);
 });

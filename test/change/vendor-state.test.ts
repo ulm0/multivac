@@ -17,6 +17,8 @@ import { doctorReport } from '../../src/commands/doctor.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
+import { writeIgnores } from '../../src/adapters/refresh.js';
+import { grapherSpec } from '../../src/adapters/registry.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -144,7 +146,7 @@ test('opsx specs without its config are partial: warned with the install line, a
   await inEnv(b.bin, async () => {
     const c = await capture(() => change.run(['new', 'half', 'Half'], b.ctx));
     assert.deepEqual(lines(b.marker), []);
-    assert.match(c.out, /sdd opsx: brain is partial — openspec is there and openspec\/config\.yaml or openspec\/config\.yml is not — the init is not run over it.*run `openspec init --tools agents --no-animation \.` in brain yourself/);
+    assert.match(c.out, /sdd opsx: brain is partial — openspec is there and openspec\/config\.yaml or openspec\/config\.yml is not — the init is not run over it.*run `openspec init --tools none --no-animation \.` in brain yourself/);
   });
 });
 
@@ -233,6 +235,8 @@ test('a codegraph clone without its database builds it at close, keeps it local,
       // Declared, not acted on: no ignore file is written by this change.
       assert.deepEqual(readFileSync(join(brain, '.codegraph/.gitignore')), ignoreBefore);
       assert.equal(existsSync(join(brain, '.graphifyignore')), false);
+      // MV-149: a brain that holds code and nests no repo keeps no line out.
+      assert.equal(existsSync(join(brain, 'codegraph.json')), false);
     });
   }
 });
@@ -286,4 +290,126 @@ test("codegraph's build, refresh and post-edit hook carry its opt-outs; graphify
     await capture(() => change.run(['new', 'env-c', 'Env c'], g.ctx));
     assert.deepEqual(lines(g.marker), ['0'], 'an entry declaring no env leaves the parent environment alone');
   });
+});
+
+// --- MV-149: codegraph.json, spliced ---
+
+/** codegraph's ignore write in a fresh directory holding `raw` (none when null): what it printed and the bytes after. */
+async function spliceIn(raw: string | null, lines = ['/.brain/']): Promise<{ out: string; after: string | null; dir: string; wrote: boolean }> {
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-cgjson-'));
+  if (raw !== null) writeFileSync(join(dir, 'codegraph.json'), raw);
+  let wrote = false;
+  const c = await capture(async () => {
+    wrote = await writeIgnores('codegraph', grapherSpec('codegraph')!, dir, 'web', lines, { gitignore: false });
+    return 0;
+  });
+  const file = join(dir, 'codegraph.json');
+  return { out: c.out, after: existsSync(file) ? readFileSync(file, 'utf8') : null, dir, wrote };
+}
+
+/** `after` with one contiguous inserted span taken out. */
+const withoutInsert = (before: string, after: string): string => {
+  let i = 0;
+  while (i < before.length && before[i] === after[i]) i++;
+  return after.slice(0, i) + after.slice(i + after.length - before.length);
+};
+
+test("codegraph's lines are spliced into codegraph.json, every other byte kept", async () => {
+  // research.md R14's thirteen shapes: re-serialising dropped a duplicate
+  // key, the CRLFs and a number's digits.
+  const shapes: Record<string, string> = {
+    crlf: '{\r\n  "maxFileSize": 1.50,\r\n  "exclude": [\r\n    "dist/"\r\n  ]\r\n}\r\n',
+    'one line': '{"deprioritize":["legacy/"],"exclude":["dist/"]}',
+    'human keys': '{\n  "include": ["src/"],\n  "languages": ["typescript"],\n  "exclude": ["dist/"]\n}\n',
+    number: '{\n  "maxFileSize": 1.50,\n  "exclude": ["dist/"]\n}\n',
+    'duplicate key': '{\n  "exclude": ["a/"],\n  "x": 1,\n  "exclude": [\n    "dist/"\n  ]\n}\n',
+    'no trailing newline': '{\n  "exclude": [\n    "dist/"\n  ]\n}',
+    escapes: '{\n  "na\\"me": "a\\\\b\\u00e9",\n  "exclude": ["d\\"x/"]\n}\n',
+    'inline, key absent': '{"include":["src/"]}',
+    'multi-line, key absent': '{\n  "include": [\n    "src/"\n  ],\n  "nested": {\n      "deep": 1\n  }\n}\n',
+    '{}': '{}',
+    'empty array': '{\n  "exclude": []\n}\n',
+    tabs: '{\n\t"exclude": [\n\t\t"dist/"\n\t]\n}\n',
+    'CRLF, key absent': '{\r\n  "maxFileSize": 1.50\r\n}\r\n',
+  };
+  assert.equal(Object.keys(shapes).length, 13);
+  for (const [shape, raw] of Object.entries(shapes)) {
+    const r = await spliceIn(raw);
+    assert.ok(r.after !== null && r.wrote, shape);
+    assert.equal(withoutInsert(raw, r.after!), raw, `${shape}: every byte kept`);
+    const parsed = JSON.parse(r.after!) as { exclude: string[] };
+    assert.equal(parsed.exclude[parsed.exclude.length - 1], '/.brain/', shape);
+    assert.equal(r.out, 'graph codegraph @ web: wrote codegraph.json (+1) before the first build', shape);
+    // A second write adds nothing and says nothing.
+    const again = await capture(async () => {
+      await writeIgnores('codegraph', grapherSpec('codegraph')!, r.dir, 'web', ['/.brain/'], { gitignore: false });
+      return 0;
+    });
+    assert.equal(readFileSync(join(r.dir, 'codegraph.json'), 'utf8'), r.after, `${shape}: idempotent`);
+    assert.equal(again.out, '', shape);
+  }
+  // The last `exclude` is the one JSON.parse and codegraph keep.
+  const dup = await spliceIn(shapes['duplicate key']!);
+  assert.match(dup.after!, /"exclude": \["a\/"\],\n {2}"x": 1,\n {2}"exclude": \[\n {4}"dist\/",\n {4}"\/\.brain\/"\n {2}\]/);
+  // CRLF kept on the inserted line, and a key absent goes in at the top-level
+  // members' indentation, never a nested one's.
+  assert.match((await spliceIn(shapes.crlf!)).after!, /"dist\/",\r\n {4}"\/\.brain\/"\r\n/);
+  assert.match((await spliceIn(shapes['multi-line, key absent']!)).after!, /\n {2}\},\n {2}"exclude": \["\/\.brain\/"\]\n\}\n$/);
+  // Missing or empty: the 38-byte file.
+  for (const raw of [null, '', '\n']) {
+    const r = await spliceIn(raw);
+    assert.equal(r.after, '{\n  "exclude": [\n    "/.brain/"\n  ]\n}\n');
+    assert.equal(Buffer.byteLength(r.after!), 38);
+  }
+});
+
+test('a line codegraph.json already excludes, in any spelling, is skipped silently', async () => {
+  // A leading `**/` too: on 1.6.0 `**/.brain/` and `**/.brain` kept a root
+  // `.brain` out as `/.brain/` did (measured).
+  for (const entry of ['/.brain/', '.brain/**', '!/.brain/', '/.brain/test/', '.brain', '/.brain/**', '**/.brain/', '**/.brain', '!**/.brain/']) {
+    const raw = `{\n  "exclude": [${JSON.stringify(entry)}]\n}\n`;
+    const r = await spliceIn(raw);
+    assert.equal(r.after, raw, entry);
+    assert.equal(r.out, '', entry);
+    assert.equal(r.wrote, false, entry);
+  }
+  // Any other glob naming the mount is not read: the line goes in beside it,
+  // a stated ceiling.
+  const glob = await spliceIn('{"exclude":[".br*/"]}\n');
+  assert.equal(glob.after, '{"exclude":[".br*/", "/.brain/"]}\n');
+});
+
+for (const list of ['include', 'includeIgnored', 'deprioritize']) {
+  test(`a line codegraph.json's "${list}" names is yours: skipped, and the list named`, async () => {
+    // SC-019: `exclude` wins, so an append there dropped the human's 2,247
+    // mount nodes to 0 under their `deprioritize`.
+    for (const entry of ['.brain/', '!/.brain/', '/.brain/test/', '**/.brain/']) {
+      const raw = `{"${list}":[${JSON.stringify(entry)}],"exclude":["dist/"]}\n`;
+      const r = await spliceIn(raw);
+      assert.equal(r.after, raw, entry);
+      assert.equal(r.out, `graph codegraph @ web: /.brain/ not added to codegraph.json — its "${list}" names it, which is yours`, entry);
+      if (list === 'deprioritize') assert.equal(Buffer.byteLength(`${r.out}\n`), 108);
+    }
+  });
+}
+
+test('a codegraph.json that does not parse to an object with an "exclude" list is left as it is, and said', async () => {
+  const line = 'graph codegraph @ web: codegraph.json does not parse to an object with an "exclude" list — left as it is; add /.brain/ to its "exclude" by hand';
+  for (const raw of ['{"exclude":"dist/"}\n', '{\n  // mine\n  "exclude": []\n}\n', '﻿{"exclude":[]}\n', '["dist/"]\n', '{"exclude":[1]}\n', 'not json\n']) {
+    const r = await spliceIn(raw);
+    assert.equal(r.after, raw, JSON.stringify(raw));
+    assert.equal(r.out, line, JSON.stringify(raw));
+    assert.equal(r.wrote, false);
+  }
+  // The contract's 146 B, as printed: the line and its newline.
+  assert.equal(Buffer.byteLength(`${line}\n`), 146);
+});
+
+test('an empty line set writes no codegraph.json, and says nothing', async () => {
+  const r = await spliceIn(null, []);
+  assert.equal(r.after, null);
+  assert.equal(r.out, '');
+  const human = await spliceIn('{bad', []);
+  assert.equal(human.after, '{bad');
+  assert.equal(human.out, '', 'nothing to add, so nothing to say about their file');
 });

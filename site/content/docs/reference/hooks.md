@@ -9,7 +9,7 @@ strictness.
 
 | rung | reach | when it fires | policy |
 | --- | --- | --- | --- |
-| **git hooks** | **universal** — every repo `doors` touches, every harness, no harness at all | `pre-commit`, `pre-push` | default (`--strict` on push, optionally) |
+| **git hooks** | **universal** — every repo `doors` touches, every harness, no harness at all | `pre-commit`, `pre-push`, `pre-merge-commit` | default (`--strict` on push, optionally) |
 | **harness hooks** | only harnesses that have them — today, `claude` | session start, after every edit | default |
 
 The floor is universal and late. The ceiling is narrow and early. Neither
@@ -86,6 +86,9 @@ elif [ -f "$root/.pre-commit-config.yaml" ]; then
     echo "multivac: .pre-commit-config.yaml present but pre-commit is not installed — the project's gate did NOT run. Fix: install pre-commit (pipx install pre-commit, or brew install pre-commit)" >&2
   fi
 fi
+# One line when nothing is off; the full report otherwise. An env var, not a
+# flag: a binary that predates it ignores it and prints in full.
+export MULTIVAC_QUIET=1
 # The build is used only when this repo IS multivac: `dist/cli.js` plus
 # node_modules describes most Node CLI repos, and running THEIR binary as
 # multivac is the tool executing somebody else's program under its own name.
@@ -103,6 +106,14 @@ fi
 echo "multivac: hooks INACTIVE — no runnable multivac, nothing was verified. Fix: install multivac (npm i -g multivac), or build it here (pnpm install && pnpm run build)" >&2
 exit 0
 ```
+
+The `export` makes the run quiet: a commit with nothing off prints one line,
+and anything off prints the whole report — see
+[`verify --quiet`](../commands#--quiet-one-line-when-nothing-is-off). It is a
+variable rather than a flag so that a multivac older than the shim, which does
+not know it, ignores it and prints in full instead of refusing an unknown flag
+and blocking the commit. A hook you wire by hand, like the chain line below,
+keeps the full report.
 
 The `prev` block is the chain: a repo that already had a `.git/hooks/pre-commit`
 — a pre-commit framework install, a lefthook install, a hand-written gate —
@@ -267,8 +278,11 @@ every key and entry it does not own:
 
 `SessionStart` is the earliest useful moment: the agent is about to read the
 brain, and this tells it whether the brain is currently true. `PostToolUse`
-re-checks after every write, so a change that breaks a claim surfaces in the
-same turn that made it, not three files later.
+re-checks after every write, in the checkout of the file written when a brain
+governs it (read from the harness payload; the command above is unchanged), so
+a change that breaks a claim surfaces in the same turn that made it, not three
+files later — including an edit made in a change worktree from a session that
+sits at the main checkout.
 
 **The wrappers are the delivery, not decoration.** Claude Code feeds the model
 only exit-0 stdout at `SessionStart` and only exit-2 stderr at `PostToolUse`;
@@ -283,8 +297,24 @@ broke, a binary that has gone — because after an agent's edit each of those is
 the agent's to answer. The edit is already on disk: the block is a forced read
 in the same turn, not a revert.
 
-A green run says nothing on either event, deliberately. A gate that speaks when
-it has nothing to say teaches the reader to stop reading it.
+After an edit a green run says nothing; at session start it is one line —
+summary, header, reads, enact. A gate that speaks at length when it has nothing
+to say teaches the reader to stop reading it.
+
+**The commands carry no switch.** Claude Code hands every hook the event and,
+after an edit, the file written, as JSON on stdin, and sets
+`CLAUDE_PROJECT_DIR` only in hook processes. `verify` reads that payload only
+when the variable is set and no directory was named: the session event makes
+the run quiet and starts it at the session's directory (the payload's `cwd`,
+because a hook the harness forwards starts in your home directory); the edit
+event roots the run at the edited file when a consumer, a door or a brain that
+is its own repository governs it, and otherwise at the session's directory. A
+brain committed inside another repository — a test fixture, often red on
+purpose — is never followed into. Putting the switch in the command instead
+would quote it into every red delivery and, under an older `doors`, add a
+second gate beside the first. That the harness delivers the quiet line and
+follows a worktree edit was read from its own binary with a simulated payload;
+a live session is the confirmation.
 
 The merge is idempotent — re-running `doors` does not duplicate entries — and
 defensive. A settings file that is not valid JSON is left alone and reported:
@@ -300,16 +330,26 @@ individual command, not the entry around it. An entry is your grouping — your
 matcher, your list of commands — so:
 
 - Identity is exact. `mvac verify` is multivac's; `mvac verify --strict` is
-  yours and is never claimed. The refresh command is recognised by the lock
-  preamble multivac generates, which nothing else writes.
+  yours and is never claimed. A refresh command is recognised by the lock
+  preamble multivac generates, which nothing else writes, and which grapher it
+  refreshes by the artifact its test names, `[ -e "$t/<artifact>" ]`. There is
+  one per grapher the session refreshes, so a `graphify update .` or
+  `codegraph sync` you typed is never multivac's, whichever grapher it runs.
 - An update rewrites one command in place, and fills in the `type` multivac
   itself writes if the hook was typed by hand without it — a hook missing
   `type` never runs. Commands you added beside it stay, in order, and fields
   multivac does not write — a `timeout`, say — stay with them.
 - A matcher is written once, when multivac creates its own entry, and is never
   rewritten afterwards. The matcher on an entry is yours.
-- Dropping the grapher removes multivac's refresh command, not the entry: an
-  entry you share with it survives, carrying your commands.
+- Each grapher's refresh command is rewritten in place, and one of multivac's
+  naming an artifact no longer wanted, or none — a command written before the
+  refresh named its artifact — is taken over in place by a grapher still
+  without one, so the entry, its matcher and your commands in it stay. Two such
+  unnamed copies, which earlier releases kept side by side, become one.
+- Dropping a grapher removes its refresh command, not the entry: an entry you
+  share with it survives, carrying your commands. Dropping every grapher
+  removes every refresh command multivac wrote, and only the entries that
+  leaves empty.
 
 Owning a command is not the same as covering an event. If the only
 `mvac verify` in `PostToolUse` sits in an entry of yours on another matcher —

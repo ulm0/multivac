@@ -12,7 +12,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { gitInit, makeScratchEcosystem } from '../helpers/fixture.js';
+import { gitInit, makeScratchEcosystem, type ScratchOpts } from '../helpers/fixture.js';
 import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { graphTrackedGate } from '../../src/adapters/tracked.js';
@@ -37,9 +37,17 @@ const capture = async (fn: () => Promise<number>): Promise<{ code: number; out: 
   }
 };
 
-function ecosystem(cfgExtra: string[] = []): { brain: string; ctx: { cwd: string }; slug: string } {
+/**
+ * Three roots, the brain among them: MV-148 makes the brain a grapher's root
+ * only where it holds code, so these tests declare it (`brain: .`); the one
+ * that holds none is its own test below.
+ */
+function ecosystem(
+  cfgExtra: string[] = [],
+  opts: ScratchOpts = { brainIsCode: true },
+): { brain: string; ctx: { cwd: string }; slug: string } {
   const tmp = mkdtempSync(join(tmpdir(), 'mvac-gtrack-'));
-  const eco = makeScratchEcosystem(tmp);
+  const eco = makeScratchEcosystem(tmp, opts);
   writeFileSync(
     join(eco.brain, '.multivac/config.yml'),
     [
@@ -51,6 +59,7 @@ function ecosystem(cfgExtra: string[] = []): { brain: string; ctx: { cwd: string
       'grapher: writes-nothing',
       ...cfgExtra,
       'repos:',
+      ...(opts.brainIsCode ? ['  brain: .'] : []),
       '  api: ../acme-api',
       '  web: ../acme-web',
       '',
@@ -100,6 +109,20 @@ test('close refuses while a root has not committed its graph, naming the command
   assert.match(c.out, /refused — 3 roots keep their graph out of the repository/);
   assert.match(c.out, /brain: graph-out\/graph\.json is not committed — `git -C .* add graph-out\/graph\.json && git -C .* commit -m "chore: commit the graph" -- graph-out\/graph\.json`/);
   assert.match(c.out, /a graph only one checkout has is a graph the next clone does not have/);
+});
+
+test('a brain that holds no code is no root of this gate — MV-148', async () => {
+  // Its graph, kept only in the tree, is nobody's to commit: the gate names
+  // the code repos alone, and doctor never tells the brain to add one.
+  const { brain, ctx, slug } = ecosystem([], {});
+  await readyToClose(brain, ctx, slug);
+  for (const d of roots(brain)) writeGraph(d, { to: 'tree' });
+  const c = await capture(() => change.run(['close', slug], ctx));
+  assert.equal(c.code, 1);
+  assert.match(c.out, /refused — 2 roots keep their graph out of the repository/);
+  assert.doesNotMatch(c.out, /brain: graph-out/);
+  const { lines } = await doctorReport(brain);
+  assert.doesNotMatch(lines.filter((l) => l.includes('@ brain')).join('\n'), /NOT COMMITTED|IGNORED/);
 });
 
 test('close proceeds once the graph is committed', async () => {

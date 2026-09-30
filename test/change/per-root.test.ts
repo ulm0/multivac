@@ -6,6 +6,10 @@
 // tool, and the brain ignored its own entry. Each test below is one of those
 // measurements, run in a scratch ecosystem.
 //
+// MV-146: for the SDD, per root is the brain alone. A code repo's `sdd:` takes
+// only `none`; the per-repo SDD configs these tests used to run are refused at
+// load now, and the tests below say so through the command a human would run.
+//
 // Tools are STUBS on a PATH this file builds — `<bin>:/usr/bin:/bin` — never
 // the host's: a developer's real spec-kit or graphify must not change what
 // these tests say (Principle IV).
@@ -21,6 +25,7 @@ import { reposCommand } from '../../src/commands/repos.js';
 import { loadConfig } from '../../src/lib/config.js';
 import { renderFlow } from '../../src/doors/flow.js';
 import { sddInstructions } from '../../src/adapters/sdd.js';
+import { main } from '../../src/cli.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 
 for (const [k, v] of Object.entries({
@@ -59,98 +64,71 @@ const write = (root: string, rel: string, body = 'x\n'): void => {
   writeFileSync(join(root, rel), body);
 };
 
-// --- US1: the SDD gate and its steps follow each root ---
+// --- US1: the SDD gate and its steps follow the brain; a code repo's tool is refused ---
 
-test('a per-repo sdd with no ecosystem sdd gates plan, looking only where it applies', async () => {
-  const { ctx } = eco([
-    'doors: [agents]',
-    'repos:',
-    '  api: ../acme-api',
-    '  web:',
-    '    path: ../acme-web',
-    '    sdd: speckit',
-  ]);
-  await capture(() => change.run(['new', 'per-a', 'Per a'], ctx));
-  const c = await capture(() => change.run(['plan', 'per-a'], ctx));
-  assert.equal(c.code, 1, 'a declared sdd no longer turns the gate off');
-  assert.match(c.out, /sdd speckit: `change plan per-a` refused — specs\/<n>-per-a\/spec\.md is missing — looked in web$/m);
-  assert.match(c.out, /run \/speckit\.specify in your agent/);
+/**
+ * Every command a per-repo SDD config used to run, and its exit now: 2 from
+ * the load, except `doors` and `doctor`, which keep their documented exit 1
+ * over a config they cannot load — `doctor` reports it on its `config` line.
+ */
+async function refusedEverywhere(lines: string[], want: RegExp): Promise<void> {
+  const { brain } = eco(lines);
+  for (const argv of [['change', 'new', 'per-a', 'Per a'], ['change', 'plan', 'per-a'], ['verify'], ['repos', 'sync'], ['doors'], ['doctor'], ['init', '.']]) {
+    const c = await capture(() => main(argv, brain));
+    // `doctor`, `doors` and `init` (MV-114) exit 1 on any config they cannot load.
+    assert.equal(c.code, ['doors', 'doctor', 'init'].includes(argv[0]) ? 1 : 2, `${argv.join(' ')}: ${c.out}`);
+    const body = want.source.replace(/^\^/, '');
+    const line = argv[0] === 'doctor' ? new RegExp(`^config +invalid — ${body}`, 'm') : argv[0] === 'init' ? new RegExp(`^init: ${body}`, 'm') : want;
+    assert.match(c.out, line, argv.join(' '));
+    assert.match(c.out, /then open a change for the config edit: `multivac change new <slug>`/);
+  }
+  assert.equal(existsSync(join(brain, '.multivac/changes/per-a.md')), false, 'nothing ran over a refused config');
+}
+
+test('a per-repo sdd naming a tool is refused at load, by every command, naming the key — MV-146', async () => {
+  // No ecosystem sdd: the repo's tool would run nowhere.
+  await refusedEverywhere(
+    ['doors: [agents]', 'repos:', '  api: ../acme-api', '  web:', '    path: ../acme-web', '    sdd: speckit'],
+    /^repos\.web\.sdd: speckit — REFUSED: the SDD lives in the brain alone, so a code repo's sdd: takes only none/m,
+  );
+  // Mixed adapters: the brain's opsx and the repo's speckit.
+  await refusedEverywhere(
+    ['doors: [agents]', 'sdd: opsx', 'repos:', '  api: ../acme-api', '  web:', '    path: ../acme-web', '    sdd: speckit'],
+    /^repos\.web\.sdd: speckit — REFUSED/m,
+  );
+  // A top-level none under a repo's own tool.
+  await refusedEverywhere(
+    ['doors: [agents]', 'sdd: none', 'repos:', '  api: ../acme-api', '  web:', '    path: ../acme-web', '    sdd: speckit'],
+    /^repos\.web\.sdd: speckit — REFUSED/m,
+  );
+  // A repo that is declared and never cloned: refused on the declaration, not on disk.
+  await refusedEverywhere(
+    ['doors: [agents]', 'sdd: none', 'repos:', '  web:', '    path: ../acme-not-cloned', '    sdd: speckit'],
+    /^repos\.web\.sdd: speckit — REFUSED/m,
+  );
 });
 
-test('an sdd only an absent repo resolves refuses, naming the root, never a silent pass', async () => {
-  const { ctx } = eco([
-    'doors: [agents]',
-    'sdd: none',
-    'repos:',
-    '  web:',
-    '    path: ../acme-not-cloned',
-    '    sdd: speckit',
-  ]);
-  await capture(() => change.run(['new', 'gone', 'Gone'], ctx));
-  const c = await capture(() => change.run(['plan', 'gone'], ctx));
-  assert.equal(c.code, 1, 'flow.md says plan refuses without the spec, so it does');
-  assert.match(c.out, /sdd speckit: `change plan gone` refused — no root that resolves speckit is on disk: web$/m);
-  assert.match(c.out, /multivac repos sync, then re-run: multivac change plan gone/);
+test("a brain whose own entry opts out of the ecosystem's sdd is refused: the tool resolves in no root — MV-146", async () => {
+  await refusedEverywhere(
+    ['doors: [agents]', 'sdd: speckit', 'repos:', '  brain:', '    path: .', '    sdd: none', '  api: ../acme-api'],
+    /^sdd: speckit — REFUSED: the brain's own entry repos\.brain\.sdd says none, so speckit resolves in no root\. Fix: make them agree/m,
+  );
 });
 
-test('a per-repo sdd prints its steps at change new', async () => {
-  const { web, ctx } = eco([
-    'doors: [agents]',
-    'repos:',
-    '  web:',
-    '    path: ../acme-web',
-    '    sdd: speckit',
-  ]);
-  // Installed where it applies: this is about the steps, and since MV-129 a
-  // spec-kit `change new` would have to run and cannot find is a refusal.
-  write(web, '.specify/integration.json', SPECKIT_INTEGRATION_JSON);
-  const c = await capture(() => change.run(['new', 'per-b', 'Per b'], ctx));
-  assert.match(c.out, /sdd speckit: run \/speckit\.specify in your agent to write the spec for per-b/);
-});
-
-test('mixed adapters: each is judged by its own artifacts, in its own roots', async () => {
-  const { web, ctx } = eco([
-    'doors: [agents]',
-    'sdd: opsx',
-    'repos:',
-    '  api: ../acme-api',
-    '  web:',
-    '    path: ../acme-web',
-    '    sdd: speckit',
-  ]);
-  await capture(() => change.run(['new', 'mixed', 'Mixed'], ctx));
-  write(web, 'specs/001-mixed/spec.md', '# The spec, written\n');
-  const c = await capture(() => change.run(['plan', 'mixed'], ctx));
+test('a top-level sdd gates plan in the brain alone, and prints its steps at change new', async () => {
+  const { brain, api, web, ctx } = eco(['doors: [agents]', 'sdd: speckit', 'repos:', '  api: ../acme-api', '  web: ../acme-web']);
+  // Installed in the brain, where it runs: this is about the steps and the gate.
+  write(brain, '.specify/integration.json', SPECKIT_INTEGRATION_JSON);
+  // A spec left in a code repo proves nothing: the SDD does not run there.
+  write(web, 'specs/001-per-b/spec.md', '# A spec in a code repo\n');
+  const n = await capture(() => change.run(['new', 'per-b', 'Per b'], ctx));
+  assert.match(n.out, /sdd speckit: run \/speckit\.specify in your agent to write the spec for per-b/);
+  assert.doesNotMatch(n.out, /@ (api|web)/);
+  const c = await capture(() => change.run(['plan', 'per-b'], ctx));
   assert.equal(c.code, 1);
-  // opsx asks the brain and api for its proposal, and never web.
-  assert.match(c.out, /sdd opsx: `change plan mixed` refused — openspec\/changes\/mixed\/proposal\.md is missing — looked in brain, api$/m);
-  // speckit finds web's spec, which the opsx-only gate never looked for.
-  assert.match(c.out, /sdd speckit: web: specs\/001-mixed\/spec\.md ok/);
-  assert.doesNotMatch(c.out, /sdd opsx: .*web/);
-  assert.doesNotMatch(c.out, /sdd speckit: .*(brain|api)/);
-  // The --no-sdd hint is said once, however many adapters refused.
-  assert.equal(c.out.split('`--no-sdd` skips the SDD gates for one run').length - 1, 1);
-});
-
-test('mixed adapters: flow.md and the printed steps name the roots each applies to', async () => {
-  const { brain } = eco([
-    'doors: [agents]',
-    'sdd: opsx',
-    'repos:',
-    '  api: ../acme-api',
-    '  web:',
-    '    path: ../acme-web',
-    '    sdd: speckit',
-  ]);
-  const cfg = await loadConfig(brain);
-  const page = renderFlow(cfg);
-  assert.match(page, /- `change plan` refuses without `openspec\/changes\/<slug>\/proposal\.md` — in brain, api$/m);
-  assert.match(page, /- `change plan` refuses without `specs\/<n>-<slug>\/spec\.md` — in web$/m);
-  assert.doesNotMatch(page, /no SDD tool is declared/);
-
-  const steps = sddInstructions(cfg, 'new', 'mixed', false);
-  assert.ok(steps.some((l) => l.startsWith('sdd opsx @ brain, api: ')), steps.join('\n'));
-  assert.ok(steps.some((l) => l.startsWith('sdd speckit @ web: ')), steps.join('\n'));
+  assert.match(c.out, /sdd speckit: `change plan per-b` refused — specs\/<n>-per-b\/spec\.md is missing — looked in brain$/m);
+  assert.doesNotMatch(c.out, /web: specs\/001-per-b\/spec\.md ok/);
+  assert.equal(existsSync(join(api, '.specify')), false, 'nothing was scaffolded in a code repo');
 });
 
 test('a config naming only top-level adapters renders no roots anywhere', async () => {
@@ -247,7 +225,8 @@ test('a repo with sdd: none proves nothing: its spec does not satisfy plan', asy
   write(web, 'specs/001-opted/spec.md', '# A spec in the repo that opted out\n');
   const c = await capture(() => change.run(['plan', 'opted'], ctx));
   assert.equal(c.code, 1);
-  assert.match(c.out, /specs\/<n>-opted\/spec\.md is missing — looked in brain, api$/m);
+  // MV-146: the SDD runs in the brain alone, so the brain is where it looked.
+  assert.match(c.out, /specs\/<n>-opted\/spec\.md is missing — looked in brain$/m);
   assert.doesNotMatch(c.out, /web: specs\/001-opted\/spec\.md ok/);
 });
 
@@ -272,25 +251,6 @@ test('a top-level none names no `none` anywhere, and flow.md says nothing applie
   assert.match(page, /no SDD tool is declared/);
   assert.match(page, /no grapher is declared/);
   assert.equal(page.includes('`none`'), false);
-});
-
-test("a top-level none under a repo's own adapter: the repo's adapter applies", async () => {
-  const { brain, ctx } = eco([
-    'doors: [agents]',
-    'sdd: none',
-    'repos:',
-    '  api: ../acme-api',
-    '  web:',
-    '    path: ../acme-web',
-    '    sdd: speckit',
-  ]);
-  const page = renderFlow(await loadConfig(brain));
-  assert.match(page, /- `change plan` refuses without `specs\/<n>-<slug>\/spec\.md` — in web$/m);
-  await capture(() => change.run(['new', 'own', 'Own'], ctx));
-  const c = await capture(() => change.run(['plan', 'own'], ctx));
-  assert.equal(c.code, 1);
-  assert.match(c.out, /sdd speckit: `change plan own` refused — specs\/<n>-own\/spec\.md is missing — looked in web$/m);
-  assert.doesNotMatch(c.out, /sdd none/);
 });
 
 // --- US3: the brain reads its own entry ---
@@ -320,10 +280,15 @@ test("the brain's own grapher wins over the ecosystem's everywhere the brain is 
   const { renderBrainDoor } = await import('../../src/doors/brain.js');
   const door = renderBrainDoor(cfg, 1);
   assert.match(door, /kept fresh for you by `codegraph` at `\.codegraph\/codegraph\.db` — refreshed at `change land` and `change close`; it is built in each checkout, so never commit it\./);
-  assert.equal(door.includes('graphify'), false);
+  // MV-148: graphify is named for api alone, under the siblings' head — never
+  // as the brain's own grapher.
+  assert.doesNotMatch(door, /kept fresh for you by `graphify`/);
+  assert.match(door, /^- The other code repos keep their own graphs\./m);
+  assert.match(door, /^ {2}- `graphify` at `graphify-out\/graph\.json` \(api: `\.\.\/acme-api`\)/m);
 
   const page = renderFlow(cfg);
-  assert.match(page, /no `\.codegraph\/codegraph\.db`, refreshed .*at `change close`, in brain$/m);
+  // MV-149: a local index is also built in each change worktree at apply.
+  assert.match(page, /no `\.codegraph\/codegraph\.db`, and in each change worktree at `change apply`, refreshed .*at `change close`, in brain$/m);
   assert.match(page, /no `graphify-out\/graph\.json`, refreshed .*at `change close`, in api$/m);
 
   const { doctorReport } = await import('../../src/commands/doctor.js');
@@ -359,22 +324,4 @@ test('a brain entry grapher with no ecosystem grapher still builds and gates the
   assert.equal(existsSync(join(api, 'graphify-out')), false);
   assert.equal(c.code, 1);
   assert.match(c.out, /brain: graphify-out\/graph\.json is not committed/);
-});
-
-test('a brain that opts out of the sdd has no block, while its sibling keeps the steps', async () => {
-  const { brain } = eco([
-    'doors: [agents]',
-    'sdd: speckit',
-    'repos:',
-    '  brain:',
-    '    path: .',
-    '    sdd: none',
-    '  api: ../acme-api',
-  ]);
-  const cfg = await loadConfig(brain);
-  const { renderBrainDoor } = await import('../../src/doors/brain.js');
-  assert.equal(renderBrainDoor(cfg, 1).includes('Features gate'), false);
-  const steps = sddInstructions(cfg, 'new', 'x', false);
-  assert.ok(steps.length > 0 && steps.every((l) => l.startsWith('sdd speckit: ')), steps.join('\n'));
-  assert.match(renderFlow(cfg), /- `change plan` refuses without `specs\/<n>-<slug>\/spec\.md` — in api$/m);
 });

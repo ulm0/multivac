@@ -188,3 +188,206 @@ test('every SDD step proves itself or says why it cannot', () => {
     assert.match(spec.source ?? '', /^https:\/\//, `${name}: no primary source`);
   }
 });
+
+/**
+ * MV-146: a skeleton is served verbatim, so it keeps every heading the step
+ * bodies fill by name and carries none of the tokens the init substitutes per
+ * integration. Read off the registry, so a skeleton added to another SDD is
+ * held to the same on the day it is added.
+ */
+test('every skeleton body keeps each heading it names and none of its tokens', () => {
+  let seen = 0;
+  for (const name of sddNames) {
+    const sk = sddSpec(name)!.scaffold?.skeleton;
+    if (!sk) continue;
+    seen++;
+    assert.deepEqual(
+      Object.keys(sk.keeps).sort(),
+      Object.keys(sk.files).sort(),
+      `${name}: a body with no kept headings, or headings with no body`,
+    );
+    assert.match(sk.floor, /^\d+\.\d+\.\d+$/, `${name}: the floor is a version`);
+    assert.match(sk.measured, / \d+\.\d+\.\d+$/, `${name}: the version measured is named`);
+    assert.ok(sk.tokens.length > 0, `${name}: the substituted tokens are named`);
+    for (const [file, body] of Object.entries(sk.files)) {
+      const lines = body.split('\n');
+      for (const h of sk.keeps[file]) assert.ok(lines.includes(`## ${h}`), `${name}/${file}: lost "## ${h}"`);
+      for (const t of sk.tokens) assert.ok(!body.includes(t), `${name}/${file}: carries ${t}`);
+    }
+  }
+  assert.ok(seen > 0, 'speckit records a skeleton');
+});
+
+/**
+ * MV-146's budget: `/speckit.specify`, `/speckit.plan` and `/speckit.tasks`
+ * read 18,004 bytes of template per change; with the skeletons in place the
+ * three bodies they resolve first stay within 4,300.
+ */
+test('the skeleton bodies stay within the template budget they were measured at', () => {
+  const sk = sddSpec('speckit')!.scaffold!.skeleton!;
+  const total = Object.values(sk.files).reduce((n, b) => n + Buffer.byteLength(b), 0);
+  assert.equal(Object.keys(sk.files).length, 3);
+  assert.ok(total <= 4300, `${total} bytes of skeleton`);
+});
+
+test('this brain carries the skeleton byte for byte where spec-kit resolves first', () => {
+  const sk = sddSpec('speckit')!.scaffold!.skeleton!;
+  const repoRoot = join(import.meta.dirname, '../../..');
+  for (const [file, body] of Object.entries(sk.files)) {
+    assert.equal(readFileSync(join(repoRoot, sk.dir, file), 'utf8'), body, `${sk.dir}/${file}`);
+  }
+});
+
+/**
+ * MV-146: spec-kit calls the report scratch to remove before commit from
+ * 1.0.6 on, and git keeps the amendment record, so the revisit says to commit
+ * none. No retired wording is spelled here; `prepend` is simply absent.
+ */
+test('the speckit revisit says to commit no Sync Impact Report', () => {
+  const revisit = sddSpec('speckit')!.projectSteps![0].revisit;
+  assert.match(revisit, /; commit no Sync Impact Report\./);
+  assert.doesNotMatch(revisit, /prepend/i);
+});
+
+/**
+ * MV-147: opsx's scaffold installs no door's integration, and its map stays as
+ * the record of what `openspec init --tools <key>` writes — the code gate reads
+ * those directories as not code (MV-144) in a brain an earlier init left them in.
+ */
+test('a scaffold with no placeholder still records every integration\'s dirs', () => {
+  const sc = sddSpec('opsx')!.scaffold!;
+  assert.doesNotMatch(sc.run, /\{keys?\}/);
+  const keys = Object.keys(sc.integrations);
+  assert.ok(keys.length > 0, 'opsx keeps its integration record');
+  for (const door of keys) {
+    const dirs = sc.integrations[door].dirs;
+    assert.ok(dirs.length > 0 && dirs.every((d) => d.length > 0), `${door}: no directory recorded`);
+  }
+});
+
+/**
+ * MV-147. `--yes`, `--skip-specs` and `--no-validate` answer a question the
+ * tool asks the human — whether to merge, whether to skip its own validation.
+ * A run is what the agent executes, so no run in any entry carries one; a
+ * guide may name them only as the human's answer, or after `never`.
+ */
+const TOOL_ANSWER = /--(yes|skip-specs|no-validate)\b/;
+
+/** Each clause of `guide` naming such a flag with neither `never` before it nor a human's answer leading it. */
+const flaggedClauses = (guide: string): string[] =>
+  [...guide.matchAll(new RegExp(TOOL_ANSWER.source, 'g'))]
+    .map((m) => guide.slice(0, m.index).split(/[;.]\s|—\s/).pop()!)
+    .filter((clause) => !/\bnever\b/.test(clause) && !/^\s*(yes|archive without merging): /.test(clause));
+
+test("no SDD step's run carries a flag that answers the tool's own question", () => {
+  // The check itself: a guide telling the agent to pass the flag is caught.
+  assert.deepEqual(flaggedClauses('then run `openspec archive <slug> --json --yes` to finish'), [
+    'then run `openspec archive <slug> --json ',
+  ]);
+  assert.deepEqual(flaggedClauses('re-run with no flag, never `--no-validate`'), []);
+  let guided = 0;
+  for (const name of sddNames) {
+    for (const step of sddSpec(name)!.steps ?? []) {
+      assert.doesNotMatch(step.run, TOOL_ANSWER, `${name} ${step.at}: ${step.run}`);
+      if (!step.guide) continue;
+      assert.deepEqual(flaggedClauses(step.guide), [], `${name} ${step.at}: ${step.guide}`);
+      if (TOOL_ANSWER.test(step.guide)) guided++;
+    }
+  }
+  // The land guide names all three, as the human's answers or after `never`.
+  const land = sddSpec('opsx')!.steps!.find((s) => s.at === 'land')!;
+  for (const flag of ['--yes', '--skip-specs', '--no-validate']) assert.ok(land.guide!.includes(flag), flag);
+  assert.ok(guided > 0, 'at least one guide names a flag, so the clause check ran');
+});
+
+/**
+ * MV-147. With the command bodies gone, the printed lines are the only carrier
+ * of the questions openspec 1.13.2's bodies gave the human — MV-95's
+ * run-the-chain line would otherwise have the agent answer them. The runs name
+ * the human's question on every surface that prints them (the door included,
+ * where the guides never go); the guides carry the rest, each keyed on what the
+ * tool itself prints. Whether the agent asked is ungateable; the words are not.
+ */
+test("opsx's lines carry the questions its command bodies asked", () => {
+  const steps = sddSpec('opsx')!.steps!;
+  const at = (p: LifecyclePoint) => steps.find((s) => s.at === p)!;
+  const has = (text: string | undefined, want: string[], where: string): void => {
+    assert.ok(text, `${where} is missing`);
+    for (const w of want) assert.ok(text.includes(w), `${where} does not name ${w}:\n${text}`);
+  };
+  // The runs: the human's question on the three steps whose bodies asked one.
+  for (const p of ['new', 'apply', 'land'] as const) has(at(p).run, ["the human's question"], `${p} run`);
+  has(at('apply').run, ['tick `- [x]` only what is fully built', 'until its `state` is `all_done`'], 'apply run');
+  has(at('land').run, ['a flag its `fix` names is never yours'], 'land run');
+  // The guides, one per point.
+  has(
+    at('new').guide,
+    ['`already exists`', 'resolvedOutputPath', 'observable behaviour', 'root.source', 'any conflict with a main spec', "`unknown option '--json'`"],
+    'new guide',
+  );
+  has(at('plan').guide, ['`[-]`', '`Next:`', 'openspec instructions tasks --change <slug> --json'], 'plan guide');
+  has(
+    at('apply').guide,
+    ['an unclear task', 'a design issue', 'work beyond the spec and tasks', 'narrow, defer or drop', 'a blocker', 'never absorbed silently', '"ready to be archived"'],
+    'apply guide',
+  );
+  has(
+    at('land').guide,
+    [
+      '`archive_confirmation_required` saying `Updating`',
+      'openspec show <slug> --json --deltas-only',
+      '--skip-specs',
+      'anything else: stop',
+      'never `--no-validate`',
+      '`archive_tasks_incomplete`',
+      'never tick to pass',
+      "`unknown option '--json'`",
+    ],
+    'land guide',
+  );
+  // The vendor's slash spelling is its bodies' surface, which no printed line may send the agent to.
+  for (const s of steps) {
+    assert.doesNotMatch(s.run, /opsx[:]/, `${s.at} run`);
+    if (s.guide) assert.doesNotMatch(s.guide, /opsx[:]/, `${s.at} guide`);
+  }
+});
+
+/**
+ * MV-147. A slug grammar is the tool's own, measured on a named version: its
+ * pattern accepts what the tool's create step accepted and refuses what it
+ * refused, and a reserved name is one the pattern alone would let through —
+ * otherwise listing it says nothing the pattern does not.
+ */
+test("a recorded slug grammar is the tool's own, measured", () => {
+  for (const name of sddNames) {
+    const slug = sddSpec(name)!.slug;
+    if (!slug) continue;
+    const re = new RegExp(slug.pattern);
+    for (const r of slug.reserved) assert.ok(re.test(r), `${name}: reserved \`${r}\` is one the pattern already refuses`);
+    assert.ok(slug.why.length > 0, `${name}: a refusal with no reason`);
+  }
+  // openspec 1.13.2's `new change`, measured name by name.
+  const opsx = sddSpec('opsx')!.slug!;
+  const re = new RegExp(opsx.pattern);
+  for (const ok of ['ab-c', '1ab', 'a1', 'x']) assert.ok(re.test(ok), `opsx refuses ${ok}`);
+  for (const no of ['Fix_Auth', 'a.b', 'a_b', 'a--b', 'Ab', 'a-b-', '-ab']) assert.ok(!re.test(no), `opsx accepts ${no}`);
+  assert.deepEqual(opsx.reserved, ['archive']);
+  // spec-kit's feature directory takes any short name the lifecycle takes.
+  assert.equal(sddSpec('speckit')!.slug, undefined);
+});
+
+test('a hook payload names every field, and only the measured harness declares one — MV-151', () => {
+  // Data read from the harness's own binary, never inferred from a name: a
+  // target that declares no payload keeps the session's directory and the
+  // full report after every edit.
+  assert.deepEqual(doorTargets.claude.hookConfig?.payload, {
+    env: 'CLAUDE_PROJECT_DIR',
+    event: 'hook_event_name',
+    session: 'SessionStart',
+    edit: 'PostToolUse',
+    file: 'tool_input.file_path',
+    cwd: 'cwd',
+  });
+  const declaring = names.filter((n) => doorTargets[n].hookConfig?.payload !== undefined);
+  assert.deepEqual(declaring, ['claude']);
+});

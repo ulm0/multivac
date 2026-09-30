@@ -11,12 +11,12 @@
 // branch makes the range reader binding, and that is not on disk (`doctor`).
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { isAbsolute, join, posix, relative, resolve, sep } from 'node:path';
 import picomatch from 'picomatch';
 import type { Config } from '../types.js';
 import { changesDir, parseChange, type ChangeFile } from '../change/file.js';
-import { adapterFor } from '../adapters/detect.js';
-import { doorTargets, grapherSpec, sddSpec } from '../adapters/registry.js';
+import { adapterFor, bodyGlobs, brainHoldsCode, sddGoverning } from '../adapters/detect.js';
+import { doorTargets, grapherNames, grapherSpec, sddNames, sddSpec, type AdapterSpec } from '../adapters/registry.js';
 import { CHANGES_DIR } from './config.js';
 import { dim, red } from './out.js';
 import { currentBranch, run as git } from './git.js';
@@ -24,10 +24,26 @@ import { currentBranch, run as git } from './git.js';
 export interface CodeLine {
   text: string;
   gates: boolean;
+  /** MV-151. The line as a clause of a quiet run, or null when it must print the whole report. Required. */
+  quiet: string | null;
 }
 
-/** Paths multivac, a door, the SDD or the grapher own: never "code" (MV-137). */
-export function nonCodeGlobs(cfg: Config): string[] {
+/**
+ * Paths multivac, a door, the SDD or the grapher own: never "code" (MV-137),
+ * in the repo `repoKey` names — the brain's entry when it names none.
+ *
+ * MV-146: the SDD runs in the brain alone, so its step-artifact directories
+ * and project documents are not code in the brain only; in a code repo a
+ * `specs/` tree is no SDD's and is judged as code. Every KNOWN SDD's vendor
+ * state — its install directory, shared and local paths, and the harness
+ * directories its init writes for the declared doors, and (MV-147) the
+ * entries its integration inits write under any integration's directory —
+ * stays not code in every repo, whichever SDD the brain declares, so removing
+ * an install an earlier release left in a code repo is free. opsx's artifact
+ * paths are exact strings that match no file below them, which is why the
+ * install directory itself is taken.
+ */
+export function nonCodeGlobs(cfg: Config, repoKey?: string): string[] {
   // MV-142: `.gitignore` too. `init`, the SDD and the grapher write their
   // ignore lines there, and a fresh brain's step 0 commit carries it.
   const out = new Set<string>(['.multivac/**', '.gitmodules', `${cfg.mount}/**`, `${cfg.mount}`, '.husky/**', '.gitignore']);
@@ -50,31 +66,24 @@ export function nonCodeGlobs(cfg: Config): string[] {
     if (t.retired) harness(t.retired.path);
   }
   out.add('AGENTS.md');
-  const names = new Set<string>();
-  for (const key of ['brain', ...Object.keys(cfg.repos)]) {
-    const s = adapterFor(cfg, key, 'sdd');
-    const g = adapterFor(cfg, key, 'grapher');
-    if (s) names.add(`sdd:${s}`);
-    if (g) names.add(`grapher:${g}`);
-  }
-  for (const n of names) {
-    const [kind, name] = n.split(':');
-    const spec = kind === 'sdd' ? sddSpec(name) : grapherSpec(name, cfg.graphers);
-    if (!spec) continue;
+  const vendor = (spec: AdapterSpec): void => {
     for (const p of [...spec.shared, ...spec.local, ...spec.artifacts]) out.add(p);
-    for (const step of spec.steps ?? []) if (step.artifact) out.add(`${step.artifact.split('/')[0]}/**`);
-    for (const p of spec.projectSteps ?? []) out.add(p.artifact);
+    // An SDD's install directory whole: what its init wrote there is the vendor's.
+    if (spec.kind === 'sdd' && spec.state.dir) out.add(`${spec.state.dir}/**`);
     if (spec.graphignoreFile) out.add(spec.graphignoreFile);
     for (const f of spec.harness?.hookFiles ?? []) harness(f);
     for (const pl of Object.values(spec.harness?.platforms ?? {})) harness(pl.probe);
-    // MV-142 as amended by MV-144: where a declared scaffold's own integrations
-    // install their commands and skills. Derived from the integrations the
-    // DECLARED doors resolve to, plus the fallback when no declared door maps to
-    // one — the resolution the scaffold itself uses (MV-130) — because a fixed
-    // list was wrong twice: openspec's `codex` writes `.agents/` and its
-    // `windsurf` writes `.devin/`. Without this a brain declaring openspec and
-    // no grapher is refused its own first commit over a directory it was told to
-    // create.
+    // MV-142 as amended by MV-144: the directories the integrations of the
+    // DECLARED doors write, plus the fallback when no declared door maps to one
+    // — spec-kit's scaffold resolves its install the same way (MV-130) —
+    // because a fixed list was wrong twice: openspec's `codex` writes
+    // `.agents/` and its `windsurf` writes `.devin/`. Without this a brain
+    // declaring openspec and no grapher was refused its own first commit over a
+    // directory its scaffold had just created. MV-147: opsx's scaffold is
+    // `--tools none` now and creates nothing outside `openspec/`, so for opsx
+    // these are the measured record of what a human's `openspec init --tools
+    // <key>`, or an earlier multivac's init, wrote there — still not code
+    // (MV-144), beside the entries `bodyGlobs` names under every directory.
     const scaffold = spec.scaffold;
     if (scaffold) {
       const named = cfg.doors.filter((d) => scaffold.integrations[d]);
@@ -84,9 +93,118 @@ export function nonCodeGlobs(cfg: Config): string[] {
         if (fb) chosen.push(fb);
       }
       for (const integration of chosen) for (const d of integration.dirs) out.add(`${d}/**`);
+      // MV-147: the entries the vendor's integration inits write, under every
+      // integration's directories and those an earlier version wrote, declared
+      // door or not. The scaffold installs none now, so what is left is an
+      // earlier init's — `doctor` prints its removal, and that commit is not
+      // code: not for `.codex/`, which 1.7.0's codex wrote and no integration
+      // records, nor for a door no longer declared. By name only, so the rest
+      // of such a directory (`.codex/config.toml`, `.github/workflows/`) stays
+      // code.
+      for (const g of bodyGlobs(scaffold)) out.add(g);
     }
+  };
+  for (const name of sddNames) vendor(sddSpec(name)!);
+  const inBrain = repoKey === undefined || repoKey === 'brain' || cfg.repos[repoKey]?.isBrain === true;
+  const sdd = inBrain ? adapterFor(cfg, 'brain', 'sdd') : undefined;
+  const spec = sdd === undefined ? undefined : sddSpec(sdd);
+  if (spec) {
+    for (const step of spec.steps ?? []) if (step.artifact) out.add(`${step.artifact.split('/')[0]}/**`);
+    for (const p of spec.projectSteps ?? []) out.add(p.artifact);
+  }
+  // MV-148: every KNOWN grapher's paths and every one declared under
+  // `graphers:`, whichever resolves here — as for the SDDs above. A brain that
+  // holds no code resolves no grapher, so the install an earlier release left
+  // there is no resolved grapher's, and the commit removing it was refused as
+  // code landing outside a change; so was a code repo's switch from one grapher
+  // to another. A grapher some root resolves keeps its harness directories
+  // whole, as it always did. One no root resolves is taken by name, as MV-147
+  // takes an SDD's bodies: its artifact, outputs and ignore file, its hook
+  // files, and every path each platform's install writes, as the entry
+  // measured them (`files`: `.codex/skills/graphify/**`, opencode's plugin and
+  // config) — never a glob guessed from a directory's name — so the rest of
+  // such a directory (`.codex/config.toml`) stays code.
+  const resolved = new Set<string>();
+  for (const key of ['brain', ...Object.keys(cfg.repos)]) {
+    const g = adapterFor(cfg, key, 'grapher');
+    if (g) resolved.add(g);
+  }
+  for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
+    const g = grapherSpec(name, cfg.graphers);
+    if (!g) continue;
+    if (resolved.has(name)) {
+      vendor(g);
+      continue;
+    }
+    for (const p of [...g.shared, ...g.local, ...g.artifacts, ...(g.harness?.hookFiles ?? [])]) out.add(p);
+    if (g.graphignoreFile) out.add(g.graphignoreFile);
+    for (const pl of Object.values(g.harness?.platforms ?? {})) for (const f of pl.files) out.add(f);
   }
   return [...out];
+}
+
+/**
+ * MV-148. The lines a root's grapher keeps out of its graph, derived from what
+ * is not code there — never a list. The fixed five missed what a harness
+ * installs: a fresh brain with doors claude and codex graphed 228 of its 305
+ * nodes from `.agents/` and `.codex/` after one refresh, a consumer 427 of 501
+ * from its brain mount, and a code repo's `specs/` line hid its own
+ * `specs/*.spec.ts` (graphify 0.9.29). So: each top-level directory of the
+ * root's non-code set, anchored `/<dir>/` — an unanchored `specs/` also hid
+ * `src/specs/` — but the mount and every known grapher's own output directory
+ * (graphify skips `graphify-out/` itself, and indexes no `.db`); in a code repo
+ * the mount; and every declared repo nested inside the root, relative. The
+ * SDD's step-artifact directories come in only where the non-code set holds
+ * them, the brain (MV-146). Directories only, so a root's own Markdown and
+ * documentation directories stay in its graph. `[]` for a grapher with no
+ * ignore file.
+ *
+ * MV-149. A grapher whose entry says `graphignoreScope: 'structure'` gets only
+ * the lines that change what it indexes: the mount, in a code repo whose brain
+ * holds code, and the nested declared repos. codegraph 1.6.0 indexes no
+ * Markdown, so the rest gave the same node counts as the mount line alone, and
+ * a brain that holds no code adds 0 of its nodes there; the full set would
+ * have put an untracked file into every codegraph repo. The mount is written
+ * as git records it (`mountDir`), for every grapher.
+ */
+export function graphIgnoreLines(cfg: Config, brain: string, scope: string, spec: AdapterSpec): string[] {
+  if (!spec.graphignoreFile) return [];
+  const inBrain = scope === 'brain' || cfg.repos[scope]?.isBrain === true;
+  const mount = mountDir(cfg);
+  const out = new Set<string>();
+  if (spec.graphignoreScope !== 'structure') {
+    const skip = new Set<string>(mount === undefined ? [] : [mount]);
+    for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
+      for (const p of grapherSpec(name, cfg.graphers)?.local ?? []) skip.add(p.split('/')[0]!);
+    }
+    for (const g of nonCodeGlobs(cfg, scope)) {
+      const dir = /^([^/*?[\]{}!]+)\/\*\*$/.exec(g)?.[1];
+      if (dir !== undefined && !skip.has(dir)) out.add(`/${dir}/`);
+    }
+  }
+  if (!inBrain && mount !== undefined && (spec.graphignoreScope !== 'structure' || brainHoldsCode(cfg))) out.add(`/${mount}/`);
+  const root = resolve(brain, inBrain ? '.' : (cfg.repos[scope]?.path ?? '.'));
+  for (const e of Object.values(cfg.repos)) {
+    const rel = relative(root, resolve(brain, e.path));
+    // The root itself (`brain: .`), and anything outside it, is no line.
+    if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) continue;
+    out.add(`/${rel.split(sep).join('/')}/`);
+  }
+  return [...out].sort();
+}
+
+/**
+ * MV-149. The mount as git records it — `path = .brain` for a submodule added
+ * at `./.brain` — so an ignore line names the directory the tool sees:
+ * `/./.brain/`, `./.brain/` and `/.brain//` each left the mount indexed, for
+ * codegraph and graphify alike (12 nodes, 10 of them the mount's, against 2).
+ * Normalised, a leading `./` and a trailing `/` stripped; undefined for an
+ * absolute mount or one outside the root, which gets no line.
+ */
+export function mountDir(cfg: Pick<Config, 'mount'>): string | undefined {
+  const m = posix.normalize(cfg.mount).replace(/^(\.\/)+/, '').replace(/\/+$/, '');
+  if (m === '' || m === '.' || posix.isAbsolute(m) || m === '..' || m.startsWith('../')) return undefined;
+  return m;
 }
 
 async function readChange(brainDir: string, slug: string, rev: string | null, dir = CHANGES_DIR): Promise<ChangeFile | null> {
@@ -129,11 +247,14 @@ export interface CodeInChangeOpts {
 /** The code-in-change verdict, or null when the check does not apply. */
 export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | null> {
   const { cfg, repoKey } = o;
-  if (repoKey === undefined || !cfg.sddAuto || adapterFor(cfg, repoKey, 'sdd') === undefined) return null;
+  // MV-146: the SDD governing this repo's code, the brain's unless the repo
+  // says `none` — never where the SDD runs, which is the brain alone.
+  if (repoKey === undefined || !cfg.sddAuto || sddGoverning(cfg, repoKey) === undefined) return null;
   const label = 'code'.padEnd(9);
   const unanswered = (why: string): CodeLine => ({
     text: `  ${o.strict ? red(label) : dim(label)} not answered — ${why}${o.strict ? ' · blocking under --strict' : ''}`,
     gates: o.strict,
+    quiet: null,
   });
 
   const paths = o.range
@@ -142,7 +263,7 @@ export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | 
   if (paths === null) {
     return unanswered(o.range ? `base ${o.range.base} is not in this clone — fetch the whole history (GIT_DEPTH: 0)` : 'the index could not be read here');
   }
-  const nonCode = picomatch(nonCodeGlobs(cfg), { dot: true });
+  const nonCode = picomatch(nonCodeGlobs(cfg, repoKey), { dot: true });
   const code = paths.filter((p) => !nonCode(p));
   if (code.length === 0) return null;
 
@@ -184,10 +305,12 @@ export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | 
       return {
         text: `  ${red(label)} ${n} on ${cand}, whose change does not declare ${repoKey} — add ${repoKey} to its repos:, or commit this on the branch of a change that does · blocking`,
         gates: true,
+        quiet: null,
       };
     }
     const skipped = ch.sdd_skipped?.length ? ` · SDD skipped at ${ch.sdd_skipped.join(', ')}` : '';
-    return { text: `  ${dim(label)} ${n} lands in open change ${slug}${skipped}`, gates: false };
+    // MV-151: a skipped SDD step is off; a clean landing is the clause `code → <slug>`.
+    return { text: `  ${dim(label)} ${n} lands in open change ${slug}${skipped}`, gates: false, quiet: skipped ? null : `code → ${slug}` };
   }
   const where = o.range ? `branch ${o.range.branch}` : candidates.length > 0 ? `${candidates.join(', ')}` : 'a detached HEAD';
   const fix = `start a change (\`multivac change new <slug>\`, then \`change apply\`) and commit on its branch`;
@@ -195,7 +318,8 @@ export async function codeInChangeLine(o: CodeInChangeOpts): Promise<CodeLine | 
     return {
       text: `  ${dim(label)} ${n} on ${where}, which is no open change in the mounted brain — ${fix}; the mount can lag, so \`verify --strict\` in CI decides`,
       gates: false,
+      quiet: null,
     };
   }
-  return { text: `  ${red(label)} ${n} on ${where}, which is no open change declaring ${repoKey} — ${fix} · blocking`, gates: true };
+  return { text: `  ${red(label)} ${n} on ${where}, which is no open change declaring ${repoKey} — ${fix} · blocking`, gates: true, quiet: null };
 }

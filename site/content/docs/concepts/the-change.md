@@ -36,9 +36,10 @@ A change declares, before anything is touched:
 3. **Which invariants it touches**, under the rule: an invariant is never
    relaxed in code — it is changed in the law first, dated, in the same
    change.
-4. **Which claims it makes true**, with their anchors. This is the contract
-   `close` verifies. Draft the anchors now, while the promise is fresh —
-   after merge nobody remembers.
+4. **Which rows it makes true** — its claims, each a row's ID, with their
+   anchors. The row states the rule; the claim cites it and never restates
+   it. This is the contract `close` verifies. Draft the anchors now, while
+   the promise is fresh — after merge nobody remembers.
 
 ## The change file
 
@@ -57,15 +58,19 @@ someone updated the docs — it re-runs `verify` **scoped to the declared
 claims** and refuses to archive until:
 
 - every claim in field 4 resolves ok or moved on its new anchors,
+- every claim cites a row this change adds, touches or retires, and that row
+  states its rule,
 - every declared repo is recorded landed,
 - the SDD's own artifacts exist, where one is declared.
 
 That scope is deliberate and it is narrower than it sounds: `close` evaluates
 the **claim IDs the change declared**, not the rows under `touches` or
 `retires`, and it never runs an unscoped verify. An amended row that nobody
-listed as a claim is not re-checked here — the pre-commit hook is what catches
-it, on every commit, which is the earlier and stricter place. Declare the rows
-you amend as claims if you want `close` to be the one that answers.
+listed as a claim is not re-checked here: `verify` reports it on each commit
+where the hooks are armed, and refuses it only where its leg's mode blocks (by
+default `absent`, `count` and `each`) or under `--strict`, as CI runs it.
+Declare the rows you amend as claims if you want `close` to be the one that
+answers.
 
 Where an SDD is declared, the code comes through the change as well. A commit
 or a merge of code outside the branch of an open change that declares the repo
@@ -80,8 +85,9 @@ after, when anyone remembers.
 ## The ritual
 
 Closing a change is a **ceremony**, and only half of it is mechanical.
-multivac executes that half — the landing order held, every declared claim
-resolves, no invariant was relaxed in code instead of in the law. The other
+multivac executes that half — the landing order held, every declared repo
+landed, every declared claim resolves and cites a row of the law that states
+its rule. The other
 half is the team's: who reviews what, who gets told, what ships before what
 when the reason is not technical. No tool can invent those, and none can
 check them.
@@ -92,16 +98,14 @@ change is archived:
 
 ```txt
 $ mvac change close points-expire
-INV-02: ok
-archived -> .multivac/changes/archive/points-expire.md
-archived — commit this on a branch; nothing lands on main directly:
-  git -C ~/eco/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
-  then open MR close-points-expire -> main
-
+…
 ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
   - [ ] tell support before the flag flips
   - [ ] the public site ships before the backend
 ```
+
+What `close` prints before the ritual — the claims, the archive and the commit
+to make — is in the [commands reference](../../reference/commands/#close).
 
 **Printed, not verified.** Nothing gates on the ritual, nothing parses it; an
 empty or absent ritual prints nothing at all. `init` scaffolds the file with

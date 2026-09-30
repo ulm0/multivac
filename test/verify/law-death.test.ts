@@ -16,7 +16,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, chmodSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeScratchEcosystem } from '../helpers/fixture.js';
+import { makeScratchEcosystem, scrubbedEnv } from '../helpers/fixture.js';
 import { verify } from '../../src/commands/verify.js';
 import { run as gitRun } from '../../src/lib/git.js';
 
@@ -112,7 +112,7 @@ test('git commit -a is gated, not walked past — MV-106', async () => {
   dropLine(brain, ROW);
   let refused = false;
   try {
-    execFileSync('git', ['-C', brain, 'commit', '-qam', 'delete a row with -a'], { stdio: 'pipe' });
+    execFileSync('git', ['-C', brain, 'commit', '-qam', 'delete a row with -a'], { stdio: 'pipe', env: scrubbedEnv() });
   } catch {
     refused = true;
   }
@@ -135,7 +135,7 @@ test('a pathspec commit is judged on the paths it contains — MV-106', async ()
   dropLine(brain, ROW); // staged, but NOT part of the commit below
   git(brain, 'add', 'one.txt', '.multivac/invariants.md');
 
-  execFileSync('git', ['-C', brain, 'commit', '-qm', 'only one.txt', '--', 'one.txt'], { stdio: 'pipe' });
+  execFileSync('git', ['-C', brain, 'commit', '-qm', 'only one.txt', '--', 'one.txt'], { stdio: 'pipe', env: scrubbedEnv() });
 
   assert.equal(git(brain, 'show', '--name-only', '--format=', 'HEAD'), 'one.txt');
 });

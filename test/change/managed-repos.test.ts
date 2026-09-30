@@ -8,7 +8,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { initRepo, publishRepo, shallowClone } from '../helpers/fixture.js';
@@ -20,6 +20,7 @@ import { change } from '../../src/commands/change.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { reposCommand, reposList, reposSync } from '../../src/commands/repos.js';
+import { main } from '../../src/cli.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 
 for (const [k, v] of Object.entries({
@@ -231,12 +232,14 @@ test('the tracked gate skips a read-only sibling whose graph HEAD does not hold,
   }
 });
 
-test('a sibling with no managed key and a full clone is scaffolded, built and projected as before', async () => {
+test('a sibling with no managed key and a full clone is built and projected as before, and gets no SDD', async () => {
   const e = eco('managed');
   await inEnv(e.bin, async () => {
     const c = await capture(() => change.run(['new', 'probe', 'Probe'], e.ctx));
     assert.equal(c.code, 0, c.out);
-    assert.equal(e.ran('specify'), 1, c.out);
+    // MV-146: the SDD runs in the brain alone, which has it; nothing runs in the sibling.
+    assert.equal(e.ran('specify'), 0, c.out);
+    assert.equal(existsSync(join(e.payments, '.specify')), false);
     // A new change names no repo, so its graph work stays in the brain (MV-134)...
     assert.equal(e.ran('graphify'), 0, c.out);
     // ...and `repos sync` builds it.
@@ -262,6 +265,11 @@ test('doctor and repos name each read-only sibling, and neither calls it deficie
       '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
       'graphify-out/graph.json': '{}\n',
     });
+    // Both graphs newer than their last commit: the staleness verdict reads
+    // mtime against a commit time in whole seconds, so a write and a commit
+    // straddling a second made one brain STALE and the comparison below flaky.
+    const later = Date.now() / 1000 + 3600;
+    utimesSync(join(brain, 'graphify-out/graph.json'), later, later);
     return brain;
   };
   const brain = brainOf('acme-brain', [
@@ -288,8 +296,11 @@ test('doctor and repos name each read-only sibling, and neither calls it deficie
     const repos = report.lines.find((l) => l.startsWith('repos'))!;
     for (const [key, why] of cases) assert.match(repos, new RegExp(`${key}: ${why}, read-only`), repos);
     for (const [key, why] of cases.filter(([k]) => k !== 'vault')) {
+      // MV-146: the SDD runs in the brain alone, so a sibling gets no sdd
+      // verdict of its own, read-only or not — only the grapher's.
       const about = report.lines.filter((l) => /^(sdd|grapher)/.test(l) && l.includes(`@ ${key}`));
-      assert.equal(about.length, 2, `one sdd and one grapher line, no project law: ${about.join(' / ')}`);
+      assert.equal(about.length, 1, `one grapher line, no sdd line and no project law: ${about.join(' / ')}`);
+      assert.match(about[0], /^grapher /);
       for (const l of about) {
         assert.match(l, new RegExp(`@ ${key}: ${why}, read-only — out of scope, not a gap$`));
         assert.doesNotMatch(l, /missing|\brun\b|change new runs|NOT COMMITTED|IGNORED/);
@@ -372,33 +383,45 @@ for (const sibling of ['not managed', 'shallow'] as const) {
   });
 }
 
-test('an adapter only read-only roots resolve is not gated, and one line says so', async () => {
+/** `multivac <argv>` from the brain: its exit code and what it said on stderr. */
+async function cli(brain: string, argv: string[]): Promise<{ code: number; err: string }> {
+  const errs: string[] = [];
+  const orig = { log: console.log, error: console.error };
+  console.log = () => {};
+  console.error = (...a: unknown[]) => { errs.push(a.map(String).join(' ')); };
+  try {
+    return { code: await main(argv, brain), err: errs.join('\n') };
+  } finally {
+    console.log = orig.log;
+    console.error = orig.error;
+  }
+}
+
+// MV-146: a code repo's `sdd:` takes only `none`. A tool there used to resolve
+// in that root alone — gated nowhere when the root was read-only, refused as
+// "not on disk" when it was absent — and now names an SDD that runs nowhere,
+// which the config load refuses before any command reads it.
+
+test('a read-only sibling that names an SDD of its own is refused at load, naming its key', async () => {
   const e = eco('not managed', { head: ['doors: [agents]'], more: ['    sdd: speckit'] });
   await inEnv(e.bin, async () => {
-    await capture(() => change.run(['new', 'only', 'Only'], e.ctx));
-    const parsed = await loadChange(e.brain, 'only');
-    parsed.change.repos = { brain: { status: 'planned' } };
-    await saveChange(e.brain, parsed);
-    const c = await capture(() => change.run(['plan', 'only'], e.ctx));
-    assert.equal(c.code, 0, c.out);
-    assert.deepEqual(
-      c.out.split('\n').filter((l) => l.includes('not gated')),
-      ['sdd speckit: `change plan only` is not gated — every root that resolves speckit is read-only: payments (not managed)'],
-    );
+    const c = await cli(e.brain, ['change', 'new', 'only', 'Only']);
+    assert.equal(c.code, 2, c.err);
+    assert.match(c.err, /^repos\.payments\.sdd: speckit — REFUSED: the SDD lives in the brain alone/m);
+    assert.equal(existsSync(join(e.brain, '.multivac/changes/only.md')), false, 'nothing was opened');
   });
 });
 
-test('a managed sibling not on disk still refuses, and the refusal names only it', async () => {
+test('a sibling not on disk that names an SDD of its own is refused at load, and the refusal names only it', async () => {
   const e = eco('not managed', {
     head: ['doors: [agents]'],
-    more: ['    sdd: speckit', '  ghost:', '    path: ../acme-ghost', '    sdd: speckit'],
+    more: ['  ghost:', '    path: ../acme-ghost', '    sdd: speckit'],
   });
   await inEnv(e.bin, async () => {
-    await capture(() => change.run(['new', 'ghost', 'Ghost'], e.ctx));
-    const c = await capture(() => change.run(['plan', 'ghost'], e.ctx));
-    assert.equal(c.code, 1, c.out);
-    assert.match(c.out, /no root that resolves speckit is on disk: ghost$/m);
-    assert.doesNotMatch(c.out, /payments/);
+    const c = await cli(e.brain, ['change', 'new', 'ghost', 'Ghost']);
+    assert.equal(c.code, 2, c.err);
+    assert.match(c.err, /^repos\.ghost\.sdd: speckit — REFUSED/m);
+    assert.doesNotMatch(c.err, /payments/);
   });
 });
 

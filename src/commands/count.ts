@@ -4,15 +4,14 @@
 // git-grep counts were wrong on 2 of 3 measurement-2 subjects because of
 // dialect and glob differences.
 
-import { existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { resolve } from 'node:path';
 import { parseAnchors } from '../anchor/parse.js';
 import { resolveSources } from './verify.js';
 import { RepoScanner, scanLeg } from '../anchor/match.js';
-import { loadConfig, ConfigError, CONFIG_PATH } from '../lib/config.js';
+import { loadConfig, ConfigError } from '../lib/config.js';
 import { realPath } from '../lib/paths.js';
 import { say, warn } from '../lib/out.js';
-import { findMount } from './verify.js';
+import { consumerSource, mountedRefusalLine, resolveRepoKey, resolveRoot, type Root } from './verify.js';
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import type { Command, CommandContext } from '../types.js';
@@ -30,7 +29,7 @@ const ARGS = {
   // positional, and count answers a missing spec with its usage block and
   // exit 2. The parser parses; the exits stay the command's (MV-104).
   spec: { type: 'positional', required: false, description: 'the anchor leg to dry-run' },
-  dir: { type: 'positional', required: false, description: 'the brain; defaults to the working directory' },
+  dir: { type: 'positional', required: false, description: 'any directory of the checkout; defaults to the working directory' },
 } satisfies ArgsDef;
 
 /** count's own wording for its surface, kept by the shared refusal (MV-69). */
@@ -63,14 +62,27 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
   }
   const a = anchors[0];
 
-  // Brain resolution, verify's rules: config here, or a mounted brain below.
+  // Brain resolution, verify's own (MV-109, MV-151): the root of the checkout
+  // that holds where count was asked, resolved by the resolver verify calls.
   const startDir = resolve(ctx.cwd, dir);
-  const brainDir = existsSync(join(startDir, CONFIG_PATH))
-    ? startDir
-    : (findMount(startDir) ?? startDir);
+  let brainDir = startDir;
   let cfg;
+  let root: Root;
+  // In a consumer, its own key — the checkout itself, as verify reads it there.
+  let consumerKey: string | undefined;
   try {
-    cfg = await loadConfig(brainDir);
+    root = await resolveRoot(startDir);
+    if (root.kind === 'none') throw new ConfigError(root.message);
+    if (root.kind === 'door') {
+      throw new ConfigError(`${root.top} carries a multivac door but no brain is mounted here — nothing to count against`);
+    }
+    brainDir = root.brain;
+    // MV-146: a consumer counts against its mounted brain, whose SDD refusal is
+    // its owner's to fix — reported on stderr, as verify reports it, and counted.
+    cfg = await loadConfig(brainDir, root.kind === 'brain' ? {} : { sddDeclaration: 'report' });
+    if (root.kind === 'consumer') {
+      consumerKey = root.via === 'worktree' ? root.key : await resolveRepoKey(cfg, root.brain, root.dir);
+    }
   } catch (e) {
     if (e instanceof ConfigError) {
       warn(e.message);
@@ -78,6 +90,7 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
     }
     throw e;
   }
+  if (cfg.sddRefusal !== undefined) warn(mountedRefusalLine(cfg.sddRefusal, false).text);
 
   const declared = Object.keys(cfg.repos);
   if (a.repoKey !== '*' && a.repoKey !== 'brain' && !cfg.repos[a.repoKey]) {
@@ -94,7 +107,15 @@ async function run(argv: string[], ctx: CommandContext): Promise<number> {
   // from here could therefore disagree with the number the gate computes, and
   // nothing on screen said why. Copying is what drifted; calling cannot.
   const seen = new Set<string>();
-  const targets = (await resolveSources(brainDir, cfg, false)).filter((t) => {
+  const read = await resolveSources(brainDir, cfg, false);
+  // MV-151: in a consumer, or its change worktree, its own key is this
+  // checkout's working tree — the sentence verify prints there — and every
+  // other key is read as before.
+  const sources =
+    consumerKey === undefined || root.kind !== 'consumer'
+      ? read
+      : [...read.filter((s) => s.key !== consumerKey), await consumerSource(consumerKey, root.dir)];
+  const targets = sources.filter((t) => {
     if (t.dir === null) return false;
     if (a.repoKey !== '*' && t.key !== a.repoKey) return false;
     if (a.repoKey === '*') {
@@ -161,6 +182,7 @@ export const count: Command = {
   help: "dry-run an anchor leg: match count + per-file breakdown, verify's own matcher",
   usage: USAGE,
   run,
+  rooted: true,
 };
 
 export default count;

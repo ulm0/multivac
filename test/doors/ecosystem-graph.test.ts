@@ -38,8 +38,9 @@ async function quiet(fn: () => Promise<number>): Promise<{ code: number; out: st
 }
 
 const SECRET = 'Only billing may write balances';
-const change_ = (slug: string, status: string, claims: string[], adds: string[] = []): string =>
-  `---\nslug: ${slug}\nstatus: ${status}\nrepos:\n  api:\n    status: landed\n  web:\n    status: planned\nlanding_order:\n  - - api\n  - - web\ninvariants:\n  touches: []\n  adds: [${adds.join(', ')}]\n  retires: []\nclaims:\n${claims.map((c) => `  - id: ${c}\n    statement: x\n`).join('') || '  []\n'}---\n\n# ${slug}\n`;
+/** A change file; its claims legacy `{ id, statement }` maps, or bare IDs (MV-150). */
+const change_ = (slug: string, status: string, claims: string[], adds: string[] = [], form: 'legacy' | 'id' = 'legacy'): string =>
+  `---\nslug: ${slug}\nstatus: ${status}\nrepos:\n  api:\n    status: landed\n  web:\n    status: planned\nlanding_order:\n  - - api\n  - - web\ninvariants:\n  touches: []\n  adds: [${adds.join(', ')}]\n  retires: []\nclaims:\n${claims.map((c) => (form === 'id' ? `  - ${c}\n` : `  - id: ${c}\n    statement: x\n`)).join('') || '  []\n'}---\n\n# ${slug}\n`;
 
 function brain(grapher = 'graphify'): string {
   const b = join(mkdtempSync(join(tmpdir(), 'mvac-eco-')), 'brain');
@@ -54,6 +55,7 @@ function brain(grapher = 'graphify'): string {
     ].join('\n'),
     '.multivac/changes/archive/first.md': change_('first', 'archived', ['INV-01']),
     '.multivac/changes/next.md': change_('next', 'open', ['INV-02', 'INV-99'], ['INV-99']),
+    '.multivac/changes/cited.md': change_('cited', 'open', ['INV-01'], [], 'id'),
   });
   return b;
 }
@@ -79,6 +81,7 @@ test('the graph holds declarations only: repos, rows without text, anchors, chan
   assert.ok(has('law:INV-01', 'glob:api:db/*.sql', 'anchors'));
   assert.ok(has('glob:api:db/*.sql', 'repo:api', 'in_repo'));
   assert.ok(has('change:next', 'law:INV-02', 'claims'));
+  assert.ok(has('change:cited', 'law:INV-01', 'claims'), 'a claim written as its ID is an edge like a legacy one');
   assert.ok(has('law:INV-01', 'change:first', 'enacted_by'));
   assert.equal(g.links.find((l) => l.source === 'change:next' && l.target === 'repo:web')?.stage, 2);
   assert.ok(!ids.includes('law:INV-99') && !g.links.some((l) => l.target === 'law:INV-99'), 'a row not in the table is no node, and its links are dropped');
@@ -112,4 +115,17 @@ test('the doors name it, with graphify\'s --graph verbs only where graphify reso
   assert.deepEqual(ecosystemGraphLines(without, 'brain', ''), [
     "- How the repos, the law's rows, their anchors and the changes relate is `.multivac/ecosystem.json`, rendered from the brain's declarations, as plain node-link JSON.",
   ]);
+  // MV-148: a brain that holds no code resolves no grapher of its own, so the
+  // brain's verbs follow the graphers asked from it — its code repos'
+  // graphify, or the ecosystem's declaration with no repo declared yet.
+  const lone = join(mkdtempSync(join(tmpdir(), 'mvac-eco-')), 'brain');
+  initRepo(lone, { '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\n', '.multivac/invariants.md': '# Invariants\n' });
+  for (const c of [withG, await loadConfig(lone)]) {
+    const door = renderBrainDoor(c, 1);
+    for (const verb of ['query "<question>"', 'explain "<row id or change slug>"', 'path "<A>" "<B>"']) {
+      assert.ok(door.includes(`\`graphify ${verb} --graph .multivac/ecosystem.json\``), verb);
+    }
+  }
+  // A consumer asks what resolves for its own key: a codegraph repo gets none.
+  assert.doesNotMatch(renderConsumerDoor(without, 'api'), /--graph/);
 });

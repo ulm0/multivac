@@ -10,6 +10,7 @@ import {
   readFileSync,
   readdirSync,
   readlinkSync,
+  realpathSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -20,6 +21,9 @@ import { gitInit, makeScratchEcosystem } from '../helpers/fixture.js';
 import { doorsCommand, installSkill } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
 import { countActiveInvariants, renderBrainDoor } from '../../src/doors/brain.js';
+import { renderConsumerDoor } from '../../src/doors/consumer.js';
+import { refreshHookCmd } from '../../src/doors/settings.js';
+import { grapherSpec, sddSpec } from '../../src/adapters/registry.js';
 import type { Config } from '../../src/types.js';
 
 const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-')));
@@ -232,14 +236,15 @@ test('brain door carries the SDD flow when one is declared', () => {
   };
   const door = renderBrainDoor(cfg, 1);
   assert.match(door, /Features gate through the `opsx` SDD, in that tool's OWN flow/);
-  // Every step: what to run, and what will PROVE it ran.
-  assert.match(door, /`change new` → run \/opsx:propose <slug> in your agent/);
-  assert.match(door, /proof: openspec\/changes\/<slug>\/proposal\.md — `change plan` refuses/);
-  assert.match(door, /`change apply` → run \/opsx:apply <slug> in your agent/);
-  assert.match(door, /ungateable: apply leaves no artifact of its own/);
+  // Every step: what to run, and what will PROVE it ran — the path alone, or
+  // `[ungateable]` (MV-146): the reason is the lifecycle's, doctor's and
+  // flow.md's to print whole, where the step comes up.
+  assert.match(door, /^ {2}- `change new` → in the brain checkout run `openspec new change <slug> --json`, .*\[proof: openspec\/changes\/<slug>\/proposal\.md\]$/m);
+  assert.match(door, /^ {2}- `change apply` → where openspec\/changes\/<slug>\/ is .*run `openspec instructions apply --change <slug> --json` .*\[ungateable\]$/m);
+  assert.doesNotMatch(door, /ungateable: apply leaves no artifact of its own/);
   // The archive-equivalent is printed a step BEFORE the gate that needs it.
-  assert.match(door, /`change land` → run \/opsx:archive <slug> in your agent/);
-  assert.match(door, /`change close` refuses without it/);
+  assert.match(door, /^ {2}- `change land` → after the merge, in the brain checkout .*run `openspec archive <slug> --json` to merge .*\[proof: openspec\/changes\/archive\/<n>-<n>-<n>-<slug>\]$/m);
+  assert.doesNotMatch(door, /refuses without it/);
   // OpenSpec has no project-level document; that gap is stated, not invented.
   assert.match(door, /project context `openspec\/config\.yaml` `context:` — .*Optional: reported, never gated\./);
   // sdd_auto off: the flow still binds, the door says to run it unprompted
@@ -258,11 +263,128 @@ test('brain door carries the SDD flow when one is declared', () => {
     /CREATE IT IF ABSENT — `change plan` refuses while it is missing, empty or still the template\./,
   );
   assert.match(speckit, /revisit: once at start, then on every principle change/);
-  assert.match(speckit, /`change plan` → run \/speckit\.tasks in your agent/);
+  assert.match(speckit, /`change plan` → run \/speckit\.tasks in your agent to break <slug> into phased tasks \[proof: specs\/<n>-<slug>\/tasks\.md\]$/m);
+  assert.match(speckit, /`change apply` → run \/speckit\.analyze in your agent .* \[ungateable\]$/m);
   // no close step at all: spec-kit has no archive equivalent to print
   assert.doesNotMatch(speckit, /`change close` →/);
   // no sdd declared: no flow lines at all
   assert.doesNotMatch(renderBrainDoor({ ...cfg, sdd: undefined }, 1), /SDD/);
+});
+
+/**
+ * MV-146: under `sdd_auto: false` nothing refuses, so the door says nothing
+ * does. The document is still the project's law, so the imperative stays.
+ */
+test('under sdd_auto: false the brain door claims no refusal, and still says to create the project law', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sdd: 'speckit',
+    sddAuto: false,
+    grapherAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    graphers: {},
+    repos: {},
+  };
+  const door = renderBrainDoor(cfg, 1);
+  assert.match(door, /project law `\.specify\/memory\/constitution\.md` — .*\. CREATE IT IF ABSENT\.$/m);
+  assert.doesNotMatch(door, /refuses/);
+  // The step endings are the same either way: a proof path is what the step
+  // leaves, whether or not a gate asks for it.
+  assert.match(door, /\[proof: specs\/<n>-<slug>\/spec\.md\]$/m);
+  assert.match(door, /\[ungateable\]$/m);
+  // Nor does it say the lifecycle runs the init: under `sdd_auto: false` nothing does.
+  assert.doesNotMatch(door, /lifecycle runs the tool's own init/);
+  assert.match(door, /no command runs the tool's own init where it is missing — run it in the brain yourself/);
+  assert.match(renderBrainDoor({ ...cfg, sddAuto: true }, 1), /the change lifecycle runs the tool's own init where it is missing/);
+  // Automation on: the refusal is said, where the document is named.
+  assert.match(renderBrainDoor({ ...cfg, sddAuto: true }, 1), /CREATE IT IF ABSENT — `change plan` refuses while it is missing, empty or still the template\./);
+});
+
+/**
+ * MV-147. The door is the one surface every session reads, and under
+ * `sdd_auto: false`, `--no-sdd` or after a context reset the only one: it
+ * carries each opsx step's run — openspec's own verb, `<slug>` literal, the
+ * human's question on it — and never a guide, which the lifecycle prints where
+ * the step comes up.
+ */
+test('the door carries each opsx command and no guide', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sdd: 'opsx',
+    sddAuto: true,
+    grapherAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    graphers: {},
+    repos: {},
+  };
+  const door = renderBrainDoor(cfg, 1);
+  const steps = door.split('\n').filter((l) => /^ {2}- `change \w+` → /.test(l));
+  assert.deepEqual(steps, [
+    "  - `change new` → in the brain checkout run `openspec new change <slug> --json`, then write each artifact `openspec status --change <slug>` marks `[ ]` from `openspec instructions <id> --change <slug> --json`; a material ambiguity is the human's question [proof: openspec/changes/<slug>/proposal.md]",
+    '  - `change plan` → keep writing each artifact `openspec status --change <slug>` marks `[ ]` from `openspec instructions <id> --change <slug> --json` until tasks.md is written [proof: openspec/changes/<slug>/tasks.md]',
+    "  - `change apply` → where openspec/changes/<slug>/ is (the brain's change worktree once `change apply` carried it there), run `openspec instructions apply --change <slug> --json` before the first task and after the last; tick `- [x]` only what is fully built, until its `state` is `all_done`; scope beyond the spec is the human's question [ungateable]",
+    "  - `change land` → after the merge, in the brain checkout (never a change worktree), run `openspec archive <slug> --json` to merge the deltas into openspec/specs/ and archive the change; `archive_confirmation_required` is the human's question, and a flag its `fix` names is never yours [proof: openspec/changes/archive/<n>-<n>-<n>-<slug>]",
+  ]);
+  assert.ok(
+    steps.reduce((n, l) => n + Buffer.byteLength(`${l}\n`), 0) <= 1300,
+    `${steps.join('\n')}: over 1,300 bytes`,
+  );
+  // No guide, whichever steps carry one: the lifecycle prints it at the step.
+  const guides = (sddSpec('opsx')!.steps ?? []).flatMap((s) => (s.guide ? [s.guide] : []));
+  assert.ok(guides.length > 0, 'opsx carries at least one guide');
+  for (const g of guides) assert.ok(!door.includes(g), `the door carries a guide: ${g}`);
+  assert.doesNotMatch(door, /opsx[:]/);
+  // Under `sdd_auto: false` the lifecycle prints nothing at its points, so the
+  // door is the only surface left: the runs still name the human's question.
+  const off = renderBrainDoor({ ...cfg, sddAuto: false }, 1);
+  const offSteps = off.split('\n').filter((l) => /^ {2}- `change \w+` → /.test(l));
+  assert.equal(offSteps.length, 4, off);
+  for (const at of ['new', 'apply', 'land']) {
+    const l = offSteps.find((s) => s.startsWith(`  - \`change ${at}\` → `));
+    assert.ok(l && l.includes("the human's question"), `${at}: ${l}`);
+  }
+});
+
+/**
+ * MV-146's budgets, so they cannot regress silently: the brain door's step
+ * lines were 1,654 bytes for spec-kit and 951 for openspec, each restating an
+ * ungateable reason the lifecycle prints where the step comes up; a code
+ * repo's door carried a 2,796-byte SDD block where one line now stands.
+ */
+test('the doors keep the SDD within its measured byte budgets', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sddAuto: true,
+    grapherAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    graphers: {},
+    repos: { api: { path: '../acme-api' }, web: { path: '../acme-web', sdd: 'none' } },
+  };
+  const bytes = (lines: string[]): number => lines.reduce((n, l) => n + Buffer.byteLength(`${l}\n`), 0);
+  // MV-147: opsx's four runs grew from 646 to 1,220 bytes when they became
+  // openspec's own verbs with the human's question on each — still under the
+  // 2,335 bytes of command-body listing they replace in a claude session.
+  for (const [sdd, budget] of [['speckit', 910], ['opsx', 1300]] as const) {
+    const steps = renderBrainDoor({ ...cfg, sdd }, 1).split('\n').filter((l) => /^ {2}- `change \w+` → /.test(l));
+    assert.ok(steps.length > 0, sdd);
+    assert.ok(bytes(steps) <= budget, `${sdd}: ${bytes(steps)} bytes of step lines, budget ${budget}`);
+    // The consumer door: what the SDD adds over an exempt repo's door, at
+    // least 2,500 bytes under the block it replaced.
+    const extra = Buffer.byteLength(renderConsumerDoor({ ...cfg, sdd }, 'api')) - Buffer.byteLength(renderConsumerDoor({ ...cfg, sdd }, 'web'));
+    assert.ok(extra <= 2796 - 2500, `${sdd}: the consumer door carries ${extra} bytes of SDD`);
+  }
 });
 
 // The graph refresh follows the AGENT: it rides the harness's post-edit hook,
@@ -297,6 +419,9 @@ test('grapher declared + present: harness post-edit entry, git shim untouched', 
     assert.ok(refresh, 'post-edit refresh entry written');
     assert.match(refresh!, /graph-refresh\.lock/); // coalesced
     assert.match(refresh!, /& exit 0$/); // backgrounded, never a failure
+    // MV-148: this brain holds no code, so its hook follows edits into api's
+    // checkouts and never runs in one of the brain's; api's is a consumer's.
+    assert.equal(refresh!.includes('[ ! -e "$t/.multivac/config.yml" ] && '), dir === eco.brain, dir);
     assert.equal(
       hooks.PostToolUse.find((e) => e.hooks[0].command.includes('stubgraph update .'))!.matcher,
       'Edit|Write|MultiEdit',
@@ -426,12 +551,204 @@ test('no grapher declared: no refresh entry at all', async () => {
     join(eco.brain, '.multivac/config.yml'),
     'doors: [agents, claude]\nrepos:\n  api: ../acme-api\n',
   );
-  assert.equal((await runDoors()).code, 0);
+  const { code, out } = await runDoors();
+  assert.equal(code, 0);
   for (const dir of [eco.brain, eco.repos.api]) {
     const settings = read(dir, '.claude/settings.json');
     assert.doesNotMatch(settings, /graph-refresh\.lock/);
     assert.match(settings, /mvac verify/);
   }
+  // Nothing declared, nothing to explain (MV-148's notices are for a grapher).
+  assert.equal(out.some((l) => l.includes('no post-edit graph refresh')), false, out.join('\n'));
+});
+
+// MV-148. A code-less brain's hook moves into the code repo of the file edited
+// before it looks for the binary, so it is wired only where every code repo
+// resolving the grapher finds it — PATH, or that repo's own node_modules/.bin.
+// Where it cannot be wired, `doors` says why, once — MV-149: once per grapher,
+// each grapher getting its own hook.
+test('a code-less brain wires the hook that follows edits only where every code repo can run it, and says why not — MV-148', async () => {
+  const e = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-follow-')));
+  const doors = async (config: string): Promise<{ notices: string[]; hook?: string; out: string[]; door: string; flow: string }> => {
+    writeFileSync(join(e.brain, '.multivac/config.yml'), config);
+    const out: string[] = [];
+    const orig = console.log;
+    const savedPath = process.env.PATH;
+    console.log = (line: string) => out.push(String(line));
+    process.env.PATH = ['/usr/bin', '/bin'].join(':');
+    try {
+      assert.equal(await doorsCommand.run([], { cwd: e.brain }), 0);
+    } finally {
+      console.log = orig;
+      process.env.PATH = savedPath;
+    }
+    const hooks = JSON.parse(read(e.brain, '.claude/settings.json')).hooks as Record<string, { hooks: { command: string }[] }[]>;
+    return {
+      notices: out.filter((l) => /^brain: notice: no post-edit (graph )?refresh (for \S+ )?here/.test(l)),
+      hook: (hooks.PostToolUse ?? []).flatMap((x) => x.hooks.map((h) => h.command)).find((c) => c.includes('graph-refresh.lock')),
+      out,
+      door: read(e.brain, 'AGENTS.md'),
+      flow: read(e.brain, '.multivac/flow.md'),
+    };
+  };
+  const both = 'doors: [agents, claude]\ngrapher: graphify\nrepos:\n  web: ../acme-web\n  api: ../acme-api\n';
+
+  // Two graphers over the code repos (MV-149): one hook each, and where
+  // neither binary is found, one notice each, naming its grapher — the brain
+  // has two refreshes to lose, never one hook for one command.
+  let r = await doors(
+    'doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n',
+  );
+  assert.equal(r.hook, undefined);
+  assert.deepEqual(r.notices, [
+    "brain: notice: no post-edit refresh for graphify here — `graphify` is not reachable from every code repo that resolves graphify (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them",
+    "brain: notice: no post-edit refresh for codegraph here — `codegraph` is not reachable from every code repo that resolves codegraph (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them",
+  ]);
+  assert.equal(r.out.some((l) => l.includes('one hook runs one')), false);
+
+  // The binary in web's node_modules/.bin alone: the hook, moved into api, would find none.
+  const stub = (repo: string): void => {
+    mkdirSync(join(repo, 'node_modules/.bin'), { recursive: true });
+    writeFileSync(join(repo, 'node_modules/.bin/graphify'), '#!/bin/sh\nexit 0\n');
+    chmodSync(join(repo, 'node_modules/.bin/graphify'), 0o755);
+  };
+  stub(e.repos.web);
+  r = await doors(both);
+  assert.equal(r.hook, undefined);
+  assert.deepEqual(r.notices, [
+    "brain: notice: no post-edit graph refresh here — `graphify` is not reachable from every code repo that resolves graphify (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them",
+  ]);
+  // web's own hook is a consumer's, wired by web's own lookup, as before.
+  assert.match(read(e.repos.web, '.claude/settings.json'), /graph-refresh\.lock/);
+  const unwired = r;
+
+  // In each code repo's node_modules/.bin: wired, in the follow form, silently.
+  stub(e.repos.api);
+  r = await doors(both);
+  assert.deepEqual(r.notices, []);
+  assert.ok(r.hook?.includes('[ ! -e "$t/.multivac/config.yml" ] && [ -e "$t/graphify-out/graph.json" ] && cd "$t" || exit 0; '), r.hook);
+  // Declarations, never disk (MV-93): the committed door and flow.md say what
+  // the hook is declared to run, byte for byte on a machine that could not
+  // wire it — there `doors`, above, and `doctor` say it is not wired.
+  assert.equal(unwired.door, r.door);
+  assert.equal(unwired.flow, r.flow);
+  assert.ok(r.door.includes('(web: `../acme-web`, api: `../acme-api`), refreshed after your edits there'), r.door);
+  assert.match(r.flow, /refreshed after each edit through the harness hook/);
+
+  // No writable code repo resolves the grapher declared: no checkout to follow into.
+  r = await doors('doors: [agents, claude]\ngrapher: graphify\nrepos:\n  web:\n    path: ../acme-web\n    grapher: none\n');
+  assert.equal(r.hook, undefined);
+  assert.deepEqual(r.notices, [
+    'brain: notice: no post-edit graph refresh here — no writable code repo resolves graphify yet, so there is no checkout to follow edits into; `multivac doors` wires it once one does',
+  ]);
+
+  // Unverified, and no repo resolves it: what to declare, never "wires it
+  // once one does" — nothing ever wires a name multivac cannot run (MV-59).
+  r = await doors('doors: [agents, claude]\ngrapher: mystery\nrepos:\n  web:\n    path: ../acme-web\n    grapher: none\n');
+  assert.equal(r.hook, undefined);
+  assert.deepEqual(r.notices, []);
+  assert.equal(r.out.filter((l) => l.startsWith('brain: notice: grapher "mystery" is not verified')).length, 1, r.out.join('\n'));
+
+  // A brain that holds code: its own hook, today's bytes, no notice.
+  r = await doors('doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n  web: ../acme-web\n');
+  assert.deepEqual(r.notices, []);
+  assert.equal(r.hook, undefined, 'graphify is found from neither PATH nor the brain');
+  stub(e.brain);
+  r = await doors('doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n  web: ../acme-web\n');
+  assert.equal(r.hook, refreshHookCmd('graphify update .', {}, 'graphify-out/graph.json'));
+
+  // No harness with a post-edit hook: nothing to wire, so nothing to explain.
+  r = await doors('doors: [agents]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n');
+  assert.deepEqual(r.notices, []);
+});
+
+// MV-149. One post-edit hook per grapher the brain's session refreshes, each
+// wired by its own lookup and removed with its own grapher; graphers writing
+// one artifact cannot be told apart by a hook, so `doors` says which is wired.
+test('two graphers over the code repos get one hook each, and each goes with its grapher — MV-149', async () => {
+  const e = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-two-')));
+  const bin = mkdtempSync(join(tmpdir(), 'mvac-doors-two-bin-'));
+  const put = (name: string): void => {
+    writeFileSync(join(bin, name), '#!/bin/sh\nexit 0\n');
+    chmodSync(join(bin, name), 0o755);
+  };
+  const doors = async (config: string): Promise<{ notices: string[]; out: string[]; refreshes: string[]; post: { hooks: { command: string }[] }[] }> => {
+    writeFileSync(join(e.brain, '.multivac/config.yml'), config);
+    const out: string[] = [];
+    const orig = console.log;
+    const savedPath = process.env.PATH;
+    console.log = (line: string) => out.push(String(line));
+    process.env.PATH = [bin, '/usr/bin', '/bin'].join(':');
+    try {
+      assert.equal(await doorsCommand.run([], { cwd: e.brain }), 0);
+    } finally {
+      console.log = orig;
+      process.env.PATH = savedPath;
+    }
+    const post = (JSON.parse(read(e.brain, '.claude/settings.json')).hooks.PostToolUse ?? []) as { hooks: { command: string }[] }[];
+    return {
+      notices: out.filter((l) => l.startsWith('brain: notice: ')),
+      out,
+      refreshes: post.flatMap((x) => x.hooks.map((h) => h.command)).filter((c) => c.includes('graph-refresh.lock')),
+      post,
+    };
+  };
+  const mixed =
+    'doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n';
+  const graphify = refreshHookCmd('graphify update .', {}, 'graphify-out/graph.json', true);
+  const cg = grapherSpec('codegraph')!;
+  const codegraph = refreshHookCmd(cg.refresh, cg.env ?? {}, cg.artifacts[0], true);
+
+  // codegraph found from no repo resolving it: graphify's hook alone, and
+  // #5's unreachable notice for codegraph, its head naming codegraph — the
+  // brain's session still refreshes graphify after each edit.
+  put('graphify');
+  let r = await doors(mixed);
+  assert.deepEqual(r.refreshes, [graphify]);
+  assert.deepEqual(r.notices, [
+    "brain: notice: no post-edit refresh for codegraph here — `codegraph` is not reachable from every code repo that resolves codegraph (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them",
+  ]);
+  assert.equal(Buffer.byteLength(`${r.notices[0]}\n`), 220);
+
+  // Both found: two refresh hooks, the follow form each, and no notice.
+  put('codegraph');
+  r = await doors(mixed);
+  assert.deepEqual(r.refreshes, [graphify, codegraph]);
+  assert.deepEqual(r.notices, []);
+  assert.equal(r.out.some((l) => l.includes('one hook runs one')), false);
+  const settings = read(e.brain, '.claude/settings.json');
+  assert.equal((await doors(mixed)).refreshes.length, 2);
+  assert.equal(read(e.brain, '.claude/settings.json'), settings, 'a second doors changes no byte');
+
+  // A user's command beside codegraph's hook; api's grapher removed: exactly
+  // the codegraph hook goes, the user's command and graphify's hook stay.
+  const obj = JSON.parse(settings);
+  const entry = (obj.hooks.PostToolUse as { hooks: { command: string }[] }[]).find((x) => x.hooks[0]!.command === codegraph)!;
+  entry.hooks.push({ type: 'command', command: 'my-own-linter' } as never);
+  writeFileSync(join(e.brain, '.claude/settings.json'), `${JSON.stringify(obj, null, 2)}\n`);
+  r = await doors('doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: none\n');
+  assert.deepEqual(r.refreshes, [graphify]);
+  const commands = r.post.flatMap((x) => x.hooks.map((h) => h.command));
+  assert.ok(commands.includes('my-own-linter'), commands.join('\n'));
+  assert.equal(r.post.find((x) => x.hooks.some((h) => h.command === 'my-own-linter'))!.hooks.length, 1);
+
+  // Two graphers writing one artifact: the brain's own keeps its hook, which
+  // moves into any toplevel holding its artifact, so the notice says it runs
+  // in the sibling's repos too; the sibling's gets none. Neither the brain's,
+  // and neither gets one: a follow hook for the first would run it in the
+  // second's repos.
+  put('outgraph');
+  const decl = 'graphers:\n  outgraph:\n    artifact: graphify-out/graph.json\n    refresh: outgraph update .\n';
+  r = await doors(`doors: [agents, claude]\ngrapher: graphify\n${decl}repos:\n  brain: .\n  api:\n    path: ../acme-api\n    grapher: outgraph\n`);
+  assert.deepEqual(r.refreshes, [refreshHookCmd('graphify update .', {}, 'graphify-out/graph.json')]);
+  assert.deepEqual(r.notices, [
+    "brain: notice: graphify and outgraph both write graphify-out/graph.json, so one hook cannot tell their repos apart — graphify is wired, and an edit in outgraph's repos runs graphify there; `change land` and `change close` refresh outgraph",
+  ]);
+  r = await doors(`doors: [agents, claude]\n${decl}repos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: outgraph\n`);
+  assert.deepEqual(r.refreshes, []);
+  assert.deepEqual(r.notices, [
+    'brain: notice: graphify and outgraph both write graphify-out/graph.json, so one hook cannot tell their repos apart — neither is wired; `change land` and `change close` refresh them',
+  ]);
 });
 
 // What the merge sees and refuses to settle has to REACH the human: a notice
@@ -491,4 +808,90 @@ test('a consumer door names the law at the path that repo can open — MV-143', 
   }
   // The brain's own door keeps the bare path: that is the path it can open.
   assert.match(read(eco.brain, 'AGENTS.md'), /`\.multivac\/invariants\.md`/);
+});
+
+/**
+ * MV-146: the SDD runs in the brain alone, so a code repo's door carries no
+ * step block, no project document and no ungateable reason — one line saying
+ * where the steps run and where this repo's code belongs. A repo that opts out
+ * with `sdd: none`, or an ecosystem with `sdd_auto: false`, gets none.
+ */
+test('a consumer door names the brain\'s SDD in one line, and none where nothing governs it', () => {
+  const cfg: Config = {
+    doors: ['agents'],
+    sdd: 'speckit',
+    sddAuto: true,
+    grapherAuto: true,
+    authorities: [],
+    blocking: ['absent', 'count', 'each'],
+    staleness: 'report',
+    strictPrePush: false,
+    mount: '.brain',
+    graphers: {},
+    repos: {
+      api: { path: '../acme-api' },
+      web: { path: '../acme-web', sdd: 'none' },
+    },
+  };
+  const api = renderConsumerDoor(cfg, 'api');
+  const lines = api.split('\n').filter((l) => l.includes('speckit'));
+  assert.deepEqual(lines, [
+    "- The brain's `speckit` SDD runs in the brain checkout, never in this mount: specs, plans and tasks are written there. Code here lands only on the branch of an open change declaring this repo; `verify --strict` refuses it anywhere else.",
+  ]);
+  for (const gone of ['[ungateable', '[proof:', 'Features gate', 'project law', 'CREATE IT IF ABSENT', 'the row wins']) {
+    assert.equal(api.includes(gone), false, gone);
+  }
+  // Opted out, or nothing gated: no line at all.
+  assert.equal(renderConsumerDoor(cfg, 'web').includes('SDD'), false);
+  assert.equal(renderConsumerDoor({ ...cfg, sddAuto: false }, 'api').includes('SDD'), false);
+});
+
+test('every shim exports MULTIVAC_QUIET after its chain block and before its runners — MV-151', async () => {
+  const repo = mkdtempSync(join(tmpdir(), 'mvac-doors-quiet-'));
+  gitInit(repo);
+  await installHooks(repo, { strictPrePush: false });
+  for (const name of ['pre-commit', 'pre-merge-commit', 'pre-push']) {
+    const lines = read(repo, '.multivac/hooks', name).split('\n');
+    const at = lines.indexOf('export MULTIVAC_QUIET=1');
+    assert.ok(at > 0, `${name} exports the switch`);
+    assert.equal(lines.filter((l) => l === 'export MULTIVAC_QUIET=1').length, 1, name);
+    assert.deepEqual(lines.slice(at - 2, at), [
+      '# One line when nothing is off; the full report otherwise. An env var, not a',
+      '# flag: a binary that predates it ignores it and prints in full.',
+    ]);
+    // After the chain block (or the non-chain `root=` line), before the runners.
+    assert.ok(lines[at - 3] === 'fi' || lines[at - 3]!.startsWith('root='), `${name}: ${lines[at - 3]}`);
+    assert.match(lines[at + 1]!, /^# The build is used only when this repo IS multivac/);
+    assert.ok(!lines.slice(0, at).some((l) => /exec (node|npx|mvac)/.test(l)), `${name}: no runner before the export`);
+    // A shim lands in every repo of every ecosystem, where a row ID means nothing.
+    assert.doesNotMatch(lines.join('\n'), /MV-[0-9]+/);
+  }
+});
+
+test('doors from a subdirectory projects the brain that holds it and names it once — MV-151', async () => {
+  const own = makeScratchEcosystem(realpathSync(mkdtempSync(join(tmpdir(), 'mvac-doors-root-'))));
+  const src = join(own.brain, 'src');
+  mkdirSync(src, { recursive: true });
+  const at = async (cwd: string): Promise<{ code: number; out: string[] }> => {
+    const out: string[] = [];
+    const orig = { log: console.log, error: console.error };
+    console.log = console.error = (line: string) => out.push(String(line));
+    try {
+      return { code: await doorsCommand.run([], { cwd }), out };
+    } finally {
+      console.log = orig.log;
+      console.error = orig.error;
+    }
+  };
+  const below = await at(src);
+  assert.equal(below.code, 0, below.out.join('\n'));
+  assert.equal(below.out[0], `root: ${own.brain} (asked from ${src})`);
+  assert.equal(below.out.filter((l) => l.startsWith('root: ')).length, 1);
+  assert.doesNotMatch(below.out.join('\n'), /multivac init/);
+  const projected = read(own.brain, 'AGENTS.md');
+  const atRoot = await at(own.brain);
+  assert.equal(atRoot.code, 0);
+  assert.equal(atRoot.out.filter((l) => l.startsWith('root: ')).length, 0);
+  assert.deepEqual(atRoot.out, below.out.slice(1), 'the projection is the run at the root');
+  assert.equal(read(own.brain, 'AGENTS.md'), projected);
 });

@@ -19,6 +19,9 @@ elif [ -f "$root/.pre-commit-config.yaml" ]; then
     echo "multivac: .pre-commit-config.yaml present but pre-commit is not installed — the project's gate did NOT run. Fix: install pre-commit (pipx install pre-commit, or brew install pre-commit)" >&2
   fi
 fi
+# One line when nothing is off; the full report otherwise. An env var, not a
+# flag: a binary that predates it ignores it and prints in full.
+export MULTIVAC_QUIET=1
 # The build is used only when this repo IS multivac: `dist/cli.js` plus
 # node_modules describes most Node CLI repos, and running THEIR binary as
 # multivac is the tool executing somebody else's program under its own name.

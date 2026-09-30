@@ -5,13 +5,15 @@
 // plain directory and a repo with no commit both read as `present`.
 
 import { createHash } from 'node:crypto';
-import { readFile, realpath, stat } from 'node:fs/promises';
+import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
+import picomatch from 'picomatch';
 import { parse } from 'yaml';
-import { pathExists } from '../adapters/detect.js';
-import type { SddProjectStep } from '../adapters/registry.js';
-import { normUrl, run as git } from './git.js';
-import type { RepoEntry } from '../types.js';
+import { adapterFor, bodyGlobs, brainHoldsCode, pathExists } from '../adapters/detect.js';
+import { grapherNames, grapherSpec, sddNames, sddSpec, type AdapterSpec, type SddProjectStep } from '../adapters/registry.js';
+import { initState } from './init-state.js';
+import { inHead, normUrl, run as git } from './git.js';
+import type { Config, RepoEntry } from '../types.js';
 
 export type CloneState =
   | { state: 'cloned' }
@@ -112,4 +114,261 @@ export async function projectDocVerdict(dir: string, doc: SddProjectStep): Promi
   const token = (doc.placeholders ?? []).find((p) => prose.includes(p));
   if (token) return { verdict: 'template', why: `placeholders remain: ${token}` };
   return { verdict: 'written' };
+}
+
+/** A known SDD's install found in a code repo (MV-146). */
+export interface Leftover {
+  sdd: string;
+  /** The vendor's state file found there, else its directory. */
+  file: string;
+  /** Whether HEAD holds it: removed by a commit, or by a delete alone. */
+  tracked: boolean;
+}
+
+/**
+ * MV-146. Every KNOWN SDD whose state in a code repo is not missing. A
+ * top-level `sdd:` used to reach every declared repo and `repos sync` ran the
+ * vendor's init in each; the SDD runs in the brain alone now, so what an
+ * earlier release installed there is a leftover nothing reads. One answer for
+ * `doctor` and `repos check`, which report it and never fail over it — and
+ * removing it is not code (MV-137), for every known SDD, not only the brain's.
+ * Files only, and git's own answer for tracked: no vendor is run.
+ */
+export async function leftoverSdds(dir: string): Promise<Leftover[]> {
+  const out: Leftover[] = [];
+  for (const sdd of sddNames) {
+    const spec = sddSpec(sdd);
+    if (!spec || (await initState(spec, dir)).state === 'missing') continue;
+    let file = spec.state.dir ?? spec.state.files[0];
+    for (const f of spec.state.files) {
+      if (await pathExists(join(dir, f))) {
+        file = f;
+        break;
+      }
+    }
+    out.push({ sdd, file, tracked: await inHead(dir, file) });
+  }
+  return out;
+}
+
+/** A grapher's install an earlier release left in a brain that holds no code (MV-148), or, in a code repo, the artifact of a grapher it does not resolve (MV-149). */
+export interface LeftoverGraph {
+  /** The grapher: a known one, or a key of `graphers:`. */
+  name: string;
+  /** `shared` or `local` from the registry entry; `declared` for one under `graphers:`. */
+  kind: 'shared' | 'local' | 'declared';
+  /** The artifact, when it is on disk. */
+  artifact?: string;
+  /** Whether git tracks any path found: removed by a commit, or by a delete alone. */
+  tracked: boolean;
+  /** The top directory of the entry's `local` globs, when it is on disk (`graphify-out`, `.codegraph`). */
+  stateDir?: string;
+  /** The entry's `graphignoreFile`, when it is on disk. */
+  ignoreFile?: string;
+  /** The harness platforms whose probe is on disk: `uninstallFirst` ones first, then registry order. */
+  platforms: string[];
+}
+
+/**
+ * MV-148. What a kept install is called, by `doctor` and `repos check` alike:
+ * a local artifact is an `index`, one under `graphers:` a `graph`, and a known
+ * grapher's shared one an `install` — the vendor's skills and hooks with it.
+ */
+export const leftoverNoun = (l: Pick<LeftoverGraph, 'kind'>): 'index' | 'graph' | 'install' =>
+  l.kind === 'local' ? 'index' : l.kind === 'declared' ? 'graph' : 'install';
+
+/**
+ * MV-148. Every grapher whose install is in a brain that holds no code. Such
+ * a brain resolves no grapher (`adapterFor`), so what an earlier release built
+ * and installed there — the graph, the vendor's output directory, its ignore
+ * file, its skill and hooks in each harness — is a leftover nothing refreshes,
+ * and the vendor's own section and hooks still send agents to ask it. It is
+ * kept until a human removes it: `doctor` prints the removal, `repos check`
+ * states it, and the door says it holds no code.
+ *
+ * Every KNOWN grapher and every one declared under `graphers:`, each probed at
+ * its artifact, the top directory of its `local` globs, its ignore file — only
+ * beside one of those two (MV-149) — and every harness platform's probe,
+ * declared door or not — no config key chooses
+ * among them, since the one that chose is what the brain no longer resolves.
+ * Files only, and one `git ls-files` for tracked: no vendor is run (MV-129).
+ * `[]` where the brain holds code: its graph is its own.
+ *
+ * MV-149. Asked of a code repo (`key`, its config key), the same probe answers
+ * which graphers' artifacts it holds that it does not resolve: a repo that
+ * moved from one grapher to another, or was built by hand, where each
+ * grapher's own post-edit hook passes its toplevel test and refreshes it on
+ * an edit there. The artifact alone counts, by file existence — no platform,
+ * no ignore file — and one written by the grapher the repo resolves is its
+ * own. Whether that grapher's hook is wired is `doctor`'s to ask, so this
+ * stays offline.
+ */
+export async function leftoverGraphs(cfg: Config, dir: string, key = 'brain'): Promise<LeftoverGraph[]> {
+  const repo = key !== 'brain';
+  if (!repo && brainHoldsCode(cfg)) return [];
+  const resolved = repo ? adapterFor(cfg, key, 'grapher') : undefined;
+  const ownArt = resolved === undefined ? undefined : grapherSpec(resolved, cfg.graphers)?.artifacts[0];
+  const out: LeftoverGraph[] = [];
+  for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
+    const spec = grapherSpec(name, cfg.graphers);
+    if (spec === null || name === resolved || (repo && spec.artifacts[0] === ownArt)) continue;
+    const here = async (p: string | undefined): Promise<string | undefined> =>
+      p !== undefined && (await pathExists(join(dir, p))) ? p : undefined;
+    const artifact = await here(spec.artifacts[0]);
+    if (repo) {
+      if (!artifact) continue;
+      const listed = await git(dir, ['ls-files', '-z', '--', artifact]).catch(() => '');
+      out.push({
+        name,
+        kind: grapherNames.includes(name) ? (spec.artifactKind ?? 'shared') : 'declared',
+        artifact,
+        tracked: listed.length > 0,
+        platforms: [],
+      });
+      continue;
+    }
+    const top = spec.local.map((g) => g.split('/')[0]).find((t) => !/[*?[{]/.test(t));
+    const stateDir = await here(top);
+    // MV-149: the ignore file only beside the grapher's artifact or its state
+    // directory. Alone it is the human's: `codegraph.json` is codegraph's
+    // config as much as its ignore file, and one kept for another checkout's
+    // index is not a leftover of this brain.
+    const ignoreFile = artifact || stateDir ? await here(spec.graphignoreFile) : undefined;
+    const found = Object.values(spec.harness?.platforms ?? {});
+    const platforms: string[] = [];
+    for (const p of [...found.filter((p) => p.uninstallFirst), ...found.filter((p) => !p.uninstallFirst)]) {
+      if (await pathExists(join(dir, p.probe))) platforms.push(p.key);
+    }
+    if (!artifact && !stateDir && !ignoreFile && platforms.length === 0) continue;
+    const paths = [artifact, stateDir, ignoreFile, ...platforms.map((k) => found.find((p) => p.key === k)!.probe)];
+    const listed = await git(dir, ['ls-files', '-z', '--', ...paths.filter((p): p is string => p !== undefined)]).catch(() => '');
+    out.push({
+      name,
+      // A known name keeps its registry entry even where `graphers:` declares
+      // it too (`grapherSpec`), so only an unknown one is `declared`.
+      kind: grapherNames.includes(name) ? (spec.artifactKind ?? 'shared') : 'declared',
+      ...(artifact ? { artifact } : {}),
+      tracked: listed.length > 0,
+      ...(stateDir ? { stateDir } : {}),
+      ...(ignoreFile ? { ignoreFile } : {}),
+      platforms,
+    });
+  }
+  return out;
+}
+
+/** A vendor's command body an earlier init left in the brain (MV-147). */
+export interface Body {
+  /** The entry, repo-relative: `<dir>[/<sub>]/<name>`, or `<parent>/openspec-*` for collapsed siblings. */
+  path: string;
+  /**
+   * true: the files under it that git tracks, removed by `git rm -r`; false:
+   * the untracked ones, removed by a delete. An entry holding both is listed
+   * once as each.
+   */
+  tracked: boolean;
+}
+
+/**
+ * MV-147. The command bodies and skills a vendor's integration init wrote in
+ * `dir` — the brain — once its scaffold installs none: every file git lists
+ * there, tracked or untracked and not ignored, matching `bodyGlobs`, reduced to
+ * the entry that holds it (the shortest leading path a body glob names). A
+ * brain an earlier multivac scaffolded keeps them, and nothing prints them any
+ * more, so `doctor` names them — and naming by the recorded names is all it
+ * does: which of them a human put there on purpose is not on disk.
+ *
+ * Tracked and untracked are told apart because the removal differs: `git rm -r`
+ * refuses a pathspec that matches no tracked file, so an entry holding both
+ * is listed once as each. Two or more siblings under one parent sharing a
+ * prefix the scaffold's `bodies.names` records as `<prefix>*` (opsx's
+ * `openspec-`, `.openspec-` and `opsx-`) collapse to `<parent>/<prefix>*` —
+ * the registry entry's names, so no vendor's naming lives here — but only
+ * when every entry that glob reaches is in the same list: a shell
+ * expanding it must hand `git rm -r` nothing untracked. What the glob reaches
+ * is read off the disk, where the shell reads it: git lists neither an ignored
+ * sibling nor an empty directory, and one of them in the expansion failed
+ * `git rm -r` as a whole, removing nothing. Sorted, so the line is stable.
+ * Files only, git's own answers and one directory listing, no vendor run
+ * (MV-75); `[]` for a scaffold recording no `bodies`, and when git cannot
+ * answer.
+ */
+export async function leftoverBodies(dir: string, spec: AdapterSpec): Promise<Body[]> {
+  const globs = bodyGlobs(spec.scaffold);
+  if (globs.length === 0) return [];
+  // The collapse prefixes: each recorded name that ends in `-*`, less the
+  // `*`, longest first, so a name takes the most specific one that fits.
+  const prefixes = (spec.scaffold?.bodies?.names ?? [])
+    .filter((n) => n.endsWith('-*'))
+    .map((n) => n.slice(0, -1))
+    .sort((a, b) => b.length - a.length);
+  // The literal directories the globs sit under, so git lists only those.
+  const literal = (g: string): string => {
+    const segs = g.split('/');
+    const wild = segs.findIndex((x) => /[*?[{]/.test(x));
+    return segs.slice(0, wild < 0 ? segs.length : wild).join('/');
+  };
+  const roots = [...new Set(globs.map(literal))];
+  const list = async (args: string[]): Promise<string[]> =>
+    (await git(dir, ['ls-files', '-z', ...args, '--', ...roots])).split('\0').filter(Boolean);
+  let tracked: string[];
+  let untracked: string[];
+  try {
+    [tracked, untracked] = await Promise.all([list(['--cached']), list(['--others', '--exclude-standard'])]);
+  } catch {
+    return [];
+  }
+  const isBody = picomatch(globs, { dot: true });
+  const isEntry = picomatch(globs.filter((g) => !g.endsWith('/**')), { dot: true });
+  const entryOf = (file: string): string | null => {
+    const segs = file.split('/');
+    for (let k = 1; k <= segs.length; k++) {
+      const p = segs.slice(0, k).join('/');
+      if (isEntry(p)) return p;
+    }
+    return null;
+  };
+  // entry -> [has a tracked file, has an untracked file]
+  const seen = new Map<string, [boolean, boolean]>();
+  const note = (files: string[], i: 0 | 1): void => {
+    for (const f of files) {
+      if (!isBody(f)) continue;
+      const e = entryOf(f);
+      if (e === null) continue;
+      const s = seen.get(e) ?? [false, false];
+      s[i] = true;
+      seen.set(e, s);
+    }
+  };
+  note(tracked, 0);
+  note(untracked, 1);
+  const parentOf = (e: string): string => e.slice(0, e.lastIndexOf('/'));
+  const nameOf = (e: string): string => e.slice(e.lastIndexOf('/') + 1);
+  const out: Body[] = [];
+  for (const [i, inGit] of [[0, true], [1, false]] as const) {
+    const group = [...seen].filter(([, s]) => s[i]).map(([e]) => e);
+    const inGroup = new Set(group);
+    const done = new Set<string>();
+    for (const e of group) {
+      if (done.has(e)) continue;
+      const parent = parentOf(e);
+      const prefix = prefixes.find((x) => nameOf(e).startsWith(x));
+      // Every entry the collapsed glob would reach, in either list — and on
+      // disk, where the shell expands it, no other name.
+      const siblings = prefix ? [...seen.keys()].filter((o) => parentOf(o) === parent && nameOf(o).startsWith(prefix)) : [];
+      const reached =
+        prefix && siblings.length >= 2
+          ? ((await readdir(join(dir, parent)).catch(() => null)) ?? []).filter((n) => n.startsWith(prefix))
+          : [];
+      const exact = reached.length === siblings.length && reached.every((n) => siblings.includes(`${parent}/${n}`));
+      if (siblings.length >= 2 && exact && siblings.every((o) => inGroup.has(o))) {
+        for (const o of siblings) done.add(o);
+        out.push({ path: `${parent}/${prefix}*`, tracked: inGit });
+      } else {
+        done.add(e);
+        out.push({ path: e, tracked: inGit });
+      }
+    }
+  }
+  return out.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : Number(b.tracked) - Number(a.tracked)));
 }

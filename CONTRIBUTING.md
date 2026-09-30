@@ -6,11 +6,11 @@ re-verifies them on every push. Contributions go through the same loop.
 
 ## Touching the site
 
-The site's discoverability surface is checked on every commit, and a change
-that removes it fails (MV-100). Concretely: every section landing authors its
-own `description`, the site declares a fallback so no page can be
-description-less, a card image is declared, the crawler file names the sitemap,
-and the origin stays absolute.
+The site's discoverability surface is checked on each commit where the hooks
+are armed, and in CI, and a change that removes it fails (MV-100). Concretely:
+every section landing authors its own `description`, the site declares a
+fallback so no page can be description-less, a card image is declared, the
+crawler file names the sitemap, and the origin stays absolute.
 
 The check walks the content tree rather than reading a list, so a section added
 next week is covered without anybody remembering to add it. If you add one,
@@ -41,7 +41,7 @@ Ship your change **through the tool**:
 ```sh
 node dist/cli.js change new "Fix the thing"    # scaffolds the change, reserves an id
 # edit .multivac/changes/fix-the-thing.md: which repos, landing order,
-# which invariants it touches, and which claims it makes true — with anchors
+# which invariants it touches, and which rows it claims (their IDs) — with anchors
 node dist/cli.js change plan  fix-the-thing    # resolves repos, prints the landing graph
 node dist/cli.js change apply fix-the-thing    # a worktree per repo, branched for you
 # ... write the code and the tests in the worktree it names ...

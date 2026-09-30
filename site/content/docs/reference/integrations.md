@@ -123,8 +123,12 @@ and entry it does not own:
 ```
 
 `SessionStart` catches a lying brain before the agent conceives code on top
-of it; `PostToolUse` re-checks after every edit. Both run the **default**
-policy, not `--strict`.
+of it, in one line when nothing is off and in full otherwise; `PostToolUse`
+re-checks after every edit, in the checkout of the file written when a brain
+governs it, and says nothing while it is green. Both run the **default**
+policy, not `--strict`, and neither command carries a switch: `verify` reads
+the harness's own hook payload (see
+[hooks](/docs/reference/hooks/#harness-hooks--the-early-ceiling)).
 
 The skill directory is a **mirror**, not an accretion: every run deletes
 anything under `.claude/skills/multivac/` that the package no longer ships —
@@ -156,30 +160,15 @@ tells you to put `@AGENTS.md` as the first line of `CLAUDE.md` instead.
 
 | | |
 | --- | --- |
-| file written | `.cursor/rules/multivac.mdc` |
-| kind | `stub`, with frontmatter |
-| skill | — |
-| hook config | — |
+| file written | nothing — Cursor reads `AGENTS.md` natively |
+| kind | `native` |
 | detected by | an existing `.cursor/` directory |
 | source | <https://cursor.com/docs/context/rules> |
 
-Cursor reads `AGENTS.md` at the project root, so **this target is optional**.
-Take it when you want the door pinned into every chat rather than read
-opportunistically: only `.mdc` files under `.cursor/rules` carry the
-frontmatter that sets `alwaysApply`.
-
-The file in full:
-
-```markdown
----
-description: multivac door — ecosystem law, brain location
-alwaysApply: true
----
-
-<!-- multivac:begin -->
-Read `AGENTS.md` at the repo root — the multivac door: what is law here, where the brain lives. Run `multivac verify` before you commit.
-<!-- multivac:end -->
-```
+Cursor reads `AGENTS.md` at the project root, so there is nothing to project:
+a rules file under `.cursor/rules` would be a second door that could disagree
+with the canonical one. The stub this target used to write is retired — see
+[The four kinds](#the-four-kinds) for what one `doors` run does with it.
 
 ## `opencode`
 
@@ -269,14 +258,9 @@ Read `AGENTS.md` at the repo root — the multivac door: what is law here, where
 
 ## Three artifact classes
 
-Across all entries, multivac writes at most three kinds of thing, and they
-differ by *when the agent reads them*:
-
-| class | loaded | carries |
-| --- | --- | --- |
-| **door** | always — first read of the session | pointers and law: where the brain is, what binds, run `verify` |
-| **hooks** | never read — they fire | enforcement: git `pre-commit`/`pre-push`, harness hooks |
-| **skill** | on demand | the operating manual: anchor grammar, the change lifecycle, the interview |
+Across all entries, multivac writes at most three kinds of thing — a door,
+hooks and a skill — and they differ by *when the agent reads them*: the table
+is on [Distribution](../../concepts/distribution/#skills-the-third-artifact-class).
 
 Only `claude` currently has all three. Git hooks are installed for **every**
 repo `doors` reaches, regardless of which harness entries you declared — see

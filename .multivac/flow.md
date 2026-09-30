@@ -9,18 +9,18 @@ this describes what it and the declared adapters already do.
 ## Automatic — multivac does it, you do not ask
 
 - the doors and the git hooks are re-projected by `multivac doors`
-- the `speckit` init is run in a declared repo whose `.specify` is missing, or the lifecycle says why it could not
+- the `speckit` init is run in the brain when its `.specify` is missing, or the lifecycle says why it could not
 - the code graph is built where `multivac repos sync` or a change reaches a repo with no `graphify-out/graph.json`, refreshed after each edit through the harness hook, and at `change land`, where it is committed on the change branch, and at `change close`, in every declared repo
 
 ## Gate — multivac refuses without it
 
 - `change plan` refuses while a declared repo is missing from `landing_order`
-- `change close` refuses while a declared claim does not resolve
+- `change close` refuses while a declared claim does not resolve, or cites no stated row this change adds, touches or retires
 - `verify` refuses a commit whose anchors are broken — it runs in the pre-commit hook
 - `change plan` refuses without `specs/<n>-<slug>/spec.md`
 - `change apply` refuses without `specs/<n>-<slug>/plan.md`
 - `change apply` refuses without `specs/<n>-<slug>/tasks.md`
-- `change plan` refuses while `.specify/memory/constitution.md` is missing, empty or still the template, in every repo where `speckit` is installed
+- `change plan` refuses while `.specify/memory/constitution.md` is missing, empty or still the template, in the brain
 - `change close` refuses while the brain or a repo the change names has no `graphify-out/graph.json`
 
 ## Yours — nobody can check these

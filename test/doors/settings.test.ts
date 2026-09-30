@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeClaudeSettings, refreshHookCmd } from '../../src/doors/settings.js';
+import { mergeClaudeSettings, refreshHookCmd, refreshKey, type RefreshHook } from '../../src/doors/settings.js';
+import { grapherSpec } from '../../src/adapters/registry.js';
 
 /** The merged text, for the tests that only care about the document. */
 const merged = (raw: string | null, opts?: { refresh?: string | null; matcher?: string; env?: Record<string, string> }) =>
@@ -325,4 +326,213 @@ test('the post-edit refresh exports the entry opt-outs, outside the declared com
   const deadline = Date.now() + 2000;
   while (!existsSync(seen) && Date.now() < deadline) await new Promise((res) => setTimeout(res, 25));
   assert.equal(readFileSync(seen, 'utf8'), '1 0\n');
+});
+
+// --- MV-149: one refresh hook per grapher, each known by its artifact ---
+
+const G = 'graphify-out/graph.json';
+const C = '.codegraph/codegraph.db';
+const cgSpec = grapherSpec('codegraph')!;
+const graphifyHook = (follow?: boolean): RefreshHook => ({ refresh: 'graphify update .', env: {}, artifact: G, follow });
+const codegraphHook = (follow?: boolean): RefreshHook => ({ refresh: cgSpec.refresh, env: cgSpec.env ?? {}, artifact: C, follow });
+type Post = { matcher?: string; hooks: { type?: string; command: string; timeout?: number }[] }[];
+const post = (text: string): Post => JSON.parse(text).hooks.PostToolUse as Post;
+const refreshCommands = (text: string): string[] =>
+  post(text).flatMap((e) => e.hooks.map((h) => h.command)).filter((c) => c.startsWith('L=.multivac/cache/graph-refresh.lock;'));
+const cmdOf = (w: RefreshHook): string => refreshHookCmd(w.refresh, w.env, w.artifact, w.follow);
+
+test('one refresh hook per grapher, each re-rendered and removed by its artifact', () => {
+  const both = [graphifyHook(true), codegraphHook(true)];
+  const once = merged(null);
+  const two = mergeClaudeSettings(once, { refreshes: both }).text;
+  assert.deepEqual(refreshCommands(two), both.map(cmdOf));
+  // Idempotent (T1), and stable when the config lists the graphers the other
+  // way round (T6): each hook is rewritten in place, by its artifact.
+  assert.equal(mergeClaudeSettings(two, { refreshes: both }).text, two);
+  assert.equal(mergeClaudeSettings(two, { refreshes: [...both].reverse() }).text, two);
+  // A user's command beside codegraph's hook, a timeout on it; the grapher
+  // changes its command: rewritten in place, the rest kept.
+  const obj = JSON.parse(two);
+  const entry = (obj.hooks.PostToolUse as Post).find((e) => e.hooks[0]!.command === cmdOf(codegraphHook(true)))!;
+  entry.hooks[0]!.timeout = 90;
+  entry.hooks.push({ type: 'command', command: 'my-own-linter' });
+  const shared = JSON.stringify(obj, null, 2) + '\n';
+  const moved = mergeClaudeSettings(shared, { refreshes: [graphifyHook(true), { ...codegraphHook(true), refresh: 'codegraph sync --quiet' }] }).text;
+  const kept = post(moved).find((e) => e.hooks.some((h) => h.command === 'my-own-linter'))!;
+  assert.match(kept.hooks[0]!.command, /codegraph sync --quiet/);
+  assert.equal(kept.hooks[0]!.timeout, 90);
+  // Dropping codegraph removes its hook and nothing else (T3): the shared
+  // entry keeps the user's command, graphify's hook stays as it was.
+  const dropped = mergeClaudeSettings(shared, { refreshes: [graphifyHook(true)] }).text;
+  assert.deepEqual(refreshCommands(dropped), [cmdOf(graphifyHook(true))]);
+  const left = post(dropped).find((e) => e.hooks.some((h) => h.command === 'my-own-linter'))!;
+  assert.deepEqual(left.hooks.map((h) => h.command), ['my-own-linter']);
+  // No grapher wanted: every refresh hook goes, and only the emptied entries.
+  const none = mergeClaudeSettings(shared, { refreshes: [] }).text;
+  assert.deepEqual(refreshCommands(none), []);
+  assert.ok(post(none).some((e) => e.hooks.some((h) => h.command === 'my-own-linter')));
+});
+
+test('a grapher command a human typed is never a hook of ours', () => {
+  const human = ['graphify update .', 'codegraph sync', `test -e ${C} && codegraph sync`];
+  const raw = JSON.stringify({
+    hooks: { PostToolUse: [{ matcher: 'Edit|Write', hooks: human.map((command) => ({ type: 'command', command })) }] },
+  });
+  for (const wanted of [[], [graphifyHook()], [codegraphHook()], [graphifyHook(true), codegraphHook(true)]]) {
+    const out = mergeClaudeSettings(raw, { refreshes: wanted }).text;
+    const theirs = post(out).find((e) => e.matcher === 'Edit|Write')!;
+    assert.deepEqual(theirs.hooks.map((h) => h.command), human, JSON.stringify(wanted));
+    assert.deepEqual(refreshCommands(out), wanted.map(cmdOf));
+  }
+});
+
+test("today's hook is taken over in place when a second grapher arrives", () => {
+  // A hook written before MV-140's toplevel test names no artifact: keyless.
+  const keyless = refreshHookCmd('graphify update .');
+  assert.equal(refreshKey(keyless), undefined);
+  const raw = JSON.stringify({
+    hooks: { PostToolUse: [{ matcher: 'Edit', hooks: [{ type: 'command', command: keyless, timeout: 30 }, { type: 'command', command: 'my-own-linter' }] }] },
+  });
+  // One grapher wanted: the keyless hook is taken over in place (T4).
+  const one = mergeClaudeSettings(raw, { refreshes: [graphifyHook()] }).text;
+  assert.deepEqual(refreshCommands(one), [cmdOf(graphifyHook())]);
+  assert.equal(post(one)[0]!.matcher, 'Edit');
+  assert.equal(post(one)[0]!.hooks[0]!.timeout, 30);
+  // A second grapher arrives: graphify keeps its hook, codegraph gets its own
+  // entry — never a second graphify hook (T5).
+  const two = mergeClaudeSettings(one, { refreshes: [graphifyHook(true), codegraphHook(true)] }).text;
+  assert.deepEqual(refreshCommands(two), [cmdOf(graphifyHook(true)), cmdOf(codegraphHook(true))]);
+  assert.equal(post(two)[0]!.hooks[0]!.command, cmdOf(graphifyHook(true)), 'rewritten where it sat');
+  // Straight from the keyless hook to two graphers: the first takes it over.
+  const straight = mergeClaudeSettings(raw, { refreshes: [codegraphHook(true), graphifyHook(true)] }).text;
+  assert.deepEqual(refreshCommands(straight), [cmdOf(codegraphHook(true)), cmdOf(graphifyHook(true))]);
+  assert.equal(post(straight)[0]!.hooks[1]!.command, 'my-own-linter');
+});
+
+test("one grapher keeps today's bytes", () => {
+  // The merge's output for one grapher, fresh and over a file it wrote,
+  // equals the one-hook merge's: the list of one and the sugar agree, and the
+  // entry is spelled as ensureEvent always spelled one.
+  const expected = (w: RefreshHook): string =>
+    JSON.stringify(
+      {
+        hooks: {
+          SessionStart: [{ hooks: [{ type: 'command', command: 'mvac verify 2>&1 || true' }] }],
+          PostToolUse: [
+            { hooks: [{ type: 'command', command: 'mvac verify >&2 || exit 2' }], matcher: 'Edit|Write|MultiEdit' },
+            { hooks: [{ type: 'command', command: cmdOf(w) }], matcher: 'Edit|Write|MultiEdit' },
+          ],
+        },
+      },
+      null,
+      2,
+    ) + '\n';
+  for (const w of [graphifyHook(), codegraphHook()]) {
+    const fresh = mergeClaudeSettings(null, { refreshes: [w] }).text;
+    assert.equal(fresh, expected(w));
+    assert.equal(mergeClaudeSettings(null, { refresh: w.refresh, env: w.env, artifact: w.artifact }).text, fresh);
+    // Keyed: a file holding this grapher's hook with an older command.
+    const old = fresh.replace(JSON.stringify(cmdOf(w)).slice(1, -1), JSON.stringify(refreshHookCmd('old refresh', {}, w.artifact)).slice(1, -1));
+    assert.notEqual(old, fresh);
+    assert.equal(mergeClaudeSettings(old, { refreshes: [w] }).text, fresh);
+  }
+});
+
+test('a keyed hook of a grapher no longer wanted is taken over in place by one without a hook', () => {
+  // graphify's own hook, keyed by its artifact, in a user's entry: graphify
+  // goes and codegraph arrives. codegraph takes that hook over where it sits —
+  // the entry's matcher, the timeout and the user's command beside it kept —
+  // rather than graphify's hook going and codegraph getting an entry of its own.
+  const raw = JSON.stringify({
+    hooks: {
+      PostToolUse: [
+        { matcher: 'Edit', hooks: [{ type: 'command', command: cmdOf(graphifyHook()), timeout: 30 }, { type: 'command', command: 'my-own-linter' }] },
+      ],
+    },
+  });
+  const out = mergeClaudeSettings(raw, { refreshes: [codegraphHook()] }).text;
+  assert.deepEqual(refreshCommands(out), [cmdOf(codegraphHook())]);
+  const [theirs, ...rest] = post(out);
+  assert.equal(theirs!.matcher, 'Edit');
+  assert.deepEqual(theirs!.hooks.map((h) => h.command), [cmdOf(codegraphHook()), 'my-own-linter']);
+  assert.equal(theirs!.hooks[0]!.timeout, 30);
+  // The gate's own entry, and no entry appended for codegraph.
+  assert.deepEqual(rest.map((e) => e.hooks.map((h) => h.command)), [['mvac verify >&2 || exit 2']]);
+});
+
+test("every keyed copy of a wanted grapher's hook is rewritten in its entry, and a grapher wanted twice gets one", () => {
+  // Two entries of a user's, each holding graphify's keyed hook with an older
+  // command: both are rewritten where they sit and both kept — copies
+  // included — each beside the user's own command.
+  const old = refreshHookCmd('old refresh', {}, G);
+  const raw = JSON.stringify({
+    hooks: {
+      PostToolUse: [
+        { matcher: 'Edit', hooks: [{ type: 'command', command: old }, { type: 'command', command: 'lint-a' }] },
+        { matcher: 'Write', hooks: [{ type: 'command', command: old }, { type: 'command', command: 'lint-b' }] },
+      ],
+    },
+  });
+  const out = mergeClaudeSettings(raw, { refreshes: [graphifyHook()] }).text;
+  assert.deepEqual(refreshCommands(out), [cmdOf(graphifyHook()), cmdOf(graphifyHook())]);
+  const [a, b] = post(out);
+  assert.deepEqual(a!.hooks.map((h) => h.command), [cmdOf(graphifyHook()), 'lint-a']);
+  assert.deepEqual(b!.hooks.map((h) => h.command), [cmdOf(graphifyHook()), 'lint-b']);
+  // One grapher listed twice is one hook: two hooks with one key would trade
+  // places on every run.
+  assert.deepEqual(refreshCommands(mergeClaudeSettings(null, { refreshes: [graphifyHook(), graphifyHook()] }).text), [cmdOf(graphifyHook())]);
+});
+
+test('two keyless copies of ours become one', () => {
+  const keyless = refreshHookCmd('graphify update .');
+  const raw = JSON.stringify({
+    hooks: {
+      PostToolUse: [
+        { matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: keyless }] },
+        { matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: keyless }] },
+      ],
+    },
+  });
+  const out = mergeClaudeSettings(raw, { refreshes: [graphifyHook()] });
+  assert.deepEqual(refreshCommands(out.text), [cmdOf(graphifyHook())]);
+  assert.deepEqual(out.notices, [], 'the refresh is not the gate: nothing to report');
+  assert.equal(mergeClaudeSettings(out.text, { refreshes: [graphifyHook()] }).text, out.text);
+});
+
+test('refreshKey reads the artifact from both hook forms, and the brain guard is not one', () => {
+  for (const [w, art] of [
+    [graphifyHook(), G],
+    [graphifyHook(true), G],
+    [codegraphHook(), C],
+    [codegraphHook(true), C],
+  ] as const) {
+    assert.equal(refreshKey(cmdOf(w)), art, cmdOf(w));
+  }
+  // The follow form's guard names `.multivac/config.yml` behind a `!`: not a key.
+  assert.ok(cmdOf(graphifyHook(true)).includes('[ ! -e "$t/.multivac/config.yml" ]'));
+  assert.equal(refreshKey('[ ! -e "$t/.multivac/config.yml" ] && exit 0'), undefined);
+  assert.equal(refreshKey(refreshHookCmd('graphify update .')), undefined, 'keyless: written before the test existed');
+});
+
+test('an older doors over a newer projection leaves settings.json byte-identical — MV-151', () => {
+  // MV-151 keys quiet and the post-edit follow on the harness's own payload,
+  // never on the command: the gates keep the bytes every release has written,
+  // so an older `doors` — whose merge is this one, since the change leaves
+  // settings.ts alone — owns both strings and appends no second gate.
+  const gates = (text: string): { session: string[]; edit: string[] } => {
+    const hooks = JSON.parse(text).hooks as Record<string, { hooks: { command: string }[] }[]>;
+    const commands = (ev: string): string[] => (hooks[ev] ?? []).flatMap((e) => e.hooks.map((h) => h.command));
+    return {
+      session: commands('SessionStart').filter((c) => c.startsWith('mvac verify')),
+      edit: commands('PostToolUse').filter((c) => c.startsWith('mvac verify')),
+    };
+  };
+  for (const refreshes of [[], [graphifyHook()], [graphifyHook(true)], [graphifyHook(true), codegraphHook(true)]]) {
+    const projected = mergeClaudeSettings(null, { refreshes }).text;
+    assert.deepEqual(gates(projected), { session: ['mvac verify 2>&1 || true'], edit: ['mvac verify >&2 || exit 2'] });
+    assert.doesNotMatch(projected, /MULTIVAC_QUIET|--quiet/);
+    const again = mergeClaudeSettings(projected, { refreshes }).text;
+    assert.equal(again, projected, JSON.stringify(refreshes));
+    assert.deepEqual(gates(again), gates(projected));
+  }
 });

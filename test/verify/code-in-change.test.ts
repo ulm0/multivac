@@ -8,14 +8,16 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
-import { initRepo } from '../helpers/fixture.js';
+import { initRepo, scrubbedEnv } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { verify } from '../../src/commands/verify.js';
+import { count } from '../../src/commands/count.js';
 import { change } from '../../src/commands/change.js';
 import { doctorReport } from '../../src/commands/doctor.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { loadConfig } from '../../src/lib/config.js';
-import { nonCodeGlobs } from '../../src/lib/code-in-change.js';
+import { graphIgnoreLines, mountDir, nonCodeGlobs } from '../../src/lib/code-in-change.js';
+import { grapherSpec } from '../../src/adapters/registry.js';
 import picomatch from 'picomatch';
 
 process.env.PATH = [dirname(process.execPath), '/usr/bin', '/bin'].join(delimiter);
@@ -211,6 +213,166 @@ test('what init, the SDD and the grapher write for a harness is not code; .githu
   for (const p of ['.github/workflows/ci.yml', 'src/a.ts', 'package.json']) assert.ok(!nonCode(p), p);
 });
 
+test("every known grapher's paths are not code, whichever resolves — MV-148", async () => {
+  // A brain that holds no code resolves no grapher, so what an earlier release
+  // installed there is no resolved grapher's; removing it, or switching a code
+  // repo from one grapher to another, is not code landing outside a change.
+  const graphify = [
+    'graphify-out/graph.json', 'graphify-out/cache/entry', '.graphifyignore',
+    '.agents/skills/graphify/SKILL.md', '.agents/skills/graphify/references/exports.md',
+    '.codex/skills/graphify/SKILL.md', '.codex/hooks.json', '.gemini/settings.json', '.cursor/rules/graphify.mdc',
+  ];
+  // MV-149: codegraph's own ignore file, `codegraph.json`, is its config, not code.
+  const codegraph = ['.codegraph/codegraph.db', '.codegraph/.gitignore', 'codegraph.json'];
+  const at = async (config: string): Promise<(p: string) => boolean> => {
+    const b = join(mkdtempSync(join(tmpdir(), 'mvac-graphers-')), 'brain');
+    initRepo(b, { '.multivac/config.yml': config, '.multivac/invariants.md': '# Invariants\n' });
+    const cfg = await loadConfig(b);
+    const brainOnly = picomatch(nonCodeGlobs(cfg), { dot: true });
+    const inApi = picomatch(nonCodeGlobs(cfg, 'api'), { dot: true });
+    return (p) => brainOnly(p) && inApi(p);
+  };
+  const cg = await at('doors: [agents]\ngrapher: codegraph\nrepos:\n  api: ../api\n');
+  for (const p of graphify) assert.ok(cg(p), `${p} under a codegraph-only config`);
+  for (const p of codegraph) assert.ok(cg(p), `${p} under a codegraph config`);
+  const gf = await at('doors: [agents]\ngrapher: graphify\nrepos:\n  api: ../api\n');
+  for (const p of codegraph) assert.ok(gf(p), `${p} under a graphify-only config`);
+  // A grapher under `graphers:` is known too, whichever resolves.
+  const decl = await at('doors: [agents]\ngrapher: codegraph\ngraphers:\n  acme:\n    artifact: acme-out/graph.json\n    refresh: acme update .\nrepos:\n  api: ../api\n');
+  assert.ok(decl('acme-out/graph.json'));
+  // By name only where it resolves nowhere: the rest of a harness directory
+  // is still code (MV-147), and code is code.
+  for (const p of ['.codex/config.toml', 'src/app.ts', 'package.json']) assert.ok(!cg(p), `${p} is code`);
+});
+
+// MV-148 (FR-024). Where no root resolves graphify, what its install wrote is
+// taken path by path from what the entry measured it writes (graphify 0.9.29,
+// one repo per platform): removing a kept install touches every one of these,
+// and none may be refused as code landing outside a change. Never a glob
+// guessed from a directory's name (Principle V).
+test("every path a kept graphify install wrote is not code where no root resolves it — MV-148", async () => {
+  const kept = [
+    ...['agents', 'claude', 'codex', 'opencode', 'gemini', 'copilot'].flatMap((p) => [
+      `.${p}/skills/graphify/SKILL.md`,
+      `.${p}/skills/graphify/.graphify_version`,
+      ...['add-watch', 'exports', 'extraction-spec', 'github-and-merge', 'hooks', 'query', 'transcribe', 'update'].map(
+        (r) => `.${p}/skills/graphify/references/${r}.md`,
+      ),
+    ]),
+    '.claude/CLAUDE.md', '.claude/settings.json', '.codex/hooks.json', '.gemini/settings.json',
+    '.cursor/rules/graphify.mdc', '.opencode/plugins/graphify.js', '.opencode/opencode.json',
+    'graphify-out/graph.json', '.graphifyignore',
+  ];
+  const configs = {
+    'a code repo on codegraph': 'doors: [agents]\ngrapher: codegraph\nrepos:\n  api: ../api\n',
+    'a brain==code brain on codegraph': 'doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n  api: ../api\n',
+    'a code-less brain, no grapher': 'doors: [agents]\nrepos:\n  api: ../api\n',
+  };
+  for (const [what, config] of Object.entries(configs)) {
+    const b = join(mkdtempSync(join(tmpdir(), 'mvac-kept-')), 'brain');
+    initRepo(b, { '.multivac/config.yml': config, '.multivac/invariants.md': '# Invariants\n' });
+    const cfg = await loadConfig(b);
+    for (const scope of [undefined, 'api']) {
+      const nonCode = picomatch(nonCodeGlobs(cfg, scope), { dot: true });
+      for (const p of kept) assert.ok(nonCode(p), `${p}: ${what} @ ${scope ?? 'brain'}`);
+      // The rest of those directories is still code there (MV-147).
+      for (const p of ['.codex/config.toml', '.opencode/plugins/team.js', '.opencode/package.json']) {
+        assert.ok(!nonCode(p), `${p} is code: ${what} @ ${scope ?? 'brain'}`);
+      }
+    }
+  }
+  // The data holds its own proof: each platform's probe is among its files.
+  for (const [door, pl] of Object.entries(grapherSpec('graphify')!.harness!.platforms)) {
+    assert.ok(picomatch(pl.files, { dot: true })(pl.probe), `${door}: ${pl.probe} is not among its files`);
+  }
+});
+
+test("the ignore lines are the root's non-code directories — MV-148", async () => {
+  // Derived, never listed: each top-level directory of the root's non-code
+  // set, anchored, but the mount and every known grapher's own output
+  // directory; in a code repo the mount; a nested declared repo, relative.
+  const at = async (config: string) => {
+    const b = join(mkdtempSync(join(tmpdir(), 'mvac-ignore-')), 'brain');
+    initRepo(b, { '.multivac/config.yml': config, '.multivac/invariants.md': '# Invariants\n' });
+    const cfg = await loadConfig(b);
+    return (scope: string, grapher = 'graphify') => graphIgnoreLines(cfg, b, scope, grapherSpec(grapher, cfg.graphers)!);
+  };
+  const base = ['/.agents/', '/.claude/', '/.codex/', '/.copilot/', '/.cursor/', '/.gemini/', '/.husky/', '/.multivac/', '/.opencode/', '/.specify/', '/openspec/'];
+  const lines = await at('doors: [claude, codex]\ngrapher: graphify\nsdd: speckit\nrepos:\n  brain: .\n  api: ../api\n  lib: vendor/lib\n');
+  // The brain: `specs/` is its SDD's, the mount is none of its, and a repo
+  // declared inside it is not its code.
+  assert.deepEqual(lines('brain'), [...base, '/specs/', '/vendor/lib/']);
+  // A code repo: its `specs/` is code (MV-146), the brain's mount is not.
+  assert.deepEqual(lines('api'), ['/.agents/', '/.brain/', ...base.slice(1)]);
+  for (const scope of ['brain', 'api']) {
+    assert.ok(!lines(scope).some((l) => /graphify-out|codegraph/.test(l)), `${scope}: no grapher's own outputs`);
+  }
+  // MV-149: codegraph takes only the structural lines — here the repo nested
+  // in the brain, and a code repo's mount, since this brain holds code.
+  assert.deepEqual(lines('brain', 'codegraph'), ['/vendor/lib/']);
+  assert.deepEqual(lines('api', 'codegraph'), ['/.brain/']);
+  // The stated dependence: a door whose SDD integration writes outside every
+  // door's own directory adds a line — windsurf's `/.devin/`.
+  const windsurf = await at('doors: [claude, codex, windsurf]\ngrapher: graphify\nsdd: speckit\nrepos:\n  brain: .\n');
+  assert.deepEqual(windsurf('brain'), [...base.slice(0, 5), '/.devin/', ...base.slice(5), '/specs/']);
+  // Another mount is the one a code repo keeps out.
+  const mounted = await at('doors: [agents]\ngrapher: graphify\nmount: .gov\nrepos:\n  api: ../api\n');
+  assert.ok(mounted('api').includes('/.gov/') && !mounted('api').includes('/.brain/'));
+  assert.ok(!mounted('brain').includes('/.gov/'));
+});
+
+test('the mount is written as git records it', async () => {
+  // MV-149: `/./.brain/`, `./.brain/` and `/.brain//` each left the mount
+  // indexed; git records `path = .brain` for a submodule added at `./.brain`.
+  for (const mount of ['.brain', './.brain', '.brain/', './.brain/', '.brain//']) {
+    assert.equal(mountDir({ mount }), '.brain', mount);
+  }
+  for (const mount of ['../x', '/abs', '/abs/brain', '.', 'a/../..']) assert.equal(mountDir({ mount }), undefined, mount);
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-mount-')), 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\nmount: ./.brain\nrepos:\n  brain: .\n  api:\n    path: ../api\n    grapher: codegraph\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  const cfg = await loadConfig(b);
+  for (const g of ['graphify', 'codegraph']) {
+    const lines = graphIgnoreLines(cfg, b, 'api', grapherSpec(g, cfg.graphers)!);
+    assert.ok(lines.includes('/.brain/'), `${g}: ${lines.join(' ')}`);
+    assert.ok(!lines.some((l) => l.includes('./') || l.includes('//')), `${g}: ${lines.join(' ')}`);
+  }
+  // Outside the root, no line: the tool would read it as a directory here.
+  const out = join(mkdtempSync(join(tmpdir(), 'mvac-mount-')), 'brain');
+  initRepo(out, {
+    '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\nmount: ../brain\nrepos:\n  brain: .\n  api:\n    path: ../api\n    grapher: codegraph\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  const far = await loadConfig(out);
+  for (const g of ['graphify', 'codegraph']) {
+    assert.ok(!graphIgnoreLines(far, out, 'api', grapherSpec(g, far.graphers)!).some((l) => l.includes('brain')), g);
+  }
+});
+
+test('codegraph gets only the structural lines', async () => {
+  const at = async (config: string) => {
+    const b = join(mkdtempSync(join(tmpdir(), 'mvac-structure-')), 'brain');
+    initRepo(b, { '.multivac/config.yml': config, '.multivac/invariants.md': '# Invariants\n' });
+    const cfg = await loadConfig(b);
+    return (scope: string) => graphIgnoreLines(cfg, b, scope, grapherSpec('codegraph', cfg.graphers)!);
+  };
+  // A consumer of a brain that holds no code: the mount adds 0 of its nodes.
+  const codeless = await at('doors: [agents]\ngrapher: codegraph\nsdd: speckit\nrepos:\n  api: ../api\n');
+  assert.deepEqual(codeless('api'), []);
+  // A brain that holds code and nests no repo: nothing, however many
+  // harness and SDD directories it holds — codegraph indexes no Markdown.
+  const own = await at('doors: [claude, codex]\ngrapher: codegraph\nsdd: speckit\nrepos:\n  brain: .\n');
+  assert.deepEqual(own('brain'), []);
+  // A declared repo nested in it: that directory, anchored.
+  const nested = await at('doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n  api: packages/api\n');
+  assert.deepEqual(nested('brain'), ['/packages/api/']);
+  // Its consumer outside it: the mount.
+  const consumer = await at('doors: [agents]\ngrapher: codegraph\nrepos:\n  brain: .\n  web: ../web\n');
+  assert.deepEqual(consumer('web'), ['/.brain/']);
+});
+
 test('with sdd_auto off, or no SDD, nothing is judged; doctor names what makes it binding — MV-137', async () => {
   const off = brain('sdd_auto: false\n');
   stageCode(off);
@@ -257,7 +419,7 @@ test('a real git merge runs pre-merge-commit before MERGE_HEAD exists, and is ju
   const cli = join(process.cwd(), 'dist/cli.js');
   put(b, '.git/hooks/pre-merge-commit', `#!/bin/sh\nexec '${process.execPath}' '${cli}' verify\n`);
   execFileSync('chmod', ['+x', join(b, '.git/hooks/pre-merge-commit')]);
-  const merge = (br: string) => spawnSync('git', ['-C', b, 'merge', '--no-ff', '-q', br, '-m', `merge ${br}`], { encoding: 'utf8' });
+  const merge = (br: string) => spawnSync('git', ['-C', b, 'merge', '--no-ff', '-q', br, '-m', `merge ${br}`], { encoding: 'utf8', env: scrubbedEnv() });
   const ok = merge('feat');
   assert.equal(ok.status, 0, ok.stdout + ok.stderr);
   assert.match(ok.stdout + ok.stderr, /lands in open change feat/);
@@ -305,4 +467,170 @@ test('the directories a declared integration installs into are not code — MV-1
   // openspec's `windsurf` writes `.devin/`, and no door here asks for it.
   assert.ok(!nonCode('.devin/skills/openspec/SKILL.md'), 'not declared, so not exempt');
   assert.ok(!nonCode('src/cli.ts'), 'code is still code');
+});
+
+/**
+ * MV-147: the scaffold installs no command body, so the ones in a brain are an
+ * earlier init's, and `doctor` prints their removal. That commit is not code
+ * under any integration's directory, declared door or not, nor under
+ * `.codex/`, which openspec 1.7.0's codex wrote — by the entry names openspec's
+ * inits write, so the rest of those directories stays code.
+ */
+test("the bodies an openspec init writes are not code under any integration's directory, declared or not", async () => {
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-bodies-')), 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [claude]\nsdd: opsx\nrepos:\n  brain: .\n',
+    '.multivac/invariants.md': '# Invariants\n',
+  });
+  const nonCode = picomatch(nonCodeGlobs(await loadConfig(b)), { dot: true });
+  for (const p of [
+    '.devin/skills/openspec-propose/SKILL.md',
+    '.codex/skills/openspec-explore/SKILL.md',
+    '.github/prompts/opsx-apply.prompt.md',
+    '.agents/skills/.openspec-target',
+    '.gemini/commands/opsx/propose.toml',
+    '.cursor/commands/opsx-apply.md',
+  ]) {
+    assert.ok(nonCode(p), `${p} is an init's body`);
+  }
+  for (const p of ['.devin/skills/openspec/SKILL.md', '.codex/config.toml', '.github/workflows/ci.yml', 'src/cli.ts']) {
+    assert.ok(!nonCode(p), `${p} is code`);
+  }
+  // In a code repo too: a body is the vendor's wherever an earlier init left it.
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [claude]\nsdd: opsx\nrepos:\n  brain: .\n  api: ../api\n');
+  const inApi = picomatch(nonCodeGlobs(await loadConfig(b), 'api'), { dot: true });
+  assert.ok(inApi('.codex/skills/openspec-explore/SKILL.md'));
+  assert.ok(!inApi('.codex/config.toml'));
+});
+
+// --- MV-146: the SDD runs in the brain alone, and governs every code repo's code ---
+
+const LAW = '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n';
+
+/** A code repo `api` with the brain mounted at `.brain`, declaring it under this config. */
+function consumer(config: string): string {
+  const api = join(mkdtempSync(join(tmpdir(), 'mvac-consumer-')), 'api');
+  initRepo(api, { 'src/index.ts': 'export const app = 1;\n' });
+  initRepo(join(api, '.brain'), { '.multivac/config.yml': config, '.multivac/invariants.md': LAW });
+  return api;
+}
+
+const stageIn = (repo: string, rel: string): void => {
+  put(repo, rel, `x ${Math.random()}\n`);
+  git(repo, 'add', rel);
+};
+
+test("a code repo's code is governed by the brain's SDD: refused on main under --strict, exempt under sdd: none — MV-146", async () => {
+  // The code repo declares no SDD of its own: it runs none, and the brain's governs it.
+  const api = consumer('doors: [agents]\nsdd: speckit\nrepos:\n  api: ../api\n');
+  stageIn(api, 'src/index.ts');
+  const strict = await verifyIn(api, '--strict');
+  assert.equal(strict.code, 1, strict.out);
+  assert.match(strict.out, /code {6}1 code path \(src\/index\.ts\) on main, which is no open change declaring api — start a change .* · blocking/);
+  // Without --strict the mount can lag: reported, not gated (MV-137).
+  const lagging = await verifyIn(api);
+  assert.equal(lagging.code, 0, lagging.out);
+  assert.match(lagging.out, /which is no open change in the mounted brain/);
+
+  const exempt = consumer('doors: [agents]\nsdd: speckit\nrepos:\n  api:\n    path: ../api\n    sdd: none\n');
+  stageIn(exempt, 'src/index.ts');
+  const r = await verifyIn(exempt, '--strict');
+  assert.equal(r.code, 0, r.out);
+  assert.doesNotMatch(r.out, /^ {2}code /m);
+});
+
+test("with no SDD in the brain, or sdd_auto off, a code repo's code is not judged — MV-146", async () => {
+  for (const config of [
+    'doors: [agents]\nrepos:\n  api: ../api\n',
+    'doors: [agents]\nsdd: none\nrepos:\n  api: ../api\n',
+    'doors: [agents]\nsdd: speckit\nsdd_auto: false\nrepos:\n  api: ../api\n',
+  ]) {
+    const api = consumer(config);
+    stageIn(api, 'src/index.ts');
+    const r = await verifyIn(api, '--strict');
+    assert.equal(r.code, 0, `${config}\n${r.out}`);
+    assert.doesNotMatch(r.out, /^ {2}code /m, config);
+  }
+});
+
+test("a code repo's specs/ is code; the brain's is not, and every known SDD's install is nobody's code — MV-146", async () => {
+  const b = join(mkdtempSync(join(tmpdir(), 'mvac-specs-')), 'brain');
+  initRepo(b, {
+    '.multivac/config.yml': 'doors: [agents, claude]\nsdd: speckit\nrepos:\n  brain: .\n  api: ../api\n',
+    '.multivac/invariants.md': LAW,
+  });
+  const cfg = await loadConfig(b);
+  const inBrain = picomatch(nonCodeGlobs(cfg, 'brain'), { dot: true });
+  const inApi = picomatch(nonCodeGlobs(cfg, 'api'), { dot: true });
+  // The SDD's step artifacts and project document are the brain's.
+  for (const p of ['specs/001-x/spec.md', '.specify/memory/constitution.md']) assert.ok(inBrain(p), p);
+  // In a code repo `specs/` is no SDD's directory — a test tree is code.
+  assert.ok(!inApi('specs/001-x/spec.md'), 'specs/ is code in a code repo');
+  assert.ok(!inApi('src/index.ts'));
+  // A leftover install of ANY known SDD is vendor state, not code, in every repo —
+  // opsx's artifact paths match no file below them, so its directory is taken whole.
+  for (const p of [
+    '.specify/x',
+    '.specify/integration.json',
+    'openspec/config.yaml',
+    'openspec/specs/.gitkeep',
+    'openspec/changes/archive/.gitkeep',
+    '.claude/skills/speckit-plan/SKILL.md',
+  ]) {
+    assert.ok(inApi(p), `${p} in a code repo`);
+    assert.ok(inBrain(p), `${p} in the brain`);
+  }
+
+  // The same verdicts through verify, in a consumer on main.
+  const api = consumer('doors: [agents]\nsdd: speckit\nrepos:\n  api: ../api\n');
+  stageIn(api, 'specs/x.ts');
+  assert.equal((await verifyIn(api, '--strict')).code, 1, 'a staged specs/ file in a code repo is code');
+  git(api, 'reset', '-q');
+  for (const rel of ['.specify/x', 'openspec/config.yaml']) {
+    stageIn(api, rel);
+    const r = await verifyIn(api, '--strict');
+    assert.equal(r.code, 0, `${rel}\n${r.out}`);
+    assert.doesNotMatch(r.out, /^ {2}code /m, rel);
+    git(api, 'reset', '-q');
+  }
+});
+
+test("a consumer whose mounted config is refused prints the line, exits 0, and 1 under --strict — MV-146", async () => {
+  // The mount lags its brain, and its owner fixes the config: a hook here must
+  // not exit 2 over it — neither load on verify's path, nor count's. Each of
+  // the three refusals, the same way.
+  for (const [config, refusal] of [
+    [
+      'doors: [agents]\nsdd: speckit\nrepos:\n  api:\n    path: ../api\n    sdd: opsx\n',
+      /repos\.api\.sdd: opsx — REFUSED: the SDD lives in the brain alone/,
+    ],
+    [
+      'doors: [agents]\nsdd: speckit\nrepos:\n  brain:\n    path: .\n    sdd: none\n  api: ../api\n',
+      /sdd: speckit — REFUSED: the brain's own entry repos\.brain\.sdd says none, so speckit resolves in no root/,
+    ],
+    ['doors: [agents]\nsdd: acme\nrepos:\n  api: ../api\n', /sdd: acme — REFUSED: no SDD adapter is named acme/],
+  ] as const) {
+    const api = consumer(config);
+    const line = new RegExp(
+      `^ {2}sdd {7}${refusal.source}.*\`multivac change new <slug>\` — in the mounted brain's config; its owner fixes it`,
+      'm',
+    );
+    const r = await verifyIn(api);
+    assert.equal(r.code, 0, r.out);
+    assert.match(r.out, line);
+    assert.doesNotMatch(r.out, /blocking under --strict/);
+
+    const strict = await verifyIn(api, '--strict');
+    assert.equal(strict.code, 1, strict.out);
+    assert.match(strict.out, line);
+    assert.match(strict.out, /its owner fixes it · blocking under --strict$/m);
+    assert.match(strict.out, /^1 blocking broken · exit 1$/m);
+
+    const counted = await run(() => count.run(['brain:.multivac/config.yml /sdd/'], { cwd: api }));
+    assert.equal(counted.code, 0, counted.out);
+    assert.match(counted.out, line);
+
+    // In the brain itself the same config is refused at load.
+    assert.equal((await verifyIn(join(api, '.brain'))).code, 2, refusal.source);
+  }
 });
