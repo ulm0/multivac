@@ -6176,6 +6176,20 @@
    "confidence": "EXTRACTED"
   },
   {
+   "source": "change:skill-cites-references",
+   "target": "law:MV-152",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:skill-cites-references",
+   "target": "repo:brain",
+   "relation": "lands_in",
+   "confidence": "EXTRACTED",
+   "stage": 1,
+   "status": "branched"
+  },
+  {
    "source": "change:speckit-writes-once",
    "target": "law:MV-120",
    "relation": "touches",
