@@ -3,7 +3,7 @@ slug: release-0-15-0
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
