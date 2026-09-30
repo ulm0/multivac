@@ -804,8 +804,8 @@
       "source_location": "L470",
       "_origin": "ast",
       "id": "src_adapters_detect_sddroots",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 2,
+      "community_name": "sdd.ts",
       "norm_label": "sddroots()"
     },
     {
@@ -859,8 +859,8 @@
       "source_location": "L558",
       "_origin": "ast",
       "id": "src_adapters_detect_findbinary",
-      "community": 7,
-      "community_name": "refresh.ts",
+      "community": 2,
+      "community_name": "sdd.ts",
       "norm_label": "findbinary()"
     },
     {
@@ -903,8 +903,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_adapters_equip",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 7,
+      "community_name": "refresh.ts",
       "norm_label": "equip.ts"
     },
     {
@@ -914,8 +914,8 @@
       "source_location": "L16",
       "_origin": "ast",
       "id": "src_adapters_equip_equiproot",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 1,
+      "community_name": "repos.ts",
       "norm_label": "equiproot"
     },
     {
@@ -925,8 +925,8 @@
       "source_location": "L25",
       "_origin": "ast",
       "id": "src_adapters_equip_toolrun",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 52,
+      "community_name": "registry.ts",
       "norm_label": "toolrun"
     },
     {
@@ -936,8 +936,8 @@
       "source_location": "L38",
       "_origin": "ast",
       "id": "src_adapters_equip_toolstorun",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 7,
+      "community_name": "refresh.ts",
       "norm_label": "toolstorun()"
     },
     {
@@ -947,8 +947,8 @@
       "source_location": "L58",
       "_origin": "ast",
       "id": "src_adapters_equip_equiproots",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 7,
+      "community_name": "refresh.ts",
       "norm_label": "equiproots()"
     },
     {
@@ -958,8 +958,8 @@
       "source_location": "L69",
       "_origin": "ast",
       "id": "src_adapters_equip_missingtools",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 7,
+      "community_name": "refresh.ts",
       "norm_label": "missingtools()"
     },
     {
@@ -980,8 +980,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_adapters_project_doc",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 2,
+      "community_name": "sdd.ts",
       "norm_label": "project-doc.ts"
     },
     {
@@ -991,8 +991,8 @@
       "source_location": "L15",
       "_origin": "ast",
       "id": "src_adapters_project_doc_projectdoclines",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 2,
+      "community_name": "sdd.ts",
       "norm_label": "projectdoclines()"
     },
     {
@@ -1354,8 +1354,8 @@
       "source_location": "L390",
       "_origin": "ast",
       "id": "src_adapters_registry_adapterspec",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 52,
+      "community_name": "registry.ts",
       "norm_label": "adapterspec"
     },
     {
@@ -1398,8 +1398,8 @@
       "source_location": "L1123",
       "_origin": "ast",
       "id": "src_adapters_registry_sddspec",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 2,
+      "community_name": "sdd.ts",
       "norm_label": "sddspec()"
     },
     {
@@ -1442,8 +1442,8 @@
       "source_location": "L1409",
       "_origin": "ast",
       "id": "src_adapters_registry_grapherspec",
-      "community": 38,
-      "community_name": "doctor.ts",
+      "community": 7,
+      "community_name": "refresh.ts",
       "norm_label": "grapherspec()"
     },
     {
@@ -4060,8 +4060,8 @@
       "source_location": "L491",
       "_origin": "ast",
       "id": "src_commands_doctor_grapherlines",
-      "community": 38,
-      "community_name": "doctor.ts",
+      "community": 7,
+      "community_name": "refresh.ts",
       "norm_label": "grapherlines()"
     },
     {
@@ -7151,8 +7151,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "src_lib_init_state",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 52,
+      "community_name": "registry.ts",
       "norm_label": "init-state.ts"
     },
     {
@@ -7162,8 +7162,8 @@
       "source_location": "L31",
       "_origin": "ast",
       "id": "src_lib_init_state_initstate",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 7,
+      "community_name": "refresh.ts",
       "norm_label": "initstate"
     },
     {
@@ -7184,8 +7184,8 @@
       "source_location": "L28",
       "_origin": "ast",
       "id": "src_lib_init_state_errcode",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 52,
+      "community_name": "registry.ts",
       "norm_label": "errcode()"
     },
     {
@@ -7624,8 +7624,8 @@
       "source_location": "L86",
       "_origin": "ast",
       "id": "src_lib_repo_state_projectdocverdict",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 2,
+      "community_name": "sdd.ts",
       "norm_label": "projectdocverdict()"
     },
     {
@@ -7679,8 +7679,8 @@
       "source_location": "L206",
       "_origin": "ast",
       "id": "src_lib_repo_state_leftovergraphs",
-      "community": 38,
-      "community_name": "doctor.ts",
+      "community": 1,
+      "community_name": "repos.ts",
       "norm_label": "leftovergraphs()"
     },
     {
@@ -8064,8 +8064,8 @@
       "source_location": "L204",
       "_origin": "ast",
       "id": "src_types_command",
-      "community": 38,
-      "community_name": "doctor.ts",
+      "community": 1,
+      "community_name": "repos.ts",
       "norm_label": "command"
     },
     {
@@ -8075,8 +8075,8 @@
       "source_location": "L209",
       "_origin": "ast",
       "id": "src_types_command_run",
-      "community": 38,
-      "community_name": "doctor.ts",
+      "community": 1,
+      "community_name": "repos.ts",
       "norm_label": ".run()"
     },
     {
@@ -12585,8 +12585,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "test_lib_init_state_test",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 52,
+      "community_name": "registry.ts",
       "norm_label": "init-state.test.ts"
     },
     {
@@ -12596,8 +12596,8 @@
       "source_location": "L19",
       "_origin": "ast",
       "id": "test_lib_init_state_test_tmp",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 52,
+      "community_name": "registry.ts",
       "norm_label": "tmp"
     },
     {
@@ -12618,8 +12618,8 @@
       "source_location": "L43",
       "_origin": "ast",
       "id": "test_lib_init_state_test_expectstate",
-      "community": 57,
-      "community_name": "sddSpec",
+      "community": 52,
+      "community_name": "registry.ts",
       "norm_label": "expectstate()"
     },
     {
@@ -14570,36 +14570,36 @@
       "norm_label": "friction"
     },
     {
-      "label": "CLAUDE.md",
+      "label": "AGENTS.md",
       "file_type": "document",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L1",
       "_origin": "ast",
       "id": "claude",
       "community": 303,
-      "community_name": "CLAUDE.md",
-      "norm_label": "claude.md"
+      "community_name": "AGENTS.md",
+      "norm_label": "agents.md"
     },
     {
       "label": "multivac \u2014 brain door",
       "file_type": "document",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L2",
       "_origin": "ast",
       "id": "claude_multivac_brain_door",
       "community": 303,
-      "community_name": "CLAUDE.md",
+      "community_name": "AGENTS.md",
       "norm_label": "multivac \u2014 brain door"
     },
     {
       "label": "graphify",
       "file_type": "document",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L28",
       "_origin": "ast",
       "id": "claude_graphify",
       "community": 303,
-      "community_name": "CLAUDE.md",
+      "community_name": "AGENTS.md",
       "norm_label": "graphify"
     },
     {
@@ -16183,7 +16183,7 @@
       "_origin": "ast",
       "id": "site_content_docs_concepts_invariants",
       "community": 174,
-      "community_name": "invariants.md",
+      "community_name": "concepts/invariants.md",
       "norm_label": "invariants.md"
     },
     {
@@ -16194,7 +16194,7 @@
       "_origin": "ast",
       "id": "site_content_docs_concepts_invariants_three_birth_paths_one_table",
       "community": 174,
-      "community_name": "invariants.md",
+      "community_name": "concepts/invariants.md",
       "norm_label": "three birth paths, one table"
     },
     {
@@ -16205,7 +16205,7 @@
       "_origin": "ast",
       "id": "site_content_docs_concepts_invariants_the_agent_proposes_the_human_enacts",
       "community": 174,
-      "community_name": "invariants.md",
+      "community_name": "concepts/invariants.md",
       "norm_label": "the agent proposes; the human enacts"
     },
     {
@@ -16216,7 +16216,7 @@
       "_origin": "ast",
       "id": "site_content_docs_concepts_invariants_that_rule_is_ungateable_and_the_law_says_so",
       "community": 174,
-      "community_name": "invariants.md",
+      "community_name": "concepts/invariants.md",
       "norm_label": "that rule is ungateable, and the law says so"
     },
     {
@@ -16227,7 +16227,7 @@
       "_origin": "ast",
       "id": "site_content_docs_concepts_invariants_amend",
       "community": 174,
-      "community_name": "invariants.md",
+      "community_name": "concepts/invariants.md",
       "norm_label": "amend"
     },
     {
@@ -16238,7 +16238,7 @@
       "_origin": "ast",
       "id": "site_content_docs_concepts_invariants_retire",
       "community": 174,
-      "community_name": "invariants.md",
+      "community_name": "concepts/invariants.md",
       "norm_label": "retire"
     },
     {
@@ -16249,7 +16249,7 @@
       "_origin": "ast",
       "id": "site_content_docs_concepts_invariants_ids",
       "community": 174,
-      "community_name": "invariants.md",
+      "community_name": "concepts/invariants.md",
       "norm_label": "ids"
     },
     {
@@ -17910,7 +17910,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "hooks.md"
     },
     {
@@ -17921,7 +17921,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_which_multivac_runs",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "which multivac runs"
     },
     {
@@ -17932,7 +17932,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_git_hooks_the_universal_floor",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "git hooks \u2014 the universal floor"
     },
     {
@@ -17943,7 +17943,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_why_they_live_in_multivac_hooks",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "why they live in `.multivac/hooks/`"
     },
     {
@@ -17954,7 +17954,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_a_repo_that_already_has_hooks",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "a repo that already has hooks"
     },
     {
@@ -17965,7 +17965,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_installed_is_not_enforcing",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "installed is not enforcing"
     },
     {
@@ -17976,7 +17976,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_harness_hooks_the_early_ceiling",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "harness hooks \u2014 the early ceiling"
     },
     {
@@ -17987,7 +17987,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_what_preserving_means_here",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "what \"preserving\" means here"
     },
     {
@@ -17998,7 +17998,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_what_blocks_and_what_informs",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "what blocks and what informs"
     },
     {
@@ -18009,7 +18009,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_recommended_ladder",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "recommended ladder"
     },
     {
@@ -18020,7 +18020,7 @@
       "_origin": "ast",
       "id": "site_content_docs_reference_hooks_nothing_here_commits",
       "community": 33,
-      "community_name": "hooks.md",
+      "community_name": "reference/hooks.md",
       "norm_label": "nothing here commits"
     },
     {
@@ -70340,7 +70340,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L28",
       "weight": 1.0,
       "_origin": "ast",
@@ -70351,7 +70351,7 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
+      "source_file": "AGENTS.md",
       "source_location": "L2",
       "weight": 1.0,
       "_origin": "ast",
@@ -74211,5 +74211,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "caef04d4d33f5f5949f9e6e06a86d64f5048a459"
+  "built_at_commit": "66a515f482d96d6e5acf5127847ae6055850f9c7"
 }
