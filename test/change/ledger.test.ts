@@ -15,7 +15,6 @@ import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { change } from '../../src/commands/change.js';
 import { roadmap } from '../../src/commands/roadmap.js';
 import { verify } from '../../src/commands/verify.js';
-import { renderEcosystem } from '../../src/doors/ecosystem.js';
 import { loadConfig } from '../../src/lib/config.js';
 import { trackerEntry, trackerNames } from '../../src/adapters/tracker.js';
 
@@ -459,8 +458,8 @@ test('an unknown frontmatter key is named where it is dropped — MV-117', async
 
 test('a stray claim key is named by every reader and refused only by the writers — MV-150', async () => {
   // A reader that drops a file it cannot parse drops the change from every
-  // gate that protects it: its claims stop pending, its branch's code stops
-  // being its code, its node leaves the graph. So the readers name the key and
+  // gate that protects it: its claims stop pending, and its branch's code stops
+  // being its code. So the readers name the key and
   // read on; only the commands that write the file back — and would drop the
   // key, and the prose in it — refuse it.
   const b = brain();
@@ -486,10 +485,8 @@ test('a stray claim key is named by every reader and refused only by the writers
   git(b, 'add', '-A');
   git(b, 'commit', '-q', '-m', 'an open change');
   git(b, 'branch', 'stray');
-  const cfg = await loadConfig(b);
   // --strict: a red leg outside a pending claim would block, so the exit code has teeth.
   const clean = await capture(() => verify.run(['--strict'], { cwd: b }));
-  const graph = await renderEcosystem(b, cfg);
   assert.match(clean.out, /INV-01/);
 
   writeFileSync(file, withClaim('    note: why this matters\n'));
@@ -497,7 +494,7 @@ test('a stray claim key is named by every reader and refused only by the writers
   const bytes = readFileSync(file, 'utf8');
   const notice = /stray\.md: claim INV-01: unknown key "note" — a claim is its row's ID; state the rule in the row \(read without it here; every command that rewrites the file refuses it until it goes\)/;
 
-  // The readers: verify, the roadmap listing, the ecosystem graph, the code gate.
+  // The readers: verify, the roadmap listing, the code gate.
   const read = await capture(() => verify.run(['--strict'], { cwd: b }));
   assert.equal(read.code, clean.code, read.out);
   assert.equal(read.code, 0, read.out);
@@ -505,11 +502,6 @@ test('a stray claim key is named by every reader and refused only by the writers
   assert.doesNotMatch(read.out, /INV-01 .*· blocking/);
   const listed = await capture(() => roadmap.run([], { cwd: b }));
   assert.match(listed.out, /in flight: 1 open change — stray/);
-  let drawn = '';
-  const drew = await capture(async () => { drawn = await renderEcosystem(b, cfg); return 0; });
-  assert.match(drew.out, notice);
-  assert.equal(drawn, graph, 'the change keeps its node and its edges');
-  assert.match(graph, /"change:stray"/);
   git(b, 'switch', '-q', 'stray');
   git(b, 'merge', '-q', '--ff-only', 'main');
   writeFileSync(join(b, 'code.ts'), 'export const promise = 1;\n');

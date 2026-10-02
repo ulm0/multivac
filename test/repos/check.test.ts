@@ -28,26 +28,21 @@ function brain(repos: string, extra = ''): { root: string; brain: string } {
   const root = mkdtempSync(join(tmpdir(), 'mvac-check-'));
   const b = join(root, 'brain');
   initRepo(b, {
-    '.multivac/config.yml': `doors: [agents]\nsdd: speckit\ngrapher: graphify\n${extra}repos:\n  brain: .\n${repos}`,
+    '.multivac/config.yml': `doors: [agents]\nsdd: speckit\n${extra}repos:\n  brain: .\n${repos}`,
     '.multivac/invariants.md': '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
     '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
     '.specify/memory/constitution.md': CONSTITUTION,
-    'graphify-out/graph.json': '{"nodes":[],"links":[]}\n',
   });
   return { root, brain: b };
 }
 
 test('every root cloned and set up: exit 0, one ok line each — MV-132', async () => {
   const { root, brain: b } = brain('  api: ../api\n');
-  initRepo(join(root, 'api'), {
-    '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
-    '.specify/memory/constitution.md': CONSTITUTION,
-    'graphify-out/graph.json': '{}\n',
-  });
+  initRepo(join(root, 'api'), { 'README.md': '# api\n' });
   const { lines, exit } = await reposCheck(b);
   assert.equal(exit, 0, lines.join('\n'));
-  assert.match(lines.join('\n'), /^brain\s+ok\s+cloned · speckit installed and committed · \.specify\/memory\/constitution\.md written · graphify built and committed$/m);
-  assert.match(lines.join('\n'), /^api\s+ok\s+cloned/m);
+  assert.match(lines.join('\n'), /^brain\s+ok\s+cloned · speckit installed and committed · \.specify\/memory\/constitution\.md written$/m);
+  assert.match(lines.join('\n'), /^api\s+ok\s+cloned$/m);
 });
 
 test('a root that is not the declared clone fails by name — MV-132', async () => {
@@ -75,35 +70,37 @@ test('a root that is not the declared clone fails by name — MV-132', async () 
 
 test('a cloned root whose tools are not set up or not committed fails, naming each — MV-132', async () => {
   const { root, brain: b } = brain('  api: ../api\n  web: ../web\n');
+  // The brain: its constitution is still the template.
+  writeFileSync(join(b, '.specify/memory/constitution.md'), '# [PROJECT_NAME] Constitution\n');
   initRepo(join(root, 'api'), { 'README.md': '# api\n' }); // nothing installed
   initRepo(join(root, 'web'), {
     '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
     '.specify/memory/constitution.md': '# [PROJECT_NAME] Constitution\n',
   });
-  // web: graph built but never committed; constitution still the template
+  // web: a graph built and never committed is no question any more (MV-153).
   mkdirSync(join(root, 'web/graphify-out'), { recursive: true });
   writeFileSync(join(root, 'web/graphify-out/graph.json'), '{}\n');
   const { lines, exit } = await reposCheck(b);
   const out = lines.join('\n');
   assert.equal(exit, 1);
-  assert.match(out, /^api\s+FAIL .*graphify missing → `multivac repos sync`/m);
-  assert.match(out, /^web\s+FAIL .*graphify built but graphify-out\/graph\.json is not committed → commit it/m);
+  assert.match(out, /^brain\s+FAIL .*\.specify\/memory\/constitution\.md template/m);
   // MV-146: the SDD runs in the brain alone, so no code repo is asked for its
   // install or its project document — web's template constitution is a
   // leftover's, stated on its line, and api owes no install at all.
   assert.doesNotMatch(out, /^(api|web)\s+.*(speckit missing|constitution\.md template)/m);
-  assert.match(out, /^web\s+FAIL .*; leftover speckit install \(tracked\)$/m);
-  assert.doesNotMatch(out, /^api\s+.*leftover/m);
+  assert.match(out, /^web\s+ok\s+cloned; leftover speckit install \(tracked\)$/m);
+  assert.match(out, /^api\s+ok\s+cloned$/m);
+  assert.doesNotMatch(out, /graph/);
 });
 
 test('a leftover install is a fact on a code repo\'s line, never a failure — MV-146', async () => {
   const { root, brain: b } = brain('  api: ../api\n');
-  initRepo(join(root, 'api'), { 'graphify-out/graph.json': '{}\n' });
+  initRepo(join(root, 'api'), { 'README.md': '# api\n' });
   mkdirSync(join(root, 'api/openspec'), { recursive: true });
   writeFileSync(join(root, 'api/openspec/config.yaml'), 'schema: spec-driven\n');
   const { lines, exit } = await reposCheck(b);
   assert.equal(exit, 0, lines.join('\n'));
-  assert.match(lines.join('\n'), /^api\s+ok\s+cloned · graphify built and committed; leftover opsx install \(untracked\)$/m);
+  assert.match(lines.join('\n'), /^api\s+ok\s+cloned; leftover opsx install \(untracked\)$/m);
   // The brain's own install is its SDD, never a leftover.
   assert.doesNotMatch(lines.join('\n'), /^brain\s+.*leftover/m);
 });
@@ -121,35 +118,6 @@ test('with no SDD in the brain, a code repo\'s own install is not a leftover —
   // The line it always was: the team's own use of spec-kit is theirs.
   assert.match(lines.join('\n'), /^api\s+ok\s+cloned$/m);
   assert.doesNotMatch(lines.join('\n'), /leftover/);
-});
-
-test('a code-less brain with no graph is ok, and a kept install is a fact on its line — MV-148', async () => {
-  // No repos entry is the brain: it resolves no grapher, so no graph is asked
-  // of it, and none fails its line.
-  const root = mkdtempSync(join(tmpdir(), 'mvac-check-'));
-  const b = join(root, 'brain');
-  initRepo(b, {
-    '.multivac/config.yml': 'doors: [agents]\ngrapher: graphify\nrepos:\n  api: ../api\n',
-    '.multivac/invariants.md': '# Invariants\n\n| ID | statement | authority | state | date | source |\n| --- | --- | --- | --- | --- | --- |\n',
-  });
-  initRepo(join(root, 'api'), { 'graphify-out/graph.json': '{}\n' });
-  let { lines, exit } = await reposCheck(b);
-  assert.equal(exit, 0, lines.join('\n'));
-  assert.match(lines.join('\n'), /^brain\s+ok\s+cloned$/m);
-  assert.match(lines.join('\n'), /^api\s+ok\s+cloned · graphify built and committed$/m);
-
-  // An install an earlier release left there: stated, never a failure.
-  mkdirSync(join(b, 'graphify-out'), { recursive: true });
-  writeFileSync(join(b, 'graphify-out/graph.json'), '{"nodes":[],"links":[]}\n');
-  execFileSync('git', ['-C', b, 'add', 'graphify-out/graph.json']);
-  execFileSync('git', ['-C', b, 'commit', '-qm', 'an earlier release built this']);
-  ({ lines, exit } = await reposCheck(b));
-  assert.equal(exit, 0, lines.join('\n'));
-  assert.match(lines.join('\n'), /^brain\s+ok\s+cloned; leftover graphify install \(tracked\)$/m);
-  // A brain that holds code keeps its graph as its own: no leftover.
-  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\ngrapher: graphify\nrepos:\n  brain: .\n  api: ../api\n');
-  ({ lines } = await reposCheck(b));
-  assert.match(lines.join('\n'), /^brain\s+ok\s+cloned · graphify built and committed$/m);
 });
 
 test('an empty project document is empty, in repos check and in doctor — MV-132', async () => {

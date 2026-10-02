@@ -22,13 +22,11 @@ const eco = makeScratchEcosystem(tmp);
 const ctx = { cwd: eco.brain };
 const svc = join(tmp, 'acme-svc');
 
-// svc: declared but nonexistent (greenfield); mirror: cloneable from a local url;
-// grapher declared with an unknown adapter (must degrade to a notice, exit 0).
-// An unknown SDD is refused at load instead (MV-146): no scaffold, gate or step
-// could honour it, and the first test says so.
+// svc: declared but nonexistent (greenfield); mirror: cloneable from a local url.
+// An unknown SDD is refused at load (MV-146): no scaffold, gate or step could
+// honour it, and the first test says so.
 const CONFIG = [
   'doors: [agents]',
-  'grapher: acme-graph',
   'repos:',
   '  api: ../acme-api',
   '  web: ../acme-web',
@@ -43,7 +41,7 @@ writeFileSync(join(eco.brain, '.multivac/config.yml'), CONFIG);
 const gitOut = (cwd: string, ...args: string[]): string =>
   execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8' }).trim();
 
-test('new scaffolds the change file (unknown grapher = notice, still 0; unknown SDD = refused, 2)', async () => {
+test('new scaffolds the change file (unknown SDD = refused, 2)', async () => {
   writeFileSync(join(eco.brain, '.multivac/config.yml'), CONFIG.replace('doors: [agents]\n', 'doors: [agents]\nsdd: acme-sdd-not-installed\n'));
   const errs: string[] = [];
   const origErr = console.error;

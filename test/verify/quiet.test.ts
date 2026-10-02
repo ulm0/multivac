@@ -14,8 +14,6 @@ import { gitInit, initRepo, makeScratchEcosystem, publishRepo, scrubbedEnv } fro
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { verify } from '../../src/commands/verify.js';
 import { doorTargets } from '../../src/adapters/registry.js';
-import { loadConfig } from '../../src/lib/config.js';
-import { writeEcosystem } from '../../src/doors/ecosystem.js';
 import { say } from '../../src/lib/out.js';
 import type { Command, CommandContext } from '../../src/types.js';
 
@@ -70,7 +68,7 @@ const LEG = '<!-- @anchor INV-Q1 brain:src/*.ts /app/ -->';
 const openChange = (slug: string, extra = ''): string =>
   `---\nslug: ${slug}\nstatus: open\nrepos:\n  brain:\n    status: branched\nlanding_order:\n  - - brain\ninvariants:\n  touches: []\n  adds: []\n  retires: []\nclaims: []\n${extra}---\n\n# ${slug}\n`;
 
-/** A brain==code brain, green, its governance graph rendered and committed. */
+/** A brain==code brain, green and committed. */
 async function lone(tmp: string, opts: { sdd?: true } = {}): Promise<string> {
   const b = join(tmp, 'b');
   initRepo(b, {
@@ -80,9 +78,6 @@ async function lone(tmp: string, opts: { sdd?: true } = {}): Promise<string> {
     ...(opts.sdd ? { '.specify/integration.json': SPECKIT_INTEGRATION_JSON } : {}),
     'src/app.ts': 'export const app = 1;\n',
   });
-  await writeEcosystem(b, await loadConfig(b));
-  git(b, 'add', '-A');
-  git(b, 'commit', '-qm', 'ecosystem');
   return b;
 }
 
@@ -101,7 +96,6 @@ test('a quiet run with nothing off is one line carrying summary, header, reads a
   // A code commit staged on an open change's branch.
   const s = await lone(join(tmp, 's'), { sdd: true });
   put(s, '.multivac/changes/feat.md', openChange('feat'));
-  await writeEcosystem(s, await loadConfig(s)); // the graph names the change
   git(s, 'add', '-A');
   git(s, 'commit', '-qm', 'open feat');
   git(s, 'switch', '-qc', 'feat');

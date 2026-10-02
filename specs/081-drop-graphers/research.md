@@ -385,19 +385,24 @@ What runs while the change is worked on (measured from main's `.claude/settings.
 - **The refresh hook follows the edited file only while its toplevel holds the graph.** Its
   non-follow form is `[ -n "$t" ] || exit 0; [ -e "$t/graphify-out/graph.json" ] && cd "$t"; …
   graphify update .`: in a worktree that still holds `graphify-out/graph.json` it rebuilds that
-  worktree's copy (harmless, never staged); in one that does not, it does NOT `cd` and rebuilds
+  worktree's copy (harmless if never staged: restore it before each commit, once the lock is
+  gone); in one that does not, it does NOT `cd` and rebuilds
   the session directory's — **main's** tracked `graphify-out/graph.json`, leaving main dirty and
   the post-merge pull refused. So `graphify-out/graph.json` is removed from the worktree **in the
   last commit**, and no file is edited with an Edit or Write tool after it (a `sed` or `git rm`
   run through Bash fires no PostToolUse hook).
-- **The git shims run main's binary.** `core.hooksPath` is `.multivac/hooks` in the common
-  config; the pre-commit shim runs `mvac` first (MV-92's ladder), and `mvac` on PATH is main's
-  `dist/cli.js`, 0.15.0. Every commit on the change branch is gated by the OLD verify over the
-  worktree's law: blocking modes (`absent`, `count`, `each`) of active and retired rows must hold
-  at every commit, and a tombstone added before its code is deleted blocks the commit. So each
-  tombstone and each moved `count`/`each` leg lands **in the commit that greens it**; MV-153's
-  legs are informational while it is proposed. CI runs `verify --strict` on the pull request with
-  the new build: every leg green there.
+- **The git shims run the worktree's own build.** `core.hooksPath` is `.multivac/hooks` in the
+  common config; the pre-commit shim resolves the most specific multivac first (MV-92's ladder):
+  the build in the repository it runs in, since this repository is multivac and the worktree holds
+  `dist/` and `node_modules`. So each commit on the change branch is gated by whatever `WT`'s
+  `dist/` holds — 0.15.0's code until the source commit rebuilds it — and main's 0.15.0 `mvac`
+  (PATH; the session's harness hooks run it) is checked beside it and agrees: both evaluate the
+  legs alike. Both read the worktree's working tree, not the index. Blocking modes (`absent`,
+  `count`, `each`) of active and retired rows must hold at every commit, and a tombstone added
+  before its code is deleted blocks the commit. So each tombstone and each moved `count`/`each`
+  leg lands **in the commit that greens it**; MV-153's legs are informational while it is
+  proposed. CI runs `verify --strict` on the pull request with the new build: every leg green
+  there.
 - **The config gate.** Deleting `grapher: graphify` from `.multivac/config.yml` is a config edit;
   with `drop-graphers` open on its branch the gate reads `declared by open change drop-graphers`.
 - **The code gate.** This brain holds code under spec-kit with `sdd_auto` on: every src, test,
@@ -420,9 +425,9 @@ session so the harness reads the new settings.
 Two consequences for the phases before and after the last commit. The skill edit (4) is
 re-projected by the new build's `node dist/cli.js doors` in the worktree, which also takes the
 refresh hook out of the worktree's own settings, removes its `.multivac/ecosystem.json` and
-re-renders `AGENTS.md` and `.multivac/flow.md`: that phase stages the two skill trees alone, and
-the rest waits, uncommitted, for (5) — the session's hooks are main's, so nothing changes for
-it. Every edit after (5) — MV-153's measured slots, the change body — goes through Bash (`sed`,
+re-renders `AGENTS.md` and `.multivac/flow.md`: that phase stages the two skill trees alone and
+restores the rest, which (5)'s `doors` does again — the gate reads the working tree, so nothing
+waits uncommitted; the session's hooks are main's, so nothing changes for it. Every edit after (5) — MV-153's measured slots, the change body — goes through Bash (`sed`,
 a short script), never the Edit or Write tools.
 
 ### R9.1 The lifecycle around it, run with main's 0.15.0
@@ -994,11 +999,13 @@ Each note is appended at the END of its row's statement, after every earlier ame
 
 In the house style of MV-146 to MV-152: the measured facts first, then **The rule.**, **What is
 mechanical**, **Ceilings.** It replaces the reserved row at `f156896` in place (`| MV-153 |
-RESERVED … |`). The three figures in ⟨ ⟩ are the prototype's and are re-measured on the change's
-tree by tasks.md's last phase; every other figure is a base measurement (R7, R8) and stands.
+RESERVED … |`). Three figures — the source lines and tests graphers held, and the package
+without them — were the prototype's, in ⟨ ⟩, until tasks.md's last phase re-measured them on the
+change's tree (3,492 lines, 174 tests, 59 files and 230,785 bytes); the base timings span the
+design's runs and M0's (the change body), and every other figure is a base measurement (R7, R8).
 
 ```markdown
-| MV-153 | **multivac keeps no code graph: it declares, installs, builds, refreshes, gates, commits, renders and names none, and a brain an earlier release equipped still loads, is told once what is ignored, and gets back only what multivac itself wrote.** Measured 2026-10-02 on `41e52c5` (0.15.0) with graphify 0.9.29, codegraph 1.6.0 and spec-kit 1.0.11, in scratch ecosystems with HOME and GIT_CONFIG_GLOBAL isolated, and on this brain. Graphers held ⟨3,594⟩ of 19,665 source lines — four modules whole and parts of 23 more — and ⟨171⟩ of 987 tests. This brain's door was 4,445 bytes, 1,807 of them about a graph: four multivac lines (1,034) and graphify's own section (773), plus 226 bytes of `.claude/CLAUDE.md`, against 2,638 without. A consumer door was 1,884 bytes on graphify and 2,293 on codegraph against 1,137 with none; a brain door holding code with two code repos, 4,594 and 4,921 against 2,645. Each edit ran two hooks, the gate and a refresh that returned in 18–25 ms and then rebuilt this brain's 2,198,534-byte graph in the background in 5.8–6.0 s, 8.2–8.8 s of CPU and 191 MB; each search and each read ran graphify's own guard, 70–82 ms, adding 190 or 402 bytes to the agent's context. `change apply` took 1,629–2,018 ms on a codegraph brain against 521–637 ms with none. `.multivac/ecosystem.json` was 461,364 bytes, rewritten by every bookkeeping commit; two greps, 532 bytes, answered what its `explain` of one row answered in 1,073. What a graph gave that a grep does not is reach: codegraph's `impact` named 12 symbols in 3 files in one call, where a grep names the 5 direct callers. The package shipped 62 files and 288,664 bytes, ⟨59 and 230,151⟩ without. **The rule.** No adapter kind, registry entry, config key, flag, door line, hook, gate, lifecycle step, committed artifact or rendered file of multivac's concerns a code graph. A config still declaring `grapher`, `grapher_auto`, `graphers` or `repos.<key>.grapher` loads whatever they hold; `verify` in the brain and `doctor` each print one line naming them as ignored and how to delete them, with a change open, since the config is invariant (MV-97), and a quiet run carries it as one clause. `doors` removes every post-edit refresh hook an earlier multivac wrote, known by the lock preamble it always began with, each entry only where that leaves it empty, and says how many; and it removes `.multivac/ecosystem.json`, which multivac wrote and nothing reads. It deletes nothing else: a vendor's output directory, ignore file, skills, door section and hooks stay, and `doctor` names them in each checkout it may write in, with the vendor's own removal, printed and never run. Where a vendor's own skill or hooks remain beside a door, the door says in one line that its graph is not refreshed. Every path those two vendors' installs wrote stays not code (MV-137), so their removal commits on any branch. `init` still decides that a brain holds code from its tracked and untracked files, as MV-148 measured, and writes `brain: .` for one that does. **What is mechanical**: `absent` legs over `src/**` but the record of what was dropped on both vendors' names, the rendered file and the hook lock, over the registry, the config type, the door renderers and the lifecycle's flags on the grapher's words, and over the skill, the root documents, the constitution, this brain's own setup and the site; a `count=1` leg on the site's one sanctioned mention, the moved page's alias; `unique` legs on the loader's ignored keys, the ignore line, the hook removal by its preamble, the ecosystem removal, the leftover line, the code gate's leftover paths and the code decision `init` keeps; an `each` leg on the two commands printing the ignore line; an `absent` leg on any write, delete or spawn in the record; test legs; and `count` legs on this row's fourteen retirements and thirty-four notes. **Ceilings.** The hook removal knows only the preamble multivac wrote: a hook a human edited past it, a vendor's own hook and a `*.graphify-bak` copy are named at most, never removed. `doctor` names what the two vendors measured at those versions wrote; another grapher's files, or a layout a later version moves, go unnamed, and an install in a read-only repo is not named. The `.codegraph/` line an earlier `change apply` appended to a repository's `.git/info/exclude` stays: it hides a directory nothing builds. A change open across the upgrade keeps in its worktree a graph the hook refreshed; close keeps that worktree and says so. Nothing replaces a transitive `impact` or `path`: navigation is the agent's own reading, and no door says how. The legs read one line at a time, so a reflowed or reworded copy of a dropped sentence passes. | open | proposed | 2026-10-02 | [changes/drop-graphers.md](changes/drop-graphers.md) |
+| MV-153 | **multivac keeps no code graph: it declares, installs, builds, refreshes, gates, commits, renders and names none, and a brain an earlier release equipped still loads, is told once what is ignored, and gets back only what multivac itself wrote.** Measured 2026-10-02 on `41e52c5` (0.15.0) with graphify 0.9.29, codegraph 1.6.0 and spec-kit 1.0.11, in scratch ecosystems with HOME and GIT_CONFIG_GLOBAL isolated, and on this brain. Graphers held 3,492 of 19,665 source lines — four modules whole and parts of 23 more — and 174 of 987 tests. This brain's door was 4,445 bytes, 1,807 of them about a graph: four multivac lines (1,034) and graphify's own section (773), plus 226 bytes of `.claude/CLAUDE.md`, against 2,638 without. A consumer door was 1,884 bytes on graphify and 2,293 on codegraph against 1,137 with none; a brain door holding code with two code repos, 4,594 and 4,921 against 2,645. Each edit ran two hooks, the gate and a refresh that returned in 17–25 ms and then rebuilt this brain's 2,198,534-byte graph in the background in 5.8–6.9 s, 8.2–10.1 s of CPU and 191 MB; each search and each read ran graphify's own guard, 67–93 ms, adding 190 or 402 bytes to the agent's context. `change apply` took 1,629–2,261 ms on a codegraph brain against 521–637 ms with none. `.multivac/ecosystem.json` was 461,364 bytes, rewritten by every bookkeeping commit; two greps, 532 bytes, answered what its `explain` of one row answered in 1,073. What a graph gave that a grep does not is reach: codegraph's `impact` named 12 symbols in 3 files in one call, where a grep names the 5 direct callers. The package shipped 62 files and 288,664 bytes, 59 and 230,785 without. **The rule.** No adapter kind, registry entry, config key, flag, door line, hook, gate, lifecycle step, committed artifact or rendered file of multivac's concerns a code graph. A config still declaring `grapher`, `grapher_auto`, `graphers` or `repos.<key>.grapher` loads whatever they hold; `verify` in the brain and `doctor` each print one line naming them as ignored and how to delete them, with a change open, since the config is invariant (MV-97), and a quiet run carries it as one clause. `doors` removes every post-edit refresh hook an earlier multivac wrote, known by the lock preamble it always began with, each entry only where that leaves it empty, and says how many; and it removes `.multivac/ecosystem.json`, which multivac wrote and nothing reads. It deletes nothing else: a vendor's output directory, ignore file, skills, door section and hooks stay, and `doctor` names them in each checkout it may write in, with the vendor's own removal, printed and never run. Where a vendor's own skill or hooks remain beside a door, the door says in one line that its graph is not refreshed. Every path those two vendors' installs wrote stays not code (MV-137), so their removal commits on any branch. `init` still decides that a brain holds code from its tracked and untracked files, as MV-148 measured, and writes `brain: .` for one that does. **What is mechanical**: `absent` legs over `src/**` but the record of what was dropped on both vendors' names, the rendered file and the hook lock, over the registry, the config type, the door renderers and the lifecycle's flags on the grapher's words, and over the skill, the root documents, the constitution, this brain's own setup and the site; a `count=1` leg on the site's one sanctioned mention, the moved page's alias; `unique` legs on the loader's ignored keys, the ignore line, the hook removal by its preamble, the ecosystem removal, the leftover line, the code gate's leftover paths and the code decision `init` keeps; an `each` leg on the two commands printing the ignore line; an `absent` leg on any write, delete or spawn in the record; test legs; and `count` legs on this row's fourteen retirements and thirty-four notes. **Ceilings.** The hook removal knows only the preamble multivac wrote: a hook a human edited past it, a vendor's own hook and a `*.graphify-bak` copy are named at most, never removed. `doctor` names what the two vendors measured at those versions wrote; another grapher's files, or a layout a later version moves, go unnamed, and an install in a read-only repo is not named. The `.codegraph/` line an earlier `change apply` appended to a repository's `.git/info/exclude` stays: it hides a directory nothing builds. A change open across the upgrade keeps in its worktree a graph the hook refreshed; close keeps that worktree and says so. Nothing replaces a transitive `impact` or `path`: navigation is the agent's own reading, and no door says how. The legs read one line at a time, so a reflowed or reworded copy of a dropped sentence passes. | open | proposed | 2026-10-02 | [changes/drop-graphers.md](changes/drop-graphers.md) |
 
 ```
 
@@ -1088,10 +1095,10 @@ the archive, docs/audit-2026-08-18.md).
 4. **The site names no vendor**, so the upgrade story — which keys, what `doors` takes back,
    what `doctor` names — is told only in the CHANGELOG. A short upgrade page would carry vendor
    names under leg 10.
-5. **Claims.** As asked, the change claims MV-153 alone. SKILL.md rule 4 (MV-150) says "claim
-   the row you amend": claiming the 34 amended rows would make `close` verify them too; CI's
-   `verify --strict` verifies every leg on every commit either way, and MV-153's `count=34` leg
-   pins that every note is there.
+5. **Claims.** The change claims MV-153 and the 34 rows it amends: SKILL.md rule 4 (MV-150)
+   says "claim the row you amend", so `close` verifies all 35, and each must end stated, anchored
+   and ok (`present` and `unique` legs included). CI's `verify --strict` verifies every leg on
+   every commit either way, and MV-153's `count=34` leg pins that every note is there.
 6. **Enactment.** MV-153 is filed `proposed`; only the human makes it `active` (MV-81). The six
    proposed rows it amends stay proposed.
 7. **The lifecycle on 0.15.0** (R9.1): do not run the first `change land` with main's build;
@@ -1113,7 +1120,7 @@ version; enacting the proposed rows MV-143 to MV-152 as amended.
 ### R16.1 The change file's declaration
 
 Set in `.multivac/changes/drop-graphers.md`'s frontmatter before `change plan` (T001 checks it). Each
-row's reason is its R14.2 lead or R14.3 note; MV-153 is claimed alone, as asked (R16 item 5).
+row's reason is its R14.2 lead or R14.3 note; MV-153 and the 34 amended rows are claimed (R16 item 5).
 
 ```yaml
 repos:
@@ -1176,4 +1183,38 @@ invariants:
     - MV-149
 claims:
   - MV-153
+  - MV-25
+  - MV-31
+  - MV-51
+  - MV-55
+  - MV-56
+  - MV-57
+  - MV-69
+  - MV-74
+  - MV-80
+  - MV-87
+  - MV-93
+  - MV-98
+  - MV-102
+  - MV-114
+  - MV-115
+  - MV-121
+  - MV-122
+  - MV-123
+  - MV-124
+  - MV-125
+  - MV-128
+  - MV-129
+  - MV-130
+  - MV-132
+  - MV-135
+  - MV-136
+  - MV-137
+  - MV-141
+  - MV-143
+  - MV-144
+  - MV-146
+  - MV-147
+  - MV-150
+  - MV-152
 ```

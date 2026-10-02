@@ -68,7 +68,7 @@ network fails for reasons that have nothing to do with the code it is judging.
 
 ### V. An Invented Integration Is A Lie
 
-Adapters are data, not code: one entry per harness, grapher or SDD tool, and the
+Adapters are data, not code: one entry per harness or SDD tool, and the
 dispatch is on the entry's kind, never on its name. An entry MUST carry only
 what the vendor's own documentation states, or what has been verified by running
 the tool — never a value derived from the tool's name. A tool whose contract
@@ -139,4 +139,4 @@ unreadable, empty, or still carrying the fill-in tokens spec-kit's template
 ships. Its freshness stays a report, per MV-57: a version that never moves
 while the law does is a signal to revisit rather than a failing grade.
 
-**Version**: 3.0.2 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-09-29
+**Version**: 3.0.3 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-10-02

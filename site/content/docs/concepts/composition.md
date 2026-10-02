@@ -4,13 +4,14 @@ weight: 8
 ---
 
 multivac holds what must stay true. It does not decide what to build, and it
-does not know where your code is. Two other kinds of tool answer those, and
-multivac is built to sit on top of them rather than beside them.
+does not map your code. A spec-driven development tool answers the first, and
+multivac is built to sit on top of it rather than beside it; your agent answers
+the second by reading the tree.
 
 | question | answered by | scope |
 | --- | --- | --- |
 | What should we build, and in what shape? | a **spec-driven development tool** | one feature |
-| Where is this, and what reaches it? | a **code grapher** | one repo |
+| Where is this, and what reaches it? | **your agent**, reading the tree | one repo |
 | What must stay true, and did it? | **multivac** | the ecosystem |
 
 Three different questions. None of them substitutes for another, and a tool
@@ -27,14 +28,11 @@ always has.
   tool is set up once there, and with automation on its steps print once at
   each lifecycle point and the next command refuses without their artifacts.
   The change file cites the tool's directory instead of restating it.
-- **With a grapher**, code questions go to the graph of the checkout you ask,
-  which the door and `change apply` name, in that tool's own verbs. A grapher
-  you declared yourself has no verbs, so your agent searches; so it does in a
-  repo multivac does not manage.
 
-For the SDD the reason is your agent's context: the tool already carries its
-own flow, and repeating it would be paid for on every change. For the grapher
-it is the answer, not the bytes — see below.
+The reason is your agent's context: the tool already carries its own flow, and
+repeating it would be paid for on every change. multivac keeps no code graph,
+so no door points your agent at one and no hook rebuilds one after each edit:
+it searches the checkout it works in.
 
 ## Not competing is a rule here, not a posture
 
@@ -49,18 +47,13 @@ stronger claim than a paragraph in a README:
   real steps, not a fixed propose/apply/archive triple multivac invented.
 - **The tool's own verdict** — where a tool ships its own validator, its verdict
   is reused. multivac does not re-litigate another tool's rules.
-- **No guessed contract** — the registry never invents a grapher's contract. A
-  tool whose artifact path and refresh command are not documented by its vendor
-  is reported UNVERIFIED, with the fields to declare, rather than guessed from
-  its name.
-- **Each tool's own verbs** — query verbs are printed verbatim per tool.
-  `graphify query` takes a question in words; `codegraph query` takes a symbol.
-  A door that said "query the graph" would be wrong for one of them with no way
-  to tell which.
-- **The network, named** — an entry names any network its refresh performs,
-  because that refresh runs on someone else's machine on every edit.
+- **No guessed contract** — the registry never invents a tool's contract: the
+  paths an entry reads and the commands it runs are the vendor's documented
+  ones, never derived from the tool's name.
+- **The network, named** — an entry names any network its commands perform,
+  because they run on someone else's machine.
 
-What multivac adds is the part neither of the others does: it **gates** on them.
+What multivac adds is the part the tool does not: it **gates** on it.
 Each SDD step declares the artifact that proves it ran, and the next lifecycle
 command refuses without it. Steps that cannot be proven are declared ungateable
 *with their reason* instead of being faked.
@@ -90,47 +83,15 @@ and for OpenSpec its `openspec/` directory and nothing else, since its steps are
 its own terminal verbs, which every harness runs alike. Recommending a tool
 without saying that would be selling you a hole.
 
-## Why a grapher helps
+## Not required
 
-An agent that does not know a graph exists will grep, and grep is the wrong
-instrument for "what reaches this" — it finds strings, not paths. What a graph
-gives is reach and relationships: who calls a function, what may break if it
-changes, how one symbol reaches another — a subgraph or a list of callers
-rather than a pile of line hits. It is not a byte saving. Measured on
-multivac's own code, a definition looked up in the graph printed more than a
-narrowed search for almost every function, while a list of callers usually
-printed less than the search for call sites; each tool's verbs, and what each
-one misses, are in [Graphers and SDD](../../reference/graphers-and-sdd/#what-the-graph-answers).
-
-The refresh follows **your edits, not your commits**, where the harness lets
-it: where the harness has a post-edit hook — today Claude Code — `doors` wires
-the refresh into it, backgrounded and coalesced behind a lock, so the map is
-fresh for the next question you ask it; elsewhere the graph is refreshed at
-`change land` and `change close`. From a brain whose code lives in other
-repos, that hook follows your edits into the repo you edited, and `doors` wires
-one hook per grapher, each only where that grapher's binary is reachable from
-every code repo that resolves it. `change close` runs the same refresh as a
-safety net for edits made outside a harness. Git hooks never refresh — they run
-`verify` only.
-
-Two constraints keep this honest. The refresh module never invokes git:
-`change land` commits a graph that lives in the repo (graphify's, or one
-declared under `graphers:`) on the change's branch, so it merges with the code
-it describes; a local index (codegraph's) is rebuilt in the checkout —
-`change apply` built one in each change worktree — and never committed. And a
-grapher multivac has not verified gets no derived paths and no invented verbs —
-it is reported UNVERIFIED until its contract is declared, which any project can
-do in its own config without a merge request against multivac.
-
-## Neither is required
-
-`verify`, `doctor` and `doors` work with no SDD and no grapher declared, make no
-network calls, and invoke no model. With neither declared, the lifecycle still
-binds on its own, code is not refused outside a change, and your agent searches
-the tree. Adding either changes how cheaply the work is done well; neither is
-load-bearing for the law itself.
+`verify`, `doctor` and `doors` work with no SDD declared, make no network
+calls, and invoke no model. With none declared, the lifecycle still binds on its
+own, code is not refused outside a change, and your agent searches the tree.
+Adding one changes how cheaply the work is done well; it is not load-bearing
+for the law itself.
 
 ## Next
 
-How to configure both, field by field, is
-[Graphers and SDD](../../reference/graphers-and-sdd).
+How to configure one, field by field, is
+[SDD tools](../../reference/sdd).

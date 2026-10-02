@@ -11,6 +11,10 @@ declares where the repos are. It never defines behaviour.
 `{}` loads with every default applied. Every validation error names the key
 and the fix.
 
+A config an earlier release wrote may still declare a code graph, at the root
+or on a repo. Those keys load and are ignored — multivac keeps no code graph —
+and `verify` and `doctor` each name them in one line, with how to delete them.
+
 What `init` writes with no flags:
 
 ```yaml
@@ -26,7 +30,6 @@ A filled-in one:
 ```yaml
 doors:   [agents, claude, cursor]
 sdd:     opsx
-grapher: graphify
 authorities: [published, specified, open]
 blocking: [absent, count, each]
 staleness: block
@@ -38,7 +41,6 @@ repos:
   payments:
     url: git@example.com:acme/payments.git
     path: ../payments
-    grapher: codegraph
     channel: origin/release
 ```
 
@@ -115,7 +117,7 @@ doors      nope: unknown target — known: agents, claude, cursor, opencode, cod
 Selects the spec-driven-development adapter whose own steps run inside the
 change lifecycle — for OpenSpec, `openspec new change`, the `status` and
 `instructions` loop, `instructions apply` and `archive`. See
-[Graphers and SDD](../graphers-and-sdd). It runs in the brain alone — it is
+[SDD tools](../sdd). It runs in the brain alone — it is
 installed there and its steps print there — and it governs the code of every
 declared repo that does not say `sdd: none` (see
 [`sdd:` per repo](#repos)). In a brain that is its own code repo, the brain's
@@ -168,41 +170,6 @@ directories for the change in the archive commit it prints and citing them in
 its body: the switch skips the steps and their gates, never what was already
 written.
 
-### `grapher`
-
-| | |
-| --- | --- |
-| type | string — a verified grapher, a name under `graphers`, or `none` |
-| default | unset |
-| example | `grapher: graphify` |
-
-The code-graph tool for every root that does not declare its own: a repo's
-`grapher:` wins in that repo, and the brain's own entry in the brain.
-`none` declares no grapher, here or on a repo, and is never read as a tool's
-name.
-
-The brain is a root only when it holds code — when a [`repos`](#repos) entry
-at path `.` is the brain (`brain: .`). A brain with no such entry keeps no code
-graph, whatever this key says: the key then declares the grapher of the code
-repos, and the brain door says where each of their graphs is asked. `init`
-writes `brain: .` when the repo it scaffolds holds any file — a README, a
-LICENSE or a `.gitignore` included. See
-[A brain that holds no code](../graphers-and-sdd#a-brain-that-holds-no-code). The name must be one multivac **speaks** — `graphify` or
-`codegraph` — or one you declare yourself under [`graphers`](#graphers).
-multivac never derives an artifact path or a refresh command from a name,
-because inventing either is inventing a fact.
-
-Two, deliberately. Speaking a grapher means knowing what it can *answer*, so
-the brain door can tell an agent which verb to reach for; that is earned one
-tool at a time, not scaled by adding rows. Any other tool still works through
-[`graphers`](#graphers) with no merge request against multivac — it simply
-gets no query lines in the door, because multivac does not know its verbs.
-
-**Without it, and with no repo declaring one:** no `grapher` lines in
-`doctor`, no refresh hint at the end of `change close`. A newborn brain is two
-content files; graphing that is noise, which is why `init` declares no grapher
-unless it detects one.
-
 ### `tracker`
 
 Which issue tracker the roadmap projects to: `gitlab`, `github`, or absent.
@@ -211,64 +178,12 @@ Which issue tracker the roadmap projects to: `gitlab`, `github`, or absent.
 tracker: gitlab
 ```
 
-Root level only. Unlike `grapher:`, which acts on each repo's files, the
-tracker projects the **change** — and changes live only in the brain, so a
+Root level only. Unlike `channel`, which a repo may override, the tracker
+projects the **change** — and changes live only in the brain, so a
 per-repo override would answer a question nobody can ask.
 
 Projection is one way and runs only from `multivac roadmap sync`. It reaches the
 network, so it never runs from `verify`, `doctor` or `doors`.
-
-### `grapher_auto`
-
-Default `true`. When `false`, the graph gate never refuses — the declared tool
-still runs, the graph is still built and refreshed, and `change close` simply
-stops requiring the artifact.
-
-```yaml
-grapher_auto: false
-```
-
-Named after [`sdd_auto`](#sdd_auto) and parsed the same way, because two
-adapters with two vocabularies for one idea is a tax on every reader.
-
-It answers a different question from `grapher: none` on a repo. `grapher: none`
-says *do not graph this repo*; `grapher_auto: false` says *graph it, but do not
-refuse my close over it*. Neither substitutes for the other, and an operator
-forced to un-declare their tool to get a change closed will un-declare it
-permanently.
-
-See [the graph gate](../commands/#the-graph-gate) and `--no-grapher` in
-[commands](../commands/#change-sub-slug-args) for the per-run form.
-
-### `graphers`
-
-| | |
-| --- | --- |
-| type | mapping of name -> `{ artifact, refresh, create?, binary?, install? }` |
-| default | `{}` |
-| example | see below |
-
-Contracts for graphers the shipped registry has not verified. This is what
-makes an unverified tool usable **without a merge request against multivac**:
-
-```yaml
-grapher: mytool
-graphers:
-  mytool:
-    artifact: .mytool/index.db   # repo-relative path the tool writes, file or directory
-    refresh: mytool index        # the one command safe to re-run
-    create: mytool init          # optional, when the build differs from the refresh
-    binary: mytool               # optional, defaults to the first word of refresh
-    install: pipx install mytool # optional, printed when the binary is missing
-```
-
-`artifact` and `refresh` are required. A declaration also overrides a shipped
-registry entry — you know your own install better than the table does. The one
-name you cannot declare is `none`: it means no grapher, so `graphers.none` is
-refused at load.
-
-**Without it:** a `grapher:` naming an unverified tool is reported as
-unverified, with these exact fields to fill in, and nothing is run.
 
 ### `repos.<key>.role`
 
@@ -309,14 +224,14 @@ repos:
 ```
 
 A read-only repo is read, verified, cloned and fetched, and never written: no
-SDD init, no graph build or refresh, and `doors` projects no door, skill,
-harness hook config, git hook shim or `core.hooksPath` there. No gate demands a
-file there — the SDD runs in the brain alone, and the graph and tracked gates
-never judge it. `doctor` and `repos` report it, `doctor`'s pins line expects no
-mount there, and `doctor`'s exit code does not change:
+SDD init, and `doors` projects no door, skill, harness hook config, git hook
+shim or `core.hooksPath` there. No gate demands a file there — the SDD runs in
+the brain alone. `doctor` and `repos` report it, `doctor`'s pins line expects
+no mount there, names nothing an earlier release left there, and `doctor`'s
+exit code does not change:
 
 ```txt
-grapher    graphify @ payments: not managed, read-only — out of scope, not a gap
+pins       payments: not managed, read-only — no mount expected
 ```
 
 A change that names it is refused by `change plan` and `change apply` before
@@ -493,18 +408,6 @@ there:
 pins       api: no brain mount at .brain — run `multivac repos sync` to add it
 ```
 
-**The mount is kept out of each consumer's code graph**, so the consumer's
-graph answers about the consumer and not the brain: graphify through a
-`/.brain/` line in `.graphifyignore`, and codegraph, where the brain holds
-code, through its `codegraph.json`, whose `exclude` list gets the same line —
-codegraph indexes no Markdown, so a brain that holds none adds nothing to its
-index. A consumer of a brain that holds code, on codegraph, indexed 2,254
-nodes, 2,247 of them the mount's, and 7 with the line. It is not a `.gitignore` line: codegraph would honour one, but it is
-git-wide, and a later `git submodule add` of the mount exited 128. The line is
-written as git records the mount — `./.brain`, `.brain/` and `./.brain/` all
-give `/.brain/` — and a mount outside the repo, absolute or starting with `..`,
-gets none. See [Automatic refresh](../graphers-and-sdd#automatic-refresh).
-
 ### `brain_url`
 
 | | |
@@ -563,7 +466,7 @@ locks you out.
 
 | | |
 | --- | --- |
-| type | mapping of key → path string, or key → `{ path, url, grapher, sdd, channel, role, managed }` |
+| type | mapping of key → path string, or key → `{ path, url, sdd, channel, role, managed }` |
 | default | `{}` |
 | example | see below |
 
@@ -577,7 +480,6 @@ repos:
   payments:
     url: git@example.com:acme/payments.git
     path: ../payments                  # optional; defaults to ../<key>
-    grapher: codegraph                 # overrides the global grapher; `none` = no graph here
     sdd: none                          # the one value a repo's sdd: takes — its code is not gated
     channel: origin/release            # overrides the global channel
   ledger:
@@ -607,25 +509,20 @@ names it as exempt, and it is never reported as lacking anything. An absent
 `sdd:` means the brain's SDD governs the repo's code — it does not mean none. A
 tool name there is refused when the config loads.
 
-`grapher:` is per repo in full: a repo's own grapher wins in that repo, and
-`grapher: none` means no graph there.
-
-**The brain's own entry.** In a brain that is its own code repo, the `brain`
-entry decides the brain's grapher exactly as any repo's entry decides its own,
-and a top-level `none` never overrides it. Without an entry at path `.`, the
-brain holds no code: no grapher resolves there, and nothing builds, refreshes,
-gates, lands or reports a graph in it. Add `brain: .` — inside a change, once
-the config is committed — when the brain starts holding code. For the SDD, the brain's entry may
-repeat the top-level tool or declare one where the top level has none; a
-different tool, or `none` under a top-level tool, is refused:
+**The brain's own entry.** Without an entry at path `.`, the brain holds no
+code. Add `brain: .` — inside a change, once the config is committed — when the
+brain starts holding code; `init` writes it when the repo it scaffolds holds
+any file, a README, a LICENSE or a `.gitignore` included. For the SDD, the
+brain's entry may repeat the top-level tool or declare one where the top level
+has none; a different tool, or `none` under a top-level tool, is refused:
 
 ```yaml
-grapher: graphify
+sdd: speckit
 repos:
   brain:
     path: .
-    grapher: codegraph                 # the brain is graphed with codegraph
-  api: ../acme-api                     # api with graphify
+    sdd: speckit                       # repeats the top-level tool
+  api: ../acme-api
 ```
 
 With `sdd: speckit` at the top level and `landing` declaring `sdd: none`,
@@ -746,7 +643,6 @@ AGENTS.md                  the door
 .multivac/changes/         one file per ecosystem change
 .multivac/ritual.md        the closing ceremony
 .multivac/flow.md          what the declarations oblige; generated
-.multivac/ecosystem.json   how repos, law rows, anchors and changes relate; generated
 .multivac/hooks/           pre-commit, pre-push and pre-merge-commit shims
 .multivac/cache/           gitignored
 .multivac/worktrees/       one checkout per open change, gitignored

@@ -10,9 +10,8 @@ import { surfaceFrom, undeclared } from '../lib/args.js';
 import { parseArgs, type ArgsDef } from 'citty';
 import { loadConfig } from '../lib/config.js';
 import { lsFiles } from '../lib/git.js';
-import { adapterFor, readOnly } from '../adapters/detect.js';
-import { grapherSpec, sddSpec } from '../adapters/registry.js';
-import { initState } from '../lib/init-state.js';
+import { adapterFor } from '../adapters/detect.js';
+import { sddSpec } from '../adapters/registry.js';
 import { projectDocVerdict } from '../lib/repo-state.js';
 import { say, warn } from '../lib/out.js';
 import { classify } from '../seed/inventory.js';
@@ -155,13 +154,6 @@ async function runSeed(argv: string[], ctx: CommandContext): Promise<number> {
     // MV-136: whether the repo is set up, before anyone drafts law over it —
     // read from the vendor's files, never by running the vendor.
     const setup: string[] = [];
-    const ro = await readOnly(cfg, key, repoDir);
-    const g = adapterFor(cfg, key, 'grapher');
-    const gs = g ? grapherSpec(g, cfg.graphers) : null;
-    if (g && gs) {
-      const st = (await initState(gs, repoDir)).state;
-      setup.push(`- graph ${g}: ${st === 'installed' ? 'built' : `${st}${ro ? ` — read-only (${ro}), not built by multivac` : ' → `multivac repos sync`'}`}`);
-    }
     setup.push(...(await docLines(key, repoDir)));
     section(`## ${key} (${entry.path})`, setup);
     const buckets = classify(files);

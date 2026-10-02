@@ -19,8 +19,9 @@ removes those, and `.multivac/ecosystem.json`), and, as data, the files graphify
 codegraph 1.6.0 installs wrote (`doctor` prints their removal, the door warns where their skills
 remain, the code gate lets them go). Nothing in it runs a vendor or deletes a file. The law
 changes first: MV-153 is written, fourteen rows retire with tombstones, thirty-four get a dated
-note, each leg lands with the commit that greens it, so main's 0.15.0 pre-commit passes every
-commit. Documents, site and skill follow; this repository's own graphify setup goes in the last
+note, each leg lands with the commit that greens it, so the pre-commit gate (the worktree's own
+build, MV-92) and main's 0.15.0 `mvac verify` pass every commit; the change claims MV-153 and the
+34 rows it amends, so `change close` verifies all 35. Documents, site and skill follow; this repository's own graphify setup goes in the last
 commit. Research, measurements and the full law plan: [research.md](./research.md).
 
 ## Technical Context
@@ -39,7 +40,7 @@ commit. Research, measurements and the full law plan: [research.md](./research.m
 
 **Performance Goals**: one hook per edit where there were two; `change apply` on an old codegraph config as fast as with none; doors 747–2,276 bytes shorter where a grapher was declared
 
-**Constraints**: every commit on the branch passes main's 0.15.0 pre-commit (blocking legs of active and retired rows green at each commit, so tombstones and moved blocking legs land with their edits); no file deleted that multivac did not write; no vendor run by `doctor` or `doors`; renderers stay filesystem-free (MV-93); the two skill copies byte-identical (MV-72); site pages name no law ID and no version (MV-126, MV-84); the setup removal is the last commit and no Edit or Write tool runs after it (research.md R9); no Sync Impact Report (MV-146's leg)
+**Constraints**: every commit on the branch passes the pre-commit gate — the shim runs the worktree's own `dist/cli.js` (MV-92), so 0.15.0's code until the source commit and the new build after — and main's 0.15.0 `mvac verify` over the same tree (blocking legs of active and retired rows green at each commit, so tombstones and moved blocking legs land with their edits); no file deleted that multivac did not write; no vendor run by `doctor` or `doors`; renderers stay filesystem-free (MV-93); the two skill copies byte-identical (MV-72); site pages name no law ID and no version (MV-126, MV-84); the setup removal is the last commit and no Edit or Write tool runs after it (research.md R9); no Sync Impact Report (MV-146's leg)
 
 **Scale/Scope**: 28 source files (4 deleted, 1 added, 23 edited; −3,594 lines net in the prototype); 96 test files (11 deleted, 32 edited plus two helpers, 2 created; 171 tests deleted, 11 added); the law (MV-153, 14 retirements, 34 notes, 60 legs removed, 71 added); 25 documents; the twelve setup items of this repository that the change removes (research.md R1.4)
 
@@ -139,4 +140,4 @@ whole; mixed files lose those tests; two new files hold the tests no existing fi
 | Keeping four config keys in the loader's known lists | an old config must load (decision 2) | refusing them breaks every equipped brain on upgrade; migrating the file writes an invariant file outside a change (MV-97) |
 | A door line beyond the literal decision | graphify's own hook-guard keeps sending agents to a graph nothing refreshes; only the door reaches the agent | `doctor` alone reaches the human, not the session (research.md R16 item 2) |
 | Moving the reference page | the page's name says "graphers" | keeping the path keeps a word the site otherwise drops; cost: ten moved legs (R11, R16 item 1) |
-| Phasing legs commit by commit instead of one law commit | main's 0.15.0 pre-commit evaluates retired rows' `absent` legs and every blocking leg | one law commit first is refused by its own tombstones (each red until its code goes) |
+| Phasing legs commit by commit instead of one law commit | the pre-commit gate (either build) evaluates retired rows' `absent` legs and every blocking leg | one law commit first is refused by its own tombstones (each red until its code goes) |

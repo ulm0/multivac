@@ -5,8 +5,9 @@ import { access, lstat, readdir, readFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { parse } from 'yaml';
 import { samePath } from './paths.js';
-import { NO_ADAPTER, sddDeclarationRefusal } from '../adapters/detect.js';
-import type { Config, GrapherDecl, Mode, RepoEntry } from '../types.js';
+import { sddDeclarationRefusal } from '../adapters/detect.js';
+import { DROPPED_KEYS, DROPPED_REPO_KEY } from './dropped.js';
+import type { Config, Mode, RepoEntry } from '../types.js';
 
 export class ConfigError extends Error {}
 
@@ -32,8 +33,6 @@ export const CHANGES_DIR = '.multivac/changes';
 export const RITUAL_PATH = '.multivac/ritual.md';
 /** MV-96: derived, rewritten whole by `doors`. Never authored. */
 export const FLOW_PATH = '.multivac/flow.md';
-/** MV-139: the ecosystem's governance graph, rendered from the brain's declarations. */
-export const ECOSYSTEM_PATH = '.multivac/ecosystem.json';
 /**
  * Every tracked file `init` writes — the check-ignore targets. A repo-level
  * ignore (saleor's `.gitignore` starts with `.*`) can swallow the whole brain
@@ -233,15 +232,17 @@ function optString(v: unknown, key: string): string | undefined {
   return v;
 }
 
-function repoEntry(key: string, v: unknown): RepoEntry {
+function repoEntry(key: string, v: unknown, dropped: string[]): RepoEntry {
   if (typeof v === 'string') return { path: v };
   if (v === null || typeof v !== 'object' || Array.isArray(v)) {
-    fail(`repos.${key} must be a path string or { path, url?, role?, grapher?, sdd?, channel?, managed? }`);
+    fail(`repos.${key} must be a path string or { path, url?, role?, sdd?, channel?, managed? }`);
   }
   const o = v as Record<string, unknown>;
   // `isBrain` is deliberately absent: the loader derives it, and a hand-written
-  // one would be a lie this code overwrites.
-  refuseUnknown(o, ['channel', 'grapher', 'managed', 'path', 'role', 'sdd', 'url'], `repos.${key}.`);
+  // one would be a lie this code overwrites. MV-153: the key an earlier
+  // release read stays known, so an old entry loads, and is only recorded.
+  refuseUnknown(o, ['channel', DROPPED_REPO_KEY, 'managed', 'path', 'role', 'sdd', 'url'], `repos.${key}.`);
+  if (DROPPED_REPO_KEY in o) dropped.push(`repos.${key}.${DROPPED_REPO_KEY}`);
   // MV-125, parsed the way sdd_auto is, except that an empty value is not
   // absent: `managed:` with nothing after it is refused, never read as true.
   const managed = o.managed === undefined ? true : o.managed;
@@ -259,11 +260,9 @@ function repoEntry(key: string, v: unknown): RepoEntry {
   return {
     path,
     url: optString(o.url, `repos.${key}.url`),
-    grapher: optString(o.grapher, `repos.${key}.grapher`),
-    // Same validator as `grapher`, on purpose: one shape for both overrides.
-    // `none` is a value, not a parse case — `adapterFor` resolves it, for
-    // both keys (MV-122). A tool here is refused once the brain entry is
-    // known, by `sddDeclarationRefusal` (MV-146), not by this parse.
+    // `none` is a value, not a parse case — `adapterFor` resolves it
+    // (MV-122). A tool here is refused once the brain entry is known, by
+    // `sddDeclarationRefusal` (MV-146), not by this parse.
     sdd: optString(o.sdd, `repos.${key}.sdd`),
     channel: optString(o.channel, `repos.${key}.channel`),
     // MV-93: the list is a list, so a role written across several lines is
@@ -280,34 +279,6 @@ function oneLine(v: string | undefined): string | undefined {
   if (v === undefined) return undefined;
   const flat = v.split('\n').map((l) => l.trim()).filter(Boolean).join(' ');
   return flat === '' ? undefined : flat;
-}
-
-/**
- * One `graphers:` entry. `artifact` and `refresh` are required and the error
- * says so with the exact block to write: half a contract is the same invented
- * path the registry stopped deriving.
- */
-function grapherDecl(name: string, v: unknown): GrapherDecl {
-  if (v === null || typeof v !== 'object' || Array.isArray(v)) {
-    fail(`graphers.${name} must be a mapping with artifact: and refresh:`);
-  }
-  const o = v as Record<string, unknown>;
-  refuseUnknown(o, ['artifact', 'binary', 'create', 'install', 'refresh'], `graphers.${name}.`);
-  const artifact = optString(o.artifact, `graphers.${name}.artifact`);
-  const refresh = optString(o.refresh, `graphers.${name}.refresh`);
-  if (!artifact || !refresh) {
-    fail(
-      `graphers.${name} needs both "artifact" (the repo-relative path the tool writes) ` +
-        'and "refresh" (the one command safe to re-run) — multivac will not guess either',
-    );
-  }
-  return {
-    artifact,
-    refresh,
-    create: optString(o.create, `graphers.${name}.create`),
-    binary: optString(o.binary, `graphers.${name}.binary`),
-    install: optString(o.install, `graphers.${name}.install`),
-  };
 }
 
 /** How `loadConfig` answers an SDD declaration that resolves in no root (MV-146). */
@@ -355,9 +326,9 @@ export function enclosingBrain(dir: string): string | null {
 
 /**
  * Parse and validate the config, WITHOUT the layout check `loadConfig` adds.
- * `init` reads the grapher vocabulary here before it migrates anything
- * (MV-122): through `loadConfig` a legacy brain would read as unreadable, and
- * a typo would pass because the check ran before the move.
+ * `init` reads the SDD vocabulary here before it migrates anything (MV-122):
+ * through `loadConfig` a legacy brain would read as unreadable, and a typo
+ * would pass because the check ran before the move.
  */
 export async function readConfig(brainDir: string): Promise<Config> {
   const file = join(brainDir, CONFIG_PATH);
@@ -388,11 +359,12 @@ export async function readConfig(brainDir: string): Promise<Config> {
   refuseUnknown(
     o,
     // Every key this function reads, plus `requires`, which version.ts reads
-    // from the raw text rather than from here.
+    // from the raw text rather than from here, and the keys an earlier release
+    // read (MV-153): they load whatever they hold, and are only recorded.
     [
-      'authorities', 'blocking', 'brain_url', 'channel', 'doors', 'grapher',
-      'grapher_auto', 'graphers', 'mount', 'repos', 'requires', 'sdd',
-      'sdd_auto', 'staleness', 'strict_pre_push', 'tracker',
+      'authorities', 'blocking', 'brain_url', 'channel', 'doors', 'mount',
+      'repos', 'requires', 'sdd', 'sdd_auto', 'staleness', 'strict_pre_push',
+      'tracker', ...DROPPED_KEYS,
     ],
     '',
   );
@@ -422,18 +394,11 @@ export async function readConfig(brainDir: string): Promise<Config> {
     fail('"sdd_auto" must be true or false');
   }
 
-  // MV-90. Named after sdd_auto and parsed the same way: two adapters with two
-  // vocabularies for one idea is a tax on every reader.
-  // MV-99: root-level only. Unlike grapher:, which acts on each repo's files,
-  // the tracker projects the CHANGE — and changes live only in the brain, so a
-  // per-repo override would answer a question nobody can ask. (sdd: runs in the
-  // brain alone too since MV-146; a repo's own takes only `none`.)
+  // MV-99: root-level only. The tracker projects the CHANGE — and changes live
+  // only in the brain, so a per-repo override would answer a question nobody
+  // can ask. (sdd: runs in the brain alone too since MV-146; a repo's own takes
+  // only `none`.)
   const tracker = optString(o.tracker, 'tracker');
-
-  const grapherAuto = o.grapher_auto ?? true;
-  if (typeof grapherAuto !== 'boolean') {
-    fail('"grapher_auto" must be true or false');
-  }
 
   const staleness = o.staleness ?? 'report';
   if (staleness !== 'report' && staleness !== 'block') {
@@ -445,19 +410,9 @@ export async function readConfig(brainDir: string): Promise<Config> {
     fail('"strict_pre_push" must be true or false');
   }
 
-  const graphersRaw = o.graphers ?? {};
-  if (typeof graphersRaw !== 'object' || graphersRaw === null || Array.isArray(graphersRaw)) {
-    fail('"graphers" must be a mapping of name -> { artifact, refresh, create?, binary?, install? }');
-  }
-  const graphers: Record<string, GrapherDecl> = {};
-  for (const [k, v] of Object.entries(graphersRaw as Record<string, unknown>)) {
-    // MV-122: `none` means no grapher wherever `grapher:` is read, so a tool
-    // declared under that name could never be selected — refused, not shadowed.
-    if (k === NO_ADAPTER) {
-      fail(`graphers.${k} cannot be declared — "${NO_ADAPTER}" means no grapher; name the tool something else`);
-    }
-    graphers[k] = grapherDecl(k, v);
-  }
+  // MV-153: what an earlier release read and this one ignores, in a fixed
+  // order — never validated, never read beyond its name.
+  const dropped: string[] = DROPPED_KEYS.filter((k) => k in o);
 
   const reposRaw = o.repos ?? {};
   if (typeof reposRaw !== 'object' || reposRaw === null || Array.isArray(reposRaw)) {
@@ -468,7 +423,7 @@ export async function readConfig(brainDir: string): Promise<Config> {
     if (k === '*') {
       fail('repos."*" is a reserved key — "*" means every repo in anchor legs; rename the repo');
     }
-    const entry = repoEntry(k, v);
+    const entry = repoEntry(k, v, dropped);
     // brain==code: an entry whose path IS the brain root is the brain itself.
     // Through a symlink too — otherwise the brain is a "consumer repo" that
     // gets a consumer door, a mount nag, and a second scan of its own files.
@@ -494,10 +449,7 @@ export async function readConfig(brainDir: string): Promise<Config> {
     doors: stringList(o.doors, 'doors'),
     sdd: optString(o.sdd, 'sdd'),
     sddAuto,
-    grapherAuto,
     tracker,
-    grapher: optString(o.grapher, 'grapher'),
-    graphers,
     authorities: stringList(o.authorities, 'authorities'),
     blocking,
     staleness,
@@ -506,5 +458,6 @@ export async function readConfig(brainDir: string): Promise<Config> {
     mount: optString(o.mount, 'mount') ?? '.brain',
     brainUrl,
     repos,
+    dropped,
   };
 }

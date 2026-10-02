@@ -23,9 +23,9 @@ $ mvac repos sync
 ```
 
 Declare `repos:` before the brain's first commit, then sync. It clones every
-declared repo not on disk, installs the declared SDD in the brain — where every
-change's specs are written — and each repo's grapher in that repo, so nothing
-is drafted over a repo nobody can read or ask a graph about.
+declared repo not on disk and installs the declared SDD in the brain, where
+every change's specs are written, so nothing is drafted over a repo nobody can
+read.
 `mvac repos check` names what is still missing.
 
 ### 1. Seed
@@ -65,9 +65,9 @@ Nothing here is law: the agent drafts `proposed` rows from it; a human enacts.
 - sql/migrations/001_accounts.sql
 ```
 
-Each repo also gets a `### setup` section. The SDD's project document is the
-brain's, so it is reported once — in a section of its own when the brain holds
-no code, in the brain's entry when it does:
+The brain also gets a `### setup` section, for the SDD's project document,
+which is the brain's: it is reported once — in a section of its own when the
+brain holds no code, in the brain's entry when it does:
 
 ```markdown
 ## brain (the brain itself, no code)
@@ -75,12 +75,6 @@ no code, in the brain's entry when it does:
 ### setup
 
 - project document .specify/memory/constitution.md: template (placeholders remain: [PROJECT_NAME]) → run /speckit.constitution in your agent …
-
-## api (../acme-api)
-
-### setup
-
-- graph graphify: built
 ```
 
 A declared repo missing locally is reported unevaluated; run

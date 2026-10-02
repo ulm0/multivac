@@ -57,5 +57,5 @@ across N repos. Verification is the precondition; the product is the change.
 6. [Distribution](concepts/distribution) — mounts, pins, doors, and skills.
 7. [Adoption](concepts/adoption) — the arc from `init` to steady state, which
    phase buys what, and how the path differs by the shape you are in.
-8. [Composition](concepts/composition) — why spec-driven tools and code
-   graphers are built on rather than competed with.
+8. [Composition](concepts/composition) — why spec-driven tools are built on
+   rather than competed with, and why multivac keeps no code graph.

@@ -44,7 +44,6 @@ AGENTS.md                    the door — first thing any agent reads
 .multivac/changes/           one file per ecosystem change (empty)
 .multivac/config.yml         the registry: repos, doors, adapters
 .multivac/ritual.md          the closing ceremony, empty but for one comment
-.multivac/ecosystem.json     how repos, law rows, anchors and changes relate; generated
 .multivac/projected.yml      which multivac projected this brain last
 .multivac/hooks/pre-commit   runs `mvac verify` on every commit
 .multivac/hooks/pre-push     same, on push
@@ -72,12 +71,12 @@ block, between `<!-- multivac:begin -->` and `<!-- multivac:end -->`. The
 rest of the file is yours.
 
 `init` also detects what is already in the directory — `CLAUDE.md`,
-`.cursor/`, `openspec/`, `graphify-out/` — and writes commented proposals
-into `config.yml` (`# doors: [agents, claude, cursor]`, `# sdd: opsx`,
-`# grapher: graphify`). Flags enact instead of proposing:
+`.cursor/`, `openspec/`, `.specify/` — and writes commented proposals into
+`config.yml` (`# doors: [agents, claude, cursor]`, `# sdd: opsx`). Flags enact
+instead of proposing:
 
 ```sh
-mvac init . --provider claude,cursor --sdd opsx --grapher graphify
+mvac init . --provider claude,cursor --sdd opsx
 ```
 
 Flags are configuration, not one-shot magic: they land in
@@ -101,18 +100,15 @@ This repo is the brain: the source of law and change for its ecosystem.
 - Every ecosystem decision enters as a change: see `.multivac/changes/` and run `multivac change`.
 - The ritual — the closing ceremony no tool can check — is `.multivac/ritual.md`; `change close` prints it, you walk it.
 - Check the law against the code before acting: `multivac verify`.
-- How the repos, the law's rows, their anchors and the changes relate is `.multivac/ecosystem.json`, rendered from the brain's declarations, as plain node-link JSON.
 
 brain empty — load the multivac skill to fill it.
 <!-- multivac:end -->
 ```
 
-With `--sdd` or `--grapher`, the door also carries that tool's flow and the
-graph's verbs. `init` installs the SDD in the brain, and the grapher there only
-when the brain holds code — when the directory holds any file, so its config
-gets `brain: .`. A new brain for code that lives in other repos is empty: it
-keeps no code graph, each code repo keeps its own, and the door says where to
-ask them. The SDD stays in the brain:
+With `--sdd`, the door also carries that tool's flow, and `init` installs it
+in the brain. A brain whose directory holds any file is also a code repo, so
+its config gets `brain: .`; a new brain for code that lives in other repos is
+empty, and declares those repos instead. The SDD stays in the brain:
 it is where every change's specs are written, and no code repo installs it. For
 spec-kit, the install also writes three skeleton templates where spec-kit looks
 first, and says so:
@@ -165,7 +161,7 @@ The key (`api`) is the registry name anchors use — never the directory name.
 Then bring every repo in line, and give each one its door:
 
 ```bash
-mvac repos sync   # clone what is missing, mount the brain, install the brain's SDD and each repo's grapher
+mvac repos sync   # clone what is missing, mount the brain, install the brain's SDD
 mvac repos check  # offline: is each repo the declared clone, with its tools and documents set up
 mvac doors        # write each repo's door and hooks
 ```

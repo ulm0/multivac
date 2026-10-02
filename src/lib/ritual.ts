@@ -23,10 +23,8 @@ import { adaptersByRoot, type AdapterDecls } from '../adapters/detect.js';
  * `ritualChecklist` strips comment blocks — so nothing changes until somebody
  * means it.
  *
- * Only what no check could decide. A declared grapher contributes none: its
- * work is automatic and a gate already requires its artifact, so seeding it
- * would move a checked thing onto a poster, which is the inversion this whole
- * change exists to undo.
+ * Only what no check could decide: seeding a checked thing would move it onto
+ * a poster, which is the inversion this whole change exists to undo.
  */
 export function ritualSeed(config: AdapterDecls & { mount?: string } = {}): string {
   const candidates = [

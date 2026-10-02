@@ -1,6 +1,6 @@
 // MV-123: a failed vendor command is quoted by its cause. The quote used to be
 // the first three non-empty lines, which for spec-kit 1.0.6 is its block logo
-// and for graphify 0.9.29 is a traceback header and a path on this machine.
+// and for a Python tool is a traceback header and a path on this machine.
 // Fed the recorded outputs, never a kinder stand-in.
 
 import test from 'node:test';
@@ -18,7 +18,7 @@ test('spec-kit without claude is quoted by its cause, with no banner or box char
   assert.equal(q, 'Agent Detection Error; claude not found');
 });
 
-test("graphify's traceback is quoted by its closing exception, and nothing of the frames", () => {
+test('a Python traceback is quoted by its closing exception, and nothing of the frames', () => {
   const q = quoteFailure(failed(GRAPHIFY_0929_READONLY.stdout, GRAPHIFY_0929_READONLY.stderr));
   assert.equal(q, "PermissionError: [Errno 13] Permission denied: 'graphify-out/.rebuild.lock'");
   assert.doesNotMatch(q, /Traceback|File "/);

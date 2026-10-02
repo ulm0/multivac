@@ -25,11 +25,10 @@ It now carries:
   marked, a one-line `role` where the operator declared one, and `brain` named
   explicitly because that handle is usable in anchors and can never appear in a
   list built from `repos:`. Nothing is printed below two declared repos.
-- **the adapters that apply to this repo** — the graph block, resolved with the
-  tool that applies here and rendered by the same code that renders the brain's
-  door so the two cannot drift, and one line saying the brain's SDD runs in the
-  brain checkout and where this repo's code belongs. The SDD's flow is the
-  brain's; no code repo carries it.
+- **the adapter that applies to this repo** — one line saying the brain's SDD
+  runs in the brain checkout and where this repo's code belongs, rendered by
+  the same code that renders the brain's door so the two cannot drift. The
+  SDD's flow is the brain's; no code repo carries it.
 
 The list describes what the ecosystem **declares**, not what this machine has
 checked out: a door that changed with which repos happen to be cloned would

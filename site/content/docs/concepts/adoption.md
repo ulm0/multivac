@@ -100,5 +100,4 @@ regardless of how you arrived.
 
 The step-by-step version of session zero, with real output, is in the guide:
 [Session zero](../../guide/session-zero). Why multivac leans on spec-driven
-tools and code graphers instead of replacing them is
-[Composition](../composition).
+tools instead of replacing them is [Composition](../composition).

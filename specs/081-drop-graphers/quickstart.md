@@ -130,7 +130,8 @@ git ls-files src | xargs cat | wc -l; git diff --stat $(git merge-base HEAD main
 TMPDIR=$S/tmp node --test "dist-test/**/*.test.js" | grep -E '^# (tests|pass|skipped)'
 ```
 
-`apply-time.sh` (research.md R7) makes a 53-file TypeScript brain, inits it with the build on
+`apply-time.sh` (research.md R7) makes a 53-file TypeScript brain (the base's `src/`, from
+`git archive 41e52c5 src`: the prototype clone it first copied from is gone), inits it with the build on
 PATH (`$WT/bin` holds `mvac` and `multivac` shims running `NEW`), appends `grapher: <g>` for the
 new build, opens, declares and plans `t1`, and times `change apply t1`.
 
@@ -144,7 +145,7 @@ codegraph init . && codegraph callers refreshGraph; codegraph impact refreshGrap
 git grep -n -E '\brefreshGraph\(' -- src; git grep -n 'loadConfig(' -- src
 graphify path "refreshGraph()" "cmdClose()"
 graphify explain "MV-137" --graph .multivac/ecosystem.json
-grep -o -E '@anchor MV-137 brain:[^ ]+' .multivac/invariants.md
+grep -o -E '@anchor MV-137 brain:[^ ]+' .multivac/invariants.md | sort -u
 grep -l -E '^ +- MV-137$' .multivac/changes/*.md .multivac/changes/archive/*.md
 rm -rf .codegraph
 ```

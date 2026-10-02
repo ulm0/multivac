@@ -63,14 +63,15 @@ installs), and an ecosystem with codegraph and speckit; upgrade to the new build
 7. **Given** graphify's claude install beside the door, **When** the door is rendered, **Then** it carries one line saying graphify's own skills and hooks still send agents to a graph multivac no longer refreshes, and that `doctor` prints their removal; with no vendor install there, no such line.
 8. **Given** the printed recipe followed, **When** the removal is committed with a change open for the config edit, **Then** the hooks pass it on any branch (the paths are not code), and `doctor` prints the config line alone until the key is deleted.
 
-### User Story 3 - The law changes first, and every commit on the way passes main's gate (Priority: P1)
+### User Story 3 - The law changes first, and every commit on the way passes the gate (Priority: P1)
 
 The law names a graph in 54 rows. Before any code goes, MV-153 states the new rule with
 its measurements; fourteen rows retire with dated leads and tombstones; thirty-four rows get a
 dated note at their end withdrawing only the sentences that became false, quoted as written; six
 rows that name a graph in another sense, or as history, stay. Every commit on the change branch
-passes the pre-commit gate of main's 0.15.0 binary, so each tombstone and each moved blocking leg
-lands with the edit that greens it.
+passes the pre-commit gate — the shim runs the worktree's own build, since this repository is
+multivac, and main's 0.15.0 `mvac verify` over the worktree agrees — so each tombstone and each
+moved blocking leg lands with the edit that greens it.
 
 **Why this priority**: Constitution III — the law changes before the code; and a branch that
 cannot commit cannot land.
@@ -84,7 +85,7 @@ its row.
 1. **Given** the law at the change's base, **When** every row naming a graph word is listed, **Then** each is retired, amended or kept, with its reason, and no other row changes.
 2. **Given** a retired row, **When** read, **Then** it carries `RETIRED 2026-10-02 by MV-153` and keeps its statement as history; its kept `absent` legs and its new tombstone are 0; a leg over a deleted file is gone.
 3. **Given** an amended row, **When** read, **Then** its note is the last sentence of its statement, `**Amended 2026-10-02 by MV-153**: …`, and every sentence it withdraws is quoted as the row states it.
-4. **Given** any commit on the branch, **When** main's pre-commit runs `verify`, **Then** no blocking leg is broken or vacuous.
+4. **Given** any commit on the branch, **When** the pre-commit shim runs `verify` (the worktree's own build) and main's 0.15.0 `mvac verify` runs over the same tree, **Then** neither finds a blocking leg broken or vacuous.
 5. **Given** the finished tree, **When** `verify --strict --check` runs with the new build, **Then** it exits 0 with MV-153's thirty legs green.
 
 ### User Story 4 - This repository drops its own graphify setup, last, without breaking a hook (Priority: P2)
@@ -203,9 +204,9 @@ and the CHANGELOG matches within its stated range.
 - **FR-025**: The 34 rows of research.md R14.3 MUST each get one note at the end of the statement, `**Amended 2026-10-02 by MV-153**: …`, withdrawing only sentences that became false, each quoted as the row states it; each moved or dropped leg MUST change in the commit that changes its line.
 - **FR-026**: MV-01, MV-38, MV-77, MV-86, MV-97 and MV-142 MUST stay as they are.
 - **FR-027**: MV-153's thirty legs MUST each be POSIX ERE, dry-run with `count`, and land with the edit that greens it.
-- **FR-028**: Every commit on the change branch MUST pass the pre-commit gate of main's 0.15.0 binary; the final tree MUST pass `verify --strict --check` with the new build.
+- **FR-028**: Every commit on the change branch MUST pass the pre-commit gate (the shim runs the worktree's own `dist/cli.js`, the repository being multivac) and main's 0.15.0 `mvac verify` over the same tree; the final tree MUST pass `verify --strict --check` with the new build.
 - **FR-029**: The constitution's Principle V MUST read "one entry per harness or SDD tool"; `CONSTITUTION_VERSION` 3.0.3, Last Amended 2026-10-02, no Sync Impact Report.
-- **FR-030**: The change file MUST declare `invariants.touches` (the 34), `adds: [MV-153]`, `retires` (the 14) and `claims: [MV-153]`.
+- **FR-030**: The change file MUST declare `invariants.touches` (the 34), `adds: [MV-153]`, `retires` (the 14) and `claims` MV-153 and the 34 rows it amends (SKILL.md rule 4, MV-150: claim every row you amend), so `change close` verifies all 35: each MUST end stated, anchored and green.
 
 #### This repository's setup (US4)
 
@@ -231,7 +232,7 @@ and the CHANGELOG matches within its stated range.
 
 #### Tests
 
-- **FR-044**: Tests that assert only a graph MUST go; a test whose title an existing leg reads MUST keep it, or the leg MUST move with the title in the same commit; each behaviour of FR-003, FR-007, FR-012 and FR-013–FR-021 MUST land with a test whose title MV-153 reads.
+- **FR-044**: Tests that assert only a graph MUST go; a test whose title an existing leg reads MUST keep it, or the leg MUST move with the title in the same commit; each behaviour of FR-003, FR-007, FR-012 and FR-013–FR-021 MUST land with a test, six of whose titles MV-153's legs 25–30 read.
 
 ### Key Entities
 
@@ -255,7 +256,7 @@ and the CHANGELOG matches within its stated range.
 - **SC-008**: An old config holding all four keys, with values 0.15.0 refused, loads; `verify` and `doctor` each print exactly one line about them; every exit code equals the same brain's without the keys.
 - **SC-009**: On an old brain, `doors` removes exactly the refresh hooks of ours, leaves every other hook byte-identical, removes `.multivac/ecosystem.json`, and a second run prints neither notice.
 - **SC-010**: Following `doctor`'s printed removal in the two walks leaves only the config line; no file multivac did not write changed while multivac ran (checksums before and after).
-- **SC-011**: Every commit on the branch passed main's pre-commit; `verify --strict --check` on the final tree exits 0, with MV-153's thirty legs green, fourteen `RETIRED … by MV-153` leads and thirty-four notes.
+- **SC-011**: Every commit on the branch passed the pre-commit gate and main's 0.15.0 `mvac verify`; `verify --strict --check` on the final tree exits 0, with MV-153's thirty legs green, fourteen `RETIRED … by MV-153` leads and thirty-four notes, and each of the 35 claimed rows anchored and ok.
 - **SC-012**: `site/content/**` names neither vendor nor `ecosystem.json`, names "grapher" once, and the old reference URL resolves to the moved page.
 - **SC-013**: The two skill copies are byte-identical and lose the graph paragraph and section (≈ 1.3 KB).
 - **SC-014**: The CHANGELOG's Unreleased entry names MV-153 and leads with "read before upgrading".
@@ -264,7 +265,7 @@ and the CHANGELOG matches within its stated range.
 ## Assumptions
 
 - The human runs every lifecycle command; this change opened at `f156896` with MV-153 reserved, and its worktree is created by `change apply` from main.
-- `mvac` on PATH, and so the pre-commit shim, is main's 0.15.0 until the merge (MV-92's ladder); CI runs the new build.
+- `mvac` on PATH is main's 0.15.0 until the merge, and the session's harness hooks run it; the pre-commit shim in the worktree runs the worktree's own build first (MV-92's ladder: this repository is multivac, with `dist/` and `node_modules`); CI runs the new build.
 - The vendor facts are those #5 and #6 measured (graphify 0.9.29, codegraph 1.6.0) and this design re-checked; no other grapher is known to have been declared in a brain.
 - History is not rewritten: the past CHANGELOG entries, `specs/**` and the archive keep naming graphers.
 - No successor navigation feature is added; agents read the tree.

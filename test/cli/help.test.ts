@@ -74,8 +74,8 @@ test('help with a command name prints its usage; unknown topic exits 2', async (
 
 test('every command prints its own flags and arguments, not just a description', async () => {
   // The gap this closes: `mvac init --help` printed one line and said nothing
-  // about [dir], --provider, --sdd, --grapher or --quiet. Five of nine were
-  // the same. The dispatcher was already right; the data was missing.
+  // about [dir], --provider, --sdd or --quiet. Five of nine were the same.
+  // The dispatcher was already right; the data was missing.
   const dir = mkdtempSync(join(tmpdir(), 'mvac-help-'));
   for (const c of commands) {
     const { code, out } = await run([c.name, '--help'], dir);
@@ -105,5 +105,6 @@ test("init's help lists the adapters the tool actually ships", async () => {
   assert.ok(values, 'the provider list should be on one line');
   assert.doesNotMatch(values, /\bagents\b/);
   for (const name of ['opsx', 'speckit']) assert.ok(out.includes(name));
-  for (const name of ['graphify', 'codegraph']) assert.ok(out.includes(name));
+  // MV-153: the tool ships no grapher, and the help names none.
+  assert.doesNotMatch(out, /grapher|graphify|codegraph/);
 });

@@ -8,13 +8,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { initRepo, publishRepo, shallowClone } from '../helpers/fixture.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 import { readOnly } from '../../src/adapters/detect.js';
-import { graphTrackedGate } from '../../src/adapters/tracked.js';
 import { loadConfig } from '../../src/lib/config.js';
 import { change } from '../../src/commands/change.js';
 import { doorsCommand } from '../../src/commands/doors.js';
@@ -71,7 +70,7 @@ const git = (dir: string, ...args: string[]): string =>
 type Sibling = 'not managed' | 'shallow' | 'managed' | 'absent';
 
 /**
- * A brain with speckit and graphify installed and committed, beside
+ * A brain with speckit installed and committed, beside
  * `../acme-payments`: a full clone declared `managed: false`, a shallow clone,
  * a full clone with no `managed` key, or nothing at all. `head` replaces the
  * ecosystem's lines above `repos:`, and `more` is appended below payments'.
@@ -80,7 +79,7 @@ type Sibling = 'not managed' | 'shallow' | 'managed' | 'absent';
 function eco(
   sibling: Sibling,
   {
-    head = ['doors: [agents]', 'sdd: speckit', 'grapher: graphify'],
+    head = ['doors: [agents]', 'sdd: speckit'],
     more = [] as string[],
     brainFiles = {} as Record<string, string>,
   } = {},
@@ -102,7 +101,6 @@ function eco(
     '.multivac/config.yml': config,
     '.multivac/invariants.md': LAW,
     '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
-    'graphify-out/graph.json': '{}\n',
     ...brainFiles,
   });
   const files = { 'README.md': '# payments\n' };
@@ -110,12 +108,7 @@ function eco(
   else if (sibling !== 'absent') initRepo(payments, files);
   const bin = join(tmp, 'bin');
   const marker = join(tmp, 'ran');
-  for (const tool of ['specify', 'graphify']) {
-    // MV-131: graphify's project install writes its probe and is not counted;
-    // these tests count builds and refreshes.
-    const install = tool === 'graphify' ? '[ \"$1\" = install ] && { p=; for a; do p=$a; done; mkdir -p \".$p/skills/graphify\" && : > \".$p/skills/graphify/SKILL.md\"; exit 0; }\n' : '';
-    write(join(bin, tool), `#!/bin/sh\n${install}echo "${tool} $(pwd -P)" >> '${marker}'\n`, 0o755);
-  }
+  write(join(bin, 'specify'), `#!/bin/sh\necho "specify $(pwd -P)" >> '${marker}'\n`, 0o755);
   const ran = (tool: string, dir = payments): number =>
     (existsSync(marker) ? readFileSync(marker, 'utf8').split('\n') : []).filter((l) => l === `${tool} ${dir}`).length;
   return { tmp, brain, payments, bin, ctx: { cwd: brain }, ran };
@@ -177,32 +170,17 @@ for (const sibling of ['not managed', 'shallow'] as const) {
       const c = await capture(() => change.run(['new', 'probe', 'Probe'], e.ctx));
       assert.equal(c.code, 0, c.out);
       assert.equal(e.ran('specify'), 0, c.out);
-      assert.equal(e.ran('graphify'), 0, c.out);
       assert.doesNotMatch(c.out, /payments/);
       assert.equal(git(e.payments, 'status', '--porcelain'), '');
       // `repos sync` reaches every declared repo, and still not this one.
       await capture(() => reposCommand.run(['sync'], e.ctx));
-      assert.equal(e.ran('graphify'), 0);
+      assert.equal(e.ran('specify'), 0);
       assert.equal(git(e.payments, 'status', '--porcelain'), '');
     });
   });
 
-  test(`change close refreshes and judges no graph in a ${sibling} sibling, and still refreshes the brain`, async () => {
-    const e = eco(sibling);
-    // Installed there and not in its HEAD: the tracked gate would refuse a managed repo.
-    write(join(e.payments, 'graphify-out/graph.json'), '{}\n');
-    await inEnv(e.bin, async () => {
-      await toClose(e.brain, 'shut');
-      const c = await capture(() => change.run(['close', 'shut'], e.ctx));
-      assert.equal(c.code, 0, c.out);
-      assert.equal(e.ran('graphify', e.brain), 1, c.out);
-      assert.equal(e.ran('graphify'), 0, c.out);
-      assert.doesNotMatch(c.out, /payments/);
-    });
-  });
-
   test(`doors projects nothing into a ${sibling} sibling, and says so in one line`, async () => {
-    const e = eco(sibling, { head: ['doors: [agents, claude]', 'sdd: speckit', 'grapher: graphify'] });
+    const e = eco(sibling, { head: ['doors: [agents, claude]', 'sdd: speckit'] });
     await inEnv(e.bin, async () => {
       const c = await capture(() => doorsCommand.run([], e.ctx));
       assert.equal(c.code, 0, c.out);
@@ -218,21 +196,7 @@ for (const sibling of ['not managed', 'shallow'] as const) {
   });
 }
 
-test('the tracked gate skips a read-only sibling whose graph HEAD does not hold, and refuses a managed one', async () => {
-  for (const sibling of ['not managed', 'shallow', 'managed'] as const) {
-    const e = eco(sibling);
-    write(join(e.payments, 'graphify-out/graph.json'), '{}\n');
-    const gate = await inEnv(e.bin, async () => graphTrackedGate(e.brain, await loadConfig(e.brain), 'probe', false));
-    if (sibling === 'managed') {
-      assert.equal(gate.ok, false, 'the control refuses');
-      assert.match(gate.lines.join('\n'), /payments: graphify-out\/graph\.json is not committed/);
-    } else {
-      assert.deepEqual(gate, { ok: true, lines: [] }, sibling);
-    }
-  }
-});
-
-test('a sibling with no managed key and a full clone is built and projected as before, and gets no SDD', async () => {
+test('a sibling with no managed key and a full clone is projected as before, and gets no SDD', async () => {
   const e = eco('managed');
   await inEnv(e.bin, async () => {
     const c = await capture(() => change.run(['new', 'probe', 'Probe'], e.ctx));
@@ -240,11 +204,9 @@ test('a sibling with no managed key and a full clone is built and projected as b
     // MV-146: the SDD runs in the brain alone, which has it; nothing runs in the sibling.
     assert.equal(e.ran('specify'), 0, c.out);
     assert.equal(existsSync(join(e.payments, '.specify')), false);
-    // A new change names no repo, so its graph work stays in the brain (MV-134)...
-    assert.equal(e.ran('graphify'), 0, c.out);
-    // ...and `repos sync` builds it.
+    // MV-153: and `repos sync` builds nothing there either.
     await capture(() => reposCommand.run(['sync'], e.ctx));
-    assert.equal(e.ran('graphify'), 1);
+    assert.equal(e.ran('specify'), 0);
     const d = await capture(() => doorsCommand.run([], e.ctx));
     assert.match(d.out, /^payments: door \+ hooks updated$/m);
     assert.ok(existsSync(join(e.payments, 'AGENTS.md')));
@@ -255,7 +217,7 @@ test('a sibling with no managed key and a full clone is built and projected as b
 
 test('doctor and repos name each read-only sibling, and neither calls it deficient', async () => {
   const tmp = realpathSync(mkdtempSync(join(tmpdir(), 'mvac-managed-report-')));
-  const head = ['doors: [agents]', 'sdd: speckit', 'grapher: graphify', 'repos:', '  brain: .'];
+  const head = ['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .'];
   const brainOf = (name: string, lines: string[]): string => {
     const brain = join(tmp, name);
     initRepo(brain, {
@@ -263,13 +225,7 @@ test('doctor and repos name each read-only sibling, and neither calls it deficie
       '.multivac/config.yml': [...lines, ''].join('\n'),
       '.multivac/invariants.md': LAW,
       '.specify/integration.json': SPECKIT_INTEGRATION_JSON,
-      'graphify-out/graph.json': '{}\n',
     });
-    // Both graphs newer than their last commit: the staleness verdict reads
-    // mtime against a commit time in whole seconds, so a write and a commit
-    // straddling a second made one brain STALE and the comparison below flaky.
-    const later = Date.now() / 1000 + 3600;
-    utimesSync(join(brain, 'graphify-out/graph.json'), later, later);
     return brain;
   };
   const brain = brainOf('acme-brain', [
@@ -282,10 +238,8 @@ test('doctor and repos name each read-only sibling, and neither calls it deficie
   initRepo(join(tmp, 'acme-ledger'), { 'README.md': '# ledger\n' });
   publishRepo(join(tmp, 'acme-ledger'), tmp, 'ledger');
   shallowClone(join(tmp, 'acme-mirror'));
-  // A graph there that HEAD does not hold: reported nowhere, since nothing may commit it.
-  for (const r of ['acme-ledger', 'acme-mirror']) write(join(tmp, r, 'graphify-out/graph.json'), '{}\n');
   const bin = join(tmp, 'bin');
-  for (const tool of ['specify', 'graphify']) write(join(bin, tool), '#!/bin/sh\n', 0o755);
+  write(join(bin, 'specify'), '#!/bin/sh\n', 0o755);
   const cases = [['ledger', 'not managed'], ['vault', 'not managed'], ['mirror', 'shallow']] as const;
 
   await inEnv(bin, async () => {
@@ -295,16 +249,11 @@ test('doctor and repos name each read-only sibling, and neither calls it deficie
     const report = await doctorReport(brain);
     const repos = report.lines.find((l) => l.startsWith('repos'))!;
     for (const [key, why] of cases) assert.match(repos, new RegExp(`${key}: ${why}, read-only`), repos);
-    for (const [key, why] of cases.filter(([k]) => k !== 'vault')) {
+    for (const [key] of cases.filter(([k]) => k !== 'vault')) {
       // MV-146: the SDD runs in the brain alone, so a sibling gets no sdd
-      // verdict of its own, read-only or not — only the grapher's.
-      const about = report.lines.filter((l) => /^(sdd|grapher)/.test(l) && l.includes(`@ ${key}`));
-      assert.equal(about.length, 1, `one grapher line, no sdd line and no project law: ${about.join(' / ')}`);
-      assert.match(about[0], /^grapher /);
-      for (const l of about) {
-        assert.match(l, new RegExp(`@ ${key}: ${why}, read-only — out of scope, not a gap$`));
-        assert.doesNotMatch(l, /missing|\brun\b|change new runs|NOT COMMITTED|IGNORED/);
-      }
+      // verdict of its own, read-only or not; MV-153: and no graph line.
+      const about = report.lines.filter((l) => /^(sdd|grapher|leftover)/.test(l) && l.includes(`@ ${key}`));
+      assert.deepEqual(about, [], `no sdd line, no project law and no graph line: ${about.join(' / ')}`);
     }
     const pins = report.lines.find((l) => l.startsWith('pins'))!;
     for (const [key, why] of cases) assert.match(pins, new RegExp(`${key}: ${why}, read-only — no mount expected`), pins);
@@ -326,7 +275,7 @@ test('doctor and repos name each read-only sibling, and neither calls it deficie
 
 // --- US4: no gate demands a file there ---
 
-/** What a brain needs for plan, apply and close to pass with speckit and graphify. */
+/** What a brain needs for plan, apply and close to pass with speckit. */
 const WALKED = {
   '.specify/memory/constitution.md': '# Acme constitution\n\nTests ship with behaviour.\n',
   'specs/001-gate/spec.md': '# Spec\n',
@@ -355,9 +304,9 @@ async function walk(e: ReturnType<typeof eco>, slug: string): Promise<{ codes: n
   return { codes, out: outs.join('\n') };
 }
 
-const gateLines = (out: string): string[] => out.split('\n').filter((l) => /^(sdd|graph)/.test(l));
+const gateLines = (out: string): string[] => out.split('\n').filter((l) => /^sdd/.test(l));
 
-test('no gate names a read-only sibling with no graph, SDD state or spec, and the brain is gated as before', async () => {
+test('no gate names a read-only sibling with no SDD state or spec, and the brain is gated as before', async () => {
   const alone = eco('absent', { brainFiles: WALKED });
   const control = await inEnv(alone.bin, () => walk(alone, 'gate'));
   assert.deepEqual(control.codes, [0, 0, 0, 0, 0], control.out);

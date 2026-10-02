@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import { parseAnchors } from '../src/anchor/parse.js';
 import { renderBrainDoor } from '../src/doors/brain.js';
 import { renderConsumerDoor } from '../src/doors/consumer.js';
+import { LEFTOVER_VENDORS, type LeftoverVendor } from '../src/lib/dropped.js';
 import type { Config } from '../src/types.js';
 
 // compiled to dist-test/test/, so repo root is two levels up
@@ -105,8 +106,7 @@ const norm = (text: string): string => text.replace(/\s+/g, ' ');
 const BASE: Config = {
   doors: ['agents', 'claude'],
   sddAuto: true,
-  grapherAuto: true,
-  graphers: {},
+  dropped: [],
   authorities: [],
   blocking: ['absent', 'count', 'each'],
   staleness: 'report',
@@ -117,8 +117,10 @@ const BASE: Config = {
 const BRAIN = { path: '.', isBrain: true };
 const WEB = { path: '../web', url: 'git@x:web.git' };
 const API = { path: '../api', url: 'git@x:api.git' };
-const MYGRAPH = { mygraph: { artifact: 'out/g.json', refresh: 'mygraph build' } };
-
+// MV-153: what a caller's probe finds of an earlier install beside a door.
+const GRAPHIFY = LEFTOVER_VENDORS.find((v) => v.name === 'graphify')!;
+const LEFT_HOOKED: LeftoverVendor = { vendor: GRAPHIFY, dir: 'graphify-out', dirTracked: true, platforms: ['agents', 'claude'], gitignore: [], tracked: true };
+const LEFT_RULE: LeftoverVendor = { vendor: GRAPHIFY, dirTracked: false, platforms: ['cursor'], gitignore: [], tracked: false };
 interface DoorFixture {
   name: string;
   door: string;
@@ -130,25 +132,26 @@ interface DoorFixture {
 
 const DOOR_FIXTURES: DoorFixture[] = [
   {
-    name: 'spec-kit + graphify, the brain holds code',
-    door: renderBrainDoor({ ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { brain: BRAIN, web: WEB } }, 1),
+    name: 'spec-kit, the brain holds code',
+    door: renderBrainDoor({ ...BASE, sdd: 'speckit', repos: { brain: BRAIN, web: WEB } }, 1),
     marker: 'It is also the code it governs',
   },
   {
-    name: 'openspec + codegraph, the brain holds code',
-    door: renderBrainDoor({ ...BASE, sdd: 'opsx', grapher: 'codegraph', repos: { brain: BRAIN, web: WEB } }, 1),
-    marker: '`codegraph callers <symbol>`',
+    name: 'openspec, the brain holds code',
+    door: renderBrainDoor({ ...BASE, sdd: 'opsx', repos: { brain: BRAIN, web: WEB } }, 1),
+    marker: 'Features gate through the `opsx` SDD',
   },
   {
     name: 'no adapter',
     door: renderBrainDoor({ ...BASE, repos: { brain: BRAIN, web: WEB } }, 1),
-    marker: 'as plain node-link JSON',
+    marker: 'Check the law against the code before acting',
     lacks: '[proof:',
   },
   {
-    name: 'code-less, spec-kit + graphify over two code repos',
-    door: renderBrainDoor({ ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { web: WEB, api: API } }, 1),
-    marker: 'This brain holds no code, so it keeps no code graph',
+    name: 'code-less, spec-kit over two code repos',
+    door: renderBrainDoor({ ...BASE, sdd: 'speckit', repos: { web: WEB, api: API } }, 1),
+    marker: '- api: ../api',
+    lacks: 'It is also the code it governs',
   },
   {
     name: 'spec-kit under sdd_auto: false',
@@ -157,30 +160,14 @@ const DOOR_FIXTURES: DoorFixture[] = [
     lacks: 'REFUSES',
   },
   {
-    name: 'a grapher declared under graphers:, the brain holds code',
-    door: renderBrainDoor({ ...BASE, grapher: 'mygraph', graphers: MYGRAPH, repos: { brain: BRAIN, web: WEB } }, 1),
-    marker: '`mygraph` has NO query command',
-  },
-  {
     name: 'an empty brain',
-    door: renderBrainDoor({ ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { brain: BRAIN } }, 0),
+    door: renderBrainDoor({ ...BASE, sdd: 'speckit', repos: { brain: BRAIN } }, 0),
     marker: 'brain empty — load the multivac skill to fill it.',
   },
   {
-    name: 'code-less, graphers per repo only',
-    door: renderBrainDoor(
-      { ...BASE, sdd: 'speckit', repos: { web: { ...WEB, grapher: 'codegraph' }, api: { ...API, grapher: 'graphify' } } },
-      1,
-    ),
-    marker: '`codegraph query <symbol> -p <checkout>`',
-  },
-  {
-    name: 'code-less, mixed graphers',
-    door: renderBrainDoor(
-      { ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { web: { ...WEB, grapher: 'codegraph' }, api: API } },
-      1,
-    ),
-    marker: '--graph <checkout>/graphify-out/graph.json',
+    name: "a vendor's skills and hooks left beside the door, the brain holds code",
+    door: renderBrainDoor({ ...BASE, sdd: 'speckit', repos: { brain: BRAIN, web: WEB } }, 1, [LEFT_HOOKED]),
+    marker: "graphify's own skills and hooks here still send you to `graphify-out/`",
   },
   {
     name: 'consumer: one code repo under spec-kit',
@@ -188,9 +175,9 @@ const DOOR_FIXTURES: DoorFixture[] = [
     marker: "The brain's `speckit` SDD runs in the brain checkout",
   },
   {
-    name: 'consumer: two code repos under spec-kit + graphify',
-    door: renderConsumerDoor({ ...BASE, sdd: 'speckit', grapher: 'graphify', repos: { web: WEB, api: API } }, 'web'),
-    marker: 'A code graph is kept fresh for you by `graphify`',
+    name: 'consumer: two code repos under spec-kit',
+    door: renderConsumerDoor({ ...BASE, sdd: 'speckit', repos: { web: WEB, api: API } }, 'web'),
+    marker: 'Repos in this ecosystem — these keys are what anchors and change files name',
   },
   {
     name: 'consumer: sdd_auto: false',
@@ -199,9 +186,9 @@ const DOOR_FIXTURES: DoorFixture[] = [
     lacks: 'SDD runs in the brain checkout',
   },
   {
-    name: 'consumer: codegraph declared per repo',
-    door: renderConsumerDoor({ ...BASE, repos: { web: { ...WEB, grapher: 'codegraph' } } }, 'web'),
-    marker: '`codegraph callers <symbol>`',
+    name: "consumer: a vendor's skill left beside the door",
+    door: renderConsumerDoor({ ...BASE, sdd: 'speckit', repos: { web: WEB } }, 'web', [LEFT_RULE]),
+    marker: "graphify's own skill here still sends you to a graph that is not here",
   },
 ];
 
@@ -224,8 +211,8 @@ function packFiles(dir: string): string[] {
 
 test('the pack restates no clause a door renders — MV-152', () => {
   const pack = norm(packFiles(SKILL_DIR).map((f) => readFileSync(f, 'utf8')).join(' '));
-  // Nine brain shapes and four consumer shapes: fewer is a fixture lost.
-  assert.ok(DOOR_FIXTURES.length >= 13, `expected at least 13 doors, found ${DOOR_FIXTURES.length}`);
+  // Seven brain shapes and four consumer shapes: fewer is a fixture lost.
+  assert.ok(DOOR_FIXTURES.length >= 11, `expected at least 11 doors, found ${DOOR_FIXTURES.length}`);
   const problems: string[] = [];
   for (const f of DOOR_FIXTURES) {
     if (!f.door.includes(f.marker)) {

@@ -171,9 +171,8 @@ each other and delete the rest; nothing is asserted on your behalf, and a
 commented line never prints. A fresh brain still prints nothing at close, which
 is exactly what it did before.
 
-Only things no check could decide are seeded. A declared grapher contributes
-none: its work is automatic and a gate already requires its artifact, so putting
-it in the ritual would move a checked thing onto a poster.
+Only things no check could decide are seeded: putting a checked thing in the
+ritual would move it onto a poster.
 
 The ritual is **authored** — written once by you, never overwritten by any
 command. That is the opposite of

@@ -14,7 +14,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { gitInit, vendorPath } from '../helpers/fixture.js';
+import { gitInit } from '../helpers/fixture.js';
 import { reposCommand, reposSync } from '../../src/commands/repos.js';
 
 const tmp = mkdtempSync(join(tmpdir(), 'mvac-mount-'));
@@ -250,58 +250,4 @@ test('a declared repo that is not cloned gets no mount line — MV-127', async (
   assert.equal(exit, 0);
   assert.match(lines.join('\n'), /ghost: missing and no url/);
   assert.doesNotMatch(lines.join('\n'), /mounted the brain/);
-});
-
-/** `repos sync` in `brain` on the codegraph stub's PATH, printing captured. */
-async function syncWithCodegraph(brain: string, path: string): Promise<{ code: number; out: string }> {
-  const out: string[] = [];
-  const orig = { log: console.log, error: console.error, path: process.env.PATH };
-  console.log = console.error = (...a: unknown[]) => { out.push(a.map(String).join(' ')); };
-  process.env.PATH = path;
-  try {
-    const code = await withLocalSubmodules(() => reposCommand.run(['sync'], { cwd: brain }));
-    return { code, out: out.join('\n') };
-  } finally {
-    console.log = orig.log;
-    console.error = orig.error;
-    process.env.PATH = orig.path;
-  }
-}
-
-test('a consumer of a brain that holds code keeps the mount out of its codegraph index', async () => {
-  // MV-149: before the consumer's first build, so its first index already
-  // leaves the mount out — 2,254 nodes, 2,247 of them the brain's, against 7.
-  const { path } = vendorPath(['codegraph']);
-  const { brain } = eco('cgjson', '  brain: .\n  app:\n    path: ../app\n    grapher: codegraph\n');
-  const app = repo(join(tmp, 'cgjson', 'app'), 'src.ts', 'export const x = 1;\n');
-  const first = await syncWithCodegraph(brain, path);
-  assert.equal(first.code, 0, first.out);
-  const wrote = 'graph codegraph @ app: wrote codegraph.json (+1) and .gitignore (+1) before the first build';
-  assert.ok(first.out.split('\n').includes(wrote), first.out);
-  assert.equal(Buffer.byteLength(`${wrote}\n`), 92);
-  const file = join(app, 'codegraph.json');
-  assert.equal(readFileSync(file, 'utf8'), '{\n  "exclude": [\n    "/.brain/"\n  ]\n}\n');
-  assert.equal(statSync(file).size, 38);
-  assert.ok(first.out.indexOf(wrote) < first.out.indexOf('graph codegraph @ app: built'), first.out);
-  assert.ok(existsSync(join(app, '.codegraph/codegraph.db')));
-  // The brain holds code and nests no repo: nothing for it to keep out.
-  assert.equal(existsSync(join(brain, 'codegraph.json')), false);
-
-  // Over the built root, a second sync writes nothing: bytes and mtime kept.
-  utimesSync(file, new Date(1000), new Date(1000));
-  const second = await syncWithCodegraph(brain, path);
-  assert.equal(second.code, 0, second.out);
-  assert.doesNotMatch(second.out, /codegraph\.json/);
-  assert.equal(readFileSync(file, 'utf8'), '{\n  "exclude": [\n    "/.brain/"\n  ]\n}\n');
-  assert.equal(statSync(file).mtimeMs, 1000);
-
-  // A consumer of a brain that holds no code: its mount adds no codegraph
-  // node, so no file.
-  const codeless = eco('cgjson-codeless', '  app:\n    path: ../app\n    grapher: codegraph\n');
-  const other = repo(join(tmp, 'cgjson-codeless', 'app'), 'src.ts', 'export const y = 1;\n');
-  const r = await syncWithCodegraph(codeless.brain, path);
-  assert.equal(r.code, 0, r.out);
-  assert.ok(existsSync(join(other, '.codegraph/codegraph.db')), r.out);
-  assert.equal(existsSync(join(other, 'codegraph.json')), false);
-  assert.doesNotMatch(r.out, /codegraph\.json/);
 });

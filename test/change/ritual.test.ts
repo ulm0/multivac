@@ -110,12 +110,6 @@ test('a commented candidate prints nothing, and uncommenting one makes it print'
   assert.match(lines[0], /Somebody who did not write it read it/);
 });
 
-test('a declared grapher contributes no candidate — its work is automatic and already gated', async () => {
-  const { ritualSeed } = await import('../../src/lib/ritual.js');
-  const seed = ritualSeed({ sdd: 'speckit', repos: { api: {} } });
-  assert.equal(/graph/i.test(seed), false, 'the seed mentions the graph');
-});
-
 test("this repo's own ritual keeps only what no check could decide", async () => {
   const { readFileSync } = await import('node:fs');
   const { join: j } = await import('node:path');

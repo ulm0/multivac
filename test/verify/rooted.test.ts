@@ -444,8 +444,6 @@ test('the post-edit run roots at the edited file when a brain governs it — MV-
   const cacheOnly = join(tmp, 'cacheonly');
   initRepo(cacheOnly, { 'a.txt': 'a\n' });
   mkdirSync(join(cacheOnly, '.multivac/cache'), { recursive: true });
-  mkdirSync(join(cacheOnly, 'graphify-out'), { recursive: true });
-  writeFileSync(join(cacheOnly, 'graphify-out/graph.json'), '{}\n');
   for (const f of [join(nowhere, 'x.ts'), join(tmp, 'gone/x.ts'), join(plainRepo, 'a.txt'), join(cacheOnly, 'a.txt')]) {
     const r = await hook(edit(f, e.brain));
     assert.equal(r.code, 0, `${f}: ${r.out}`);

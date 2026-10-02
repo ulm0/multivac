@@ -867,7 +867,6 @@ repos:
   backend:
     path: ../acme-backend
     url:  git@example.com:acme/backend.git
-    grapher: graphify          # optional, inherits the global
     channel: origin/main       # optional, inherits the global
   payments:
     url:  git@...              # no path: not cloned — unevaluated, not red
@@ -903,7 +902,7 @@ let consumer-scoped verify evaluate the brain's law against a consumer
 checkout). Reserved means *it works*, not merely *it errors*.
 
 **Cloning: implicit paths never, explicit operations yes.** The "multivac never
-installs anything" rule is about *tools* (graphify, speckit — foreign
+installs anything" rule is about *tools* (speckit, openspec — foreign
 software). Declared repos are the tool's own data: cloning them is in scope.
 The line is implicit vs explicit:
 
@@ -950,19 +949,26 @@ brain takes whatever shape the project needs. The reference brain's
 numbered-pages form is form, not mechanism. A `--template` may exist later,
 as data.
 
-**No native code graph, ever.** multivac renders its OWN declarations as a
-graph, `.multivac/ecosystem.json`: repos, law rows, anchors and changes, never
-a line of code (MV-139). Code graphs stay the grapher's. The grapher is a declared adapter, per repo or
-global — and a *verified* one: the registry states each tool's artifact and
-refresh, and refuses to derive either from a name. That derivation existed,
-and a survey of ~47 graph tools found it described exactly one of them. An
-unverified name is reported as unverified with the fields to declare, and
-`graphers:` in the project config carries them, so an unknown tool needs no
-merge request here. Present artifact → the consumer door points at it ("orient with the
-graph before reading raw" — the reference ecosystem's hook, generalized).
-Present binary → the `run` capability refreshes it. A newborn brain is two
-content files; a graph of that is noise — `doctor` suggests a grapher past
-a size threshold.
+### No code graph (2026-10-02)
+
+multivac keeps no code graph (MV-153). It used to declare one per repo, build
+it, refresh it after every edit through a second post-edit hook, gate `change
+close` on it, commit it at `change land`, render its own declarations as a
+graph beside it, and point every door at both. Every session paid for that in
+door text and in a hook on every edit, while an agent's one-hop questions —
+where is this defined, who calls it — cost the same or less by searching the
+tree. What a graph adds is one-call transitive reach, and that did not pay for
+its upkeep. So the doors name no graph, no hook refreshes one, no gate asks for
+one, and nothing is built, committed or rendered.
+
+A config an earlier release wrote still loads: the keys that declared a graph
+are read only to say, in one line of `verify` and of `doctor`, that they are
+ignored. `doors` takes back exactly what multivac itself wrote — its refresh
+hooks, recognised by their lock preamble, and the file it rendered — and
+nothing else. What a vendor's own install wrote stays until its owner removes
+it: `doctor` names it per root with the vendor's own removal, the door warns
+where its skills or hooks still send an agent to a graph nothing refreshes,
+and the paths it wrote are not code, so removing them commits on any branch.
 
 ## Distribution
 
@@ -1003,10 +1009,6 @@ One canonical door, `AGENTS.md`, projected to the rest:
   codex, windsurf and Cursor. Cursor had a stub until MV-143, which was a second
   door able to disagree with the canonical one; retiring a target removes the
   file it used to write.
-- **The link goes in before any vendor writes there** (MV-143). A grapher's own
-  project install writes the harness's own door file, so without the link it
-  leaves a regular `CLAUDE.md` that multivac may not replace, and the agent reads
-  the vendor instead of the door.
 - `--no-symlink` for Windows, which needs developer mode.
 
 Still a single source; only the projection varies.
@@ -1080,7 +1082,7 @@ every repo, every subsequent decision entering as a `change`.
 ## CLI
 
 ```
-multivac init .   --provider claude,cursor --sdd opsx --grapher graphify
+multivac init .   --provider claude,cursor --sdd opsx
 multivac verify   # anchors + tombstones + derived numbers. No LLM, no network, deterministic
 multivac count    # dry-run one anchor leg: match count + per-file breakdown, verify's own matcher
 multivac help     # help anchor — the grammar on one screen; help <command> — usage
@@ -1120,10 +1122,10 @@ by Codex, opencode, Cursor, and Claude Code. `--provider claude` is what **adds*
 the symlink. In an OSS project, a vendor-named default brands you as that
 vendor's tool on day one.
 
-`--sdd` and `--grapher` are off unless explicitly requested.
+`--sdd` is off unless explicitly requested.
 
 **Detect before asking.** `multivac init .` looks for `openspec/`, `.specify/`,
-`graphify-out/`, `.cursor/`, `CLAUDE.md`, and proposes; flags override. Flags
+`.cursor/`, `CLAUDE.md`, and proposes; flags override. Flags
 still matter in non-interactive use.
 
 **`init` configures; it doesn't perform.** Flags are configuration
@@ -1134,7 +1136,6 @@ file plus `multivac doors` — not "re-run init", which nobody does.
 # .multivac/config.yml
 doors:   [agents, claude]
 sdd:     opsx
-grapher: graphify
 authorities: [published, specified, open, technical]   # the project's, not mine
 blocking:    [absent, count, each]
 repos:
@@ -1195,7 +1196,7 @@ human enacts) — `verify` never interprets the labels mechanically.
 ## Dependencies
 
 **`multivac` never installs a tool's binary, and no absent adapter turns `verify` red.**
-If the core depended on graphify or speckit, it wouldn't run anywhere clean —
+If the core depended on speckit or openspec, it wouldn't run anywhere clean —
 and the session hook must run everywhere.
 
 | state | behavior |
@@ -1207,34 +1208,24 @@ and the session hook must run everywhere.
 ### Adapter first, fallback always (2026-09-30)
 
 **A declared tool carries the work it was built for; multivac adds the gate,
-the pointer and the few files it says it writes — skeleton templates once,
-ignore lines, the refresh hook, the graph at land. With no tool declared, the
-work runs as it did before.** The budget is the agent's context: what a session
+the pointer and the few files it says it writes — skeleton templates once.
+With no tool declared, the work runs as it did before.** The budget is the agent's context: what a session
 reads before it starts, what each lifecycle point prints, what a question
 costs. A move counts only where it keeps every guarantee, holds in every
 configuration below, and was measured. Each row states its own numbers; this
 section copies none.
 
-- **The door** reaches its harness before any vendor writes there, and claims a
-  vendor's section only where a platform writes it (MV-143).
+- **The door** names no code graph and no tool to ask one with; where a
+  vendor's install an earlier release left still sends an agent to a graph
+  nothing refreshes, it says so in one line, from its caller's probe (MV-153).
 - **The SDD** lives in the brain alone: installed once, its steps printed once
   per lifecycle point, its project document written once (MV-146); what it
   writes for a change lands with the change (MV-144); openspec runs through its
   own terminal verbs (MV-147). Under `sdd_auto: false` the door keeps the steps
   and nothing is printed or gated; with no SDD the lifecycle binds on its own
   and code is not refused outside a change (MV-137).
-- **The grapher** is asked where the code is: a brain that holds no code keeps
-  no code graph, and the door and `change apply` name each checkout's graph
-  with the flag that reaches it (MV-148). graphify's graph is committed at
-  land; codegraph's index is built in each checkout, synced at land and never
-  committed, and its door lists the verbs that were run with what each misses
-  (MV-149); a grapher declared under `graphers:` is refreshed and committed and
-  has no verbs, so the agent greps; an unverified name gets the `doors` notice
-  and nothing runs; with none, the agent searches the tree. What a graph
-  returns is an answer about what reaches what, for the checkout asked as of
-  its last refresh — after each edit where the harness has a post-edit hook,
-  otherwise at land and close — and not a byte saving: sometimes more than a
-  narrowed grep, sometimes less.
+- **No code graph** is kept (MV-153): the agent searches the checkout it works
+  in, and each edit runs one harness hook, the verify gate.
 - **The change file** cites the law: a claim is its row's ID, and `close`
   refuses a claim that cites no stated row the change adds, touches or retires
   (MV-150).
@@ -1252,25 +1243,20 @@ disk.
 | --- | --- | --- |
 | openspec | `openspec/specs/`, `openspec/changes/` | no |
 | speckit | `.specify/` | no |
-| graphify | `graphify-out/graph.json` | no |
-| codegraph | its on-disk index | no |
 
 **Installed is the vendor's own state file (2026-09-14, MV-124).** A path being
-there answered "is this tool initialised" until a `mkdir .specify`, a 0-byte
-`graph.json` and a codegraph clone with no database all read as installed. One
-offline probe now reads each entry's state file — spec-kit's
-`integration.json`, OpenSpec's config, a graph that parses, codegraph's
-database — and answers installed, missing, partial or unevaluable. The scaffold
-runs only where missing, a partial root is warned rather than re-initialised,
-and a graph is rebuilt wherever it is not installed. Each entry also declares
-its shared and local paths and its opt-out environment, which every run
-multivac makes carries and none of the commands it prints (MV-147) — the
-agent runs those in its own environment; codegraph's database is local, so the
-tracked gate, which reads HEAD, never asks for it.
+there answered "is this tool initialised" until a `mkdir .specify` read as
+installed. One offline probe now reads each entry's state file — spec-kit's
+`integration.json`, OpenSpec's config — and answers installed, missing, partial
+or unevaluable. The scaffold runs only where missing, and a partial root is
+warned rather than re-initialised. Each entry also declares its shared and
+local paths and its opt-out environment, which every run multivac makes carries
+and none of the commands it prints (MV-147) — the agent runs those in its own
+environment.
 
 If you cloned the repo, the adapter works even with the tool not installed.
-The binary is only needed to **invoke** (`graphify update`, `openspec
-archive`). Each adapter declares two separate capabilities, `read` and `run`,
+The binary is only needed to **invoke** (`specify init`, `openspec
+validate`). Each adapter declares two separate capabilities, `read` and `run`,
 and only the missing half turns off.
 
 `multivac init . --sdd speckit` with speckit absent writes the config anyway and
@@ -1278,24 +1264,22 @@ says how to install it: declaring means "this project uses speckit", true even
 if this machine doesn't have it yet.
 
 Adapters state which format they expect and **warn** on mismatch instead of
-crashing (the pattern graphify itself uses: "skill is from 0.9.21, package is
-0.9.29" — and keeps working).
+crashing, and keep working.
 
 ### One registry, tool-shipped
 
 The adapter registry is **data shipped inside the multivac package**, not a
 project file: the harness door targets (`{ path, format, frontmatter? }`),
-the skills, and the sdd/grapher adapters live in the same registry. Extending it is an
+the skills, and the SDD adapters live in the same registry. Extending it is an
 MR to multivac itself — adding Codex, or a new SDD tool, is an entry, not a
 module. `.multivac/config.yml` never defines adapters; it only **selects**
 them by
-name (`doors: [agents, claude]`, `sdd: opsx`, `grapher: graphify`).
+name (`doors: [agents, claude]`, `sdd: opsx`).
 
 ### Every adapter question is asked per root (2026-08-17)
 
-**A root is the brain plus each declared repo on disk — for a grapher, the
-brain only where it holds code — and one root's artifact never answers for
-another's.** Measured in an ecosystem of six: a
+**A root is the brain plus each declared repo on disk, and one root's artifact
+never answers for another's.** Measured in an ecosystem of six: a
 single sibling repo somebody had run `specify init` in by hand made the
 scaffold return before it touched anything — the brain included — because
 presence was asked of the whole list and answered by the first hit; `doctor`
@@ -1303,29 +1287,24 @@ printed `artifact ok` over five unequipped repos for the same reason; and the
 project-document gate accepted that one repo's constitution as the
 ecosystem's.
 
-The rule lands in four places: the scaffold runs the tool's own init in every
+The rule lands in three places: the scaffold runs the tool's own init in every
 root where the tool is missing and stays silent in every root where it is
 installed — its own state file, since MV-124, with a partial root warned;
-`doctor` prints one line per root, the shape its grapher pass always had; the
-project-document gate asks each root where the tool is **installed**, naming
-each that fails; and the grapher's first build reaches each declared repo on
-disk rather than only the repos a change happened to touch. A repo opts out
-with its own `sdd:` or `grapher:` — the literal `none`, which means no adapter
-of that kind at repo or top level — and the brain's own entry decides the
-brain's adapters. A root that resolves to no adapter is out of scope, never
+`doctor` prints one line per root; and the project-document gate asks each root
+where the tool is **installed**, naming each that fails. A repo opts out with
+its own `sdd:` — the literal `none` — and the brain's own entry decides the
+brain's adapter. A root that resolves to no adapter is out of scope, never
 deficient, and one function resolves it for every surface (MV-122). So is a
 read-only root — declared `managed: false`, or a shallow clone: no scaffold, no
-build, no refresh, no door and no gate reaches it, `doctor` reports it, and one
+door and no gate reaches it, `doctor` reports it, and one
 function answers for every surface (MV-125).
 
 Nothing here moves a subprocess out of the change lifecycle, and nothing
 derives a command from a tool's name: a tool that declares no init still gets
 none, stated once per root where the tool is missing.
 
-Since 2026-09-28 the SDD half of this answers for one root, the brain; the
-next section says why. Since 2026-09-29 the brain is a grapher's root only
-where a repos entry is the brain (MV-148): a brain that holds none keeps no
-code graph, and each code repo keeps its own.
+Since 2026-09-28 the SDD answers for one root, the brain; the next section
+says why. Since 2026-10-02 no root keeps a code graph (MV-153).
 
 ### The SDD lives in the brain (2026-09-28)
 
@@ -1387,7 +1366,7 @@ amendment report, and whether a change body restates its spec.
 
 ### Automation by default (owner decision, 2026-08-13)
 
-Three normative rules, applying to the brain and to every declared repo
+Two normative rules, applying to the brain and to every declared repo
 multivac may write in (not `managed: false`, not a shallow clone, MV-125):
 
 - **SDD runs inside the change lifecycle, in the SDD's own shape**, and in the
@@ -1438,24 +1417,6 @@ multivac may write in (not `managed: false`, not a shallow clone, MV-125):
   agent hears about only on the second command is one nobody writes.
   `sdd_auto: false` and
   `--no-sdd` turn every gate off: that is exploration mode.
-- **The graph refresh follows the agent, not the commit.** The grapher is a
-  navigation aid, not enforcement: nothing lands wrong because the graph is
-  stale, so the refresh belongs where the edits are. When a grapher is
-  declared and its binary found — on PATH or in that repo's
-  `node_modules/.bin`, the one lookup of MV-123 — `doors` installs it as the **harness's
-  post-edit hook** — for a harness that has one — fire-and-forget, coalesced
-  behind a lock, never failing an edit and never adding latency to it. There
-  is one post-edit hook per grapher, each keyed by the artifact its toplevel
-  test names: the brain's own where it holds code, and a hook that only
-  follows for each other grapher the code repos resolve, running in the edited
-  file's repo when that repo holds its artifact and is not a checkout of the
-  brain, and otherwise exiting having run nothing (MV-148, MV-149). No hook
-  refreshes anything for a file in no repository.
-  `change close` runs the same refresh as the **safety net**, for edits made
-  outside a harness. **Git hooks never refresh**: the shims run `verify` only,
-  because an ergonomic convenience does not belong on a gate. Nothing is ever
-  staged or committed, and a stale graph next to a present binary is a
-  `doctor` warning, never silence.
 
 `multivac doctor` answers "what is declared, what was found, what is degraded, how
 do I fix it":
@@ -1464,7 +1425,6 @@ do I fix it":
 $ multivac doctor
 doors      AGENTS.md (canonical) · CLAUDE.md (symlink) · AGENTS.md (cursor, read natively)
 sdd        opsx        installed · binary ok
-grapher    graphify    installed (shared) · binary missing  → `graphify` found on neither PATH nor brain's node_modules/.bin — install graphify: uv tool install graphifyy (https://github.com/Graphify-Labs/graphify)
 repos      4/5 present · payments not cloned (22 anchors unevaluated)
 ```
 
@@ -1502,7 +1462,7 @@ Two axes that "full-fledged" conflates:
 | axis | day 1 | why |
 | --- | --- | --- |
 | **Capability** — the whole loop: `init`, `seed`, `verify`, `count`, `doors`, `doctor`, `repos`, hooks, **`change`** | **yes** | fixture and requirements exist; `change` ran by hand twice on 08-12/13 |
-| **Compatibility** — 5 agents × 2 SDD × 2 graphers | **two adapters** | nine integrations on day 1 are nine to maintain on day 2, against APIs that change on their own |
+| **Compatibility** — 5 agents × 2 SDD × 2 code-graph tools | **two adapters** | nine integrations on day 1 are nine to maintain on day 2, against APIs that change on their own |
 
 And three things **don't accelerate with more agents**, because they are
 measurements, not work. Building against the wrong assumption here changes the
@@ -1539,7 +1499,7 @@ order — is the center, not a later phase.)
   budget as a design constraint: the door ~60 lines, the law ~150, everything
   else on demand. **Only the map scales with the ecosystem.**
 - **Noise.** See asymmetric severity.
-- **Adapter surface.** 5 agents × 2 SDD × 2 graphers + hooks is nine
+- **Adapter surface.** 5 agents × 2 SDD × 2 code-graph tools + hooks is nine
   integrations on day one and nine to maintain on day two. OSS projects die
   of surface. Adapters **as data, not code**: a `targets.yml` with
   `{ path, format, frontmatter? }`. Adding Codex is an entry, not a module.

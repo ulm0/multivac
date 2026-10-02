@@ -11,7 +11,7 @@ import { chmodSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { initState } from '../../src/lib/init-state.js';
-import { grapherSpec, sddSpec, type AdapterSpec } from '../../src/adapters/registry.js';
+import { sddSpec, type AdapterSpec } from '../../src/adapters/registry.js';
 import { SPECKIT_INTEGRATION_JSON } from '../helpers/recorded.js';
 
 process.env.PATH = '';
@@ -37,8 +37,6 @@ const root = (files: Record<string, string | null> = {}): string => {
 
 const speckit = sddSpec('speckit')!;
 const opsx = sddSpec('opsx')!;
-const graphify = grapherSpec('graphify')!;
-const codegraph = grapherSpec('codegraph')!;
 
 const expectState = async (spec: AdapterSpec, dir: string, state: string, reason?: RegExp): Promise<void> => {
   const got = await initState(spec, dir);
@@ -75,22 +73,6 @@ test('opsx is installed by its config, and its specs alone are partial', async (
   await expectState(opsx, root({ 'openspec/config.yml': 'schema: spec-driven\n' }), 'installed');
 });
 
-test('graphify is installed by a graph.json that parses, and nothing less', async () => {
-  const G = 'graphify-out/graph.json';
-  await expectState(graphify, root(), 'missing');
-  await expectState(graphify, root({ 'graphify-out': null }), 'partial', /graphify-out\/graph\.json/);
-  await expectState(graphify, root({ [G]: '' }), 'partial', /graphify-out\/graph\.json does not parse as JSON/);
-  await expectState(graphify, root({ [G]: '{"nodes": [' }), 'partial', /does not parse as JSON/);
-  await expectState(graphify, root({ [G]: '<<<<<<< HEAD\n{}\n=======\n{"a":1}\n>>>>>>> theirs\n' }), 'partial', /does not parse/);
-  await expectState(graphify, root({ [G]: '{}' }), 'installed');
-});
-
-test('codegraph is installed by its database, and its own .gitignore alone is partial', async () => {
-  await expectState(codegraph, root(), 'missing');
-  await expectState(codegraph, root({ '.codegraph/.gitignore': '*\n' }), 'partial', /\.codegraph is there and \.codegraph\/codegraph\.db is not/);
-  await expectState(codegraph, root({ '.codegraph/codegraph.db': '' }), 'installed');
-});
-
 test('a state file that is there and cannot be read is unevaluable, naming the file and the error', { skip: process.getuid?.() === 0 }, async () => {
   const dir = root({ '.specify/integration.json': SPECKIT_INTEGRATION_JSON });
   chmodSync(join(dir, '.specify/integration.json'), 0o000);
@@ -99,14 +81,4 @@ test('a state file that is there and cannot be read is unevaluable, naming the f
   } finally {
     chmodSync(join(dir, '.specify/integration.json'), 0o644);
   }
-});
-
-test('a declared grapher is installed when its artifact exists, file or directory, and missing otherwise', async () => {
-  const file = grapherSpec('acmegraph', { acmegraph: { artifact: 'out/graph.json', refresh: 'acmegraph .' } })!;
-  const dir = grapherSpec('dirgraph', { dirgraph: { artifact: 'out/index', refresh: 'dirgraph .' } })!;
-  await expectState(file, root({ 'out/graph.json': 'not even json' }), 'installed');
-  await expectState(dir, root({ 'out/index': null }), 'installed');
-  // Never partial: a declaration names no vendor directory to be half there.
-  await expectState(file, root({ out: null }), 'missing');
-  await expectState(dir, root(), 'missing');
 });

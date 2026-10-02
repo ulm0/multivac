@@ -330,26 +330,20 @@ individual command, not the entry around it. An entry is your grouping — your
 matcher, your list of commands — so:
 
 - Identity is exact. `mvac verify` is multivac's; `mvac verify --strict` is
-  yours and is never claimed. A refresh command is recognised by the lock
-  preamble multivac generates, which nothing else writes, and which grapher it
-  refreshes by the artifact its test names, `[ -e "$t/<artifact>" ]`. There is
-  one per grapher the session refreshes, so a `graphify update .` or
-  `codegraph sync` you typed is never multivac's, whichever grapher it runs.
+  yours and is never claimed.
 - An update rewrites one command in place, and fills in the `type` multivac
   itself writes if the hook was typed by hand without it — a hook missing
   `type` never runs. Commands you added beside it stay, in order, and fields
   multivac does not write — a `timeout`, say — stay with them.
 - A matcher is written once, when multivac creates its own entry, and is never
   rewritten afterwards. The matcher on an entry is yours.
-- Each grapher's refresh command is rewritten in place, and one of multivac's
-  naming an artifact no longer wanted, or none — a command written before the
-  refresh named its artifact — is taken over in place by a grapher still
-  without one, so the entry, its matcher and your commands in it stay. Two such
-  unnamed copies, which earlier releases kept side by side, become one.
-- Dropping a grapher removes its refresh command, not the entry: an entry you
-  share with it survives, carrying your commands. Dropping every grapher
-  removes every refresh command multivac wrote, and only the entries that
-  leaves empty.
+- A post-edit hook an earlier release wrote to refresh a code graph is
+  removed, whatever the config declares: multivac keeps no code graph. It is
+  recognised by the lock preamble multivac generated, which nothing else
+  writes, so a refresh command you typed yourself is never multivac's. Only
+  that command goes, not the entry: an entry you share with it survives,
+  carrying your commands, and only an entry it leaves empty is dropped. `doors`
+  says so once per settings file.
 
 Owning a command is not the same as covering an event. If the only
 `mvac verify` in `PostToolUse` sits in an entry of yours on another matcher —
@@ -364,8 +358,6 @@ brain: notice: .claude/settings.json: hooks.PostToolUse already runs `mvac verif
 Adding is reversible and rewriting your matcher is not, so that is the way it
 goes — but the part that is not negotiable is the sentence: an edit gate that
 quietly ends up wired to nothing is the failure this rule exists to prevent.
-The refresh takes no such requirement; it is a navigation aid rather than a
-gate, so it rides wherever its hook already sits.
 
 Earlier versions matched on a *substring* of the command and then replaced the
 whole entry, which could eat a hand-written hook and leave a second copy of

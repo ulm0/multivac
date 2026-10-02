@@ -5,7 +5,6 @@
 # branches here, and there is no mount or pin to check.
 doors: [agents, claude]
 sdd: speckit
-grapher: graphify
 authorities: [published, specified, open]
 repos:
   brain: .

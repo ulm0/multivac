@@ -96,8 +96,7 @@ export function notInstalled(name: string, e: TrackerEntry): string[] {
   return [
     `sync refused — \`${e.binary}\` is not on PATH, so no issue can be created or updated`,
     `  install it (${e.installHint}), or drop \`tracker: ${name}\` from the config`,
-    // A projection that cannot run must not report success — Principle II, and
-    // the same rule the graph gate follows.
+    // A projection that cannot run must not report success — Principle II.
   ];
 }
 

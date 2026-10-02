@@ -29,7 +29,6 @@
     "spec-driven-development",
     "monorepo",
     "invariants",
-    "knowledge-graph",
     "cli"
   ],
   "scripts": {
