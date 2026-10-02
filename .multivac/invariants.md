@@ -1552,3 +1552,4 @@ checks them on every commit.
 <!-- @anchor MV-152 brain:DESIGN.md /^### Adapter first, fallback always/ unique -->
 <!-- @anchor MV-152 brain:site/content/docs/concepts/composition.md /^## Adapter first, fallback always$/ unique -->
 <!-- @anchor MV-152 brain:{*.md,site/content/**} !CHANGELOG.md /no install step|^install step to forget/i absent -->
+| MV-153 | RESERVED by change drop-graphers — state the rule here before close. | open | proposed | 2026-10-02 | [changes/drop-graphers.md](changes/drop-graphers.md) |

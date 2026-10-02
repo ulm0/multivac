@@ -263,6 +263,15 @@
    "issue": null
   },
   {
+   "id": "change:drop-graphers",
+   "label": "drop-graphers",
+   "file_type": "change",
+   "source_file": ".multivac/changes/drop-graphers.md",
+   "status": "open",
+   "horizon": null,
+   "issue": null
+  },
+  {
    "id": "change:each-file-answers",
    "label": "each-file-answers",
    "file_type": "change",
@@ -3405,6 +3414,15 @@
    "authority": "open"
   },
   {
+   "id": "law:MV-153",
+   "label": "MV-153",
+   "file_type": "law",
+   "source_file": ".multivac/invariants.md",
+   "source_location": "L1555",
+   "state": "proposed",
+   "authority": "open"
+  },
+  {
    "id": "law:MV-16",
    "label": "MV-16",
    "file_type": "law",
@@ -4992,6 +5010,12 @@
    "status": "landed"
   },
   {
+   "source": "change:drop-graphers",
+   "target": "law:MV-153",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
+  },
+  {
    "source": "change:each-file-answers",
    "target": "law:MV-43",
    "relation": "adds",
@@ -5990,6 +6014,12 @@
    "confidence": "EXTRACTED",
    "stage": 1,
    "status": "landed"
+  },
+  {
+   "source": "change:release-0-15-0",
+   "target": "law:MV-153",
+   "relation": "adds",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "change:release-0-15-0",
@@ -14328,6 +14358,12 @@
    "mode": "absent",
    "source_file": ".multivac/invariants.md",
    "source_location": "L1551"
+  },
+  {
+   "source": "law:MV-153",
+   "target": "change:drop-graphers",
+   "relation": "enacted_by",
+   "confidence": "EXTRACTED"
   },
   {
    "source": "law:MV-16",
