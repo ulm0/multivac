@@ -1,6 +1,6 @@
 ---
 slug: drop-graphers
-status: open
+status: archived
 repos:
   brain:
     status: landed
@@ -283,3 +283,5 @@ runs 0.15.0, whose `land` and `close` build and commit graphs, so:
   closed after, on the new build, it carries neither.
 - MV-153 is filed `proposed`; only you make it `active` (MV-81). The constitution moved 3.0.2 →
   3.0.3 as a PATCH (R12).
+
+Specified in `specs/081-drop-graphers/` (speckit).
