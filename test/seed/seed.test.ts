@@ -280,7 +280,7 @@ test('seed on a pnpm-monorepo-shaped tree reads the build graph and ignores fixt
   assert.match(report, /prior art, read it first: [^\n]*CONTRIBUTING\.md/);
 });
 
-test('seed reports each repo\'s graph and the brain\'s project document, and names the written ones in question 3 — MV-136', async () => {
+test("seed reports the brain's project document, and no graph — MV-136", async () => {
   const tmp = mkdtempSync(join(tmpdir(), 'mvac-seed-setup-'));
   const brain = join(tmp, 'brain');
   const api = join(tmp, 'api');
@@ -311,10 +311,11 @@ test('seed reports each repo\'s graph and the brain\'s project document, and nam
   // The brain holds no code, so it is no declared repo: its document gets a
   // section of its own, and no boundary inventory.
   assert.match(section('brain'), /### setup\n\n- project document \.specify\/memory\/constitution\.md: written\n/);
-  assert.match(section('api'), /### setup\n\n- graph graphify: built\n/);
-  assert.doesNotMatch(section('api'), /project document/);
-  assert.match(section('web'), /- graph graphify: missing → `multivac repos sync`/);
-  assert.doesNotMatch(section('web'), /project document/);
+  // MV-153: an old config's grapher is ignored, and a graph a repo still holds
+  // is no setup fact — seed names no graph at all.
+  for (const key of ['api', 'web']) {
+    assert.doesNotMatch(section(key), /graph|project document/, key);
+  }
   assert.match(report, /Written project documents: brain:\.specify\/memory\/constitution\.md — where one and an active row disagree, the row wins/);
   assert.doesNotMatch(report, /api:\.specify\/memory\/constitution\.md/);
 });

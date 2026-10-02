@@ -5,8 +5,8 @@ description: Operating manual for brain-driven development with multivac. Load w
 
 # multivac — operating protocol
 
-The brain door says where the law is, which repos exist, which grapher and SDD
-bind and what each SDD step proves. The rhythm is `change new → plan → apply →
+The brain door says where the law is, which repos exist, which SDD binds and
+what each SDD step proves. The rhythm is `change new → plan → apply →
 land → close` (`multivac change` lists it). Each step says what it did and what
 it left to you, and each refusal names what it looked for and the command that
 fixes it: run what they print. Where `plan` prints no next step, `apply` is
@@ -62,12 +62,3 @@ first commit; once committed, the config changes only inside a change.
 | write or repair an anchor | `references/anchors.md`; grammar: `mvac help anchor` |
 | run a change, walk the ritual, amend or retire a row | `references/change.md` |
 | judge a `moved`, `broken` or `read` line | `references/verify.md` |
-
-The brain door names the grapher's own verbs, says it has none, or names no
-grapher: in the last two, grep. A brain that holds no code keeps no code graph,
-and the brain door names each code repo's and the flag that reaches it. Where
-it names verbs, `change apply` prints under each checkout the flag for its graph
-(`its graph:`, or `its index:` for the index built in each worktree); paths in
-the answers are that checkout's. Ask `.multivac/ecosystem.json` the way the
-brain door says (where it names no verb, read the JSON) before walking the law
-and the change files by hand.

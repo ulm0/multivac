@@ -1,13 +1,13 @@
-// MV-143. The door link and the block removal, at the unit: `installHarness`
-// and `doors` both depend on these two answers, and every notice one of them
-// prints is a human's repair instruction.
+// MV-143. The door link and the block removal, at the unit: `doors` depends
+// on these two answers, and every notice it prints is a human's repair
+// instruction.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { lstatSync, mkdtempSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { CANONICAL_DOOR, hasGrapherSection, linkDoor } from '../../src/doors/link.js';
+import { CANONICAL_DOOR, linkDoor } from '../../src/doors/link.js';
 import { stripManagedBlock } from '../../src/doors/block.js';
 
 const tmp = (): string => mkdtempSync(join(tmpdir(), 'mvac-link-'));
@@ -22,13 +22,13 @@ test('an absent door is linked, and linking twice says nothing the second time',
   assert.deepEqual(second, { created: false, notice: null }, 'idempotent and silent');
 });
 
-test('a dangling link is left alone — the vendor writes through it', () => {
+test('a dangling link is left alone', () => {
   const dir = tmp();
   symlinkSync(CANONICAL_DOOR, join(dir, 'CLAUDE.md'));
   assert.deepEqual(linkDoor(dir, 'CLAUDE.md'), { created: false, notice: null });
-  // Measured on graphify 0.9.29: writing through this link creates AGENTS.md.
-  writeFileSync(join(dir, 'CLAUDE.md'), '## graphify\n\nrules\n');
-  assert.match(readFileSync(join(dir, CANONICAL_DOOR), 'utf8'), /^## graphify$/m);
+  // Whatever writes through this link creates AGENTS.md, and it stays a link.
+  writeFileSync(join(dir, 'CLAUDE.md'), '## notes\n\nrules\n');
+  assert.match(readFileSync(join(dir, CANONICAL_DOOR), 'utf8'), /^## notes$/m);
   assert.ok(lstatSync(join(dir, 'CLAUDE.md')).isSymbolicLink(), 'still a link');
 });
 
@@ -49,15 +49,6 @@ test('a link pointing somewhere else is reported, not repointed', () => {
   assert.equal(created, false);
   assert.match(notice!, /CLAUDE\.md is a symlink elsewhere — repoint it at AGENTS\.md or remove it/);
   assert.equal(readlinkSync(join(dir, 'CLAUDE.md')), 'OTHER.md', 'left where it pointed');
-});
-
-test('the vendor section is asked of the canonical door, and a missing door has none', async () => {
-  const dir = tmp();
-  assert.equal(await hasGrapherSection(dir, 'graphify'), false);
-  writeFileSync(join(dir, CANONICAL_DOOR), '# door\n\n## graphifyish\n');
-  assert.equal(await hasGrapherSection(dir, 'graphify'), false, 'a longer heading is not the section');
-  writeFileSync(join(dir, CANONICAL_DOOR), '# door\n\n## graphify\n\nrules\n');
-  assert.equal(await hasGrapherSection(dir, 'graphify'), true);
 });
 
 test('stripping the managed block leaves the operator every other byte', () => {

@@ -45,14 +45,14 @@ API key, and `verify`, `doctor` and `doors` never touch the network. `seed`
 and the interview only draft what a human then enacts; the drafting agent is
 yours, not multivac's.
 
-## `init [dir] [--provider a,b] [--sdd name] [--grapher name] [--quiet]`
+## `init [dir] [--provider a,b] [--sdd name] [--quiet]`
 
 Scaffolds the brain in `dir` (default `.`).
 
 ```txt
 $ ls
 src
-$ mvac init . --provider claude,cursor --grapher graphify
+$ mvac init . --provider claude,cursor
   ╭───────────────╮
   │  ●   ●   ○    │   multivac
   │  ○   ◍   ●    │   brain-driven development
@@ -63,23 +63,14 @@ init: wrote .multivac/config.yml — brain==code (repos: brain: .); add sibling 
 init: wrote AGENTS.md — the door; your agent reads it first
 init: wrote .multivac/invariants.md — the law table, zero rows
 init: wrote .multivac/ritual.md — candidates, all commented; uncomment what your team owes each other
-init: wrote .multivac/ecosystem.json — how repos, rows, anchors and changes relate; generated
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
 brain: door + hooks updated
 brain: .multivac/flow.md — what your declarations oblige, sorted; generated, binds nothing
-brain: .multivac/ecosystem.json — how repos, rows, anchors and changes relate; generated
 brain: brain==code — the brain door is this repo's door
-graph graphify @ brain: wrote .graphifyignore (+11) and .gitignore (+2) before the first build
-graph graphify @ brain: built (`graphify update .`) — artifact left uncommitted
-graph graphify @ brain: wrote .gitignore (+1) before its first project install
-graph graphify @ brain: installed into agents (`graphify install --project --platform agents`)
-graph graphify @ brain: installed into claude (`graphify install --project --platform claude`)
-graph graphify @ brain: cursor skipped — AGENTS.md already carries the `## graphify` section
-graph graphify @ brain: .claude/settings.json named graphify by an absolute path — rewritten to `graphify`, found on PATH
 
 init: done — the brain is scaffolded and empty. Session zero fills it:
 init:   before step 0, declare every repo this brain governs under `repos:` in .multivac/config.yml — once committed, the config changes only inside a change
-init:   0. commit what was just written: git add -- .agents .claude .gitignore .graphifyignore .multivac AGENTS.md CLAUDE.md graphify-out/graph.json && git commit -m "multivac init"
+init:   0. commit what was just written: git add -- .claude .multivac AGENTS.md CLAUDE.md && git commit -m "multivac init"
 init:   1. load the multivac skill in your agent — it carries both protocols
 init:   2. `multivac repos sync` — clones every declared repo and installs its declared tools
 init:   3. discovery, for code that exists — `multivac seed` inventories it, then draft proposed claims from it ← this repo holds code
@@ -101,35 +92,31 @@ step that writes the brain's project document appears when the declared SDD
 gates one; no code repo is asked for its own. Both protocols
 live in the skill; `init` points at them and restates neither.
 
-**The brain gets a graph only when it holds code.** `init` decides that once,
-before it writes anything: in a git repository, whether git lists any file
-outside `.multivac/`, tracked or untracked and not ignored; outside one, whether
-anything but `.multivac` and `.git` is there. Above, `src/app.ts` did, so the
-config declares `brain: .` and the graph is built. A repo holding only a README,
-a LICENSE or a `.gitignore` counts as code too. In an empty directory the
-grapher is still declared, for the code repos, and nothing of it is written in
-the brain — no binary is looked up, so it need not be installed there:
+**Whether the brain holds code is decided once.** `init` asks before it writes
+anything: in a git repository, whether git lists any file outside `.multivac/`,
+tracked or untracked and not ignored; outside one, whether anything but
+`.multivac` and `.git` is there. Above, `src/app.ts` did, so the config
+declares `brain: .` and the brain's own code lands through changes like any
+repo's. A repo holding only a README, a LICENSE or a `.gitignore` counts as
+code too. In an empty directory the config declares no repo, and the
+`config.yml` line says so:
 
 ```txt
-init: graphify is declared, and this brain holds no code (no repos entry is the brain), so no graph is built here — each code repo gets its own when `repos sync` or a change reaches it
+init: wrote .multivac/config.yml — declare your repos under repos:
 ```
-
-See [A brain that holds no code](../graphers-and-sdd#a-brain-that-holds-no-code).
 
 | flag | takes | effect |
 | --- | --- | --- |
 | `--provider a,b` | comma-separated registry names | appended to `doors:` in the config (`agents` is always included) |
 | `--sdd name` | `opsx` \| `speckit` | written as `sdd:` in the config, and the tool's own init runs in the brain |
-| `--grapher name` | `graphify` \| `codegraph`, or a name under `graphers:` in the config already there | written as `grapher:` in the config, and the first graph is built in the brain when it holds code; any other name is refused before anything is created |
 | `--quiet` | — | no report, no banner; refusals still go to stderr |
 
-**Declared at init, installed at init.** With `--sdd` or `--grapher`, or with a
-config that already declares them, `init` finishes by running the tool's own
-init and, in the brain when it holds code, the graph's first build, the same
-way `change` does.
+**Declared at init, installed at init.** With `--sdd`, or with a config that
+already declares one, `init` finishes by running the tool's own init in the
+brain, the same way `change` does.
 A tool that is already installed there is not run again. For spec-kit, the run
 that installs it also writes multivac's skeleton templates, as
-[the scaffold](../graphers-and-sdd#the-scaffold-declaring-a-tool-that-has-never-run-here)
+[the scaffold](../sdd#the-scaffold-declaring-a-tool-that-has-never-run-here)
 describes.
 
 A tool `init` is about to run and cannot find is refused **before anything is
@@ -141,7 +128,7 @@ init refused — speckit: `specify` found on neither PATH nor brain's node_modul
 ```
 
 Nothing is required for a tool `init` would not run: one already installed,
-an SDD under `sdd_auto: false`, or a grapher in a brain that holds no code.
+or an SDD under `sdd_auto: false`.
 
 **Step 0 commits what `init` wrote, and only that.** It lists the paths `init`
 created or changed, leaving out the tools' per-checkout outputs, so uncommitted
@@ -159,16 +146,15 @@ Both `--flag value` and `--flag=value` work, and parse to the same value.
 A flag with no value, or an unknown flag, is refused:
 
 ```txt
-init: unknown flag --providers — known: --provider <a,b>, --sdd <name>, --grapher <name>, --quiet
+init: unknown flag --providers — known: --provider <a,b>, --sdd <name>, --quiet
 ```
 
 An adapter name nothing can honour is refused too, exit 2, before anything is
-created: `--sdd` against the registry, `--grapher` against the verified
-graphers plus the `graphers:` of a config already at the target. `none` is
-neither — leaving the flag out declares no adapter:
+created: `--sdd` is checked against the registry. `none` is not a name there —
+leaving the flag out declares no SDD:
 
 ```txt
-init: unknown --grapher graphfy — known: graphify, codegraph
+init: unknown --sdd nope — known: opsx, speckit
 ```
 
 A valued flag whose value is missing — or whose value is itself a flag — is
@@ -186,18 +172,17 @@ flag rather than accepted as a form that does not work.
 `doors:` and projects it in the same run — the door, the skill, the harness
 hooks. It used to stop at the config and end by telling you to load a skill it
 had not installed. `mvac doors` re-runs that projection after you edit
-`doors:` or `grapher:` by hand.
+`doors:` or `sdd:` by hand.
 
 `agents` is never a `--provider` value. [agents.md](https://agents.md/) is the
 open format every other door projects *from*, not a tool anyone could install,
 and `AGENTS.md` is written unconditionally.
 
 **The door `init` writes is the door `doors` writes** — one rendering,
-built from the config, so it already names the declared grapher and its query
-verbs, the declared SDD and its flow, and the repos in the ecosystem. Running
-`mvac doors` straight after `init` changes nothing. It used to rewrite the whole
-managed block, because `init` carried a second copy of the door that had never
-learned about the graph.
+built from the config, so it already names the declared SDD and its flow,
+and the repos in the ecosystem. Running `mvac doors` straight after `init`
+changes nothing. It used to rewrite the whole managed block, because `init`
+carried a second copy of the door that had fallen behind the first.
 
 Side effects, completely:
 
@@ -329,11 +314,11 @@ models / schema, migrations, runtime config and the rest. Test fixtures,
 files plus a count. No LLM, no interpretation. Repos not on disk are listed
 under a `skipped` section with the sync command; `seed` never clones.
 
-Each present repo also gets a `### setup` section: whether its declared graph
-is built, with the command that fixes it. The SDD's project document is the
-brain's, so it is reported once — in the brain's own entry when the brain is
-also a code repo, or in a `## brain` section of its own when it holds no code —
-and never for a code repo. `seed` reads the vendor's files for this and never
+The brain also gets a `### setup` section: whether the SDD's project document
+is written, with the command that writes it. The document is the brain's, so it
+is reported once — in the brain's own entry when the brain is also a code repo,
+or in a `## brain` section of its own when it holds no code — and never for a
+code repo. `seed` reads the vendor's files for this and never
 runs a vendor.
 
 The report ends with three **open questions** — debt or intent, law or
@@ -602,9 +587,10 @@ read a subset of the legs.
 
 When a repo resolves an SDD and `sdd_auto` is on, code reaches that repo only
 through the branch of an open change that declares it. "Code" is every path
-outside what multivac, a door, the SDD or the grapher own: `.multivac/**`,
-the door files, the SDD's and the grapher's artifacts, and the hook
-directories.
+outside what multivac, a door or the SDD own: `.multivac/**`, the door files,
+the SDD's artifacts, and the hook directories — and every path the code-graph
+tools an earlier release set up wrote there, so removing them commits on any
+branch.
 
 `verify` asks at three moments:
 
@@ -911,7 +897,7 @@ Takes one flag, `--adopt`, and REFUSES anything else with exit 2: nothing after
 
 | flag | effect |
 | --- | --- |
-| `--adopt` | re-project **and** record the version that did it in `.multivac/projected.yml`, which is what clears the notice that the binary and the projections have drifted. Bare `doors` re-projects and leaves the record alone, on purpose: people run `doors` after editing `doors:` or `grapher:`, and restamping there would make the notice vanish for a reason unrelated to the upgrade. |
+| `--adopt` | re-project **and** record the version that did it in `.multivac/projected.yml`, which is what clears the notice that the binary and the projections have drifted. Bare `doors` re-projects and leaves the record alone, on purpose: people run `doors` after editing `doors:` or `sdd:`, and restamping there would make the notice vanish for a reason unrelated to the upgrade. |
 
 ```txt
 $ mvac doors
@@ -936,6 +922,22 @@ it, and one line says so. A door or hooks projected there before it became
 read-only are left in place. Repos not on disk are reported and skipped, exit 0.
 `doors` writes working trees — never commits, never clones. An invalid config
 exits **1** here (not 2).
+
+**It takes back what an earlier release wrote, and only that.** A post-edit
+hook that refreshed a code graph, which an earlier multivac wrote into a
+`.claude/settings.json`, is removed — that hook alone, and an entry it leaves
+empty, never a hook it did not write — and so is the brain's generated
+relations file, which nothing reads any more. Each is said once, and a second
+run says neither:
+
+```txt
+brain: notice: .claude/settings.json: removed 1 post-edit graph refresh hook an earlier multivac wrote — multivac keeps no code graph
+```
+
+Commit the removal. What a vendor's own install wrote — its output directory,
+skills, door section and hooks — stays until you remove it: `doctor` names it
+with the removal, and the door warns where its skills or hooks still send an
+agent to a graph nothing refreshes.
 
 The hooks it installs read the law through the brain mount, and `doors` never
 makes that mount — it does not touch the network. The `mounts` line names every
@@ -969,46 +971,6 @@ opposite — authored, and never overwritten.
 describes what the law and your declared adapters already do, for a reader who
 has not read the table.
 
-### `.multivac/ecosystem.json` — how the ecosystem relates
-
-`doors` also writes a graph of the brain's own declarations. The nodes are:
-
-- each repo, with its path, url, role, channel, grapher and the path of its own
-  code graph, and the SDD that governs its code — the brain's, or none for a
-  repo that says `sdd: none`;
-- each law row, with its state, authority and line, but never its statement;
-- each anchor's glob, one per repo it reaches;
-- each change, open, planned or archived.
-
-The edges say which repo declares and mounts which, which row anchors which
-glob, and which change lands in which repo at which stage and claims, touches,
-adds or retires which row.
-
-It holds nothing that differs between machines: no presence on disk, no sha,
-no fetch age. The same declarations render the same bytes. Every lifecycle
-commit in the brain re-renders it and commits it. `change close` adds it to the
-archive commit, and `change land` commits it on a brain branch with the graph.
-`verify` reports it stale when it no longer matches the declarations, and
-never gates on that: two branches each render it, and a merge resolves by
-rendering again.
-
-The file is node-link JSON, which graphify reads through `--graph`:
-
-```txt
-$ graphify explain "INV-07" --graph .multivac/ecosystem.json
-Node: INV-07
-  ID:        law:INV-07
-  Source:    .multivac/invariants.md L12
-Connections (3):
-  --> api:db/migrations/*.sql [anchors] [EXTRACTED] .multivac/invariants.md:L13
-  <-- points-expire [claims] [EXTRACTED]
-```
-
-The doors name it, with those verbs where graphify is a grapher the brain's
-agent asks: the brain's own where it holds code, a code repo's, or the
-ecosystem's declaration while no code repo resolves one. In a brain that holds
-no code, the brain's node carries no grapher and no graph.
-
 ## `doctor [--strict]`
 
 Read-only diagnosis. Never mutates, never clones. From a subdirectory it
@@ -1020,8 +982,6 @@ the main checkout.
 ```txt
 $ mvac doctor
 doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: AGENTS.md ok (read natively)
-grapher    graphify @ brain: missing (no graphify-out/graph.json) → run `graphify update .` there
-grapher    graphify @ api: missing (no graphify-out/graph.json) → run `graphify update .` there
 repos      1/2 cloned · payments missing → `multivac repos sync` (git clone git@example.com:acme/payments.git ../payments)
 branches   brain: on main @ abc1234 — brain==code, verify reads this working tree; 2 behind its own channel origin/main @ def5678 → git -C . pull · api: on wip/refactor @ 4d5e6f7 — OFF channel origin/main @ 1a2b3c4; verify reads the channel, not this tree · payments: not cloned
 pins       api: no brain mount at .brain — run `multivac repos sync` to add it · payments: not cloned
@@ -1034,9 +994,10 @@ untracked  nothing build-critical untracked
 | line | reports |
 | --- | --- |
 | `doors` | one entry per declared target: file present, symlink correct, managed block present |
-| `sdd` | the brain's SDD, which runs nowhere else: the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on. When a code repo is declared and `sdd_auto` is on, one line names the repos whose code it governs and those exempt by `sdd: none`. A writable code repo still holding an install of any known SDD from an earlier release gets a `leftover` line — its state file, whether `HEAD` tracks it, and the removal — and never fails `doctor`. In an OpenSpec brain, the command bodies an earlier init left there are named on one line after the install line, with the `git rm -r` that removes the tracked ones and the untracked ones to delete, and never fail `doctor` (see [Command bodies an earlier init left](../graphers-and-sdd#command-bodies-an-earlier-init-left)). An enabled spec-kit preset that multivac's skeleton templates outrank is named, with the override to delete. Then: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what — or `not gated` under `sdd_auto: false` — and `project law @ brain:` for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when the brain resolves no `sdd`**: a code repo's own install of a tool the brain declares nowhere is that team's, not a leftover |
-| `grapher` | one line per scope (the brain where it holds code, plus each present repo): the grapher's state and whether its artifact is shared or local, binary, freshness, and `NOT COMMITTED` for a shared artifact its `HEAD` does not hold — a root that resolves no grapher (`grapher: none`, or nothing declared for it) while another root resolves one says it is out of scope rather than lacking anything, and so does a read-only root, with no state and no `NOT COMMITTED` or `IGNORED`. An installed root's line also names, reading only, the ignore lines multivac keeps out of the graph that its ignore file lacks, an ignore file not committed, and nodes the graph still holds under the file's lines, with the rebuild to run there — for codegraph, one of four facts about `codegraph.json`: that it does not parse to an object with an `exclude` list, that git ignores it, with the command that shows the rule, since land writes nothing there, that it is not committed, so a clone or worktree with its mount initialised indexes the mount, or the lines it lacks, which the next `change land` naming that repo adds. A writable repo still holding the artifact of a grapher it does not resolve, while that grapher's post-edit hook is wired and reaches it there, is named with the removal: that hook refreshes it on every edit there (see [One post-edit hook per grapher](../graphers-and-sdd#one-post-edit-hook-per-grapher)). A brain that holds no code gets one line saying so and how to declare it code, and a `leftover` line with its removal for each install an earlier release left there — never a refresh or an install (see [A brain that holds no code](../graphers-and-sdd#a-brain-that-holds-no-code)). Then one `refresh path:` line naming what actually keeps the graph current — the harness post-edit hook where one is installed, one per grapher the brain's session refreshes, and in a brain that holds no code whether it follows your edits into the code repos; what `change land` does with each grapher's artifact, committing a shared graph and syncing an index built in each checkout; `change close` as the net; and that the git hooks never refresh. **Omitted entirely when no root resolves a grapher, none is asked from the brain and none is left there** |
-| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in — whose `grapher` line says `out of scope, not a gap` in place of a state |
+| `sdd` | the brain's SDD, which runs nowhere else: the tool's state — installed, missing, partial or unevaluable, with the reason, read from its own state file — binary, whether `sdd_auto` is on. When a code repo is declared and `sdd_auto` is on, one line names the repos whose code it governs and those exempt by `sdd: none`. A writable code repo still holding an install of any known SDD from an earlier release gets a `leftover` line — its state file, whether `HEAD` tracks it, and the removal — and never fails `doctor`. In an OpenSpec brain, the command bodies an earlier init left there are named on one line after the install line, with the `git rm -r` that removes the tracked ones and the untracked ones to delete, and never fail `doctor` (see [Command bodies an earlier init left](../sdd#command-bodies-an-earlier-init-left)). An enabled spec-kit preset that multivac's skeleton templates outrank is named, with the override to delete. Then: one `flow —` line per step of its own flow, each with the artifact that proves it (or why nothing can), one `gates —` line naming which lifecycle commands refuse and on what — or `not gated` under `sdd_auto: false` — and `project law @ brain:` for its project-level document — missing with the command that writes it, or present with its date against the law's newest row (STALE when the law moved and it did not). **Omitted entirely when the brain resolves no `sdd`**: a code repo's own install of a tool the brain declares nowhere is that team's, not a leftover |
+| `config` | a config that does not load, with exit 1 (below); and, in a config an earlier release wrote, the code-graph keys it still declares — they load and are ignored — with how to delete them, a change open. That line never fails `doctor` |
+| `leftover` | what an earlier release's code-graph setup left, in each root multivac may write in: the brain's generated relations file and each post-edit refresh hook it wrote into a `.claude/settings.json`, both of which `doors` removes; and each vendor install it finds there — its output directory, tracked, untracked or local, its ignore file, the platforms its skills and hooks were installed into, and a pre-install backup copy — with the vendor's own uninstall per platform, the paths to delete and the lines to drop from `.gitignore`, then commit. Read from files alone: it runs no vendor, never fails `doctor`, and says nothing of a read-only repo |
+| `repos` | how many are present, the clone command for each that is not, and `<key>: not managed, read-only` or `<key>: shallow, read-only` for each repo multivac may not write in |
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is. A mount that is staged and not yet committed says so, instead of calling itself missing. A read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
@@ -1163,16 +1124,15 @@ is it set up?
 
 ```txt
 $ mvac repos check
-brain     ok   cloned · speckit installed and committed · .specify/memory/constitution.md written · graphify built and committed
-api       FAIL graphify built but graphify-out/graph.json is not committed → commit it; leftover speckit install (tracked)
+brain     ok   cloned · speckit installed and committed · .specify/memory/constitution.md written
+api       ok   cloned; leftover speckit install (tracked)
 payments  FAIL absent at ../payments → `multivac repos sync`
 ledger    ok   cloned — not managed, read-only: its tools are not checked
 ```
 
 A repo passes when its path exists, is a git repository of its own (not a
 folder inside another one), has a commit, and has a remote matching its `url:`
-if it declares one. Where multivac may write, it also needs the declared graph
-built and, when it is shared, committed. The brain also needs:
+if it declares one. Where multivac may write, the brain also needs:
 
 - the declared SDD installed and its state file committed,
 - its project document written (not missing, empty or still the template).
@@ -1181,14 +1141,6 @@ The SDD is the brain's alone, so a code repo is never asked for it. Where the
 brain declares one, a code repo that still holds an install from an earlier
 release gets `; leftover <tool> install` on its line, tracked or not, and
 passes or fails exactly as it would without it; `doctor` names the removal.
-
-A brain that holds no code — no `repos:` entry is the brain — is never asked
-for a graph. A graph an earlier release left there is a fact on its line, never
-a failure:
-
-```txt
-brain     ok   cloned; leftover graphify install (tracked)
-```
 
 A repo you do not own is checked for its clone alone. Exit 0 when every repo
 passes, 1 when one does not, 2 for an invalid config.
@@ -1199,21 +1151,18 @@ tool: a shallow clone is read-only, so only its clone is checked.
 `change plan` and `change apply` refuse a repo they name whose directory is
 there but is not that clone, before anything is cloned, branched or bumped.
 
-### Tools in every repo
+### The brain's SDD
 
-`repos sync` also installs the declared SDD in the brain and the grapher in every repo it finds
-on disk and may write in — the brain among them only where it holds code: the
-tool's own init where it has never run, and the
-graph's first build where there is no graph. The SDD reaches no code repo: its
-specs are written in the brain. A repo where its tools are installed runs
-none. A read-only repo, declared `managed: false` or a shallow clone,
-gets nothing, which is why `repos sync --shallow` on a CI machine needs no
-vendor tool.
+`repos sync` also installs the declared SDD in the brain: the tool's own init,
+where it has never run there. The SDD reaches no code repo — its specs are
+written in the brain — and a brain where it is installed runs nothing. A
+read-only repo, declared `managed: false` or a shallow clone, gets nothing,
+which is why `repos sync --shallow` on a CI machine needs no vendor tool.
 
-A tool it would run and cannot find is named, repo by repo, with where to get
-it. Every other repo is still set up, and the run exits 1.
+A tool it would run and cannot find is named with where to get it, and the run
+exits 1.
 
-What the tools write is left in each repo's working tree, uncommitted.
+What the tool writes is left in the brain's working tree, uncommitted.
 
 ### The brain mount
 
@@ -1273,7 +1222,7 @@ roadmap: 2 planned
   now
     tracker-projects-the-roadmap — Issues and boards from the change files
   later
-    the-graph-builds-itself-everywhere — First build per declared root
+    ci-checks-every-repo — One CI job per declared repo
 in flight: 1 open change — points-expire
 ```
 
@@ -1386,18 +1335,17 @@ multivac change <sub> <slug> [args]
   apply <slug>           worktree per repo (greenfield repos get created)
   land <slug>            landing-order report; --landed <repo> records a merge
   close <slug>           verify claims, archive the change, print .multivac/ritual.md
-flags: --no-sdd (skip the SDD steps AND their gates), --no-grapher (close only:
-       skip the graph gate), --landed <repo> (land only),
+flags: --no-sdd (skip the SDD steps AND their gates), --landed <repo> (land only),
        --abandon (close only: drop a change that landed nothing, give its id back)
 ```
 
-Exactly four flags, all listed above. `change` reads the same shared refusal
+Exactly three flags, all listed above. `change` reads the same shared refusal
 every other command reads, so an unknown flag, a single-dash token and a surplus
 positional all exit 2:
 
 ```txt
-change: unknown flag "--force" — change takes <sub> <slug> ["<title>"], --no-sdd, --no-grapher, --landed <repo>, --abandon
-change: unexpected argument "api" — change takes <sub> <slug> ["<title>"], --no-sdd, --no-grapher, --landed <repo>, --abandon
+change: unknown flag "--force" — change takes <sub> <slug> ["<title>"], --no-sdd, --landed <repo>, --abandon
+change: unexpected argument "api" — change takes <sub> <slug> ["<title>"], --no-sdd, --landed <repo>, --abandon
 ```
 
 The second line is `change land <slug> api`, meaning `--landed api`. It used to
@@ -1453,12 +1401,11 @@ sdd speckit: run the chain through without asking to continue — stop only for 
 Before it writes anything, `new` refuses, with exit 1, when that SDD's own
 init would have to run in the brain and the tool cannot be found: every step it
 prints needs that tool. It names where to get the tool, and `--no-sdd` skips it
-for one run. A missing grapher is only a notice here;
-`close` is where a missing graph refuses.
+for one run.
 
 `plan`, `apply` and `close` **refuse** while those
 artifacts are missing; see
-[Graphers and SDD](/docs/reference/graphers-and-sdd/#the-gate-what-the-tool-really-produces).
+[SDD tools](/docs/reference/sdd/#the-gate-what-the-tool-really-produces).
 
 The scaffolded declaration and the reserved row land as **one commit on the
 current branch** (message `change open: <slug> — reserves <ID>`): the shared
@@ -1532,15 +1479,14 @@ A row that states no rule yet is the ordinary state of a change at `plan`, and
 a retiring row is retired later: `close` asks those, `plan` does not.
 
 A change may name `brain`. Where no `repos:` entry is the brain, it holds no
-code, and `plan` says what that means for a declared grapher:
+code, and `plan` names it as the brain:
 
 ```txt
 brain: /home/you/brain (the brain)
-brain: named by this change, but no repos entry is the brain — no code graph is built, gated or landed here; if the change lands code in the brain, declare `brain: .` under repos: in this change
 ```
 
-Where an entry is the brain, the line reads `(brain==code)` and the brain is
-graphed like any repo.
+Where an entry is the brain, the line reads `(brain==code)` and the brain's
+code lands through the change like any repo's.
 
 With an SDD declared in the brain, `plan` also gates on the `new` point's
 artifacts, then prints the `plan` point's steps. For spec-kit it first points
@@ -1561,19 +1507,13 @@ sdd speckit: its steps run from the brain checkout, which holds no code of this 
 $ mvac change apply points-expire
 committed: change apply: points-expire — status branched
 payments: created /home/you/payments — git init, door written, first commit
-graph graphify @ payments: wrote .graphifyignore (+12) and .gitignore (+2) before the first build
-graph graphify @ payments: built (`graphify update .`) — artifact left uncommitted
-graph graphify @ payments: wrote .gitignore (+1) before its first project install
-graph graphify @ payments: installed into agents (`graphify install --project --platform agents`)
 api: branched points-expire from main 58383ca — local main is ahead of origin/main
 api: worktree /home/you/brain/.multivac/worktrees/points-expire/api
 payments: branched points-expire from main 3105b42 — no origin/main known locally
 payments: worktree /home/you/brain/.multivac/worktrees/points-expire/payments
 work here — one checkout per repo, nobody else's tree moves:
   api: /home/you/brain/.multivac/worktrees/points-expire/api
-    its graph: --graph /home/you/brain/.multivac/worktrees/points-expire/api/graphify-out/graph.json — paths in its answers are relative to this checkout
   payments: /home/you/brain/.multivac/worktrees/points-expire/payments
-    no graph in this checkout yet (`change land` commits one) — --graph /home/you/payments/graphify-out/graph.json answers for the base, without this branch's edits; paths in its answers are relative to /home/you/payments
 then commit on branch points-expire and run `multivac change land points-expire`
 ```
 
@@ -1582,37 +1522,6 @@ One **worktree** per declared repo, at
 that is where the work happens. The shared checkout never moves: another agent
 may be running another change in the same repo, and a working tree switched
 under them puts their edits on your branch. `close` removes the worktrees.
-
-Under each checkout, one line names what reaches its graph from the brain: the
-flag at the worktree's own graph; else the repo checkout's, which answers for
-the base without this branch's edits; else that there is none yet and `change
-land` builds and commits one. Each says where its answers' paths are placed.
-A checkout whose grapher is `none` gets no line, and neither does the brain's
-own main checkout. See
-[Where to ask the graph](../graphers-and-sdd#where-to-ask-the-graph).
-
-For a repo on codegraph, whose index is built in each checkout and never
-committed, apply builds the one in each checkout it hands out, or syncs it when
-apply runs again, and names it:
-
-```txt
-web: worktree /home/you/brain/.multivac/worktrees/points-expire/web
-web: .codegraph/ added to /home/you/web/.git/info/exclude — git ignored no index here, and that file is never committed
-graph codegraph @ web worktree: built (`codegraph init`) — local artifact, never committed
-work here — one checkout per repo, nobody else's tree moves:
-  web: /home/you/brain/.multivac/worktrees/points-expire/web
-    its index: -p /home/you/brain/.multivac/worktrees/points-expire/web — refreshed after your edits; paths in its answers are relative to this checkout
-```
-
-The `info/exclude` line appears only when git did not already ignore the index
-there: that file is read by every worktree of the repository and never
-committed. `refreshed after your edits` holds where a declared harness has a
-post-edit hook and the brain's session refreshes codegraph; otherwise the line
-says the index is as of this apply and refreshed again at `change land`. Where
-apply could not build it — the binary not found from the worktree, which it
-names once — the line falls back to the repo checkout's index, for the base.
-See [A change's own codegraph
-index](../graphers-and-sdd#a-changes-own-codegraph-index).
 
 The branch under it is based on the **newer of the default branch and
 its remote-tracking ref** — decided offline, by ancestry, from refs git
@@ -1702,39 +1611,12 @@ once.
 Reports the landing graph and records merges. `--landed <repo>` marks one
 repo landed — refused if its stage is still blocked by an earlier one.
 
-Before the push line for a ready repo, `land` refreshes its graph on the
-change branch and commits it there when it changed. A detached HEAD or an
-ignored graph is refused by name, with exit 1. Before that refresh it appends
-the ignore lines the root lacks to the grapher's ignore file, committed with
-the graph where land may write that file (it names the file otherwise, and the
-graph lands alone), and rebuilds while the graph holds nodes under a line it
-recorded —
-see [the ignore lines](../graphers-and-sdd#automatic-refresh). In a brain that
-holds no code, it commits no brain graph.
-
-A repo on codegraph lands no index: land syncs it in the checkout holding the
-change's branch — or builds it there, where apply could not — after the same
-`info/exclude` step as apply, and commits none of it; a detached HEAD or
-another branch passes it by. Where land added lines to `codegraph.json`, which
-keeps the brain's mount out of the index, it commits that file alone, after the
-sync. The copy the first build wrote in a repo's own checkout is yours to
-commit: land writes nothing beside it while it is uncommitted, and `doctor`
-names it:
-
-```txt
-graph codegraph @ web: wrote codegraph.json (+1) before the refresh at `change land`
-graph codegraph @ web: refreshed (`codegraph sync`) — local artifact, never committed
-committed: graph: points-expire — codegraph keeps /.brain/ out of its index
-```
-
-A `codegraph.json` git ignores there is named, with the command that shows the
-rule, and nothing is written; land goes on.
+For a ready repo `land` prints the push and the merge request, and commits
+nothing on the change branch: what lands is what you committed there.
 
 ```txt
 $ mvac change land points-expire
 stage 1 [ready] api:branched
-graph graphify @ api: refreshed (`graphify update .`) — artifact left uncommitted
-committed: graph: points-expire — refreshed on the change branch
   api: git -C /home/you/api push -u origin points-expire
   api: open MR points-expire -> main (state the landing order in the description)
   api: once merged: multivac change land points-expire --landed api
@@ -1908,8 +1790,7 @@ printed verbatim.
 $ mvac change close points-expire
 INV-07: ok
 archived -> .multivac/changes/archive/points-expire.md
-graph graphify @ brain: refreshed (`graphify update .`) — artifact left uncommitted
-archived — commit this: git -C /home/you/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md graphify-out/graph.json .multivac/ecosystem.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
+archived — commit this: git -C /home/you/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/api)
 payments: worktree removed (/home/you/brain/.multivac/worktrees/points-expire/payments)
 
@@ -1918,63 +1799,8 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] the public site ships before the backend
 ```
 
-This brain holds code (`brain: .`), so close refreshes its graph and the
-archive commit carries `graphify-out/graph.json`. A brain that holds none gets
-no refresh line and no graph in that commit. A worktree whose only changes are
-the grapher's own outputs — a graph refreshed after land, a query's stamp — is
-removed; one holding anything else is kept, with the command that removes it.
-
-#### The graph gate
-
-A declared grapher must have left a graph in the brain where it holds code,
-and in every repo the change names that is not read-only, or `close` refuses:
-
-```txt
-graph: `change close points-expire` refused — 2 roots have no graph
-  api: no graphify-out/graph.json — `graphify update .` there
-  web: no graphify-out/graph.json — `graphify update .` there
-  or skip the gate without losing the tool: `--no-grapher` for one run, `grapher_auto: false` in .multivac/config.yml for good
-```
-
-Every offending root is named in one message: you never close repeatedly to
-discover the rest of the list. The gate runs the build-where-missing pass
-first, so the first close in a fresh ecosystem builds rather than refuses.
-
-A root whose required grapher binary is found on neither PATH nor that root's
-`node_modules/.bin` also refuses, naming the binary, the install line and the
-vendor's repository — a gate that cannot be evaluated refuses rather than
-passes. A root with `grapher: none`, an ecosystem with no grapher, and an
-UNVERIFIED adapter are all out of scope: nothing is required of a tool whose
-artifact path would have to be guessed.
-
-**It asks existence, never freshness.** A stale graph passes, deliberately:
-currency would have to be defined, and every definition is wrong on a fresh
-clone where every file is newer than the artifact.
-
-**And the graph must be in the repository, not just on disk.** A second
-refusal follows the first: a root whose shared artifact is installed but not in
-its committed `HEAD` — staged counts for nothing, since a clone gets `HEAD` —
-or is matched by an ignore rule keeps its graph out of every clone, while the
-door there still points at one. The message names each root, the path and the
-commands; multivac never runs them, because the refresh module is kept out of
-git entirely. A local artifact, codegraph's database, is never asked: it is
-built in each checkout.
-
-```txt
-graph: `change close points-expire` refused — 2 roots keep their graph out of the repository
-  api: graphify-out/graph.json is not committed — `git -C ../api add graphify-out/graph.json && git -C ../api commit -m "chore: commit the graph" -- graphify-out/graph.json`
-  web: graphify-out/graph.json is ignored by .gitignore — remove the rule, then `git -C ../web add graphify-out/graph.json && git -C ../web commit -m "chore: commit the graph" -- graphify-out/graph.json`
-```
-
-`--no-grapher` skips it for one run and says so. `--abandon` is exempt — an
-abandoned change made no claims and landed nothing, so demanding an artifact
-from it would punish dropping work.
-
-The refresh that follows covers the brain where it holds code and **the repos
-this change names** that are not read-only. It runs before the archive commit is printed, and a
-brain graph it changed is part of that commit. For a named repo whose graph
-changed, close prints the commit to make there. A declared repo the change does
-not name is left alone; `repos sync` builds its first graph.
+A worktree is removed when it holds nothing uncommitted; one that does is kept,
+with the command that removes it.
 
 #### `--abandon`
 
@@ -2002,8 +1828,7 @@ INV-07: states a rule this abandoned change never verified — delete the row fr
 
 The printed commit — closing or abandoning — is **scoped to the closing
 change's paths**: the archived file, the old change path, the law table, the
-brain's graph where the refresh changed it, `.multivac/ecosystem.json`, and
-what the declared SDD wrote in the brain for this slug, whatever `sdd_auto` and `--no-sdd` say: the spec, the
+and what the declared SDD wrote in the brain for this slug, whatever `sdd_auto` and `--no-sdd` say: the spec, the
 plan, the task list, an archived proposal, deletions included, and each main
 spec an archive merged into that carries the merge — one that does not, such as
 after an archive made without merging, is named dirty and not staged. Every gate in the lifecycle demanded one of those
@@ -2036,7 +1861,7 @@ wording says which case you are in:
 
   ```txt
   archived — commit this on a branch; nothing lands on main directly:
-    git -C /home/you/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md .multivac/ecosystem.json && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
+    git -C /home/you/brain switch -c close-points-expire && git add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md && git commit -m "Archive the points-expire change" && git push -u origin close-points-expire
     then open MR close-points-expire -> main
   ```
 

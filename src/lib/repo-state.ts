@@ -9,11 +9,11 @@ import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import picomatch from 'picomatch';
 import { parse } from 'yaml';
-import { adapterFor, bodyGlobs, brainHoldsCode, pathExists } from '../adapters/detect.js';
-import { grapherNames, grapherSpec, sddNames, sddSpec, type AdapterSpec, type SddProjectStep } from '../adapters/registry.js';
+import { bodyGlobs, pathExists } from '../adapters/detect.js';
+import { sddNames, sddSpec, type AdapterSpec, type SddProjectStep } from '../adapters/registry.js';
 import { initState } from './init-state.js';
 import { inHead, normUrl, run as git } from './git.js';
-import type { Config, RepoEntry } from '../types.js';
+import type { RepoEntry } from '../types.js';
 
 export type CloneState =
   | { state: 'cloned' }
@@ -147,112 +147,6 @@ export async function leftoverSdds(dir: string): Promise<Leftover[]> {
       }
     }
     out.push({ sdd, file, tracked: await inHead(dir, file) });
-  }
-  return out;
-}
-
-/** A grapher's install an earlier release left in a brain that holds no code (MV-148), or, in a code repo, the artifact of a grapher it does not resolve (MV-149). */
-export interface LeftoverGraph {
-  /** The grapher: a known one, or a key of `graphers:`. */
-  name: string;
-  /** `shared` or `local` from the registry entry; `declared` for one under `graphers:`. */
-  kind: 'shared' | 'local' | 'declared';
-  /** The artifact, when it is on disk. */
-  artifact?: string;
-  /** Whether git tracks any path found: removed by a commit, or by a delete alone. */
-  tracked: boolean;
-  /** The top directory of the entry's `local` globs, when it is on disk (`graphify-out`, `.codegraph`). */
-  stateDir?: string;
-  /** The entry's `graphignoreFile`, when it is on disk. */
-  ignoreFile?: string;
-  /** The harness platforms whose probe is on disk: `uninstallFirst` ones first, then registry order. */
-  platforms: string[];
-}
-
-/**
- * MV-148. What a kept install is called, by `doctor` and `repos check` alike:
- * a local artifact is an `index`, one under `graphers:` a `graph`, and a known
- * grapher's shared one an `install` — the vendor's skills and hooks with it.
- */
-export const leftoverNoun = (l: Pick<LeftoverGraph, 'kind'>): 'index' | 'graph' | 'install' =>
-  l.kind === 'local' ? 'index' : l.kind === 'declared' ? 'graph' : 'install';
-
-/**
- * MV-148. Every grapher whose install is in a brain that holds no code. Such
- * a brain resolves no grapher (`adapterFor`), so what an earlier release built
- * and installed there — the graph, the vendor's output directory, its ignore
- * file, its skill and hooks in each harness — is a leftover nothing refreshes,
- * and the vendor's own section and hooks still send agents to ask it. It is
- * kept until a human removes it: `doctor` prints the removal, `repos check`
- * states it, and the door says it holds no code.
- *
- * Every KNOWN grapher and every one declared under `graphers:`, each probed at
- * its artifact, the top directory of its `local` globs, its ignore file — only
- * beside one of those two (MV-149) — and every harness platform's probe,
- * declared door or not — no config key chooses
- * among them, since the one that chose is what the brain no longer resolves.
- * Files only, and one `git ls-files` for tracked: no vendor is run (MV-129).
- * `[]` where the brain holds code: its graph is its own.
- *
- * MV-149. Asked of a code repo (`key`, its config key), the same probe answers
- * which graphers' artifacts it holds that it does not resolve: a repo that
- * moved from one grapher to another, or was built by hand, where each
- * grapher's own post-edit hook passes its toplevel test and refreshes it on
- * an edit there. The artifact alone counts, by file existence — no platform,
- * no ignore file — and one written by the grapher the repo resolves is its
- * own. Whether that grapher's hook is wired is `doctor`'s to ask, so this
- * stays offline.
- */
-export async function leftoverGraphs(cfg: Config, dir: string, key = 'brain'): Promise<LeftoverGraph[]> {
-  const repo = key !== 'brain';
-  if (!repo && brainHoldsCode(cfg)) return [];
-  const resolved = repo ? adapterFor(cfg, key, 'grapher') : undefined;
-  const ownArt = resolved === undefined ? undefined : grapherSpec(resolved, cfg.graphers)?.artifacts[0];
-  const out: LeftoverGraph[] = [];
-  for (const name of new Set([...grapherNames, ...Object.keys(cfg.graphers)])) {
-    const spec = grapherSpec(name, cfg.graphers);
-    if (spec === null || name === resolved || (repo && spec.artifacts[0] === ownArt)) continue;
-    const here = async (p: string | undefined): Promise<string | undefined> =>
-      p !== undefined && (await pathExists(join(dir, p))) ? p : undefined;
-    const artifact = await here(spec.artifacts[0]);
-    if (repo) {
-      if (!artifact) continue;
-      const listed = await git(dir, ['ls-files', '-z', '--', artifact]).catch(() => '');
-      out.push({
-        name,
-        kind: grapherNames.includes(name) ? (spec.artifactKind ?? 'shared') : 'declared',
-        artifact,
-        tracked: listed.length > 0,
-        platforms: [],
-      });
-      continue;
-    }
-    const top = spec.local.map((g) => g.split('/')[0]).find((t) => !/[*?[{]/.test(t));
-    const stateDir = await here(top);
-    // MV-149: the ignore file only beside the grapher's artifact or its state
-    // directory. Alone it is the human's: `codegraph.json` is codegraph's
-    // config as much as its ignore file, and one kept for another checkout's
-    // index is not a leftover of this brain.
-    const ignoreFile = artifact || stateDir ? await here(spec.graphignoreFile) : undefined;
-    const found = Object.values(spec.harness?.platforms ?? {});
-    const platforms: string[] = [];
-    for (const p of [...found.filter((p) => p.uninstallFirst), ...found.filter((p) => !p.uninstallFirst)]) {
-      if (await pathExists(join(dir, p.probe))) platforms.push(p.key);
-    }
-    if (!artifact && !stateDir && !ignoreFile && platforms.length === 0) continue;
-    const paths = [artifact, stateDir, ignoreFile, ...platforms.map((k) => found.find((p) => p.key === k)!.probe)];
-    const listed = await git(dir, ['ls-files', '-z', '--', ...paths.filter((p): p is string => p !== undefined)]).catch(() => '');
-    out.push({
-      name,
-      // A known name keeps its registry entry even where `graphers:` declares
-      // it too (`grapherSpec`), so only an unknown one is `declared`.
-      kind: grapherNames.includes(name) ? (spec.artifactKind ?? 'shared') : 'declared',
-      ...(artifact ? { artifact } : {}),
-      tracked: listed.length > 0,
-      ...(stateDir ? { stateDir } : {}),
-      ...(ignoreFile ? { ignoreFile } : {}),
-      platforms,
-    });
   }
   return out;
 }

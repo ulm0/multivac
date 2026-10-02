@@ -41,7 +41,7 @@ roadmap: 3 planned
   next
     agents-run-in-parallel-where-work-isolates — Urge the fan-out the tool already knows about
   later
-    the-graph-builds-itself-everywhere — First build per declared root
+    ci-checks-every-repo — One CI job per declared repo
 in flight: 1 open change — points-expire
 ```
 
@@ -165,7 +165,7 @@ claims: [INV-02]
 
 If an SDD adapter is declared, `new` **prints** that tool's propose step for you
 to run in your agent, and names the artifact that will prove it ran — it invokes
-nothing itself. See [Graphers and SDD](../../reference/graphers-and-sdd).
+nothing itself. See [SDD tools](../../reference/sdd).
 `--no-sdd` skips the printing and the later gate, once.
 
 The SDD lives in the brain, so its steps start in the brain checkout and write
@@ -200,49 +200,15 @@ explicitly asked for an operation that needs the repo.
 $ mvac change apply points-expire
 committed: change apply: points-expire — status branched
 web: created ~/eco/acme-web — git init, door written, first commit
-graph graphify @ web: wrote .graphifyignore (+12) and .gitignore (+2) before the first build
-graph graphify @ web: built (`graphify update .`) — artifact left uncommitted
-graph graphify @ web: wrote .gitignore (+1) before its first project install
-graph graphify @ web: installed into agents (`graphify install --project --platform agents`)
 api: branched points-expire from main cba4d83 — no origin/main known locally
 api: worktree ~/eco/brain/.multivac/worktrees/points-expire/api
 web: branched points-expire from main a5d5c36 — no origin/main known locally
 web: worktree ~/eco/brain/.multivac/worktrees/points-expire/web
 work here — one checkout per repo, nobody else's tree moves:
   api: ~/eco/brain/.multivac/worktrees/points-expire/api
-    its graph: --graph ~/eco/brain/.multivac/worktrees/points-expire/api/graphify-out/graph.json — paths in its answers are relative to this checkout
   web: ~/eco/brain/.multivac/worktrees/points-expire/web
-    no graph in this checkout yet (`change land` commits one) — --graph ~/eco/acme-web/graphify-out/graph.json answers for the base, without this branch's edits; paths in its answers are relative to ~/eco/acme-web
 then commit on branch points-expire and run `multivac change land points-expire`
 ```
-
-Under each checkout, `apply` names the flag that points the grapher's verbs at
-it from the brain. api's worktree holds its committed graph. web's first graph
-was just built in its own checkout and is not committed yet, so its worktree
-has none: the flag given is the repo checkout's, answering for the base without
-this branch's edits, until `change land` commits one on the branch. An answer's
-paths are relative to the checkout that flag names — `src/server.ts` in web's
-worktree is not the brain's. See
-[Where to ask the graph](../../reference/graphers-and-sdd/#where-to-ask-the-graph).
-
-A repo on codegraph is different: its index is built in each checkout and never
-committed, so `apply` builds one in the worktree it hands out, and names it.
-Were web on codegraph, its lines would read:
-
-```txt
-web: worktree ~/eco/brain/.multivac/worktrees/points-expire/web
-web: .codegraph/ added to ~/eco/acme-web/.git/info/exclude — git ignored no index here, and that file is never committed
-graph codegraph @ web worktree: built (`codegraph init`) — local artifact, never committed
-work here — one checkout per repo, nobody else's tree moves:
-  web: ~/eco/brain/.multivac/worktrees/points-expire/web
-    its index: -p ~/eco/brain/.multivac/worktrees/points-expire/web — as of this apply, refreshed again at `change land`; paths in its answers are relative to this checkout
-```
-
-The `info/exclude` line keeps the index out of `git status` in every checkout
-of that repository, and is never committed. Where a declared harness has a
-post-edit hook that refreshes codegraph, the last line says `refreshed after
-your edits` instead. See
-[A change's own codegraph index](../../reference/graphers-and-sdd/#a-changes-own-codegraph-index).
 
 Each present repo gets its own git worktree for this change, branched after
 the slug. **Write the feature in the printed paths**, not in the shared
@@ -306,8 +272,6 @@ before its steps run, and say when it named the other.
 ```txt
 $ mvac change land points-expire
 stage 1 [ready] api:branched
-graph graphify @ api: refreshed (`graphify update .`) — artifact left uncommitted
-committed: graph: points-expire — refreshed on the change branch
   api: git -C ~/eco/acme-api push -u origin points-expire
   api: open MR points-expire -> main (state the landing order in the description)
   api: once merged: multivac change land points-expire --landed api
@@ -316,18 +280,8 @@ stage 2 [blocked] web:branched
 ```
 
 `land` reports stage by stage: what is ready to push and MR now, what is
-blocked behind an earlier stage. Before each push line it refreshes that repo's
-code graph in the change's worktree and commits it on the branch, so the merge
-carries a graph of the merged tree. Where the repo's `.graphifyignore` lacks
-lines multivac keeps out of the graph, land appends them first and commits the
-file with the graph. A repo on codegraph lands no index: land syncs the one in
-the change's worktree and never commits it, where graphify's graph is
-committed. Where land adds a line to `codegraph.json` — the brain's mount, in
-an ecosystem whose brain holds code — it commits that file alone:
-
-```txt
-graph codegraph @ web: refreshed (`codegraph sync`) — local artifact, never committed
-```
+blocked behind an earlier stage. It commits nothing on the change's branch:
+what you push is what you committed there.
 
 The code you push is judged too. Where an SDD is declared, a commit or a merge
 of code that is not on the branch of an open change declaring the repo is
@@ -377,7 +331,7 @@ claims**:
 $ mvac change close points-expire
 INV-02: ok
 archived -> .multivac/changes/archive/points-expire.md
-archived — commit this: git -C ~/eco/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md .multivac/ecosystem.json && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
+archived — commit this: git -C ~/eco/brain add -- .multivac/changes/archive/points-expire.md .multivac/changes/points-expire.md .multivac/invariants.md && git commit -m "Archive the points-expire change" (no origin remote — the direct commit is the landing)
 api: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/api)
 web: worktree removed (~/eco/brain/.multivac/worktrees/points-expire/web)
 
@@ -385,9 +339,6 @@ ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the
   - [ ] tell support before the flag flips
   - [ ] the public site ships before the backend
 ```
-
-This brain holds no code of its own, so close refreshes no graph in it and the
-archive commit names none: the code repos' graphs landed with their branches.
 
 The printed commit is scoped to the closing change's paths — never `add -A`,
 which in a shared checkout would sweep another change's files into the archive

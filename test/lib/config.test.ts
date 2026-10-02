@@ -24,7 +24,7 @@ test('an unknown config key is refused by name, with its near miss — MV-114', 
   );
 });
 
-test('a stray under a repo entry and under a grapher is refused too — MV-114', async () => {
+test('a stray under a repo entry is refused too — MV-114', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'mvac-stray2-'));
   mkdirSync(join(dir, '.multivac'), { recursive: true });
   const write = (body: string) => writeFileSync(join(dir, '.multivac/config.yml'), body);
@@ -32,25 +32,10 @@ test('a stray under a repo entry and under a grapher is refused too — MV-114',
   write('doors: [agents]\nrepos:\n  api:\n    path: ../api\n    chanel: origin/main\n');
   await assert.rejects(() => loadConfig(dir), /unknown key "repos\.api\.chanel"/);
 
-  write('doors: [agents]\nrepos:\n  brain: .\ngraphers:\n  mine:\n    artifact: g/out\n    refresh: g update\n    binaryy: g\n');
-  await assert.rejects(() => loadConfig(dir), /unknown key "graphers\.mine\.binaryy"/);
-
   // And a legal config still loads.
   write('doors: [agents]\nstrict_pre_push: true\nrepos:\n  brain: .\n');
   const cfg = await loadConfig(dir);
   assert.equal(cfg.strictPrePush, true);
-});
-
-test('a grapher declared under the name `none` is refused by name — MV-122', async () => {
-  // `none` means no grapher at every level; a tool of that name would make the
-  // token mean two things, so the declaration is what gives way.
-  const dir = mkdtempSync(join(tmpdir(), 'mvac-none-decl-'));
-  mkdirSync(join(dir, '.multivac'), { recursive: true });
-  writeFileSync(
-    join(dir, '.multivac/config.yml'),
-    'doors: [agents]\ngrapher: none\ngraphers:\n  none:\n    artifact: out/graph.json\n    refresh: "true"\n',
-  );
-  await assert.rejects(() => loadConfig(dir), /graphers\.none/);
 });
 
 test('managed is a boolean on a repo entry, and only false is carried — MV-125', async () => {
@@ -201,4 +186,40 @@ test("a consumer's read of its mounted brain records the refusal instead of thro
   assert.equal(cfg.repos.web.path, '../web', 'the rest of the config is loaded as declared');
   // The default is refuse, and saying so explicitly changes nothing.
   await assert.rejects(() => loadConfig(dir, { sddDeclaration: 'refuse' }), ConfigError);
+});
+
+test('a config declaring a dropped grapher key loads, and the key is recorded — MV-153', async () => {
+  // multivac keeps no code graph. A brain an earlier release equipped still
+  // loads whatever these keys hold — a value that release would have refused
+  // included — and the loader records which were there, in the order the
+  // ignore line names them. Nothing reads the values.
+  const dir = mkdtempSync(join(tmpdir(), 'mvac-dropped-'));
+  mkdirSync(join(dir, '.multivac'), { recursive: true });
+  const write = (body: string) => writeFileSync(join(dir, '.multivac/config.yml'), body);
+
+  write(
+    'doors: [agents]\ngrapher: graphify\ngrapher_auto: maybe\ngraphers:\n  none: {}\n' +
+      'repos:\n  brain: .\n  web:\n    path: ../web\n    grapher: codegraph\n',
+  );
+  const cfg = await loadConfig(dir);
+  assert.deepEqual(cfg.dropped, ['grapher', 'grapher_auto', 'graphers', 'repos.web.grapher']);
+  for (const k of ['grapher', 'grapherAuto', 'graphers', 'grapher_auto']) assert.equal(k in cfg, false, k);
+  assert.equal('grapher' in cfg.repos.web, false);
+
+  // Each alone, in any shape.
+  for (const [body, keys] of [
+    ['grapher: [1, 2]\nrepos:\n  brain: .\n', ['grapher']],
+    ['grapher_auto: false\nrepos:\n  brain: .\n', ['grapher_auto']],
+    ['graphers: nonsense\nrepos:\n  brain: .\n', ['graphers']],
+    ['repos:\n  api:\n    path: ../api\n    grapher: { nested: true }\n', ['repos.api.grapher']],
+  ] as const) {
+    write(`doors: [agents]\n${body}`);
+    assert.deepEqual((await loadConfig(dir)).dropped, keys, body);
+  }
+
+  // None declared, none recorded; and a near miss is still an unknown key.
+  write('doors: [agents]\nrepos:\n  brain: .\n');
+  assert.deepEqual((await loadConfig(dir)).dropped, []);
+  write('doors: [agents]\ngrapher_autos: true\nrepos:\n  brain: .\n');
+  await assert.rejects(() => loadConfig(dir), /unknown key "grapher_autos"/);
 });

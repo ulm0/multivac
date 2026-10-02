@@ -1,18 +1,17 @@
 // MV-122: every surface resolves an adapter PER ROOT, through one function.
 //
-// Twelve functions used to answer "which sdd, which grapher applies here" for
+// Twelve functions used to answer "which adapter applies here" for
 // themselves. The gate and the printed steps read only the ecosystem's `sdd:`,
-// an opted-out repo still proved a step, `grapher: none` read as an unverified
-// tool, and the brain ignored its own entry. Each test below is one of those
-// measurements, run in a scratch ecosystem.
+// an opted-out repo still proved a step, and the brain ignored its own entry.
+// Each test below is one of those measurements, run in a scratch ecosystem.
 //
 // MV-146: for the SDD, per root is the brain alone. A code repo's `sdd:` takes
 // only `none`; the per-repo SDD configs these tests used to run are refused at
 // load now, and the tests below say so through the command a human would run.
 //
 // Tools are STUBS on a PATH this file builds — `<bin>:/usr/bin:/bin` — never
-// the host's: a developer's real spec-kit or graphify must not change what
-// these tests say (Principle IV).
+// the host's: a developer's real spec-kit must not change what these tests
+// say (Principle IV).
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -135,7 +134,6 @@ test('a config naming only top-level adapters renders no roots anywhere', async 
   const { brain } = eco([
     'doors: [agents]',
     'sdd: speckit',
-    'grapher: graphify',
     'repos:',
     '  api: ../acme-api',
     '  web: ../acme-web',
@@ -152,64 +150,7 @@ test('a config naming only top-level adapters renders no roots anywhere', async 
   assert.equal(page.includes('@'), false);
 });
 
-// --- US2: `none` is a token, for both kinds ---
-
-/** A declared grapher whose refresh really writes its artifact, with no host tool. */
-const MK_GRAPHER = [
-  'graphers:',
-  '  mk:',
-  '    artifact: g/graph.json',
-  '    refresh: "mkdir -p g && touch g/graph.json"',
-];
-
-/** Written and committed, so the graph gates pass and close reaches its refresh. */
-const trackGraph = (dir: string, rel: string): void => {
-  write(dir, rel, '{}\n');
-  execFileSync('git', ['-C', dir, 'add', rel]);
-  execFileSync('git', ['-C', dir, 'commit', '-qm', 'chore: track the graph']);
-};
-
-/** Open a change with api and web landed, stopping just before close. */
-async function readyToClose(brain: string, ctx: { cwd: string }, slug: string): Promise<void> {
-  await capture(() => change.run(['new', slug, 'Points expire'], ctx));
-  const file = join(brain, '.multivac/changes', `${slug}.md`);
-  writeFileSync(
-    file,
-    readFileSync(file, 'utf8')
-      .replace('repos: {}', 'repos:\n  api:\n    status: landed\n  web:\n    status: landed')
-      .replace('landing_order: []', 'landing_order:\n  - - api\n    - web'),
-  );
-}
-
-test('a repo with grapher: none is out of scope in doctor, doors and close', async () => {
-  const { brain, api, web, ctx } = eco([
-    'doors: [agents]',
-    ...MK_GRAPHER,
-    'grapher: mk',
-    'repos:',
-    '  api: ../acme-api',
-    '  web:',
-    '    path: ../acme-web',
-    '    grapher: none',
-  ]);
-  const { doctorReport } = await import('../../src/commands/doctor.js');
-  const report = (await doctorReport(brain)).lines.join('\n');
-  assert.match(report, /none @ web: no grapher declared for this repo — out of scope, not a gap/);
-  assert.doesNotMatch(report, /not verified/);
-
-  const { doorsCommand } = await import('../../src/commands/doors.js');
-  const doors = await capture(() => doorsCommand.run([], ctx));
-  assert.doesNotMatch(doors.out, /not verified/);
-
-  await readyToClose(brain, ctx, 'none-graph');
-  trackGraph(brain, 'g/graph.json');
-  trackGraph(api, 'g/graph.json');
-  const c = await capture(() => change.run(['close', 'none-graph'], ctx));
-  assert.match(c.out, /graph mk @ api: refreshed/, 'close reached its refresh');
-  assert.doesNotMatch(c.out, /not verified/);
-  assert.doesNotMatch(c.out, /@ web/);
-  assert.equal(existsSync(join(web, 'g')), false, 'nothing was built in web');
-});
+// --- US2: `none` is a token ---
 
 test('a repo with sdd: none proves nothing: its spec does not satisfy plan', async () => {
   const { web, ctx } = eco([
@@ -234,7 +175,6 @@ test('a top-level none names no `none` anywhere, and flow.md says nothing applie
   const { brain } = eco([
     'doors: [agents]',
     'sdd: none',
-    'grapher: none',
     'repos:',
     '  api: ../acme-api',
     '  web: ../acme-web',
@@ -249,79 +189,6 @@ test('a top-level none names no `none` anywhere, and flow.md says nothing applie
   }
   const page = renderFlow(cfg);
   assert.match(page, /no SDD tool is declared/);
-  assert.match(page, /no grapher is declared/);
+  assert.doesNotMatch(page, /graph/);
   assert.equal(page.includes('`none`'), false);
-});
-
-// --- US3: the brain reads its own entry ---
-
-/** Stubs that write what the real tools write, in the directory they run in. */
-function stubGraphers(): void {
-  const stub = (name: string, script: string): void => {
-    writeFileSync(join(bin, name), `#!/bin/sh\n${script}\n`);
-    chmodSync(join(bin, name), 0o755);
-  };
-  stub('graphify', 'mkdir -p graphify-out && echo {} > graphify-out/graph.json');
-  stub('codegraph', 'mkdir -p .codegraph && : > .codegraph/codegraph.db');
-}
-
-test("the brain's own grapher wins over the ecosystem's everywhere the brain is graphed", async () => {
-  stubGraphers();
-  const { brain, api, ctx } = eco([
-    'doors: [agents]',
-    'grapher: graphify',
-    'repos:',
-    '  brain:',
-    '    path: .',
-    '    grapher: codegraph',
-    '  api: ../acme-api',
-  ]);
-  const cfg = await loadConfig(brain);
-  const { renderBrainDoor } = await import('../../src/doors/brain.js');
-  const door = renderBrainDoor(cfg, 1);
-  assert.match(door, /kept fresh for you by `codegraph` at `\.codegraph\/codegraph\.db` — refreshed at `change land` and `change close`; it is built in each checkout, so never commit it\./);
-  // MV-148: graphify is named for api alone, under the siblings' head — never
-  // as the brain's own grapher.
-  assert.doesNotMatch(door, /kept fresh for you by `graphify`/);
-  assert.match(door, /^- The other code repos keep their own graphs\./m);
-  assert.match(door, /^ {2}- `graphify` at `graphify-out\/graph\.json` \(api: `\.\.\/acme-api`\)/m);
-
-  const page = renderFlow(cfg);
-  // MV-149: a local index is also built in each change worktree at apply.
-  assert.match(page, /no `\.codegraph\/codegraph\.db`, and in each change worktree at `change apply`, refreshed .*at `change close`, in brain$/m);
-  assert.match(page, /no `graphify-out\/graph\.json`, refreshed .*at `change close`, in api$/m);
-
-  const { doctorReport } = await import('../../src/commands/doctor.js');
-  const report = (await doctorReport(brain)).lines.join('\n');
-  assert.match(report, /codegraph @ brain: /);
-  assert.match(report, /graphify @ api: /);
-  assert.doesNotMatch(report, /graphify @ brain/);
-
-  await capture(() => change.run(['new', 'own-graph', 'Own graph'], ctx));
-  // The change names no repo, so `repos sync` builds api (MV-134).
-  await capture(() => reposCommand.run(['sync'], ctx));
-  const c = await capture(() => change.run(['close', 'own-graph'], ctx));
-  assert.ok(existsSync(join(brain, '.codegraph/codegraph.db')), 'the brain was built with its own grapher');
-  assert.equal(existsSync(join(brain, 'graphify-out')), false, 'and not with the ecosystem one');
-  assert.ok(existsSync(join(api, 'graphify-out/graph.json')));
-  // Tracking policy is not asked here: only that nothing judged the brain by graphify's artifact.
-  assert.doesNotMatch(c.out, /brain: graphify-out/, 'the gate judged the brain by its own artifact');
-});
-
-test('a brain entry grapher with no ecosystem grapher still builds and gates the brain', async () => {
-  stubGraphers();
-  const { brain, api, ctx } = eco([
-    'doors: [agents]',
-    'repos:',
-    '  brain:',
-    '    path: .',
-    '    grapher: graphify',
-    '  api: ../acme-api',
-  ]);
-  await capture(() => change.run(['new', 'brain-graph', 'Brain graph'], ctx));
-  const c = await capture(() => change.run(['close', 'brain-graph'], ctx));
-  assert.ok(existsSync(join(brain, 'graphify-out/graph.json')), 'built where the brain declared it');
-  assert.equal(existsSync(join(api, 'graphify-out')), false);
-  assert.equal(c.code, 1);
-  assert.match(c.out, /brain: graphify-out\/graph\.json is not committed/);
 });

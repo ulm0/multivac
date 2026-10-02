@@ -19,8 +19,8 @@ import { init } from '../../src/commands/init.js';
 import { doorsCommand } from '../../src/commands/doors.js';
 import { layoutError, loadConfig } from '../../src/lib/config.js';
 import { gitInit, vendorPath } from '../helpers/fixture.js';
-// MV-128: init runs the declared tools, so a host with spec-kit or graphify
-// installed would run the real ones here. Stubs, on a PATH built for it.
+// MV-128: init runs the declared tools, so a host with spec-kit installed
+// would run the real one here. Stubs, on a PATH built for it.
 process.env.PATH = vendorPath().path;
 
 const tmp = (): string => mkdtempSync(join(tmpdir(), 'mvac-init-'));
@@ -286,13 +286,14 @@ test('init detects artifacts and proposes them as config comments', async () => 
   await init.run([], { cwd: dir });
   const cfg = readFileSync(join(dir, '.multivac/config.yml'), 'utf8');
   assert.match(cfg, /^doors: \[agents\]$/m, 'default is no projection');
-  assert.match(cfg, /^# grapher: graphify$/m, 'detected grapher proposed, not enacted');
+  // MV-153: a graph's outputs propose nothing — multivac keeps no code graph.
+  assert.doesNotMatch(cfg, /grapher/);
   // registry name is opsx; openspec/ is the artifact dir it is detected by
   assert.match(cfg, /^# sdd: opsx$/m, 'detected sdd proposed, not enacted');
   assert.match(cfg, /^# doors: \[agents, claude\]$/m, 'detected door proposed');
   // proposals are comments: the loaded config carries none of them
   const loaded = await loadConfig(dir);
-  assert.equal(loaded.grapher, undefined);
+  assert.deepEqual(loaded.dropped, []);
   assert.equal(loaded.sdd, undefined);
 });
 
@@ -362,23 +363,6 @@ test('init keeps an existing config.yml untouched', async () => {
   const before = readFileSync(join(dir, '.multivac/config.yml'), 'utf8');
   await init.run(['--sdd', 'speckit', '--provider', 'cursor'], { cwd: dir });
   assert.equal(readFileSync(join(dir, '.multivac/config.yml'), 'utf8'), before);
-});
-
-test('the scaffolded door names the declared grapher — MV-102', async () => {
-  // The door a fresh brain gets is the door `doors` maintains, so what MV-90
-  // put in it reaches the first reader rather than the second command's reader.
-  const dir = tmp();
-  assert.equal(await init.run(['--grapher', 'graphify', '--quiet', dir], { cwd: dir }), 0);
-
-  const door = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
-  assert.match(door, /graphify/);
-  assert.match(door, /graphify query/);
-  // MV-148: an empty repo is a brain that holds no code, so the grapher is
-  // named through the ecosystem graph's verbs and the line saying no code repo
-  // resolves it yet — never as a graph of this repo.
-  assert.match(door, /`graphify query "<question>" --graph \.multivac\/ecosystem\.json`/);
-  assert.match(door, /^ {2}- `graphify` at `graphify-out\/graph\.json`: no writable code repo resolves it yet/m);
-  assert.doesNotMatch(door, /A code graph is kept fresh for you/);
 });
 
 test('the scaffolded door lists the declared sibling repos — MV-102', async () => {
@@ -472,12 +456,11 @@ test('an unknown adapter name is refused before anything is written — MV-114',
   const dir = tmp();
   assert.equal((await capture(() => init.run(['--sdd', 'speckti', '--quiet', dir], { cwd: dir }))).code, 2);
   assert.deepEqual(readdirSync(dir), [], 'it wrote before refusing');
-  // And the empty value in either written form, which used to exit 1.
+  // And the empty value, which used to exit 1.
   assert.equal((await capture(() => init.run(['--sdd=', '--quiet', dir], { cwd: dir }))).code, 2);
-  assert.equal((await capture(() => init.run(['--grapher', '', '--quiet', dir], { cwd: dir }))).code, 2);
 });
 
-// --- MV-122: `--grapher` is judged before anything is created ---
+// --- MV-153: `--grapher` is an unknown flag, judged before anything is created ---
 
 /** Stdout and stderr: a refusal is a warning, and the name it gives is the point. */
 const captureAll = async (fn: () => Promise<number>): Promise<{ code: number; out: string }> => {
@@ -494,56 +477,24 @@ const captureAll = async (fn: () => Promise<number>): Promise<{ code: number; ou
   }
 };
 
-const MYTOOL = 'graphers:\n  mytool:\n    artifact: mytool-out/graph.json\n    refresh: mytool build\n';
-
-test('an unknown --grapher is refused before the directory exists — MV-122', async () => {
-  // Measured: `init --grapher graphfy` exited 0, wrote `grapher: graphfy` and
-  // projected a door with no graph block, while MV-114 said the flag was checked.
-  const dir = join(tmp(), 'not-yet');
-  const c = await captureAll(() => init.run(['--grapher', 'graphfy', '--quiet', dir], { cwd: tmp() }));
-  assert.equal(c.code, 2);
-  assert.match(c.out, /init: unknown --grapher graphfy — known: graphify, codegraph/);
-  assert.throws(() => statSync(dir), 'init created the directory before refusing');
-});
-
-test('a grapher declared under graphers: in the config already there is a known name — MV-122', async () => {
-  const dir = tmp();
-  assert.equal((await captureAll(() => init.run(['--quiet', dir], { cwd: dir }))).code, 0);
-  const cfg = join(dir, '.multivac/config.yml');
-  writeFileSync(cfg, `${readFileSync(cfg, 'utf8')}${MYTOOL}`);
-  assert.equal((await captureAll(() => init.run(['--grapher', 'mytool', '--quiet', dir], { cwd: dir }))).code, 0);
-
-  // A name neither verified nor declared: refused, naming both vocabularies,
-  // and nothing in the tree moves.
-  const before = snapshot(dir);
-  const c = await captureAll(() => init.run(['--grapher', 'graphfy', '--quiet', dir], { cwd: dir }));
-  assert.equal(c.code, 2);
-  assert.match(c.out, /init: unknown --grapher graphfy — known: graphify, codegraph, mytool/);
-  assert.deepEqual(snapshot(dir), before);
-});
-
-test('`none` is not a name either flag can take — MV-122', async () => {
-  // Leaving the flag out is how init declares no adapter.
-  for (const flag of ['--grapher', '--sdd']) {
-    const dir = join(tmp(), 'fresh');
-    const c = await captureAll(() => init.run([flag, 'none', '--quiet', dir], { cwd: tmp() }));
-    assert.equal(c.code, 2, `${flag} none`);
-    assert.throws(() => statSync(dir));
+test('--grapher is an unknown flag, refused before anything is written', async () => {
+  // MV-153: the tool keeps no graph, so the flag is no longer declared, and the
+  // shared guard refuses it — exit 2, the known flags named, nothing created.
+  for (const name of ['graphify', 'codegraph', 'none']) {
+    const dir = join(tmp(), 'not-yet');
+    const c = await captureAll(() => init.run(['--grapher', name, '--quiet', dir], { cwd: tmp() }));
+    assert.equal(c.code, 2, name);
+    assert.match(c.out, /^init: unknown flag --grapher — known: --provider <a,b>, --sdd <name>, --quiet$/m);
+    assert.throws(() => statSync(dir), 'init created the directory before refusing');
   }
 });
 
-test('a legacy brain is judged by its own graphers: before anything moves — MV-122', async () => {
-  const ok = legacyBrain();
-  writeFileSync(join(ok, '.multivac/config.yml'), `doors: [agents]\n${MYTOOL}`);
-  assert.equal((await captureAll(() => init.run(['--grapher', 'mytool', '--quiet'], { cwd: ok }))).code, 0);
-
-  const typo = legacyBrain();
-  writeFileSync(join(typo, '.multivac/config.yml'), `doors: [agents]\n${MYTOOL}`);
-  const c = await captureAll(() => init.run(['--grapher', 'graphfy', '--quiet'], { cwd: typo }));
-  assert.equal(c.code, 2);
-  assert.match(c.out, /known: graphify, codegraph, mytool/);
-  assert.match(readFileSync(join(typo, 'invariants.md'), 'utf8'), /old law/, 'nothing was moved');
-  assert.throws(() => statSync(join(typo, '.multivac/invariants.md')));
+test('`none` is not a name --sdd can take', async () => {
+  // Leaving the flag out is how init declares no adapter.
+  const dir = join(tmp(), 'fresh');
+  const c = await captureAll(() => init.run(['--sdd', 'none', '--quiet', dir], { cwd: tmp() }));
+  assert.equal(c.code, 2, '--sdd none');
+  assert.throws(() => statSync(dir));
 });
 
 // MV-127. `repos sync` mounts the brain in each consumer with this url, so the
@@ -572,12 +523,4 @@ test('init says so when there is no origin to suggest — MV-127', async () => {
   const cfg = readFileSync(join(dir, '.multivac/config.yml'), 'utf8');
   assert.match(cfg, /^# brain_url: {3}# no git remote detected/m);
   assert.equal((await loadConfig(dir)).brainUrl, undefined);
-});
-
-test('init writes the ecosystem graph the door it writes names — MV-141', async () => {
-  const dir = tmp();
-  const out = await capture(() => init.run([], { cwd: dir }));
-  assert.match(out.out, /init: wrote \.multivac\/ecosystem\.json — how repos, rows, anchors and changes relate; generated/);
-  assert.match(readFileSync(join(dir, '.multivac/ecosystem.json'), 'utf8'), /"repo:brain"/);
-  assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /`\.multivac\/ecosystem\.json`/);
 });

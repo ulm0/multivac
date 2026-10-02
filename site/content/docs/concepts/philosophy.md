@@ -48,13 +48,14 @@ A brain has three layers, and they are not equally derivable:
 
 | layer | what it is | derivable from code? |
 | --- | --- | --- |
-| **Map** | what exists, what calls what, what contract each thing exposes | **yes**, and well — this is what graphers and `mvac seed` produce |
+| **Map** | what exists, what calls what, what contract each thing exposes | **yes**, and well — this is what `mvac seed` and your agent's own search of the tree produce |
 | **Law** | what is non-negotiable, and why | **no** — "a lawyer validated this sentence" lives in no AST |
 | **Journal** | why a decision was reversed | **no** — it accumulates forward, it cannot be recomputed |
 
 This table is why multivac is not a documentation generator. Generating the
-map is a solved problem and the tool delegates it: declare a grapher, the
-graph refreshes itself, done. The law is the part no static analysis reaches,
+map is a solved problem and the tool does not compete for it: `mvac seed`
+inventories where the architecture lives, and your agent reads the tree for
+the rest. The law is the part no static analysis reaches,
 because the interesting constraints are the ones that come from outside the
 code — a regulator, a contract, a postmortem, a decision someone made in a
 room. And the journal is the only layer that cannot be regenerated at all,

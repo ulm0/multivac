@@ -43,9 +43,8 @@ checkout: another agent may be running another change in the same repo. The
 SDD files written before `apply` are **carried onto the branch** when the
 change names the brain's own entry (MV-133); in a brain that holds no code they
 stay in the checkout, and `close` names them in the archive commit it prints
-(MV-144). `land` commits a shared code graph on the branch (MV-134), never a
-local index (MV-149), then prints the push and the merge request, which are
-yours. `land --landed <repo>` records your statement that it merged.
+(MV-144). `land` commits nothing on the branch; it prints the push and the
+merge request, which are yours. `land --landed <repo>` records your statement that it merged.
 
 ## close — the gate
 
@@ -57,25 +56,12 @@ each commit where the hooks are armed, and refuses one only in a blocking mode
 or under `--strict`. If close refuses, the change is not done: fix the code or
 fix the declaration, honestly. Close enacts nothing; the human flips each row.
 
-The graph gate asks that a declared grapher's graph exists, never that it is
-fresh (MV-90). Do not reach for `--no-grapher` or `grapher_auto: false` to get
-past a root you could simply graph.
-
 Close prints `.multivac/ritual.md` and checks none of it: take each line to the
 human before calling the change done. An empty ritual is not permission to skip
 a ceremony nobody wrote down: ask, then write the line.
 
 Decisions made mid-change become claims at close: propose the row, the human
 enacts. This is how most law is born at steady state.
-
-## The graph — it follows YOUR edits, not the commit
-
-The brain door says when the graph is refreshed and whether it is committed,
-and names the grapher's own verbs, says it has none, or names no grapher: then
-grep. Where it names verbs, `change apply` prints under each checkout the flag
-that asks that checkout's graph. A grapher multivac has not verified runs
-nothing until you declare its contract under `graphers:`, as `doors` and
-`doctor` print it. Asking the graph is yours: no file records a query (MV-140).
 
 ## The SDD flow — the lifecycle instructs, YOU run, the gate checks
 

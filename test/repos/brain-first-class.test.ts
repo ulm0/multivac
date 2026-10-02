@@ -106,8 +106,8 @@ test('change: brain is a lifecycle repo key, declared or not', async () => {
   assert.equal(bare.code, 0);
   assert.match(bare.out, /^brain: .* \(the brain\)$/m);
   assert.doesNotMatch(bare.out, /brain==code/);
-  // With no grapher declared there is no graph to say anything about.
-  assert.doesNotMatch(bare.out, /no repos entry is the brain/);
+  // MV-153: and no graph is said anything about.
+  assert.doesNotMatch(bare.out, /no repos entry is the brain|graph/);
 
   writeFileSync(join(brain, '.multivac/config.yml'), BRAIN_IS_CODE);
   const applied = await capture(() => change.run(['apply', 'law-row'], ctx));

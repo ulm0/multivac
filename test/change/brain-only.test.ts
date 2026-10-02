@@ -18,7 +18,6 @@ import { change } from '../../src/commands/change.js';
 import { reposCommand } from '../../src/commands/repos.js';
 import { loadChange, saveChange } from '../../src/change/file.js';
 import { loadConfig } from '../../src/lib/config.js';
-import { renderEcosystem } from '../../src/doors/ecosystem.js';
 
 for (const [k, v] of Object.entries({
   GIT_AUTHOR_NAME: 'mvac-test', GIT_AUTHOR_EMAIL: 'test@invalid',
@@ -326,15 +325,4 @@ test('brain==code keyed core: close refuses over a task left open in its worktre
   assert.match(c.out, /refused — brain:\.multivac\/worktrees\/keyed\/core\/specs\/001-keyed\/tasks\.md has 1 open item\(s\)/);
   assert.match(c.out, /- \[ \] T002 still open/);
   assert.equal(existsSync(join(e.brain, '.multivac/changes/archive/keyed.md')), false, 'nothing archived');
-});
-
-test('ecosystem.json code nodes carry the SDD that governs them, and an exempt node none', async () => {
-  const e = eco({ repos: ['  api: ../acme-api', '  web:', '    path: ../acme-web', '    sdd: none'] });
-  const graph = JSON.parse(await renderEcosystem(e.brain, await loadConfig(e.brain))) as {
-    nodes: Array<{ id: string; sdd?: string | null }>;
-  };
-  const sdd = (id: string): string | null | undefined => graph.nodes.find((n) => n.id === id)?.sdd;
-  assert.equal(sdd('repo:brain'), 'speckit');
-  assert.equal(sdd('repo:api'), 'speckit');
-  assert.equal(sdd('repo:web'), null);
 });

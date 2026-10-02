@@ -85,7 +85,7 @@ this project has fixed came from exactly that — the concurrency work exists
 because two agents corrupted each other's branches, and we wrote it down
 instead of working around it.
 
-## Adding a harness, a grapher or an SDD tool
+## Adding a harness or an SDD tool
 
 Adapters are **data, not code**: an entry in `src/adapters/registry.ts`. Add
 what the vendor's own documentation says it reads — the exact path, the

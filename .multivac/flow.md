@@ -10,7 +10,6 @@ this describes what it and the declared adapters already do.
 
 - the doors and the git hooks are re-projected by `multivac doors`
 - the `speckit` init is run in the brain when its `.specify` is missing, or the lifecycle says why it could not
-- the code graph is built where `multivac repos sync` or a change reaches a repo with no `graphify-out/graph.json`, refreshed after each edit through the harness hook, and at `change land`, where it is committed on the change branch, and at `change close`, in every declared repo
 
 ## Gate — multivac refuses without it
 
@@ -21,7 +20,6 @@ this describes what it and the declared adapters already do.
 - `change apply` refuses without `specs/<n>-<slug>/plan.md`
 - `change apply` refuses without `specs/<n>-<slug>/tasks.md`
 - `change plan` refuses while `.specify/memory/constitution.md` is missing, empty or still the template, in the brain
-- `change close` refuses while the brain or a repo the change names has no `graphify-out/graph.json`
 
 ## Yours — nobody can check these
 
@@ -30,5 +28,4 @@ this describes what it and the declared adapters already do.
 - `/speckit.analyze` — /speckit.analyze is STRICTLY READ-ONLY by its own spec — it writes zero bytes, so no file on disk can prove it ran
 - `/speckit.implement` — implement's only claim of completion is every task marked [X] in tasks.md — the agent grading its own homework, not evidence the code exists or works
 - `/speckit.converge` — a clean converge is forbidden to touch tasks.md — the converged outcome is invisible to the filesystem, and its absence is indistinguishable from never having run it
-- asking `graphify` before reading the tree — no committed file records a query: graphify writes only an untracked `graphify-out/cache/last_query_stamp`, a query that found nothing writes it too, and its own Claude hook nudges toward a query without blocking a read
 <!-- multivac:end -->

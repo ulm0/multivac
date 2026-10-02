@@ -306,12 +306,38 @@ test('close names the commit that stores the archive, scoped to this change', as
   // scoped paths, never add -A; the released reservation's law edit rides too
   assert.match(
     out,
-    /archived — commit this: git -C .* add -- \.multivac\/changes\/archive\/say-commit\.md \.multivac\/changes\/say-commit\.md \.multivac\/invariants\.md \.multivac\/ecosystem\.json && git commit -m "Archive the say-commit change"/,
+    /archived — commit this: git -C .* add -- \.multivac\/changes\/archive\/say-commit\.md \.multivac\/changes\/say-commit\.md \.multivac\/invariants\.md && git commit -m "Archive the say-commit change"/,
   );
   assert.doesNotMatch(out, /add -A/);
   // no origin remote: the direct commit is the landing, and close says so
   assert.match(out, /no origin remote — the direct commit is the landing/);
   assert.match(git(b, 'status', '--porcelain', '-uall'), /changes\/archive\/say-commit\.md/);
+});
+
+test("close's archive commit names no graph and no ecosystem graph — MV-153", async () => {
+  // A brain an earlier release graphed: its config still names the grapher,
+  // and its graph and its rendered ecosystem are committed.
+  const b = brain();
+  writeFileSync(join(b, '.multivac/config.yml'), 'doors: [agents]\ngrapher: graphify\nrepos:\n  brain: .\n');
+  mkdirSync(join(b, 'graphify-out'), { recursive: true });
+  writeFileSync(join(b, 'graphify-out/graph.json'), '{"nodes":[],"links":[]}\n');
+  writeFileSync(join(b, '.multivac/ecosystem.json'), '{"nodes":[],"links":[]}\n');
+  git(b, 'add', '-A');
+  git(b, 'commit', '-q', '-m', 'an earlier release');
+  const base = git(b, 'rev-parse', 'HEAD');
+  await declare(b, 'plain-close');
+  assert.equal(await change.run(['land', 'plain-close', '--landed', 'brain'], { cwd: b }), 0);
+  const { code, out } = await capture(() => change.run(['close', 'plain-close'], { cwd: b }));
+  assert.equal(code, 0, out);
+  const add = out.split('\n').find((l) => l.includes('add -- '))!;
+  assert.match(
+    add,
+    /add -- \.multivac\/changes\/archive\/plain-close\.md \.multivac\/changes\/plain-close\.md \.multivac\/invariants\.md && git commit -m "Archive the plain-close change"/,
+  );
+  assert.doesNotMatch(out, /graph/i);
+  // Nothing the lifecycle committed touched either file, and both are as they were.
+  assert.equal(git(b, 'log', '--format=', '--name-only', `${base}..HEAD`, '--', 'graphify-out', '.multivac/ecosystem.json'), '');
+  assert.equal(git(b, 'status', '--porcelain', '--', 'graphify-out', '.multivac/ecosystem.json'), '');
 });
 
 test('close on a trunk with a remote prints the branch+MR variant; on a branch, that branch', async () => {
@@ -429,7 +455,7 @@ test('with no SDD declared the archive pathspec is what it always was — MV-144
   const add = out.split('\n').find((l) => l.includes('add -- '))!;
   assert.match(
     add,
-    /add -- \.multivac\/changes\/archive\/no-sdd-here\.md \.multivac\/changes\/no-sdd-here\.md \.multivac\/invariants\.md \.multivac\/ecosystem\.json &&/,
+    /add -- \.multivac\/changes\/archive\/no-sdd-here\.md \.multivac\/changes\/no-sdd-here\.md \.multivac\/invariants\.md &&/,
   );
 });
 

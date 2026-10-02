@@ -9,14 +9,13 @@ the human.
 ## 0. Sync
 
 `mvac repos sync` clones every declared repo and equips it: the declared SDD in
-the brain, each repo's grapher. Then `mvac repos check` names per repo what is
-still missing. Draft no law over a repo that is not cloned, or, where a grapher
-is declared, that has no graph to ask.
+the brain. Then `mvac repos check` names per repo what is still missing. Draft
+no law over a repo that is not cloned.
 
 ## 1. Run the seeder
 
 `mvac seed` writes `.multivac/seed-report.md`: where the architecture lives, by
-category per repo, and each repo's setup. Nothing in it is law. Start from the
+category per repo, and the brain's setup. Nothing in it is law. Start from the
 **policy gates** (pre-commit, semgrep, linters, CODEOWNERS): each is a rule the
 project already enforces, with its rationale, waiting to be lifted into a
 claim. Read the **decisions** (ADRs, `AGENTS.md`, CONTRIBUTING) before drafting:

@@ -16,7 +16,6 @@ import {
   readConfig,
   ConfigError,
   CONFIG_PATH,
-  ECOSYSTEM_PATH,
   LAW_PATH,
   type LoadOpts,
 } from '../lib/config.js';
@@ -35,7 +34,7 @@ import {
 import { samePath } from '../lib/paths.js';
 import { dim, green, red, say, tapOutput, warn, warnings, yellow } from '../lib/out.js';
 import { codeInChangeLine } from '../lib/code-in-change.js';
-import { renderEcosystem } from '../doors/ecosystem.js';
+import { droppedKeysClause, droppedKeysLine } from '../lib/dropped.js';
 import { hasProjectedDoor } from '../hooks/install.js';
 import { doorTargets, type HookPayload } from '../adapters/registry.js';
 import {
@@ -1642,19 +1641,6 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
     // read deciding whether this commit may proceed. Silent unless it applies.
     const conf = scope ? null : await configLine(brainDir);
     if (conf) emit(conf.text, conf.quiet);
-    // MV-139: the committed governance graph against a fresh rendering. Reported,
-    // never gating: parallel branches each render it, and a merge resolves by
-    // re-rendering, so a gate would refuse work nobody did wrong. On a quiet
-    // run it is the last clause of the one line.
-    let ecosystem: string | null = null;
-    if (!scope) {
-      const want = await renderEcosystem(brainDir, cfg).catch(() => null);
-      const have = await readFile(join(brainDir, ECOSYSTEM_PATH), 'utf8').catch(() => null);
-      if (want !== null && have !== want) {
-        emit(`  ${dim('ecosystem')} ${ECOSYSTEM_PATH} is ${have === null ? 'absent' : 'stale'} — \`multivac doors\` renders it; reported, never gating`, '');
-        ecosystem = `${ECOSYSTEM_PATH} ${have === null ? 'absent' : 'stale'} (\`multivac doors\`)`;
-      }
-    }
     // MV-137: the code in this commit, merge or range, and the change it lands in.
     const code = await codeInChangeLine({
       brainDir,
@@ -1666,12 +1652,17 @@ async function runVerify(argv: string[], ctx: CommandContext): Promise<number> {
       range,
     });
     if (code) emit(code.text, code.quiet);
-    if (ecosystem !== null) emit(null, ecosystem);
     const sddRefused = lagging && cfg.sddRefusal !== undefined ? mountedRefusalLine(cfg.sddRefusal, strict) : null;
     if (sddRefused) emit(sddRefused.text, sddRefused.quiet);
     // MV-107, answered by the same index-vs-HEAD read the enactment check just
     // made, so the law is compared once and reported twice rather than read twice.
     if (lawGone) emit(lawGone.text, lawGone.quiet);
+    // MV-153: the keys an earlier release read for a code graph load and change
+    // nothing. The brain checkout hears them named, a consumer never; a quiet
+    // run carries them as its last clause. Reported, never gating.
+    if (!scope && cfg.dropped.length > 0) {
+      emit(`  ${dim('config')}    ${droppedKeysLine(cfg.dropped)}`, droppedKeysClause(cfg.dropped));
+    }
     const finalExit: 0 | 1 =
       staleBlocking > 0 || enact.gates || conf?.gates === true || lawGone?.gates === true || code?.gates === true || sddRefused?.gates === true
         ? 1

@@ -22,8 +22,7 @@ import { doorsCommand, installSkill } from '../../src/commands/doors.js';
 import { installHooks } from '../../src/hooks/install.js';
 import { countActiveInvariants, renderBrainDoor } from '../../src/doors/brain.js';
 import { renderConsumerDoor } from '../../src/doors/consumer.js';
-import { refreshHookCmd } from '../../src/doors/settings.js';
-import { grapherSpec, sddSpec } from '../../src/adapters/registry.js';
+import { sddSpec } from '../../src/adapters/registry.js';
 import type { Config } from '../../src/types.js';
 
 const eco = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-')));
@@ -225,13 +224,12 @@ test('brain door carries the SDD flow when one is declared', () => {
     doors: ['agents'],
     sdd: 'opsx',
     sddAuto: true,
-  grapherAuto: true,
     authorities: [],
     blocking: ['absent', 'count', 'each'],
     staleness: 'report',
     strictPrePush: false,
     mount: '.brain',
-    graphers: {},
+    dropped: [],
     repos: {},
   };
   const door = renderBrainDoor(cfg, 1);
@@ -280,13 +278,12 @@ test('under sdd_auto: false the brain door claims no refusal, and still says to 
     doors: ['agents'],
     sdd: 'speckit',
     sddAuto: false,
-    grapherAuto: true,
     authorities: [],
     blocking: ['absent', 'count', 'each'],
     staleness: 'report',
     strictPrePush: false,
     mount: '.brain',
-    graphers: {},
+    dropped: [],
     repos: {},
   };
   const door = renderBrainDoor(cfg, 1);
@@ -316,13 +313,12 @@ test('the door carries each opsx command and no guide', () => {
     doors: ['agents'],
     sdd: 'opsx',
     sddAuto: true,
-    grapherAuto: true,
     authorities: [],
     blocking: ['absent', 'count', 'each'],
     staleness: 'report',
     strictPrePush: false,
     mount: '.brain',
-    graphers: {},
+    dropped: [],
     repos: {},
   };
   const door = renderBrainDoor(cfg, 1);
@@ -363,13 +359,12 @@ test('the doors keep the SDD within its measured byte budgets', () => {
   const cfg: Config = {
     doors: ['agents'],
     sddAuto: true,
-    grapherAuto: true,
     authorities: [],
     blocking: ['absent', 'count', 'each'],
     staleness: 'report',
     strictPrePush: false,
     mount: '.brain',
-    graphers: {},
+    dropped: [],
     repos: { api: { path: '../acme-api' }, web: { path: '../acme-web', sdd: 'none' } },
   };
   const bytes = (lines: string[]): number => lines.reduce((n, l) => n + Buffer.byteLength(`${l}\n`), 0);
@@ -384,54 +379,6 @@ test('the doors keep the SDD within its measured byte budgets', () => {
     // least 2,500 bytes under the block it replaced.
     const extra = Buffer.byteLength(renderConsumerDoor({ ...cfg, sdd }, 'api')) - Buffer.byteLength(renderConsumerDoor({ ...cfg, sdd }, 'web'));
     assert.ok(extra <= 2796 - 2500, `${sdd}: the consumer door carries ${extra} bytes of SDD`);
-  }
-});
-
-// The graph refresh follows the AGENT: it rides the harness's post-edit hook,
-// never the git shim. A stub stands in for the grapher, on a PATH this test
-// builds, so "declared and present" never depends on what the host installed.
-test('grapher declared + present: harness post-edit entry, git shim untouched', async () => {
-  writeFileSync(
-    join(eco.brain, '.multivac/config.yml'),
-    'doors: [agents, claude]\ngrapher: stubgraph\ngraphers:\n  stubgraph:\n    artifact: stubgraph-out/graph.json\n    refresh: stubgraph update .\nrepos:\n  api: ../acme-api\n',
-  );
-  const bin = mkdtempSync(join(tmpdir(), 'mvac-doors-bin-'));
-  writeFileSync(join(bin, 'stubgraph'), '#!/bin/sh\nexit 0\n');
-  chmodSync(join(bin, 'stubgraph'), 0o755);
-  const savedPath = process.env.PATH;
-  process.env.PATH = [bin, '/usr/bin', '/bin'].join(':');
-  let code: number;
-  try {
-    ({ code } = await runDoors());
-  } finally {
-    process.env.PATH = savedPath;
-  }
-  assert.equal(code, 0);
-
-  for (const dir of [eco.brain, eco.repos.api]) {
-    const hooks = JSON.parse(read(dir, '.claude/settings.json')).hooks as Record<
-      string,
-      { matcher?: string; hooks: { command: string }[] }[]
-    >;
-    const refresh = hooks.PostToolUse.map((e) => e.hooks[0].command).find((c) =>
-      c.includes('stubgraph update .'),
-    );
-    assert.ok(refresh, 'post-edit refresh entry written');
-    assert.match(refresh!, /graph-refresh\.lock/); // coalesced
-    assert.match(refresh!, /& exit 0$/); // backgrounded, never a failure
-    // MV-148: this brain holds no code, so its hook follows edits into api's
-    // checkouts and never runs in one of the brain's; api's is a consumer's.
-    assert.equal(refresh!.includes('[ ! -e "$t/.multivac/config.yml" ] && '), dir === eco.brain, dir);
-    assert.equal(
-      hooks.PostToolUse.find((e) => e.hooks[0].command.includes('stubgraph update .'))!.matcher,
-      'Edit|Write|MultiEdit',
-    );
-    // the git shims stay verify-only — no grapher ever runs on the commit path
-    for (const hook of ['pre-commit', 'pre-push']) {
-      const shim = read(dir, `.multivac/hooks/${hook}`);
-      assert.doesNotMatch(shim, /stubgraph|graph/);
-      assert.match(shim, /mvac verify/);
-    }
   }
 });
 
@@ -546,209 +493,22 @@ test('a missing packaged skill leaves the projected directory alone', async () =
   assert.deepEqual(tree(projected), tree(SKILL_SRC));
 });
 
-test('no grapher declared: no refresh entry at all', async () => {
-  writeFileSync(
-    join(eco.brain, '.multivac/config.yml'),
-    'doors: [agents, claude]\nrepos:\n  api: ../acme-api\n',
-  );
-  const { code, out } = await runDoors();
-  assert.equal(code, 0);
-  for (const dir of [eco.brain, eco.repos.api]) {
-    const settings = read(dir, '.claude/settings.json');
-    assert.doesNotMatch(settings, /graph-refresh\.lock/);
-    assert.match(settings, /mvac verify/);
+test('doors writes no refresh hook, whatever the config declares', async () => {
+  // MV-153: an old config's grapher keys load and change nothing here.
+  for (const head of ['', 'grapher: graphify\n', 'grapher: codegraph\ngrapher_auto: maybe\ngraphers:\n  none: {}\n']) {
+    writeFileSync(
+      join(eco.brain, '.multivac/config.yml'),
+      `doors: [agents, claude]\n${head}repos:\n  api:\n    path: ../acme-api\n${head ? '    grapher: codegraph\n' : ''}`,
+    );
+    const { code, out } = await runDoors();
+    assert.equal(code, 0, out.join('\n'));
+    for (const dir of [eco.brain, eco.repos.api]) {
+      const settings = read(dir, '.claude/settings.json');
+      assert.doesNotMatch(settings, /graph-refresh\.lock|graphify|codegraph/);
+      assert.match(settings, /mvac verify/);
+    }
+    assert.equal(out.some((l) => /graph refresh/.test(l)), false, out.join('\n'));
   }
-  // Nothing declared, nothing to explain (MV-148's notices are for a grapher).
-  assert.equal(out.some((l) => l.includes('no post-edit graph refresh')), false, out.join('\n'));
-});
-
-// MV-148. A code-less brain's hook moves into the code repo of the file edited
-// before it looks for the binary, so it is wired only where every code repo
-// resolving the grapher finds it — PATH, or that repo's own node_modules/.bin.
-// Where it cannot be wired, `doors` says why, once — MV-149: once per grapher,
-// each grapher getting its own hook.
-test('a code-less brain wires the hook that follows edits only where every code repo can run it, and says why not — MV-148', async () => {
-  const e = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-follow-')));
-  const doors = async (config: string): Promise<{ notices: string[]; hook?: string; out: string[]; door: string; flow: string }> => {
-    writeFileSync(join(e.brain, '.multivac/config.yml'), config);
-    const out: string[] = [];
-    const orig = console.log;
-    const savedPath = process.env.PATH;
-    console.log = (line: string) => out.push(String(line));
-    process.env.PATH = ['/usr/bin', '/bin'].join(':');
-    try {
-      assert.equal(await doorsCommand.run([], { cwd: e.brain }), 0);
-    } finally {
-      console.log = orig;
-      process.env.PATH = savedPath;
-    }
-    const hooks = JSON.parse(read(e.brain, '.claude/settings.json')).hooks as Record<string, { hooks: { command: string }[] }[]>;
-    return {
-      notices: out.filter((l) => /^brain: notice: no post-edit (graph )?refresh (for \S+ )?here/.test(l)),
-      hook: (hooks.PostToolUse ?? []).flatMap((x) => x.hooks.map((h) => h.command)).find((c) => c.includes('graph-refresh.lock')),
-      out,
-      door: read(e.brain, 'AGENTS.md'),
-      flow: read(e.brain, '.multivac/flow.md'),
-    };
-  };
-  const both = 'doors: [agents, claude]\ngrapher: graphify\nrepos:\n  web: ../acme-web\n  api: ../acme-api\n';
-
-  // Two graphers over the code repos (MV-149): one hook each, and where
-  // neither binary is found, one notice each, naming its grapher — the brain
-  // has two refreshes to lose, never one hook for one command.
-  let r = await doors(
-    'doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n',
-  );
-  assert.equal(r.hook, undefined);
-  assert.deepEqual(r.notices, [
-    "brain: notice: no post-edit refresh for graphify here — `graphify` is not reachable from every code repo that resolves graphify (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them",
-    "brain: notice: no post-edit refresh for codegraph here — `codegraph` is not reachable from every code repo that resolves codegraph (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them",
-  ]);
-  assert.equal(r.out.some((l) => l.includes('one hook runs one')), false);
-
-  // The binary in web's node_modules/.bin alone: the hook, moved into api, would find none.
-  const stub = (repo: string): void => {
-    mkdirSync(join(repo, 'node_modules/.bin'), { recursive: true });
-    writeFileSync(join(repo, 'node_modules/.bin/graphify'), '#!/bin/sh\nexit 0\n');
-    chmodSync(join(repo, 'node_modules/.bin/graphify'), 0o755);
-  };
-  stub(e.repos.web);
-  r = await doors(both);
-  assert.equal(r.hook, undefined);
-  assert.deepEqual(r.notices, [
-    "brain: notice: no post-edit graph refresh here — `graphify` is not reachable from every code repo that resolves graphify (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them",
-  ]);
-  // web's own hook is a consumer's, wired by web's own lookup, as before.
-  assert.match(read(e.repos.web, '.claude/settings.json'), /graph-refresh\.lock/);
-  const unwired = r;
-
-  // In each code repo's node_modules/.bin: wired, in the follow form, silently.
-  stub(e.repos.api);
-  r = await doors(both);
-  assert.deepEqual(r.notices, []);
-  assert.ok(r.hook?.includes('[ ! -e "$t/.multivac/config.yml" ] && [ -e "$t/graphify-out/graph.json" ] && cd "$t" || exit 0; '), r.hook);
-  // Declarations, never disk (MV-93): the committed door and flow.md say what
-  // the hook is declared to run, byte for byte on a machine that could not
-  // wire it — there `doors`, above, and `doctor` say it is not wired.
-  assert.equal(unwired.door, r.door);
-  assert.equal(unwired.flow, r.flow);
-  assert.ok(r.door.includes('(web: `../acme-web`, api: `../acme-api`), refreshed after your edits there'), r.door);
-  assert.match(r.flow, /refreshed after each edit through the harness hook/);
-
-  // No writable code repo resolves the grapher declared: no checkout to follow into.
-  r = await doors('doors: [agents, claude]\ngrapher: graphify\nrepos:\n  web:\n    path: ../acme-web\n    grapher: none\n');
-  assert.equal(r.hook, undefined);
-  assert.deepEqual(r.notices, [
-    'brain: notice: no post-edit graph refresh here — no writable code repo resolves graphify yet, so there is no checkout to follow edits into; `multivac doors` wires it once one does',
-  ]);
-
-  // Unverified, and no repo resolves it: what to declare, never "wires it
-  // once one does" — nothing ever wires a name multivac cannot run (MV-59).
-  r = await doors('doors: [agents, claude]\ngrapher: mystery\nrepos:\n  web:\n    path: ../acme-web\n    grapher: none\n');
-  assert.equal(r.hook, undefined);
-  assert.deepEqual(r.notices, []);
-  assert.equal(r.out.filter((l) => l.startsWith('brain: notice: grapher "mystery" is not verified')).length, 1, r.out.join('\n'));
-
-  // A brain that holds code: its own hook, today's bytes, no notice.
-  r = await doors('doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n  web: ../acme-web\n');
-  assert.deepEqual(r.notices, []);
-  assert.equal(r.hook, undefined, 'graphify is found from neither PATH nor the brain');
-  stub(e.brain);
-  r = await doors('doors: [agents, claude]\ngrapher: graphify\nrepos:\n  brain: .\n  web: ../acme-web\n');
-  assert.equal(r.hook, refreshHookCmd('graphify update .', {}, 'graphify-out/graph.json'));
-
-  // No harness with a post-edit hook: nothing to wire, so nothing to explain.
-  r = await doors('doors: [agents]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n');
-  assert.deepEqual(r.notices, []);
-});
-
-// MV-149. One post-edit hook per grapher the brain's session refreshes, each
-// wired by its own lookup and removed with its own grapher; graphers writing
-// one artifact cannot be told apart by a hook, so `doors` says which is wired.
-test('two graphers over the code repos get one hook each, and each goes with its grapher — MV-149', async () => {
-  const e = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-doors-two-')));
-  const bin = mkdtempSync(join(tmpdir(), 'mvac-doors-two-bin-'));
-  const put = (name: string): void => {
-    writeFileSync(join(bin, name), '#!/bin/sh\nexit 0\n');
-    chmodSync(join(bin, name), 0o755);
-  };
-  const doors = async (config: string): Promise<{ notices: string[]; out: string[]; refreshes: string[]; post: { hooks: { command: string }[] }[] }> => {
-    writeFileSync(join(e.brain, '.multivac/config.yml'), config);
-    const out: string[] = [];
-    const orig = console.log;
-    const savedPath = process.env.PATH;
-    console.log = (line: string) => out.push(String(line));
-    process.env.PATH = [bin, '/usr/bin', '/bin'].join(':');
-    try {
-      assert.equal(await doorsCommand.run([], { cwd: e.brain }), 0);
-    } finally {
-      console.log = orig;
-      process.env.PATH = savedPath;
-    }
-    const post = (JSON.parse(read(e.brain, '.claude/settings.json')).hooks.PostToolUse ?? []) as { hooks: { command: string }[] }[];
-    return {
-      notices: out.filter((l) => l.startsWith('brain: notice: ')),
-      out,
-      refreshes: post.flatMap((x) => x.hooks.map((h) => h.command)).filter((c) => c.includes('graph-refresh.lock')),
-      post,
-    };
-  };
-  const mixed =
-    'doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: codegraph\n';
-  const graphify = refreshHookCmd('graphify update .', {}, 'graphify-out/graph.json', true);
-  const cg = grapherSpec('codegraph')!;
-  const codegraph = refreshHookCmd(cg.refresh, cg.env ?? {}, cg.artifacts[0], true);
-
-  // codegraph found from no repo resolving it: graphify's hook alone, and
-  // #5's unreachable notice for codegraph, its head naming codegraph — the
-  // brain's session still refreshes graphify after each edit.
-  put('graphify');
-  let r = await doors(mixed);
-  assert.deepEqual(r.refreshes, [graphify]);
-  assert.deepEqual(r.notices, [
-    "brain: notice: no post-edit refresh for codegraph here — `codegraph` is not reachable from every code repo that resolves codegraph (PATH, or each one's node_modules/.bin); `change land` and `change close` refresh them",
-  ]);
-  assert.equal(Buffer.byteLength(`${r.notices[0]}\n`), 220);
-
-  // Both found: two refresh hooks, the follow form each, and no notice.
-  put('codegraph');
-  r = await doors(mixed);
-  assert.deepEqual(r.refreshes, [graphify, codegraph]);
-  assert.deepEqual(r.notices, []);
-  assert.equal(r.out.some((l) => l.includes('one hook runs one')), false);
-  const settings = read(e.brain, '.claude/settings.json');
-  assert.equal((await doors(mixed)).refreshes.length, 2);
-  assert.equal(read(e.brain, '.claude/settings.json'), settings, 'a second doors changes no byte');
-
-  // A user's command beside codegraph's hook; api's grapher removed: exactly
-  // the codegraph hook goes, the user's command and graphify's hook stay.
-  const obj = JSON.parse(settings);
-  const entry = (obj.hooks.PostToolUse as { hooks: { command: string }[] }[]).find((x) => x.hooks[0]!.command === codegraph)!;
-  entry.hooks.push({ type: 'command', command: 'my-own-linter' } as never);
-  writeFileSync(join(e.brain, '.claude/settings.json'), `${JSON.stringify(obj, null, 2)}\n`);
-  r = await doors('doors: [agents, claude]\nrepos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: none\n');
-  assert.deepEqual(r.refreshes, [graphify]);
-  const commands = r.post.flatMap((x) => x.hooks.map((h) => h.command));
-  assert.ok(commands.includes('my-own-linter'), commands.join('\n'));
-  assert.equal(r.post.find((x) => x.hooks.some((h) => h.command === 'my-own-linter'))!.hooks.length, 1);
-
-  // Two graphers writing one artifact: the brain's own keeps its hook, which
-  // moves into any toplevel holding its artifact, so the notice says it runs
-  // in the sibling's repos too; the sibling's gets none. Neither the brain's,
-  // and neither gets one: a follow hook for the first would run it in the
-  // second's repos.
-  put('outgraph');
-  const decl = 'graphers:\n  outgraph:\n    artifact: graphify-out/graph.json\n    refresh: outgraph update .\n';
-  r = await doors(`doors: [agents, claude]\ngrapher: graphify\n${decl}repos:\n  brain: .\n  api:\n    path: ../acme-api\n    grapher: outgraph\n`);
-  assert.deepEqual(r.refreshes, [refreshHookCmd('graphify update .', {}, 'graphify-out/graph.json')]);
-  assert.deepEqual(r.notices, [
-    "brain: notice: graphify and outgraph both write graphify-out/graph.json, so one hook cannot tell their repos apart — graphify is wired, and an edit in outgraph's repos runs graphify there; `change land` and `change close` refresh outgraph",
-  ]);
-  r = await doors(`doors: [agents, claude]\n${decl}repos:\n  web:\n    path: ../acme-web\n    grapher: graphify\n  api:\n    path: ../acme-api\n    grapher: outgraph\n`);
-  assert.deepEqual(r.refreshes, []);
-  assert.deepEqual(r.notices, [
-    'brain: notice: graphify and outgraph both write graphify-out/graph.json, so one hook cannot tell their repos apart — neither is wired; `change land` and `change close` refresh them',
-  ]);
 });
 
 // What the merge sees and refuses to settle has to REACH the human: a notice
@@ -821,13 +581,12 @@ test('a consumer door names the brain\'s SDD in one line, and none where nothing
     doors: ['agents'],
     sdd: 'speckit',
     sddAuto: true,
-    grapherAuto: true,
     authorities: [],
     blocking: ['absent', 'count', 'each'],
     staleness: 'report',
     strictPrePush: false,
     mount: '.brain',
-    graphers: {},
+    dropped: [],
     repos: {
       api: { path: '../acme-api' },
       web: { path: '../acme-web', sdd: 'none' },
@@ -894,4 +653,120 @@ test('doors from a subdirectory projects the brain that holds it and names it on
   assert.equal(atRoot.out.filter((l) => l.startsWith('root: ')).length, 0);
   assert.deepEqual(atRoot.out, below.out.slice(1), 'the projection is the run at the root');
   assert.equal(read(own.brain, 'AGENTS.md'), projected);
+});
+
+// --- MV-153: an old brain gets back what multivac wrote, and nothing else ---
+
+/** `doors` run at `cwd`, both streams in order. */
+async function doorsAt(cwd: string): Promise<{ code: number; out: string[] }> {
+  const out: string[] = [];
+  const orig = { log: console.log, error: console.error };
+  console.log = console.error = (line: string) => out.push(String(line));
+  try {
+    return { code: await doorsCommand.run([], { cwd }), out };
+  } finally {
+    console.log = orig.log;
+    console.error = orig.error;
+  }
+}
+
+const put = (root: string, rel: string, body: string): void => {
+  mkdirSync(dirname(join(root, rel)), { recursive: true });
+  writeFileSync(join(root, rel), body);
+};
+
+/** The post-edit refresh an earlier multivac wrote: what matters is its head. */
+const OLD_REFRESH = (build: string): string =>
+  `L=.multivac/cache/graph-refresh.lock; mkdir -p .multivac/cache && mkdir "$L" 2>/dev/null || exit 0; { ${build}; rmdir "$L"; } >/dev/null 2>&1 </dev/null & exit 0`;
+
+test('doors removes the ecosystem graph an earlier release rendered, and says so once — MV-153', async () => {
+  const e = makeScratchEcosystem(realpathSync(mkdtempSync(join(tmpdir(), 'mvac-doors-old-'))));
+  put(e.brain, '.multivac/config.yml', 'doors: [agents, claude]\ngrapher: graphify\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n');
+  put(e.brain, '.multivac/ecosystem.json', '{"nodes":[],"links":[]}\n');
+  // What a vendor wrote, and the human's own copy: never multivac's to remove.
+  const kept: Record<string, string> = {
+    'graphify-out/graph.json': '{"nodes":[],"links":[]}\n',
+    '.graphifyignore': '.multivac/\n',
+    '.claude/settings.json.graphify-bak': '{"model":"opus"}\n',
+    '.claude/skills/graphify/SKILL.md': 'graphify skill\n',
+  };
+  for (const [rel, body] of Object.entries(kept)) put(e.brain, rel, body);
+  const guard = { matcher: 'Bash|Grep', hooks: [{ type: 'command', command: 'graphify hook-guard search' }] };
+  put(e.brain, '.claude/settings.json', JSON.stringify({
+    hooks: {
+      PostToolUse: [{ hooks: [{ type: 'command', command: OLD_REFRESH('graphify update .') }], matcher: 'Edit|Write|MultiEdit' }],
+      PreToolUse: [guard],
+    },
+  }, null, 2));
+  put(e.repos.api, '.claude/settings.json', JSON.stringify({
+    hooks: {
+      PostToolUse: [{
+        matcher: 'Edit|Write|MultiEdit',
+        hooks: [{ type: 'command', command: 'echo saved' }, { type: 'command', command: OLD_REFRESH('codegraph sync') }],
+      }],
+    },
+  }, null, 2));
+
+  const first = await doorsAt(e.brain);
+  assert.equal(first.code, 0, first.out.join('\n'));
+  const said = (re: RegExp) => first.out.filter((l) => re.test(l));
+  assert.deepEqual(said(/ecosystem\.json/), [
+    'brain: .multivac/ecosystem.json removed — multivac no longer renders it; commit the removal',
+  ]);
+  assert.deepEqual(said(/refresh hook/), [
+    'brain: notice: .claude/settings.json: removed 1 post-edit graph refresh hook an earlier multivac wrote — multivac keeps no code graph',
+    'api: notice: .claude/settings.json: removed 1 post-edit graph refresh hook an earlier multivac wrote — multivac keeps no code graph',
+  ]);
+  assert.equal(existsSync(join(e.brain, '.multivac/ecosystem.json')), false);
+  for (const [rel, body] of Object.entries(kept)) assert.equal(read(e.brain, rel), body, rel);
+  const brainHooks = JSON.parse(read(e.brain, '.claude/settings.json')).hooks;
+  assert.deepEqual(brainHooks.PreToolUse, [guard], "graphify's own hook stays");
+  assert.doesNotMatch(read(e.brain, '.claude/settings.json'), /graph-refresh\.lock/);
+  const apiPost = JSON.parse(read(e.repos.api, '.claude/settings.json')).hooks.PostToolUse;
+  assert.deepEqual(apiPost[0], { matcher: 'Edit|Write|MultiEdit', hooks: [{ type: 'command', command: 'echo saved' }] });
+
+  // Once: a second run finds nothing of either, and changes nothing more.
+  const settings = [read(e.brain, '.claude/settings.json'), read(e.repos.api, '.claude/settings.json')];
+  const second = await doorsAt(e.brain);
+  assert.equal(second.code, 0);
+  assert.doesNotMatch(second.out.join('\n'), /ecosystem\.json|refresh hook/);
+  assert.deepEqual([read(e.brain, '.claude/settings.json'), read(e.repos.api, '.claude/settings.json')], settings);
+});
+
+test("a door names a vendor's install left beside it, and nothing where none is — MV-153", async () => {
+  const e = makeScratchEcosystem(realpathSync(mkdtempSync(join(tmpdir(), 'mvac-doors-left-'))));
+  put(e.brain, '.multivac/config.yml', 'doors: [agents, claude]\nrepos:\n  api: ../acme-api\n  web: ../acme-web\n');
+  // The brain: graphify's output and two platforms, one with hooks.
+  put(e.brain, 'graphify-out/graph.json', '{}\n');
+  put(e.brain, '.agents/skills/graphify/SKILL.md', 'x\n');
+  put(e.brain, '.claude/skills/graphify/SKILL.md', 'x\n');
+  // api: one platform, no hooks, no output left.
+  put(e.repos.api, '.cursor/rules/graphify.mdc', 'x\n');
+  // web: a local index alone sends nobody anywhere.
+  put(e.repos.web, '.codegraph/codegraph.db', 'x');
+  put(e.repos.web, 'codegraph.json', '{}\n');
+
+  const { code, out } = await doorsAt(e.brain);
+  assert.equal(code, 0, out.join('\n'));
+  const brainDoor = read(e.brain, 'AGENTS.md').split('\n');
+  const line =
+    "- graphify's own skills and hooks here still send you to `graphify-out/`, which multivac no longer refreshes: " +
+    'it answers for an older tree than the one you edit. Read the tree; `multivac doctor` prints their removal.';
+  assert.deepEqual(brainDoor.filter((l) => l.includes('graphify')), [line]);
+  // In the list, straight after the line that says to verify.
+  assert.match(brainDoor[brainDoor.indexOf(line) - 1], /^- Check the law against the code before acting/);
+  const apiDoor = read(e.repos.api, 'AGENTS.md').split('\n');
+  assert.deepEqual(apiDoor.filter((l) => l.includes('graphify')), [
+    "- graphify's own skill here still sends you to a graph that is not here. Read the tree; `multivac doctor` prints its removal.",
+  ]);
+  assert.equal(apiDoor[apiDoor.indexOf('<!-- multivac:end -->') - 1], apiDoor.filter((l) => l.includes('graphify'))[0], 'the end of the consumer door');
+  assert.doesNotMatch(read(e.repos.web, 'AGENTS.md'), /graph|codegraph/i);
+
+  // Removed, the line goes with them; nothing else in either door moves.
+  rmSync(join(e.brain, '.agents/skills/graphify'), { recursive: true });
+  rmSync(join(e.brain, '.claude/skills/graphify'), { recursive: true });
+  rmSync(join(e.repos.api, '.cursor'), { recursive: true });
+  assert.equal((await doorsAt(e.brain)).code, 0);
+  assert.deepEqual(read(e.brain, 'AGENTS.md').split('\n'), brainDoor.filter((l) => l !== line));
+  assert.doesNotMatch(read(e.repos.api, 'AGENTS.md'), /graph/i);
 });

@@ -1,15 +1,10 @@
-// Door files on disk: the symlink a harness reads, and what a door already says.
+// Door files on disk: the symlink a harness reads.
 //
-// MV-143. This lived in src/commands/doors.ts, where only `doors` could reach
-// it. The grapher's own project install runs from `equip` — init, `repos sync`
-// and the lifecycle — and it writes the harness's own door file. Running first
-// in a root with no link, it leaves a regular CLAUDE.md that MV-108 then
-// forbids replacing, so the harness reads the vendor and never the door. The
-// link has to exist before the vendor writes, which means both callers need
-// this function.
+// MV-143. A harness's own door file that is a regular file is never replaced
+// (MV-108), so the link is made before anything else writes there; `doors`
+// makes it for every symlink target it projects.
 
 import { lstatSync, readlinkSync, symlinkSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 /** The canonical door every other target projects from. */
@@ -25,10 +20,10 @@ export interface LinkResult {
 /**
  * `<door>` -> `AGENTS.md` symlink, idempotent.
  *
- * A dangling link is fine and is left alone: measured on graphify 0.9.29, a
- * vendor writing through it creates the canonical door and the door block lands
- * there later. A regular file is never replaced (MV-108) — it is reported, and
- * the harness keeps reading it until a human merges it.
+ * A dangling link is fine and is left alone: whatever writes through it
+ * creates the canonical door, and the door block lands there later. A regular
+ * file is never replaced (MV-108) — it is reported, and the harness keeps
+ * reading it until a human merges it.
  */
 export function linkDoor(dir: string, door: string): LinkResult {
   const link = join(dir, door);
@@ -55,17 +50,4 @@ export function linkDoor(dir: string, door: string): LinkResult {
       notice: `symlink not permitted on this platform — read ${CANONICAL_DOOR} directly, or enable developer mode to get ${door}`,
     };
   }
-}
-
-/**
- * Does this root's canonical door already carry the vendor's own section?
- *
- * MV-140: the one fact both surfaces that care about it ask here — `doctor`,
- * which offers the install that would write it, and `installHarness`, which
- * skips a platform whose file would only repeat it. A door that cannot be read
- * has no section.
- */
-export async function hasGrapherSection(dir: string, name: string): Promise<boolean> {
-  const door = await readFile(join(dir, CANONICAL_DOOR), 'utf8').catch(() => '');
-  return new RegExp(`^## ${name}\\b`, 'm').test(door);
 }

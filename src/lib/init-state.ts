@@ -1,7 +1,7 @@
 // MV-124. Is a vendor initialised in this root? Its own state files say, and
-// nothing else does: a directory is what `mkdir` leaves, and a 0-byte graph is
-// what a killed build leaves. The one probe every surface asks — the scaffold,
-// the build, both graph gates, the project-document gate and `doctor`.
+// nothing else does: a directory is what `mkdir` leaves, and a 0-byte file is
+// what a killed init leaves. The one probe every surface asks — the scaffold,
+// the SDD gates, the project-document gate and `doctor`.
 //
 // Files only, in a file of its own: MV-124 holds this module to spawning
 // nothing and reaching no network, so `verify`, `doctor` and `doors` can ask it

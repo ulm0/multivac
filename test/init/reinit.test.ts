@@ -11,8 +11,8 @@ import { join } from 'node:path';
 import { initRepo, vendorPath } from '../helpers/fixture.js';
 import { init } from '../../src/commands/init.js';
 
-// MV-128: init runs the declared tools, so a host with spec-kit or graphify
-// installed would run the real ones here. Stubs, on a PATH built for it.
+// MV-128: init runs the declared tools, so a host with spec-kit installed
+// would run the real one here. Stubs, on a PATH built for it.
 process.env.PATH = vendorPath().path;
 import { doorsCommand } from '../../src/commands/doors.js';
 
@@ -73,16 +73,6 @@ test('a refused run writes nothing at all', async () => {
   assert.equal(doorBefore.includes('opsx'), false);
 });
 
-test('two disagreements produce one refusal naming both', async () => {
-  const dir = repo();
-  await capture(() => init.run(['--sdd', 'speckit', '--grapher', 'graphify', '--quiet', dir], { cwd: dir }));
-  const c = await capture(() => init.run(['--sdd', 'opsx', '--grapher', 'codegraph', dir], { cwd: dir }));
-  assert.equal(c.code, 1);
-  assert.match(c.out, /already declares sdd: speckit and --sdd says opsx/);
-  assert.match(c.out, /already declares grapher: graphify and --grapher says codegraph/);
-  assert.match(c.out, /or drop --sdd and --grapher/);
-});
-
 test('a flag that agrees is accepted and reported as already declared', async () => {
   const dir = repo();
   await capture(() => init.run(['--sdd', 'speckit', '--quiet', dir], { cwd: dir }));
@@ -115,10 +105,9 @@ test('a re-run with no flags reports nothing extra', async () => {
 
 test('a first run is unchanged: the flags write the config and the door', async () => {
   const dir = repo();
-  const c = await capture(() => init.run(['--sdd', 'speckit', '--grapher', 'graphify', dir], { cwd: dir }));
+  const c = await capture(() => init.run(['--sdd', 'speckit', dir], { cwd: dir }));
   assert.equal(c.code, 0);
   assert.match(cfgOf(dir), /^sdd: speckit$/m);
-  assert.match(cfgOf(dir), /^grapher: graphify$/m);
   assert.match(readFileSync(join(dir, 'AGENTS.md'), 'utf8'), /speckit/);
   assert.ok(existsSync(join(dir, '.multivac/invariants.md')));
 });
@@ -162,7 +151,7 @@ test('init and doors write the same door, byte for byte', async () => {
   // MV-102. MV-101's version of this could only compare the ADAPTER, because
   // the two commands rendered the document twice and the bodies genuinely
   // differed. There is one rendering now, so the assertion is the rule.
-  for (const flags of [[], ['--sdd', 'speckit'], ['--grapher', 'graphify'], ['--provider', 'claude']]) {
+  for (const flags of [[], ['--sdd', 'speckit'], ['--provider', 'claude']]) {
     const dir = repo();
     await capture(() => init.run([...flags, '--quiet', dir], { cwd: dir }));
     const afterInit = readFileSync(join(dir, 'AGENTS.md'), 'utf8');
@@ -176,26 +165,27 @@ test('init and doors write the same door, byte for byte', async () => {
     );
   }
 
-  // MV-148: a brain that holds no code, keeping a graphify install an earlier
-  // release left. Both commands probe it, so both write its line, byte for
-  // byte; once a human removes it, `doors` drops the line.
+  // A brain an earlier release graphed, with the vendor's install still in it
+  // and its config still naming the grapher: both commands write one door.
   const kept = mkdtempSync(join(tmpdir(), 'mvac-reinit-kept-'));
   initRepo(kept, {
     '.multivac/config.yml': 'doors: [agents, claude]\ngrapher: graphify\nrepos:\n  api: ../api\n',
     'graphify-out/graph.json': '{"nodes":[],"links":[]}\n',
     '.claude/skills/graphify/SKILL.md': 'x\n',
   });
-  const leftover =
-    /^- `graphify-out\/` here is a leftover that holds no code: the `## graphify` section below and graphify's own hooks point at it — ask the code repos' graphs above instead; `multivac doctor` prints its removal\.$/m;
   await capture(() => init.run(['--quiet', kept], { cwd: kept }));
   const initDoor = readFileSync(join(kept, 'AGENTS.md'), 'utf8');
-  assert.match(initDoor, leftover);
+  // MV-153: the one line a kept install gets, from the same probe in both.
+  assert.deepEqual(initDoor.split('\n').filter((l) => /graph/i.test(l)), [
+    "- graphify's own skill and hooks here still send you to `graphify-out/`, which multivac no longer refreshes: " +
+      'it answers for an older tree than the one you edit. Read the tree; `multivac doctor` prints their removal.',
+  ]);
   await capture(() => doorsCommand.run([], { cwd: kept }));
   assert.equal(readFileSync(join(kept, 'AGENTS.md'), 'utf8'), initDoor, 'doors rewrote the door init wrote over a kept install');
   rmSync(join(kept, 'graphify-out'), { recursive: true });
   rmSync(join(kept, '.claude/skills/graphify'), { recursive: true });
   await capture(() => doorsCommand.run([], { cwd: kept }));
-  assert.doesNotMatch(readFileSync(join(kept, 'AGENTS.md'), 'utf8'), /leftover/);
+  assert.doesNotMatch(readFileSync(join(kept, 'AGENTS.md'), 'utf8'), /graphify/);
 });
 
 test('content outside the managed block survives both commands', async () => {
@@ -223,7 +213,7 @@ test('init and doors name the same adapter in the door, whatever the flags said'
   // The two commands write different door BODIES on purpose — init scaffolds
   // the empty-brain text, doors projects the brain door — so this asserts the
   // adapter, which is what MV-101 governs, not the bytes around it.
-  for (const flags of [[], ['--sdd', 'speckit'], ['--grapher', 'graphify']]) {
+  for (const flags of [[], ['--sdd', 'speckit']]) {
     const dir = repo();
     await capture(() => init.run(['--quiet', dir], { cwd: dir }));
     await capture(() => init.run([...flags, '--quiet', dir], { cwd: dir }));

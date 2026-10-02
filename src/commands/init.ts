@@ -13,8 +13,6 @@ import { PROJECTED_PATH, recordBody, selfVersion } from '../lib/version.js';
 import {
   binaryMissing,
   doorTargets,
-  grapherNames,
-  grapherSpec,
   sddNames,
   sddSpec,
   type AdapterSpec,
@@ -30,24 +28,20 @@ import {
   layoutError,
   legacyLayout,
   loadConfig,
-  readConfig,
   CONFIG_PATH,
-  ECOSYSTEM_PATH,
 } from '../lib/config.js';
 import { ritualSeed } from '../lib/ritual.js';
 import { ignoredPaths, lsFiles, run as git, untrackedFiles } from '../lib/git.js';
-import { leftoverGraphs } from '../lib/repo-state.js';
 import { acid, bold, dim, say, warn } from '../lib/out.js';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { banner } from '../lib/banner.js';
-import { writeEcosystem } from '../doors/ecosystem.js';
 import { applyManagedBlock } from '../doors/block.js';
 import { countActiveInvariants, renderBrainDoor } from '../doors/brain.js';
+import { leftoverVendors } from '../lib/dropped.js';
 import { PRECOMMIT_MISSING_FIX, installHooks } from '../hooks/install.js';
 import {
   adapterFor,
   adaptersByRoot,
-  askedGraphers,
   brainHoldsCode,
   detectAdapters,
   missingRequired,
@@ -68,7 +62,6 @@ interface Flags {
   dir?: string;
   agents: string[];
   sdd?: string;
-  grapher?: string;
   quiet: boolean;
 }
 
@@ -80,12 +73,11 @@ const ARGS = {
   dir: { type: 'positional', required: false, description: 'the brain; defaults to the working directory' },
   provider: { type: 'string', description: 'comma-separated coding agents to project the door for' },
   sdd: { type: 'string', description: 'spec-driven-development adapter' },
-  grapher: { type: 'string', description: 'code-graph tool' },
   quiet: { type: 'boolean', description: 'no banner' },
 } satisfies ArgsDef;
 
 /** The surface as init has always worded it; the check comes from ARGS. */
-const TAKES = '--provider <a,b>, --sdd <name>, --grapher <name>, --quiet';
+const TAKES = '--provider <a,b>, --sdd <name>, --quiet';
 
 function parseFlags(argv: string[]): Flags {
   // MV-85 before the parser, and a UsageError so the dispatcher exits 2: init
@@ -96,7 +88,7 @@ function parseFlags(argv: string[]): Flags {
   const bad = undeclared('init', argv, surfaceFrom(ARGS), TAKES);
   if (bad) throw new UsageError(bad.replace(/^init: unknown flag "(.*?)" — init takes /, 'init: unknown flag $1 — known: '));
   const a = parseArgs(argv, ARGS);
-  const value = (key: 'sdd' | 'grapher' | 'provider'): string | undefined => {
+  const value = (key: 'sdd' | 'provider'): string | undefined => {
     const v = a[key];
     if (v === undefined) return undefined;
     // MV-114: a UsageError, so the dispatcher exits 2. A missing value is a
@@ -112,10 +104,7 @@ function parseFlags(argv: string[]): Flags {
   // one projects `Features gate through the \`speckti\` SDD … REFUSES to move
   // on` over zero steps — a gate claimed that can never fire (measured, exit
   // 0). `sdd` has no declared form, so the registry is the whole vocabulary
-  // and the check belongs here, before anything is written. `grapher` does
-  // have one — `graphers:` in the config extends it — so `runInit` checks it
-  // before `mkdir`, against the verified graphers plus the `graphers:` of a
-  // readable config already at the target (MV-122).
+  // and the check belongs here, before anything is written.
   const sdd = value('sdd');
   if (sdd !== undefined && !sddNames.includes(sdd)) {
     throw new UsageError(`init: unknown --sdd ${sdd} — known: ${sddNames.join(', ')}`);
@@ -124,7 +113,6 @@ function parseFlags(argv: string[]): Flags {
     dir: typeof a.dir === 'string' ? a.dir : undefined,
     agents: (value('provider') ?? '').split(',').filter(Boolean),
     sdd,
-    grapher: value('grapher'),
     quiet: a.quiet === true,
   };
 }
@@ -157,13 +145,6 @@ function renderConfig(f: Flags, d: Detected, brainIsCode: boolean): string {
   if (f.sdd) lines.push(`sdd: ${f.sdd}`);
   else if (d.sdd) {
     lines.push(`# detected ${d.sdd} artifacts — uncomment to enable:`, `# sdd: ${d.sdd}`);
-  }
-  if (f.grapher) lines.push(`grapher: ${f.grapher}`);
-  else if (d.grapher) {
-    lines.push(
-      `# detected ${d.grapher} artifacts — uncomment to enable:`,
-      `# grapher: ${d.grapher}`,
-    );
   }
   // MV-127: `repos sync` mounts the brain in each consumer with this url, and
   // multivac never guesses it. A brain's own origin can be a machine-local ssh
@@ -312,39 +293,11 @@ async function ensureVisibleToGit(dir: string, report: Report): Promise<void> {
 class UsageError extends Error {}
 
 /**
- * MV-122. The refusal for a `--grapher` name nothing can honour, or null.
- *
- * `init --grapher graphfy` exited 0, wrote the typo and projected a door with
- * no graph block, while MV-114's ceiling said the flag was checked. It is
- * checked here, BEFORE anything is created: the verified names need nothing
- * on disk, and a config already at the target needs only a read. `readConfig`
- * and not `loadConfig`, because a legacy brain fails the layout check that
- * `init` is about to fix — and a vocabulary read as absent would let the typo
- * through. `none` is in neither list: leaving the flag out declares no grapher.
- * A config that does not read judges no name; MV-114's refusal of it follows.
- */
-async function grapherRefusal(dir: string, name: string): Promise<string | null> {
-  let declared: string[] = [];
-  if (await exists(join(dir, CONFIG_PATH))) {
-    try {
-      declared = Object.keys((await readConfig(dir)).graphers);
-    } catch (e) {
-      if (e instanceof ConfigError) return null;
-      throw e;
-    }
-  }
-  // A declaration may override a verified name, so a name can be in both lists.
-  const known = [...new Set([...grapherNames, ...declared])];
-  return known.includes(name) ? null : `init: unknown --grapher ${name} — known: ${known.join(', ')}`;
-}
-
-
-/**
- * MV-148. Whether the repo `init` runs in holds any file of its own: in a git
- * repository, any path git lists outside `.multivac/`, tracked or untracked and
- * not ignored; outside one, any entry but `.multivac` and `.git`. Tracked files
- * alone were asked, so a repo whose source was not committed yet was taken as
- * holding none, got no `brain: .` and no graph. Asked once, before anything is
+ * MV-153, as MV-148 measured it. Whether the repo `init` runs in holds any file
+ * of its own: in a git repository, any path git lists outside `.multivac/`,
+ * tracked or untracked and not ignored; outside one, any entry but `.multivac`
+ * and `.git`. Tracked files alone were asked, so a repo whose source was not
+ * committed yet was taken as holding none, and got no `brain: .`. Asked once, before anything is
  * written — every file init writes would otherwise count. A README-only repo
  * counts too: a ceiling, stated, since a rule on file kinds misjudges others.
  */
@@ -357,18 +310,16 @@ async function holdsFiles(dir: string): Promise<boolean> {
 }
 
 /**
- * MV-128. The tools init would run in the brain, and only those: the same
- * conditions `runScaffold` and `ensureGraphs` apply, asked before anything is
- * written. A kept config decides (MV-91); on a first run the flags are what the
- * config is about to say. An installed tool, one with no recorded init, and an
- * SDD under `sdd_auto: false` run nothing, so a missing binary there is no
- * reason to refuse.
+ * MV-128. The tools init would run in the brain, and only those: the
+ * conditions `runScaffold` applies, asked before anything is written. A kept
+ * config decides (MV-91); on a first run the flags are what the config is
+ * about to say. An installed tool, one with no recorded init, and an SDD under
+ * `sdd_auto: false` run nothing, so a missing binary there is no reason to
+ * refuse.
  *
- * MV-148: and whether the brain holds code, the answer that decided the
- * grapher. A kept config says so by a repos entry that is the brain; on a
- * first run `holdsFiles` decides, and the same answer writes the brain entry.
- * A brain holding no code resolves no grapher, so `init --grapher graphify` in
- * an empty repo neither looks for the binary nor refuses over it.
+ * And whether the brain holds code (MV-153): a kept config says so by a repos
+ * entry that is the brain; on a first run `holdsFiles` decides, and the same
+ * answer writes the brain entry.
  */
 async function toolsInitWouldRun(
   dir: string,
@@ -376,23 +327,16 @@ async function toolsInitWouldRun(
   f: Flags,
 ): Promise<{ runs: ToolRun[]; holdsCode: boolean }> {
   const holdsCode = declared ? brainHoldsCode(declared) : await holdsFiles(dir);
-  return { runs: await brainTools(dir, declared, f, holdsCode), holdsCode };
+  return { runs: await brainTools(dir, declared, f), holdsCode };
 }
 
-/** The tools `toolsInitWouldRun` answers with, once whether the brain holds code is known. */
-function brainTools(dir: string, declared: Config | null, f: Flags, holdsCode: boolean): Promise<ToolRun[]> {
+/** The tools `toolsInitWouldRun` answers with. */
+function brainTools(dir: string, declared: Config | null, f: Flags): Promise<ToolRun[]> {
   // MV-129: the same predicate `change new` and `repos sync` ask, over the one
   // root init equips.
   return toolsToRun(
-    [
-      {
-        scope: 'brain',
-        dir,
-        sdd: declared ? adapterFor(declared, 'brain', 'sdd') : f.sdd,
-        grapher: declared ? adapterFor(declared, 'brain', 'grapher') : holdsCode ? f.grapher : undefined,
-      },
-    ],
-    { sdd: declared?.sddAuto ?? true, graphers: declared?.graphers ?? {} },
+    [{ scope: 'brain', dir, sdd: declared ? adapterFor(declared, 'brain', 'sdd') : f.sdd }],
+    { sdd: declared?.sddAuto ?? true },
   );
 }
 
@@ -422,7 +366,7 @@ async function dirtySnapshot(dir: string): Promise<Map<string, string>> {
 /**
  * MV-128. What step zero commits: the paths init created or changed, minus the
  * vendor's per-checkout paths. A literal `shared` path beats a `local` glob, so
- * `graphify-out/graph.json` stays while the rest of `graphify-out/` goes. A
+ * a versioned file stays while the per-checkout rest of its directory goes. A
  * top-level directory whose every changed file is in the set is named once.
  */
 function stepZeroPaths(
@@ -441,8 +385,8 @@ function stepZeroPaths(
     const t = top(p);
     // Named once only when nothing else git reports under it would come along
     // (`git add -- <dir>` adds every dirty path beneath), and never a vendor
-    // directory that holds local outputs: `graphify-out` would read as all of
-    // them even when the ignore lines keep git to `graph.json`.
+    // directory that holds local outputs: it would read as all of them even
+    // when the ignore lines keep git to its versioned file.
     const whole =
       t !== p &&
       !isLocal(`${t}/_`) &&
@@ -476,11 +420,6 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   const emit: Report = f.quiet ? () => {} : say;
   const report: Report = (l) => emit(l === '' ? l : dim(l));
   const dir = resolve(ctx.cwd, f.dir ?? '.');
-  const badGrapher = f.grapher === undefined ? null : await grapherRefusal(dir, f.grapher);
-  if (badGrapher !== null) {
-    warn(badGrapher);
-    return 2;
-  }
   // MV-128: a tool init would run and cannot find refuses init, here, before
   // `git init` and before the first file — the same line the lifecycle prints,
   // so the brain is never half-made over a binary nobody installed.
@@ -571,7 +510,6 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   if (declared !== null) {
     const clash = ([
       ['--sdd', 'sdd', f.sdd, declared.sdd],
-      ['--grapher', 'grapher', f.grapher, declared.grapher],
     ] as const).filter(([, , want, have]) => want !== undefined && have !== undefined && want !== have);
     if (clash.length > 0) {
       // Every disagreement in one refusal: nobody should re-run a command to
@@ -606,7 +544,7 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   if (!(await exists(join(dir, PROJECTED_PATH)))) await stamp(dir);
   const cfgPath = join(dir, '.multivac', 'config.yml');
   // Source already here = the brain is its own code repo. Decided before
-  // anything was written (MV-148: `holdsFiles`, untracked files included), and
+  // anything was written (MV-153: `holdsFiles`, untracked files included), and
   // read here because the config and the closing call to action need it: it is
   // what writes `brain: .` and picks discovery over the interview.
   const brainIsCode = wouldRun.holdsCode;
@@ -619,11 +557,9 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
     // what happened to it.
     const agreed = ([
       ['--sdd', f.sdd, declared?.sdd],
-      ['--grapher', f.grapher, declared?.grapher],
     ] as const).filter(([, want, have]) => want !== undefined && want === have);
     const unanswered = ([
       ['--sdd', 'sdd', f.sdd, declared?.sdd],
-      ['--grapher', 'grapher', f.grapher, declared?.grapher],
     ] as const).filter(([, , want, have]) => want !== undefined && have === undefined);
     if (agreed.length > 0) {
       report(
@@ -652,10 +588,10 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // about on the second command is one nobody writes.
   // ONE rendering, and it is `doors`' (MV-102). This used to be a second copy
   // of the brain door written out by hand here, and the copy drifted exactly
-  // where it mattered: `renderBrainDoor` gained the graph block and the
-  // ecosystem's repo list, and the copy gained neither — so the door a fresh
-  // brain got, the first file an agent reads and the only one it has before
-  // anybody runs a second command, never named the graph it is told to ask.
+  // where it mattered: `renderBrainDoor` gained the ecosystem's repo list, and
+  // the copy did not — so the door a fresh brain got, the first file an agent
+  // reads and the only one it has before anybody runs a second command, named
+  // less than the one `doors` writes.
   //
   // Reading the config here is also what keeps MV-101 true: the door names the
   // adapters the CONFIG declares, and a flag reaches it exactly once — on the
@@ -665,10 +601,8 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // top of this run — never a third read, and never a broken one: that case
   // returned above (MV-114).
   const cfg = await loadConfig(dir).catch(() => null);
-  // MV-148: with the kept grapher install `doors` names, from the same probe,
-  // so the two write one door.
   const body = cfg
-    ? renderBrainDoor(cfg, countActiveInvariants(await readFile(join(dir, LAW_PATH), 'utf8').catch(() => '')), await leftoverGraphs(cfg, dir))
+    ? renderBrainDoor(cfg, countActiveInvariants(await readFile(join(dir, LAW_PATH), 'utf8').catch(() => '')), await leftoverVendors(dir))
     : null;
   const doorPath = join(dir, 'AGENTS.md');
   const existing = await readFile(doorPath, 'utf8').catch(() => null);
@@ -704,12 +638,6 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   }
   await mkdir(join(dir, CHANGES_DIR), { recursive: true });
   await writeIfMissing(join(dir, CHANGES_DIR, '.gitkeep'), '');
-  // MV-141: the door just written names the ecosystem graph (MV-139), so the
-  // graph is written from the declarations this run leaves, not at `doors`.
-  if (cfg) {
-    const wrote = await writeEcosystem(dir, cfg).catch(() => false);
-    if (wrote) report(`init: wrote ${ECOSYSTEM_PATH} — how repos, rows, anchors and changes relate; generated`);
-  }
 
   // 4. enforcement floor: versioned hooks + core.hooksPath — but never over
   // the repo's own gates. The strategy used is part of the report.
@@ -769,27 +697,19 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // the ordinary case and it is a no-op.
   if (f.agents.length > 0) await doorsCommand.run([], { cwd: dir });
 
-  // MV-128: declared at init, installed at init. The same two functions the
+  // MV-128: declared at init, installed at init. The same function the
   // lifecycle calls, self-limiting and never throwing: an installed tool runs
   // nothing, and a tool that fails is reported and left for the next `change`
   // to retry. After the door and hooks, so a vendor rewriting harness settings
-  // is merged over by the next projection; the graph last, so it sees the
-  // files init wrote.
+  // is merged over by the next projection.
   const equipCfg = await loadConfig(dir).catch(() => null);
   if (equipCfg !== null) await equip(dir, equipCfg, false);
-  // MV-148: a brain that holds no code keeps no code graph, and a declared
-  // grapher not built here is said, never left silent.
-  if (equipCfg !== null && !brainHoldsCode(equipCfg)) {
-    for (const name of askedGraphers(equipCfg).keys()) {
-      report(`init: ${name} is declared, and this brain holds no code (no repos entry is the brain), so no graph is built here — each code repo gets its own when \`repos sync\` or a change reaches it`);
-    }
-  }
 
   // The last word is a call to action, not a full stop. init leaves a brain
   // that is scaffolded and empty, and "load the skill" alone left the reader
   // to discover session zero — that there are two flows and which one is
   // theirs — from the door. Both are named here, and the branch is decided,
-  // not asked: source, tracked or not (MV-148: `holdsFiles`), means there is
+  // not asked: source, tracked or not (MV-153: `holdsFiles`), means there is
   // an ecosystem to read, an empty repo means there is one to invent. The steps stay pointers into the
   // skill; init does not restate a protocol that lives there.
   emit('');
@@ -801,11 +721,8 @@ async function runInit(argv: string[], ctx: CommandContext): Promise<number> {
   // that unblocks it.
   // MV-128: the pathspec is what init wrote — never `-A`, which in a brain==code
   // repo committed the user's uncommitted work as "multivac init".
-  const brainSpecs = equipCfg === null
-    ? []
-    : ([adapterFor(equipCfg, 'brain', 'sdd'), adapterFor(equipCfg, 'brain', 'grapher')] as const)
-        .map((n, i) => (n ? (i === 0 ? sddSpec(n) : grapherSpec(n, equipCfg.graphers)) : null))
-        .filter((s): s is AdapterSpec => s !== null);
+  const brainSdd = equipCfg === null ? undefined : adapterFor(equipCfg, 'brain', 'sdd');
+  const brainSpecs = [brainSdd ? sddSpec(brainSdd) : undefined].filter((s): s is AdapterSpec => s !== undefined);
   const zero = stepZeroPaths(beforeInit, await dirtySnapshot(dir), brainSpecs);
   // MV-136: session zero whole, in the order that works. `repos:` before the
   // first commit, because a config modified after it needs an open change.
@@ -836,18 +753,17 @@ export const init: Command = {
   name: 'init',
   help: 'scaffold the brain: everything multivac owns under .multivac/',
   usage: [
-    'usage: multivac init [dir] [--provider a,b] [--sdd <name>] [--grapher <name>] [--quiet]',
+    'usage: multivac init [dir] [--provider a,b] [--sdd <name>] [--quiet]',
     '  dir                the brain; defaults to the working directory',
     `  --provider a,b     comma-separated coding agents to project the door for —`,
     `                     ${Object.keys(doorTargets).filter((k) => k !== 'agents').join(', ')}`,
     `  --sdd <name>       spec-driven-development adapter — ${sddNames.join(', ')}`,
-    `  --grapher <name>   code-graph tool — ${grapherNames.join(', ')}, or one you declare in graphers:`,
     '  --quiet            no banner',
     'AGENTS.md is always written and is never a --provider value: agents.md is the',
     'open format every door projects FROM, not a tool you could have installed.',
     'Whatever you name here is projected right away — the door, the skill and the',
     "harness hooks — so init leaves nothing owed. `multivac doors` re-runs that",
-    'projection after you edit doors: or grapher: by hand.',
+    'projection after you edit doors: by hand.',
   ],
   run: runInit,
 };

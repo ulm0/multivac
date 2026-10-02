@@ -10,10 +10,9 @@
 // that changed with which repos happen to be cloned would differ between two
 // machines for reasons unrelated to the ecosystem, and the door is committed.
 
-import { ecosystemGraphLines } from './ecosystem.js';
 import type { Config } from '../types.js';
-import { grapherLines } from './brain.js';
-import { adapterFor, sddGoverning } from '../adapters/detect.js';
+import { sddGoverning } from '../adapters/detect.js';
+import { leftoverDoorLine, type LeftoverVendor } from '../lib/dropped.js';
 
 /**
  * The ecosystem, as the doors name it.
@@ -45,14 +44,16 @@ export function ecosystemLines(config: Config, repoKey: string): string[] {
   ];
 }
 
-/** Render the consumer door block body (no markers). */
-export function renderConsumerDoor(config: Config, repoKey: string): string {
+/**
+ * Render the consumer door block body (no markers). `leftovers` is what the
+ * caller found of a vendor's install beside the door (MV-153): each one whose
+ * own skill still sends an agent elsewhere gets one line at the end. The
+ * caller probes; this reads no file.
+ */
+export function renderConsumerDoor(config: Config, repoKey: string, leftovers: readonly LeftoverVendor[] = []): string {
   const mount = config.mount;
   const gate =
     config.staleness === 'block' ? ' A pin behind its channel makes `verify` exit 1 here.' : '';
-  // The grapher that applies HERE, from the one resolver every surface asks
-  // (MV-122) — a repo that resolves `none` gets no block.
-  const graph = grapherLines(config, adapterFor(config, repoKey, 'grapher'));
   // MV-146: the SDD runs in the brain alone, so this door carries no step
   // block and no project document — 2,796 bytes per session, measured, for
   // steps no session here may run. One line says where they run and where
@@ -82,9 +83,14 @@ export function renderConsumerDoor(config: Config, repoKey: string): string {
     `- Law: \`${mount}/.multivac/invariants.md\` binds this repo. Cite rows by ID, never paraphrase without one.`,
     '- The change may cross repos: check the brain before assuming a change is local to this repo.',
     '- Run `multivac verify` before acting; git hooks run it again at commit.',
-    ...ecosystemGraphLines(config, repoKey, `${mount}/`),
     ...ecosystemLines(config, repoKey),
     ...(sdd.length > 0 ? ['', ...sdd] : []),
-    ...(graph.length > 0 ? ['', ...graph] : []),
+    ...door(leftovers),
   ].join('\n');
+}
+
+/** The leftover lines, set apart from the door above them, or nothing. */
+function door(leftovers: readonly LeftoverVendor[]): string[] {
+  const lines = leftovers.flatMap((l) => leftoverDoorLine(l) ?? []);
+  return lines.length > 0 ? ['', ...lines] : [];
 }

@@ -10,6 +10,43 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
+## Unreleased
+
+multivac keeps no code graph. A brain that declares `grapher:` still loads, and
+`doors` takes back what multivac itself wrote, but nothing builds, refreshes,
+gates, commits or names a graph any more, and graphify's or codegraph's files
+stay until you remove them. Read the first item before upgrading.
+
+**Changed — read before upgrading**
+
+- **Graphers are gone (MV-153).** multivac no longer declares, installs, builds,
+  refreshes, gates, commits or names a code graph, and no longer renders
+  `.multivac/ecosystem.json`.
+  - **An old config loads.** `grapher`, `grapher_auto`, `graphers` and
+    `repos.<key>.grapher` are read only to say they are ignored: `verify` and
+    `doctor` print one line naming them, whatever they hold. Deleting them is a
+    config edit, so it needs an open change (MV-97).
+  - **`init --grapher` and `change close --no-grapher` are unknown flags**,
+    refused with exit 2.
+  - **`doors` takes back what multivac wrote**: every post-edit refresh hook it
+    put in `.claude/settings.json` (and nothing else there), and
+    `.multivac/ecosystem.json`. Commit the removal.
+  - **What the vendors wrote stays until you remove it.** `doctor` names, per
+    repo it may write in, graphify's `graphify-out/`, `.graphifyignore`, skills,
+    door section and hooks, and codegraph's `.codegraph/` and `codegraph.json`,
+    each with the vendor's own removal; and the door warns, where graphify's
+    skill or hooks remain, that its graph is no longer refreshed. Those paths
+    are not code, so the removal commits on any branch. graphify's `hook-guard`
+    keeps telling agents to ask a graph that only goes staler until you run its
+    uninstall.
+  - **Doors are shorter**: 747–1,156 bytes on a consumer door, 1,308–2,276 on a
+    brain door, and each edit runs one hook where it ran two.
+  - **What you lose**: one-call transitive reach (`codegraph impact`,
+    `graphify path`); one-hop questions cost the same or less by grep.
+- Fourteen rows retired — twelve that were law and two never enacted: MV-50,
+  MV-52, MV-58, MV-59, MV-61, MV-62, MV-90, MV-103, MV-131, MV-134, MV-139,
+  MV-140, MV-148 and MV-149 (the last two proposed). Thirty-four rows amended.
+
 ## 0.15.0 — 2026-09-30
 
 Three behaviours changed in a way that can newly refuse what used to pass: a

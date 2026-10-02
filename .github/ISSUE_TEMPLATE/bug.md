@@ -19,7 +19,7 @@ labels: bug
 - Node:
 - OS:
 - Brain shape: <!-- single repo (brain == code), or a dedicated brain with N repos -->
-- Adapters declared: <!-- doors / sdd / grapher, or none -->
+- Adapters declared: <!-- doors / sdd, or none -->
 
 ## `multivac doctor`
 

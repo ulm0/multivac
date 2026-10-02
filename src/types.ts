@@ -18,34 +18,12 @@ export type LegState =
   | 'vacuous'
   | 'unevaluated';
 
-/**
- * A grapher declared inline in .multivac/config.yml under `graphers:`.
- * The escape hatch that keeps "unverified" from meaning "unusable": a tool
- * the registry has never seen is one config block away from working, with no
- * merge request against multivac. The operator STATES the contract; multivac
- * never infers one (src/adapters/registry.ts, `grapherSpec`).
- */
-export interface GrapherDecl {
-  /** Repo-relative path the tool writes — file or directory. */
-  artifact: string;
-  /** The one command safe to re-run. Its first word is the binary. */
-  refresh: string;
-  /** Build command, when it differs from the refresh. */
-  create?: string;
-  /** The binary `refresh` runs, when it is not its first word — the name MV-123's lookup is asked for. */
-  binary?: string;
-  /** Install line printed when the binary is missing. */
-  install?: string;
-}
-
 /** One declared repo in .multivac/config.yml. Bare string = { path }. */
 export interface RepoEntry {
   path: string;
   url?: string;
-  grapher?: string;
   /**
-   * The same shape as `grapher` above, and read only through `detect.ts`
-   * (MV-122). The SDD lives in the brain alone (MV-146): on the brain's own
+   * Read only through `detect.ts` (MV-122). The SDD lives in the brain alone (MV-146): on the brain's own
    * entry this is the brain's SDD; on a code repo's entry it takes only
    * `none`, which exempts that repo's code from the change gate (MV-137) and
    * does nothing else — `sddGoverning` reads it. A tool named on a code repo,
@@ -84,16 +62,6 @@ export interface Config {
   sddAuto: boolean;
   /** yml key: tracker. Which tracker the roadmap projects to, or none. MV-99. */
   tracker?: string;
-  grapher?: string;
-  /** yml key: grapher_auto. Default true. False keeps the tool and drops the gate. */
-  grapherAuto: boolean;
-  /**
-   * yml key: graphers. Contracts for graphers the registry has not verified,
-   * stated by the operator: name -> { artifact, refresh, create?, binary?,
-   * install? }. This is what makes "unverified" mean "declare it here",
-   * not "you need an MR against multivac".
-   */
-  graphers: Record<string, GrapherDecl>;
   authorities: string[];
   /** Modes that gate (exit 1). Default [absent, count, each]; must include absent. */
   blocking: Mode[];
@@ -123,6 +91,13 @@ export interface Config {
    * `{ sddDeclaration: 'report' }`. Absent on every other load: there it throws.
    */
   sddRefusal?: string;
+  /**
+   * MV-153. The keys an earlier release read that this one ignores, as the
+   * file declares them — top level in `DROPPED_KEYS`' order, then each
+   * `repos.<key>.<DROPPED_REPO_KEY>` in config order (src/lib/dropped.ts).
+   * Loaded whatever they hold and never read; `verify` and `doctor` name them.
+   */
+  dropped: string[];
 }
 
 /**

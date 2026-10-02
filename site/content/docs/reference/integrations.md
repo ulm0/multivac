@@ -40,9 +40,7 @@ who did not open it. An unknown name already gets the list of what is
 supported, which is the answer that helps.
 
 Cursor was a `stub` until multivac stopped projecting one: it reads `AGENTS.md` at the project root, so
-the rules file was a second door that could disagree with the canonical one, and
-graphify's own `cursor` platform wrote a third copy of the graph instructions
-beside it. A target that retires a file it used to project takes it with it —
+the rules file was a second door that could disagree with the canonical one. A target that retires a file it used to project takes it with it —
 one `doors` run removes multivac's block from `.cursor/rules/multivac.mdc` and
 deletes the file when nothing but the frontmatter multivac itself wrote is left,
 saying which of the two it did. Lines you added there survive, and the file with

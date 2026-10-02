@@ -56,13 +56,30 @@ test('a valued flag with no value is refused', async () => {
 });
 
 test('the negation spellings citty consumes still reach the command', async () => {
-  // `--no-sdd`/`--no-grapher` are read literally from argv because citty turns
-  // them into `sdd: false` before the command sees the declared key. Sharing
-  // the guard must not make them unknown flags: the failure here is exit 2.
-  for (const flag of ['--no-sdd', '--no-grapher']) {
+  // `--no-sdd` is read literally from argv because citty turns it into
+  // `sdd: false` before the command sees the declared key. Sharing the guard
+  // must not make it an unknown flag: the failure here is exit 2.
+  for (const flag of ['--no-sdd']) {
     const { code, out } = await capture(['close', 'not-a-real-change', flag]);
     assert.notEqual(code, 2, `${flag} was refused as undeclared:\n${out}`);
   }
+});
+
+test('--no-grapher is an unknown flag — MV-153', async () => {
+  // multivac keeps no code graph, so there is nothing to skip: the flag an
+  // earlier release took is refused like any other, at every subcommand and
+  // before anything is written.
+  const before = readFileSync(law, 'utf8');
+  for (const sub of ['new', 'plan', 'apply', 'land', 'close']) {
+    const { code, out } = await capture([sub, 'some-slug', '--no-grapher']);
+    assert.equal(code, 2, `${sub} exited ${code}:\n${out}`);
+    assert.match(
+      out,
+      /^change: unknown flag "--no-grapher" — change takes <sub> <slug> \["<title>"\], --no-sdd, --landed <repo>, --abandon$/m,
+      sub,
+    );
+  }
+  assert.equal(readFileSync(law, 'utf8'), before, 'the law moved before refusing');
 });
 
 test('both new forms stay legal', async () => {

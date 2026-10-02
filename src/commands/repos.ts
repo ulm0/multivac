@@ -20,9 +20,9 @@ import { gitFailure, gitlinkInIndex, inHead, lsTreeGitlink, submoduleAdd } from 
 import { parseArgs, type ArgsDef } from 'citty';
 import { surfaceFrom, undeclared } from '../lib/args.js';
 import { quoteFailure, say, warn } from '../lib/out.js';
-import { cloneFix, cloneState, leftoverGraphs, leftoverNoun, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
+import { cloneFix, cloneState, leftoverSdds, projectDocVerdict } from '../lib/repo-state.js';
 import { adapterFor } from '../adapters/detect.js';
-import { grapherSpec, sddSpec } from '../adapters/registry.js';
+import { sddSpec } from '../adapters/registry.js';
 import { initState } from '../lib/init-state.js';
 import { equip, missingTools } from '../adapters/equip.js';
 
@@ -300,28 +300,14 @@ export async function reposCheck(brainDir: string): Promise<{ lines: string[]; e
         else fails.push(`${p.artifact} ${v}${why ? ` (${why})` : ''} → ${p.run}`);
       }
     }
-    const grapher = adapterFor(cfg, key, 'grapher');
-    const gS = grapher ? grapherSpec(grapher, cfg.graphers) : null;
-    if (grapher && gS) {
-      const g = await initState(gS, dir);
-      const art = gS.artifacts[0];
-      if (g.state !== 'installed') fails.push(`${grapher} ${g.state}${g.state === 'missing' ? '' : ` (${g.reason})`} → \`multivac repos sync\``);
-      else if (gS.artifactKind === 'local') facts.push(`${grapher} built here (local, never committed)`);
-      else if (!(await inHead(dir, art))) fails.push(`${grapher} built but ${art} is not committed → commit it`);
-      else facts.push(`${grapher} built and committed`);
-    } else if (grapher) {
-      facts.push(`${grapher} unverified, not checked`);
-    }
     // MV-146: a code repo still holding an install from an earlier release,
     // said on its line and never counted: nothing reads it, and `doctor`
     // names the removal. Only where the brain resolves an SDD — with none, a
     // code repo's own install is that team's, and the line is what it was.
-    // MV-148: a brain that holds no code resolves no grapher, so no graph is
-    // asked of it and none fails its line; a grapher install an earlier
-    // release left there is said the same way, and `doctor` names its removal.
-    // `leftoverGraphs` answers nothing where the brain holds code.
+    // MV-153: no graph is asked of any repo; `doctor` alone names what an
+    // earlier release's vendors left.
     const left = e.isBrain
-      ? (await leftoverGraphs(cfg, dir)).map((l) => `; leftover ${l.name} ${leftoverNoun(l)} (${l.tracked ? 'tracked' : 'untracked'})`).join('')
+      ? ''
       : adapterFor(cfg, 'brain', 'sdd') === undefined
         ? ''
         : (await leftoverSdds(dir)).map((l) => `; leftover ${l.sdd} install (${l.tracked ? 'tracked' : 'untracked'})`).join('');
@@ -371,14 +357,12 @@ export const reposCommand: Command = {
     if (sub === 'sync') {
       const { lines, exit } = await reposSync(ctx.cwd, a.shallow === true);
       for (const l of lines) say(l);
-      // MV-129: a repo that is cloned, fetched and mounted but has no SDD and
-      // no graph is not set up — measured on 0.13.0, sync left a declared
-      // sibling with neither and exited 0. Equip every writable repo on disk,
-      // and exit 1 if a tool it would run cannot be found; each such repo is
-      // named by the line the scaffold or the build prints for it, and every
-      // other repo is still equipped.
+      // MV-129: a brain that is cloned, fetched and mounted but has no SDD is
+      // not set up — measured on 0.13.0, sync left a declared tool uninstalled
+      // and exited 0. Equip it, and exit 1 if the tool it would run cannot be
+      // found; the scaffold names it by the line it prints.
       const cfg = await loadConfig(ctx.cwd);
-      const missing = await missingTools(ctx.cwd, cfg, { sdd: true, grapher: true });
+      const missing = await missingTools(ctx.cwd, cfg, true);
       await equip(ctx.cwd, cfg, false);
       return missing.length > 0 ? 1 : exit;
     }

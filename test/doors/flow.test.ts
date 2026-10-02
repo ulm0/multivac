@@ -39,7 +39,6 @@ async function eco(lines: string[]) {
 const DECLARED = [
   'doors: [agents]',
   'sdd: speckit',
-  'grapher: graphify',
   'repos:',
   '  api: ../acme-api',
 ];
@@ -56,50 +55,14 @@ test('the page sorts declared obligations into automatic, gate and yours', async
   ]) {
     assert.ok(page.includes(h), `missing heading: ${h}`);
   }
-  // The grapher's work is automatic; its artifact is a gate.
-  assert.match(page, /the code graph is built where `multivac repos sync` or a change reaches a repo with no `graphify-out\/graph\.json`, refreshed .*at `change land`, where it is committed on the change branch, and at `change close`/);
-  // MV-148: this brain holds no code, so the gate names only the repos a change names.
-  assert.match(page, /^- `change close` refuses while a repo the change names has no `graphify-out\/graph\.json`$/m);
-  // MV-140: asking the graph is named as unchecked, with graphify's own reason.
-  assert.match(page, /^- asking `graphify` before reading the tree — no committed file records a query: graphify writes only an untracked `graphify-out\/cache\/last_query_stamp`/m);
-  // A brain that holds code is one of the roots the gate names.
-  const holds = renderFlow((await eco([...DECLARED, '  brain: .'])).cfg);
-  assert.match(holds, /^- `change close` refuses while the brain or a repo the change names has no `graphify-out\/graph\.json`$/m);
-});
-
-test('a declared grapher no code repo resolves gets its own row, and the brain is no root of it — MV-148', async () => {
-  // No repo: the top level declares graphify, and nothing resolves it.
-  const alone = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos: {}'])).cfg);
-  assert.match(
-    alone,
-    /^- `graphify` is declared, and no writable code repo resolves it yet: the brain holds no code, so none here; each code repo that resolves it gets its own when `repos sync` or a change reaches it$/m,
-  );
-  assert.doesNotMatch(alone, /no grapher is declared/);
-  assert.doesNotMatch(alone, /`change close` refuses while .*graphify-out/, 'nothing to gate');
-  // Every repo opts out: the same row.
-  const out = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api:', '    path: ../acme-api', '    grapher: none'])).cfg);
-  assert.match(out, /^- `graphify` is declared, and no writable code repo resolves it yet/m);
-  // Every repo resolving it is `managed: false`, never built or gated there
-  // (MV-125): the same row, and no build or gate row naming it.
-  const unmanaged = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api:', '    path: ../acme-api', '    managed: false'])).cfg);
-  assert.match(unmanaged, /^- `graphify` is declared, and no writable code repo resolves it yet/m);
-  assert.doesNotMatch(unmanaged, /the code graph is built where/);
-  assert.doesNotMatch(unmanaged, /`change close` refuses while .*graphify-out/);
-  // Unverified, and no repo resolves it: named as such, never promised (MV-59).
-  const mystery = renderFlow((await eco(['doors: [agents]', 'grapher: mystery', 'repos: {}'])).cfg);
-  assert.match(mystery, /^- `mystery` is declared as the grapher but grapher "mystery" is not verified/m);
-  assert.doesNotMatch(mystery, /each code repo that resolves it gets its own/);
-  // One code repo of two resolves it: its rows name it, the brain is not counted.
-  const one = renderFlow(
-    (await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api: ../acme-api', '  web:', '    path: ../acme-web', '    grapher: none'])).cfg,
-  );
-  assert.match(one, /refreshed at `change land`, where it is committed on the change branch, and at `change close`, in api$/m);
-  assert.match(one, /^- `change close` refuses while a repo the change names has no `graphify-out\/graph\.json` — in api$/m);
-  // Both resolve it: every declared repo, the brain not among them.
-  const both = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api: ../acme-api', '  web: ../acme-web'])).cfg);
-  assert.match(both, /and at `change close`, in every declared repo$/m);
-  // Nothing declared anywhere: the row it always was.
-  assert.match(renderFlow((await eco(['doors: [agents]', 'repos:', '  api: ../acme-api'])).cfg), /no grapher is declared/);
+  // The SDD's init is automatic, its proofs are gates, its unprovable steps yours.
+  assert.match(page, /^- the `speckit` init is run in the brain when its `\.specify` is missing/m);
+  assert.match(page, /^- `change plan` refuses without `specs\/<n>-<slug>\/spec\.md`$/m);
+  assert.match(page, /^- `\/speckit\.analyze` — /m);
+  // MV-153: no row about a graph, whatever an old config declares.
+  for (const lines of [DECLARED, ['doors: [agents]', 'sdd: speckit', 'grapher: graphify', 'repos:', '  brain: .', '  api: ../acme-api']]) {
+    assert.doesNotMatch(renderFlow((await eco(lines)).cfg), /graph/);
+  }
 });
 
 test('a gating row leads with the command that refuses and names the artifact', async () => {
@@ -173,83 +136,20 @@ test('a brain with nothing declared still gets a useful page', async () => {
   assert.match(page, /## Gate — multivac refuses without it/);
   assert.match(page, /`change close` refuses while a declared claim does not resolve, or cites no stated row this change adds, touches or retires/);
   assert.match(page, /no SDD tool is declared/);
-  assert.match(page, /no grapher is declared/);
+  assert.doesNotMatch(page, /graph/);
 });
 
 test('an unverified adapter is named as declared-but-unknown, never guessed', async () => {
-  const { cfg } = await eco([
-    'doors: [agents]', 'grapher: acme-graph', 'repos:', '  api: ../acme-api',
-  ]);
+  const { cfg } = await eco(['doors: [agents]', 'repos:', '  api: ../acme-api']);
   const page = renderFlow(cfg);
-  assert.match(page, /`acme-graph` is declared as the grapher but/);
   // Nothing invented.
   assert.equal(page.includes('refuses without `specs/'), false);
   // MV-146: an SDD name the registry does not know never reaches the page — no
   // scaffold, gate or step could honour it, so the config is refused at load.
   await assert.rejects(
-    () => eco(['doors: [agents]', 'sdd: acme-not-real', 'grapher: acme-graph', 'repos:', '  api: ../acme-api']),
+    () => eco(['doors: [agents]', 'sdd: acme-not-real', 'repos:', '  api: ../acme-api']),
     /sdd: acme-not-real — REFUSED: no SDD adapter is named acme-not-real/,
   );
-});
-
-// MV-149: one post-edit hook per grapher the brain's session refreshes, so the
-// page says "after each edit" of each — #5's one hook ran one grapher, and the
-// page said it of none when the code repos resolved two.
-test("the refresh row promises an edit refresh for each grapher a hook of the brain runs", async () => {
-  const edit = /after each edit through the harness hook/;
-  const row = (page: string, artifact: string): string =>
-    page.split('\n').find((l) => l.startsWith('- the code graph is built') && l.includes(`\`${artifact}\``)) ?? '';
-  const mixed = renderFlow(
-    (await eco([
-      'doors: [agents, claude]', 'repos:',
-      '  web:', '    path: ../acme-web', '    grapher: graphify',
-      '  api:', '    path: ../acme-api', '    grapher: codegraph',
-    ])).cfg,
-  );
-  for (const artifact of ['graphify-out/graph.json', '.codegraph/codegraph.db']) {
-    assert.ok(row(mixed, artifact), `no refresh row for ${artifact}:\n${mixed}`);
-    assert.match(row(mixed, artifact), edit, artifact);
-  }
-  // The same repos with no post-edit door: neither row promises an edit refresh.
-  const bare = renderFlow(
-    (await eco([
-      'doors: [agents]', 'repos:',
-      '  web:', '    path: ../acme-web', '    grapher: graphify',
-      '  api:', '    path: ../acme-api', '    grapher: codegraph',
-    ])).cfg,
-  );
-  for (const artifact of ['graphify-out/graph.json', '.codegraph/codegraph.db']) assert.doesNotMatch(row(bare, artifact), edit, artifact);
-  const one = renderFlow((await eco(['doors: [agents, claude]', 'grapher: graphify', 'repos:', '  api: ../acme-api'])).cfg);
-  assert.match(row(one, 'graphify-out/graph.json'), edit);
-  // No post-edit harness, no promise, as before.
-  const none = renderFlow((await eco(['doors: [agents]', 'grapher: graphify', 'repos:', '  api: ../acme-api'])).cfg);
-  assert.doesNotMatch(row(none, 'graphify-out/graph.json'), edit);
-});
-
-test('a local index is built at apply and synced at land, never committed', async () => {
-  // MV-149: the page said land committed a local index, which it never did.
-  const row = (page: string, artifact: string): string =>
-    page.split('\n').find((l) => l.startsWith('- the code graph is built') && l.includes(`\`${artifact}\``)) ?? '';
-  const brain = renderFlow((await eco([
-    'doors: [agents, claude]', 'grapher: codegraph', 'repos:', '  brain: .',
-    '  api:', '    path: ../acme-api', '    grapher: none',
-  ])).cfg);
-  assert.equal(
-    row(brain, '.codegraph/codegraph.db'),
-    '- the code graph is built where `multivac repos sync` or a change reaches a repo with no `.codegraph/codegraph.db`, and in each change worktree at `change apply`, refreshed after each edit through the harness hook, and at `change land`, where it is synced and never committed, and at `change close`, in brain',
-  );
-  const siblings = renderFlow((await eco([
-    'doors: [agents]', 'repos:',
-    '  web:', '    path: ../acme-web', '    grapher: graphify',
-    '  api:', '    path: ../acme-api', '    grapher: codegraph',
-  ])).cfg);
-  const local = row(siblings, '.codegraph/codegraph.db');
-  assert.match(local, /, and in each change worktree at `change apply`, refreshed at `change land`, where it is synced and never committed, and at `change close`, in api$/);
-  assert.doesNotMatch(local, /where it is committed on the change branch/);
-  // A shared artifact keeps its row.
-  const shared = row(siblings, 'graphify-out/graph.json');
-  assert.match(shared, /no `graphify-out\/graph\.json`, refreshed at `change land`, where it is committed on the change branch, and at `change close`, in web$/);
-  assert.doesNotMatch(shared, /change apply|never committed/);
 });
 
 // --- US2: derived, and saying so ---

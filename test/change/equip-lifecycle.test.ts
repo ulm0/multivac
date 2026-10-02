@@ -42,16 +42,13 @@ async function run(
   }
 }
 
-/**
- * A brain declaring speckit and graphify, plus `extra` repos lines; with
- * `brainIsCode`, a brain that holds code (MV-148), so it resolves the grapher.
- */
+/** A brain declaring speckit, plus `extra` repos lines; with `brainIsCode`, a brain that holds code. */
 function eco(extra: string[] = [], opts: ScratchOpts = {}) {
   const e = makeScratchEcosystem(mkdtempSync(join(tmpdir(), 'mvac-equip7-')), opts);
   writeFileSync(
     join(e.brain, '.multivac/config.yml'),
     [
-      'doors: [agents]', 'sdd: speckit', 'grapher: graphify', 'repos:',
+      'doors: [agents]', 'sdd: speckit', 'repos:',
       ...(opts.brainIsCode ? ['  brain: .'] : []), '  api: ../acme-api', ...extra, '',
     ].join('\n'),
   );
@@ -62,35 +59,36 @@ function eco(extra: string[] = [], opts: ScratchOpts = {}) {
 
 const head = (dir: string): string => execFileSync('git', ['-C', dir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 
-test('repos sync installs the SDD in the brain and builds the graph in a declared sibling — MV-129', async () => {
+test('repos sync installs the SDD in the brain — MV-129', async () => {
   const e = eco(['  web:', '    path: ../acme-web', '    managed: false']);
   const { code, out } = await run(() => reposCommand.run(['sync'], { cwd: e.brain }), both.path);
   assert.equal(code, 0, out);
-  // MV-146: the SDD lives in the brain alone; the sibling gets its graph and no SDD.
+  // MV-146: the SDD lives in the brain alone; MV-153: a sibling gets no graph either.
   assert.ok(existsSync(join(e.brain, '.specify/integration.json')), 'spec-kit installed in the brain');
   assert.equal(existsSync(join(e.repos.api, '.specify')), false, 'and not in api');
-  assert.ok(existsSync(join(e.repos.api, 'graphify-out/graph.json')), 'graph built in api');
+  assert.equal(existsSync(join(e.repos.api, 'graphify-out')), false, 'no graph built in api');
   // read-only: nothing runs there
   assert.equal(existsSync(join(e.repos.web, '.specify')), false);
-  assert.equal(existsSync(join(e.repos.web, 'graphify-out')), false);
 
-  // a second sync runs neither tool
+  // a second sync runs no tool
   const runs = readFileSync(both.runs, 'utf8').split('\n').filter(Boolean).length;
   assert.equal((await run(() => reposCommand.run(['sync'], { cwd: e.brain }), both.path)).code, 0);
   assert.equal(readFileSync(both.runs, 'utf8').split('\n').filter(Boolean).length, runs);
 });
 
-test('repos sync exits 1 over a missing tool and still equips the rest — MV-129', async () => {
+test('repos sync exits 1 over a missing tool and names it — MV-129', async () => {
   const e = eco();
-  const { code, out } = await run(() => reposCommand.run(['sync'], { cwd: e.brain }), onlySpecify.path);
+  const { code, out } = await run(() => reposCommand.run(['sync'], { cwd: e.brain }), none.path);
   assert.equal(code, 1, out);
-  assert.match(out, /graph graphify @ api: build skipped — `graphify` found on neither PATH nor api's node_modules\/\.bin/);
-  assert.ok(existsSync(join(e.brain, '.specify/integration.json')), 'the SDD still went in, in the brain');
+  assert.match(out, /^sdd speckit: .* cannot be run — `specify` found on neither PATH nor brain's node_modules\/\.bin/m);
+  assert.equal(existsSync(join(e.brain, '.specify/integration.json')), false, 'nothing ran');
   assert.equal(existsSync(join(e.repos.api, '.specify')), false);
+  // With the tool there, the same sync installs it in the brain alone.
+  assert.equal((await run(() => reposCommand.run(['sync'], { cwd: e.brain }), onlySpecify.path)).code, 0);
+  assert.ok(existsSync(join(e.brain, '.specify/integration.json')));
 });
 
 test('change new refuses the SDD its steps need, before writing anything — MV-129', async () => {
-  // MV-148: a brain that holds code, so `new` equips its graph too.
   const e = eco([], { brainIsCode: true });
   const before = head(e.brain);
   const { code, out } = await run(() => change.run(['new', 'nope', 'Nope'], { cwd: e.brain }), none.path);
@@ -101,10 +99,10 @@ test('change new refuses the SDD its steps need, before writing anything — MV-
   assert.equal(head(e.brain), before, 'no commit');
   assert.doesNotMatch(readFileSync(join(e.brain, '.multivac/invariants.md'), 'utf8'), /RESERVED by change nope/);
 
-  // --no-sdd lifts it; a missing grapher is only a notice at new
+  // --no-sdd lifts it, and no other tool is asked for (MV-153)
   const skipped = await run(() => change.run(['new', 'nope', 'Nope', '--no-sdd'], { cwd: e.brain }), none.path);
   assert.equal(skipped.code, 0, skipped.out);
-  assert.match(skipped.out, /graph graphify @ .*: build skipped/);
+  assert.doesNotMatch(skipped.out, /found on neither PATH/);
 });
 
 test('change new with the tools installed refuses nothing — MV-129', async () => {
@@ -115,41 +113,6 @@ test('change new with the tools installed refuses nothing — MV-129', async () 
   assert.equal(existsSync(join(e.repos.api, '.specify')), false, 'the SDD reaches no code repo (MV-146)');
 });
 
-test('plan equips a repo it clones, and apply a repo it creates — MV-129', async () => {
-  // Graph only (--no-sdd): the SDD gate would refuse before the clone for want
-  // of a spec, and the graph is what shows whether equip ran after the clone.
-  const e = eco();
-  writeFileSync(
-    join(e.brain, '.multivac/config.yml'),
-    [
-      'doors: [agents]', 'grapher: graphify', 'repos:', '  api: ../acme-api',
-      '  mirror:', '    path: ../acme-mirror', `    url: ${e.repos.api}`,
-      '  svc: ../acme-svc', '',
-    ].join('\n'),
-  );
-  execFileSync('git', ['-C', e.brain, 'commit', '-qam', 'more repos'], { stdio: 'ignore' });
-  const ctx = { cwd: e.brain };
-  const mirror = join(e.brain, '..', 'acme-mirror');
-  const svc = join(e.brain, '..', 'acme-svc');
-
-  assert.equal((await run(() => change.run(['new', 'grow', 'Grow', '--no-sdd'], ctx), both.path)).code, 0);
-  const parsed = await loadChange(e.brain, 'grow');
-  parsed.change.repos = { mirror: { status: 'planned' }, svc: { status: 'planned' } };
-  parsed.change.landing_order = [['mirror', 'svc']];
-  parsed.change.invariants.adds = [];
-  await saveChange(e.brain, parsed);
-
-  const planned = await run(() => change.run(['plan', 'grow', '--no-sdd'], ctx), both.path);
-  assert.equal(planned.code, 0, planned.out);
-  assert.ok(existsSync(join(mirror, '.git')), 'plan cloned mirror');
-  assert.ok(existsSync(join(mirror, 'graphify-out/graph.json')), 'and equipped it in the same run');
-
-  const applied = await run(() => change.run(['apply', 'grow', '--no-sdd'], ctx), both.path);
-  assert.equal(applied.code, 0, applied.out);
-  assert.ok(existsSync(join(svc, '.git')), 'apply created svc');
-  assert.ok(existsSync(join(svc, 'graphify-out/graph.json')), 'and equipped it in the same run');
-});
-
 test('apply makes a repo, equips it, and only then carries — MV-144', async () => {
   const e = eco([]);
   const b = e.brain;
@@ -158,7 +121,7 @@ test('apply makes a repo, equips it, and only then carries — MV-144', async ()
   // is a different rule (MV-76) and not what this test is about.
   writeFileSync(
     join(b, '.multivac/config.yml'),
-    ['doors: [agents]', 'sdd: speckit', 'grapher: graphify', 'repos:', '  brain: .', '  svc: ../acme-svc', ''].join('\n'),
+    ['doors: [agents]', 'sdd: speckit', 'repos:', '  brain: .', '  svc: ../acme-svc', ''].join('\n'),
   );
   execFileSync('git', ['-C', b, 'add', '-A'], { stdio: 'ignore' });
   execFileSync('git', ['-C', b, 'commit', '-qm', 'declare svc'], { stdio: 'ignore' });
@@ -181,10 +144,10 @@ test('apply makes a repo, equips it, and only then carries — MV-144', async ()
   const lines = out.split('\n');
   const at = (re: RegExp): number => lines.findIndex((l) => re.test(l));
   const created = at(/svc: created/);
-  const equipped = at(/@ svc:/);
   const carried = at(/svc: carried/);
   assert.ok(created !== -1, `a greenfield repo is created:\n${out}`);
-  assert.ok(equipped !== -1, `and equipped:\n${out}`);
-  assert.ok(created < equipped, `created before equipped:\n${out}`);
-  if (carried !== -1) assert.ok(equipped < carried, `equipped before the carry:\n${out}`);
+  // MV-146, MV-153: equipping it runs no vendor there — the SDD lives in the
+  // brain, and no graph is built — so it names no tool at svc.
+  assert.equal(at(/@ svc:/), -1, `no vendor ran in svc:\n${out}`);
+  if (carried !== -1) assert.ok(created < carried, `created before the carry:\n${out}`);
 });

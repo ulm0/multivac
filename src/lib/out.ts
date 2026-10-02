@@ -67,8 +67,8 @@ const CAUSE = /\berror\b|\brefus|\bdenied\b|\bnot found\b/i;
 /**
  * MV-123. The one quote of a failed vendor command: its cause, never its
  * logo. The first three lines used to stand in for it, which is spec-kit
- * 1.0.6's block logo (its cause is line 28 of 34, on stdout) and graphify
- * 0.9.29's traceback header and a path on this machine (its cause is the last
+ * 1.0.6's block logo (its cause is line 28 of 34, on stdout) and a Python
+ * tool's traceback header and a path on this machine (its cause is the last
  * line). In order, over stdout then stderr:
  *   1. drawn lines dropped, box borders trimmed off the rest;
  *   2. after the last traceback header, the first unindented line;
