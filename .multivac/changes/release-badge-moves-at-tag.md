@@ -13,6 +13,7 @@ invariants:
     - MV-154
   retires: []
 claims:
+  - MV-154
   - MV-77
 ---
 

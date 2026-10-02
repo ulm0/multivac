@@ -157,6 +157,14 @@ jobs:
   # running before `deploy`: on a plain default-branch push `publish` never
   # ran at all ("skipped" counts as clear to proceed), and on a tag `pages`
   # proceeds only once `publish` has actually succeeded.
+  #
+  # GitHub Pages keys a deployment by its commit (deploy-pages sends GITHUB_SHA
+  # as the build version) and answers a second deployment of a commit with the
+  # first. A release commit reaches the default branch before its tag exists,
+  # so deploying it there would freeze the badge at the previous tag and leave
+  # the tag's run nothing to replace. A default-branch push whose package.json
+  # version has no tag yet therefore deploys nothing; the tag's run deploys that
+  # commit, once (MV-154).
   pages:
     name: pages
     runs-on: ubuntu-latest
@@ -169,18 +177,33 @@ jobs:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
+      - name: a release waits for its tag
+        id: gate
+        run: |
+          version="v$(node -p 'require("./package.json").version')"
+          if [ "$GITHUB_REF_TYPE" = tag ] || git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            echo deploy=true >> "$GITHUB_OUTPUT"
+          else
+            echo "$version is not tagged yet: its tag's run deploys the site"
+            echo deploy=false >> "$GITHUB_OUTPUT"
+          fi
       - uses: peaceiris/actions-hugo@v3.2.1
+        if: steps.gate.outputs.deploy == 'true'
         with:
           hugo-version: '0.165.0'
           extended: false
       - name: Build site
+        if: steps.gate.outputs.deploy == 'true'
         working-directory: site
         run: |
           HUGO_PARAMS_RELEASE=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || echo dev)
           export HUGO_PARAMS_RELEASE
           hugo --minify --baseURL https://multivac.ulm0.com/
       - uses: actions/configure-pages@v6.0.0
+        if: steps.gate.outputs.deploy == 'true'
       - uses: actions/upload-pages-artifact@v5.0.0
+        if: steps.gate.outputs.deploy == 'true'
         with:
           path: site/public
       - uses: actions/deploy-pages@v5.0.1
+        if: steps.gate.outputs.deploy == 'true'

@@ -58,3 +58,31 @@ test('the site deploys on a release and on the default branch, not one or the ot
     'pages does not run on the default branch: site-only corrections would wait for a release',
   );
 });
+
+// MV-154. GitHub Pages keys a deployment by its commit and answers a second
+// deployment of a commit with the first, so a release commit deployed from its
+// push to the default branch, before its tag existed, kept the old badge when
+// the tag's run deployed it again. The pages job decides first, and nothing
+// after that decision runs when it says no.
+test('a default-branch push of an untagged version deploys nothing (MV-154)', () => {
+  const workflow = loadWorkflow();
+  const steps: Array<{ id?: string; if?: string; run?: string; uses?: string; name?: string }> =
+    workflow.jobs?.pages?.steps ?? [];
+  const gateAt = steps.findIndex((s) => s.id === 'gate');
+  assert.ok(gateAt > 0, `${CI}'s pages job has no step with id: gate after its checkout`);
+
+  const gate = String(steps[gateAt].run);
+  assert.match(gate, /require\("\.\/package\.json"\)\.version/, 'the gate does not read the version package.json declares');
+  assert.match(gate, /refs\/tags\/\$version/, 'the gate does not ask whether that version is tagged');
+  assert.match(gate, /GITHUB_REF_TYPE" = tag/, 'the gate does not let a tag deploy');
+
+  const after = steps.slice(gateAt + 1);
+  assert.ok(after.length > 0, 'nothing follows the gate');
+  for (const step of after) {
+    assert.equal(
+      step.if,
+      "steps.gate.outputs.deploy == 'true'",
+      `${step.name ?? step.uses} runs whatever the gate decided: an untagged release would deploy and freeze the badge`,
+    );
+  }
+});
