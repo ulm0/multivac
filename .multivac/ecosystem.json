@@ -5011,9 +5011,515 @@
   },
   {
    "source": "change:drop-graphers",
+   "target": "law:MV-102",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-102",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-103",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-114",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-114",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-115",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-115",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-121",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-121",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-122",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-122",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-123",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-123",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-124",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-124",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-125",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-125",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-128",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-128",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-129",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-129",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-130",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-130",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-131",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-132",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-132",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-134",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-135",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-135",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-136",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-136",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-137",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-137",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-139",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-140",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-141",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-141",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-143",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-143",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-144",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-144",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-146",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-146",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-147",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-147",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-148",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-149",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-150",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-150",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-152",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-152",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
    "target": "law:MV-153",
    "relation": "adds",
    "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-153",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-25",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-25",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-31",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-31",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-50",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-51",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-51",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-52",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-55",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-55",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-56",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-56",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-57",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-57",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-58",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-59",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-61",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-62",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-69",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-69",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-74",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-74",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-80",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-80",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-87",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-87",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-90",
+   "relation": "retires",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-93",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-93",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-98",
+   "relation": "claims",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "law:MV-98",
+   "relation": "touches",
+   "confidence": "EXTRACTED"
+  },
+  {
+   "source": "change:drop-graphers",
+   "target": "repo:brain",
+   "relation": "lands_in",
+   "confidence": "EXTRACTED",
+   "stage": 1,
+   "status": "branched"
   },
   {
    "source": "change:each-file-answers",
