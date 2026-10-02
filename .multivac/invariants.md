@@ -1564,4 +1564,3 @@ checks them on every commit.
 <!-- @anchor MV-153 brain:test/doors/doors.test.ts /doors removes the ecosystem graph an earlier release rendered/ unique -->
 <!-- @anchor MV-153 brain:test/doctor/doctor.test.ts /doctor names what an earlier release's graphers left, with its removal, and runs nothing/ unique -->
 <!-- @anchor MV-153 brain:test/invariants/no-graph.test.ts /no adapter is a grapher and no door renders a graph line, whatever an old config declares/ unique -->
-| MV-154 | RESERVED by change release-0-15-0-final — state the rule here before close. | open | proposed | 2026-10-02 | [changes/release-0-15-0-final.md](changes/release-0-15-0-final.md) |

@@ -1,6 +1,6 @@
 ---
 slug: release-0-15-0-final
-status: open
+status: archived
 repos:
   brain:
     status: landed
@@ -17,3 +17,5 @@ claims: []
 # Release 0.15.0
 
 0.15.0 was never tagged, and drop-graphers landed after its entry was written: this ships MV-143, MV-144 and MV-146 through MV-153 as one 0.15.0, its entry written against 0.14.1, and adopts it.
+
+Specified in `specs/082-release-0-15-0-final/` (speckit).
