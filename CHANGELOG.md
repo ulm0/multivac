@@ -10,12 +10,16 @@ ID does not bind.
 This file is the only copy. The documentation site mounts it rather than
 keeping a second one (MV-78).
 
-## Unreleased
+## 0.15.0 — 2026-10-02
 
-multivac keeps no code graph. A brain that declares `grapher:` still loads, and
-`doors` takes back what multivac itself wrote, but nothing builds, refreshes,
-gates, commits or names a graph any more, and graphify's or codegraph's files
-stay until you remove them. Read the first item before upgrading.
+multivac keeps no code graph: a brain that declares `grapher:` still loads,
+and `doors` takes back what multivac itself wrote, but nothing builds,
+refreshes, gates, commits or names a graph any more, and graphify's or
+codegraph's files stay until you remove them. Three more behaviours changed in
+a way that can newly refuse what used to pass: a brain that was loading, an
+opsx brain's slugs and archives, and a `change close` whose claims cite no
+stated row. And `change new` now writes a claim an older multivac cannot read.
+Read the first four items before upgrading.
 
 **Changed — read before upgrading**
 
@@ -43,22 +47,9 @@ stay until you remove them. Read the first item before upgrading.
     brain door, and each edit runs one hook where it ran two.
   - **What you lose**: one-call transitive reach (`codegraph impact`,
     `graphify path`); one-hop questions cost the same or less by grep.
-- Fourteen rows retired — twelve that were law and two never enacted: MV-50,
-  MV-52, MV-58, MV-59, MV-61, MV-62, MV-90, MV-103, MV-131, MV-134, MV-139,
-  MV-140, MV-148 and MV-149 (the last two proposed). Thirty-four rows amended.
-
-## 0.15.0 — 2026-09-30
-
-Three behaviours changed in a way that can newly refuse what used to pass: a
-brain that was loading, an opsx brain's slugs and archives, and a `change close`
-whose claims cite no stated row. A fourth changes where a code graph is kept: a
-brain with no `repos:` entry at `.` stops graphing itself. A fifth writes where
-multivac did not: codegraph repos get an index in each change worktree, an
-`info/exclude` line and a `codegraph.json`. And `change new` now writes a claim
-an older multivac cannot read. Read the first five items before upgrading.
-
-**Changed — read before upgrading**
-
+  - Fourteen rows retired — twelve that were law and two never enacted: MV-50,
+    MV-52, MV-58, MV-59, MV-61, MV-62, MV-90, MV-103, MV-131, MV-134, MV-139,
+    MV-140, MV-148 and MV-149 (the last two proposed). Thirty-four rows amended.
 - **The SDD lives in the brain alone (MV-146).** A top-level `sdd:` used to
   reach every declared repo: `repos sync` installed the vendor into each code
   repo (spec-kit: 30 files, about 240 KB), each code repo's door carried the
@@ -143,109 +134,6 @@ an older multivac cannot read. Read the first five items before upgrading.
     the validator and the scaffold; the calls the agent makes follow the
     agent's own environment, where `OPENSPEC_TELEMETRY=0` or `DO_NOT_TRACK=1`
     stops them sending.
-- **A brain that holds no code keeps no code graph, and says where to ask
-  (MV-148).** A brain holds code only where a `repos:` entry is the brain
-  (`brain: .`). One that did not still resolved the ecosystem's grapher for
-  itself: `init` installed 23 graphify files and a 2-node graph of `CLAUDE.md`,
-  the first close committed a graph that answered a code question from
-  graphify's own skill, and codegraph built an index of 0 nodes. Such a brain
-  is now never built, refreshed, installed into, gated or landed, and `init`,
-  `doctor` and `change plan` say so, with how to declare `brain: .`.
-  - **A brain holding source with no `brain: .` entry is no longer graphed**
-    until you add one, inside a change. `init` writes it when the repo it
-    scaffolds holds any file, tracked or untracked; `init --grapher <name>` in
-    an empty repo no longer needs the binary, and exits 0.
-  - **An install an earlier release left is kept.** `doctor` prints its
-    removal — graphify's own uninstall per platform found, gemini's first, then
-    its files; review `git diff`, since each uninstall drops the whole hook
-    group it wrote and leaves an emptied hook list — `repos check` states it,
-    the brain door says it answers no code question, and nothing fails over it.
-  - **The door says where each code repo's graph is asked**: each verb with
-    the flag that points it at a checkout, `--graph
-    <checkout>/graphify-out/graph.json` or `-p <checkout>`, and that the answers'
-    paths are relative to that checkout. `change apply` prints under each
-    checkout the flag that reaches its graph, else the repo checkout's, for the
-    base. A brain that holds code adds its worktrees' form. `change close`
-    removes a worktree whose only changes are the grapher's outputs.
-  - **The brain's post-edit hook follows edits into the code repos** and never
-    into a checkout of the brain. Each grapher's hook is wired only where its
-    binary is reachable from every code repo that resolves it (one hook per
-    grapher, below); `doors` and `doctor` say why otherwise, and the door and
-    flow.md, which read the declarations, promise an edit refresh only for a
-    grapher a hook is declared to run.
-    A binary found only in a code repo's own `node_modules/.bin` reaches edits
-    in that repo's checkout, not in its change worktrees, which hold no
-    `node_modules`; `doctor` names the repos where that holds.
-  - **The grapher's ignore lines are derived, and land with the graph.**
-    `.graphifyignore` gets the root's non-code top-level directories, anchored
-    as `/<dir>/`, with a closing `# multivac:` record; a code repo adds `/.brain/` and
-    no `/specs/`, which hid its own `specs/*.spec.ts`. `change land` appends
-    the lines a root lacks and commits the file with the graph — in code repos
-    other teams own too; an ignore file it may not write — untracked, edited,
-    ignored, or committed only on the repo's own branch — is named, and the
-    graph lands alone. While the graph holds nodes under a recorded line,
-    land and close run `graphify update . --force`, since graphify 0.9.29's
-    plain update refuses to shrink with exit 1. `doctor` names missing lines,
-    an uncommitted ignore file and nodes still under a line.
-- **A change's checkout has its own codegraph index, and every grapher its own
-  post-edit hook (MV-149).** codegraph asked in a change's worktree answered
-  from the nearest index above it, silently: the trunk's index lacked 19 of a
-  branch's own symbols and put 24 of 192 moved ones more than 60 lines off.
-  - **`change apply` builds a codegraph index in each checkout it hands out**,
-    or syncs the one there, and prints `its index: -p <worktree>` under it,
-    saying whether a hook refreshes it after your edits or it is as of this
-    apply until `change land`. Where git would list the index it first appends
-    `.codegraph/` to the repository's common `.git/info/exclude`, never a
-    tracked file, and says so — asking git of the directory itself, so a
-    `.gitignore` of `.codegraph/*`, which lets codegraph's own `.gitignore`
-    back in, gets the line too. `change land` syncs the index on the change's
-    branch after the same step and commits none of it; a detached HEAD passes
-    it by. `change close` removes it with the worktree. Where apply could not
-    build it, it names the binary once and points at the repo checkout's index,
-    for the base. A binary found only in a repo's `node_modules/.bin` builds no
-    worktree index. apply takes about 1 to 7 s longer per codegraph repo, twice
-    on a repo's first apply.
-  - **Every command multivac runs for a grapher has its stdin closed.** With
-    its file watcher off, `codegraph init` waited on a prompt and apply had not
-    returned after 30 s.
-  - **One post-edit hook per grapher.** A brain whose code repos resolve
-    graphify and codegraph used to wire none; a brain that holds code on one
-    grapher refreshed its own graph on an edit in a sibling of another and left
-    the sibling's index behind. Each grapher now gets its own hook, known by
-    the artifact its test names; `doors` rewrites each in place, takes over one
-    of its own naming no wanted artifact, and turns two unnamed copies of its
-    own into one. Graphers declaring one artifact get no following hook, with a
-    notice `doctor` repeats; where one is the brain's own, its hook stays and
-    runs in the others' repos too. A grapher whose binary is not reachable is
-    named in `doors`' notice. `doctor` names each grapher's hook, and a repo still holding the
-    artifact of a grapher it does not resolve while that grapher's hook is
-    wired, with the removal.
-  - **No hook refreshes anything for a file in no repository.** The hook of a
-    brain that holds code, and a consumer's, fell back to the session's
-    directory and refreshed its graph on every edit of a scratch file; they
-    now exit, 8 bytes longer. `doors` rewrites them in place.
-  - **A consumer's codegraph index keeps the mounted brain out.** Where the
-    brain holds code, `/.brain/` goes into `codegraph.json`'s `exclude` — a
-    consumer of this brain went from 2,254 nodes, 2,247 of them the mount's, to
-    7. The line is spliced into your file, every other byte kept, and never
-    over a line any of its four lists names; a file that does not parse is left
-    and named; `**/.brain/` counts as naming the mount. `change land` commits
-    `codegraph.json` alone where it may write it: the copy the first build
-    writes in a repo's own checkout is yours to commit, and `doctor` names it —
-    and names one git ignores — until you do. The mount is written as git
-    records it, for graphify's `.graphifyignore` too.
-  - **codegraph's door lists four verbs, each with what it misses** —
-    `query`, `callers`, `impact` and `node` — run over this repository's 318
-    functions, and no longer claims a saving over grep: `codegraph query`
-    printed more than a narrowed definition grep for 311 of them. The claims
-    that a sentence gets nothing from codegraph and that one graph call
-    answers what a search takes many are gone everywhere.
-  - **What the agent's own codegraph calls queue and send is disclosed by
-    version** in the registry entry: the printed verbs open no socket where
-    npm installed the platform bundle and queue one count per command and day,
-    which a later un-opted-out run sends; without the bundle the npm shim
-    downloads it whatever `DO_NOT_TRACK` says, and `CODEGRAPH_NO_DOWNLOAD=1`
-    where the agent runs turns that off.
 - **A claim is its row's ID, and close checks what it cites (MV-150).** `change new` and the
   scaffold now write `claims: [<ID>]`; the row states the rule. A legacy `{ id, statement }`
   keeps working and is written back unchanged — do not convert a change in flight.
@@ -329,28 +217,7 @@ an older multivac cannot read. Read the first five items before upgrading.
 - **Under `sdd_auto: false`, nothing claims a gate (MV-146).** The door, flow.md
   and `doctor` said the lifecycle refuses without the step artifacts, which it
   does not do with the automation off.
-- **The door reaches the harness, because the link goes in before the vendor
-  does (MV-143).** A grapher's own project install writes the file a harness
-  reads — graphify writes a regular `CLAUDE.md` for claude and a `GEMINI.md` for
-  gemini — and `repos sync` equips a repo it just cloned without projecting doors
-  there. The vendor arrived first, multivac may not replace a file it did not
-  write (MV-108), and a Claude session in that repo read the vendor's section and
-  no door at all. Every declared door whose kind is a symlink is now linked in
-  each writable root before the vendor runs, so the section lands in `AGENTS.md`
-  through the link. A regular file is still never replaced: it is named, with the
-  merge left to a human.
-- **A hook file stops naming one machine's path after any install (MV-131).**
-  The rewrite that turns an absolute path to the vendor binary into its bare name
-  sat behind an early return that fired as soon as every platform was installed,
-  so an install run by hand afterwards put the path back and the commit carried
-  it. It now runs on every command that equips a root.
-- **The door claims the vendor's section only where a platform writes it
-  (MV-140).** It used to claim it as soon as any harness was declared, so a brain
-  with only the `agents` door cited a `## graphify` section that graphify's
-  `agents` platform never writes; `doctor` offered `--platform agents` to repair
-  it, a command that cannot. Both now ask which declared platforms write that
-  section into `AGENTS.md`, and say nothing when none do.
-- **A consumer door names the law at the path that repo can open (MV-140).** It
+- **A consumer door names the law at the path that repo can open (MV-143).** It
   printed `.multivac/invariants.md` in repos where the law lives under the
   mounted brain.
 
@@ -394,9 +261,7 @@ an older multivac cannot read. Read the first five items before upgrading.
   (MV-143).** The `.cursor/rules/multivac.mdc` stub was a second door that could
   disagree with the canonical one. One `doors` run removes multivac's block from
   it and deletes the file when nothing but multivac's own frontmatter is left;
-  lines you added there survive, and the file with them stays. graphify's own
-  `cursor` platform, whose rules file repeats what the `## graphify` section
-  already says, is skipped in a root that carries that section.
+  lines you added there survive, and the file with them stays.
 - **Fresh spec-kit installs get skeleton templates (MV-146).** When the
   lifecycle's scaffold installs spec-kit in the brain, multivac writes three
   short skeletons to `.specify/templates/overrides/`, which every spec-kit
@@ -421,8 +286,6 @@ an older multivac cannot read. Read the first five items before upgrading.
 - **`change plan` says where code goes (MV-146).** For a change naming a code
   repo, it says the steps run from the brain checkout and code is written only
   in the change's worktrees.
-- **`ecosystem.json`'s `sdd` on a repo node is the SDD that governs its code
-  (MV-146)** — the brain's, or null for a repo that says `sdd: none`.
 - **The skill carries what no command prints (MV-152).** Its body states the
   rhythm, where you are, seven rules and where to read what; each reference
   keeps the judgement no command prints and names what prints the rest — the
@@ -432,8 +295,7 @@ an older multivac cannot read. Read the first five items before upgrading.
   instead of 56,542. A session in a code repo is told to write code in the
   worktree `change apply` printed and to run `change`, `roadmap` and `seed` in
   the brain's own checkout, never in the mount. The skill, the root documents
-  and the pages no longer say a graph pays for itself in fewer bytes, list two
-  git shims of three, name a Cursor rules file as written, promise no install
+  and the pages no longer list two git shims of three, name a Cursor rules file as written, promise no install
   step to forget, say `close` commits a code-less brain's specs, or call the
   pre-commit hook the earlier and stricter check. Run `multivac doors` to
   re-project the skill.
