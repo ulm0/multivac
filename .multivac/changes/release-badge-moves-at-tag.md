@@ -3,7 +3,7 @@ slug: release-badge-moves-at-tag
 status: open
 repos:
   brain:
-    status: planned
+    status: branched
 landing_order:
   - - brain
 invariants:
