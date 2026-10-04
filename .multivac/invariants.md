@@ -1569,3 +1569,4 @@ checks them on every commit.
 <!-- @anchor MV-154 brain:.github/workflows/ci.yml /if: steps\.gate\.outputs\.deploy == 'true'/ count=5 -->
 <!-- @anchor MV-154 brain:.github/workflows/ci.yml /git rev-parse -q --verify "refs\/tags\/\$version"/ unique -->
 <!-- @anchor MV-154 brain:test/invariants/site-deploy.test.ts /a default-branch push of an untagged version deploys nothing \(MV-154\)/ unique -->
+| MV-155 | RESERVED by change site-docs-match-code — state the rule here before close. | open | proposed | 2026-10-04 | [changes/site-docs-match-code.md](changes/site-docs-match-code.md) |
