@@ -580,9 +580,10 @@ An entry with neither `path` nor `url` cannot be located:
 
 A config that does not load is an environment error, not a failed check.
 Every command that reads it exits **2** and prints one line naming the key
-and the repair. `doors` and `doctor` are the two exceptions and exit 1: for
-those an unloadable config is the diagnosis they were asked for, not an
-environment they failed to read.
+and the repair. `doors`, `doctor` and `init` are the exceptions and exit 1:
+for `doors` and `doctor` an unloadable config is the diagnosis they were asked
+for, and `init` stops rather than re-render every projection from a config it
+could not read.
 
 ```txt
 $ mvac verify

@@ -40,10 +40,13 @@ arguments prints the same usage and exits **2**.
 command runs**: usage on stdout, exit 0, no side effect on the tree.
 `mvac seed --help` prints what seed would do; it never writes a seed report.
 
-**The LLM boundary:** every command here is deterministic. No model call, no
-API key, and `verify`, `doctor` and `doors` never touch the network. `seed`
-and the interview only draft what a human then enacts; the drafting agent is
-yours, not multivac's.
+**The LLM boundary:** no command here calls a model, and none needs an API
+key. `verify`, `doctor` and `doors` never touch the network. Other commands do
+reach it, and say so: `repos sync` and `roadmap sync` fetch, `change plan` and
+`change apply` clone a repo that is declared and absent, and `init --sdd` and
+`change new` run the SDD tool's own scaffold, which may use the network or
+send telemetry — see [SDD adapters](../sdd). `seed` and the interview only
+draft what a human then enacts; the drafting agent is yours, not multivac's.
 
 ## `init [dir] [--provider a,b] [--sdd name] [--quiet]`
 
@@ -196,6 +199,7 @@ AGENTS.md                    the door — managed block only, never clobbered
 .multivac/hooks/pre-push     same, on push
 .multivac/hooks/pre-merge-commit  same, on a local merge
 .multivac/.gitignore         ignores .multivac/cache/ and .multivac/worktrees/
+.multivac/projected.yml      the version that projected the doors, so drift can be told
 .multivac/cache/             gitignored
 ```
 
@@ -390,6 +394,7 @@ answers about a commit nobody is making.
 | `--worktree` | read every declared repo's **working tree** instead of its channel ref — local state across the whole ecosystem, on purpose. |
 | `--repo <key>` | scope to one declared repo. **Only meaningful from a consumer repo** — from a brain it is ignored with a warning. |
 | `--quiet` | one line when nothing is off; the whole report otherwise — see below. `MULTIVAC_QUIET=1` asks the same. |
+| `--range <base>..<head>` and `--branch <name>` | the CI reader: judge the non-merge commits in the range, so a commit made with `--no-verify` is still caught. They go together: one without the other, or a range that is not `<base>..<head>`, exits 2. |
 
 ### `--quiet`: one line when nothing is off
 
@@ -793,7 +798,8 @@ A mount that is present but is **not** a brain — an empty `.brain`/`.knowledge
 whose submodule was never initialised, or a pin that predates the brain's
 `.multivac/` migration — is a stale pin, not a repo that needs `init`. `verify`
 says so, and never advises `init` (which would scaffold a second brain beside
-the mount):
+the mount). It exits **2**, an environment error: the hook that runs `verify`
+refuses the commit until the submodule is updated or the pin fixed.
 
 ```txt
 $ cd ../api && mvac verify
@@ -828,7 +834,7 @@ If a `channel` is declared, `verify` compares each consumer's brain-mount
 gitlink against it — offline, from refs already in the brain checkout:
 
 ```txt
-  stale     api: pin 12 behind origin/main · last fetch 3d ago — run `multivac repos sync`
+  stale     api: pin 12 behind origin/main · last fetch 3d ago — git -C ../api submodule update --remote .brain
 ```
 
 With `staleness: block` the same line gains `blocking (staleness: block);`
@@ -932,7 +938,11 @@ run says neither:
 
 ```txt
 brain: notice: .claude/settings.json: removed 1 post-edit graph refresh hook an earlier multivac wrote — multivac keeps no code graph
+brain: <relations file> removed — multivac no longer renders it; commit the removal
 ```
+
+`doors --adopt` also prints `brain: adopted <version> — recorded in
+.multivac/projected.yml`.
 
 Commit the removal. What a vendor's own install wrote — its output directory,
 skills, door section and hooks — stays until you remove it: `doctor` names it
@@ -1001,6 +1011,8 @@ untracked  nothing build-critical untracked
 | `branches` | the branch each repo is parked on and its sha, and whether that **is** its channel — `= channel …`, `OFF channel … @ <sha>` (verify reads the channel, not that tree), or a channel that does not resolve there at all (verify falls back to the working tree). The brain==code entry says how far **behind** its own channel it is, if it is — an out-of-date law judging a current ecosystem is the one staleness the channel read cannot catch. The line that explains a `verify` result at a glance |
 | `pins` | the brain mount in each consumer, and how far behind its channel it is. A mount that is staged and not yet committed says so, instead of calling itself missing. A read-only repo reads `<key>: not managed, read-only — no mount expected` (or `shallow`), since every fix there is a write |
 | `hooks` | `core.hooksPath`, both shims, coexistence with the repo's own hooks (chained / alongside / not wired), and whether anything can actually run them |
+| `forge` | printed when an SDD is declared and `sdd_auto` is on: code lands in a change only where the forge requires the merge request pipeline to run `verify --strict --range … --branch …` and nobody can push to the default branch. Ungateable from disk — multivac cannot read either setting |
+| `layout` | printed alone, with exit 1, when the brain still has the layout from before `.multivac/`; `init` moves it |
 | `enact` | printed on every run, and it reports an **absence**: who enacts a row is not a fact on disk. multivac never fabricates a git identity, and a hook runs with the caller's permissions, so a gate installed here is one the same process can skip. Ungateable by design rather than missing — the enforcement is the forge's merge button, held by an account the agent does not have. The half that IS checked — enactment landing in its own commit — is `verify`'s `enact` line, read from the index |
 | `untracked` | brain paths a `.gitignore` swallows (WARNING — the law cannot ship), then untracked, non-ignored files that look build-critical |
 
@@ -1090,8 +1102,10 @@ payments: cloned git@example.com:acme/payments.git -> ../payments
 The fetch is what keeps `verify` honest: a brain-scoped run reads each sibling
 at its channel ref, and that ref is a **local** remote-tracking snapshot —
 `verify` never touches the network, so it is only as fresh as the last
-`repos sync`. Every staleness line in `verify` names this command for exactly
-that reason.
+`repos sync`. The `stale?` line, printed when the channel ref is unknown
+locally, names this command because `sync` is what fetches it. A pin that is
+behind the channel names `git submodule update --remote` instead: `repos sync`
+fetches and never moves a pin, so only the submodule update clears that line.
 
 `--shallow` adds `--depth 1` — fine for verify-only machines, not enough for
 `change`, which needs to branch. A shallow clone is read-only until
@@ -1208,10 +1222,10 @@ web: could not mount the brain at .brain — fatal: '.brain' already exists and 
 An unknown subcommand exits 2:
 
 ```txt
-unknown subcommand "pull" — usage: multivac repos [sync [--shallow]]
+unknown subcommand "pull" — usage: multivac repos [sync [--shallow] | check]
 ```
 
-## `roadmap [add <slug> "<title>"] [--horizon now|next|later]`
+## `roadmap [add <slug> "<title>"] [--horizon now|next|later] | sync`
 
 The changes that have not started yet. With no arguments it lists them; with
 `add` it records one.
@@ -1263,14 +1277,21 @@ recorded .multivac/changes/tracker-projects-the-roadmap.md — planned, horizon 
 `--horizon` defaults to `later`, so nothing becomes urgent by omission. It
 applies to `add` only; the listing always shows every horizon.
 
-Refusals name the state found and the command that moves forward:
+Refusals name the state found and the command that moves forward. The first
+three exit **1**; an unknown horizon exits **2**, and so does `--horizon` on a
+listing, which shows every horizon:
 
 ```txt
-mvac: <slug> is already planned — see it with `multivac roadmap`, or start it with `multivac change new <slug>`
-mvac: <slug> is already open — it started; nothing to record
-mvac: <slug> is already archived at .multivac/changes/archive/<slug>.md — this change is closed; start a new one with a new slug, or read it there
-mvac: unknown horizon "someday" — use now, next, later
+<slug> is already planned — see it with `multivac roadmap`, or start it with `multivac change new <slug>`
+<slug> is already open — it started; nothing to record
+<slug> is already archived at .multivac/changes/archive/<slug>.md — this change is closed; start a new one with a new slug, or read it there
+roadmap: unknown horizon "someday" — use now, next, later
+roadmap: --horizon applies to `roadmap add` — the listing shows every horizon
 ```
+
+`roadmap sync` projects the roadmap to the declared `tracker`. With none
+declared it prints `sync: no tracker declared` and the keys to add, and exits
+**0**; a tracker multivac has not verified exits **1**.
 
 A brain whose SDD takes a narrower slug refuses the rest with exit **2**,
 recording nothing — for OpenSpec, where the printed line also names the
@@ -1321,7 +1342,7 @@ Starting a planned change is [`change new`](#new), which promotes the file that
 is already there. Every later step refuses one that has not started:
 
 ```txt
-mvac: <slug> is planned, not started — start it first: multivac change new <slug>
+<slug> is planned, not started — start it first: multivac change new <slug>
 ```
 
 ## `change <sub> <slug> [args]`
@@ -1365,6 +1386,11 @@ string:
 ```
 
 ### `new`
+
+On a slug that `roadmap add` already recorded, `new` promotes that file instead
+of writing a second one and prints `promoted … — planned since it was recorded,
+now open`; the title is ignored. On a slug already archived it refuses and
+exits **1**.
 
 ```txt
 $ mvac change new "points expire"
@@ -1635,6 +1661,8 @@ stage 2 [ready] payments:branched
 ```
 
 `land` prints commands; it never pushes and never opens a merge request.
+`land --landed <repo>` is the one form that writes: it records the statement in
+the change file and commits that as `change land: <slug> — <repo> landed`.
 
 **`--landed` records what you tell it, and says what it could check.** The
 evidence is local and offline: the change branch contained in the default
@@ -1782,7 +1810,7 @@ A legacy claim that still carries its `statement:` is told to move it into the
 row when the row states nothing yet. `verify`'s finished line, the last `land`
 and `plan` say what this gate will refuse before you get here.
 
-Green: the SDD `archive` step runs, the change file moves to
+Green: the SDD's `archive` step is printed for you to run, never run by multivac; the change file moves to
 `.multivac/changes/archive/`, the worktrees are removed, and the ritual is
 printed verbatim.
 
@@ -1889,15 +1917,21 @@ help <command>` prints that command's usage; bare `mvac help` lists topics.
 
 | code | meaning |
 | --- | --- |
-| **0** | ok — including every degraded state: unevaluated repos, absent adapters, missing repos, unsupported door targets, non-blocking broken legs |
-| **1** | a check failed or a gate refused: blocking leg broken/vacuous, anchor parse error, stale pin under `staleness: block`, `close` before every repo landed, a claim not green, a clone that failed, invalid config **in `doors` and `doctor`**, a disarmed enforcement gate under **`doctor --strict`** |
-| **2** | usage or environment: no command, unknown command, **any argument a command does not declare** — a flag or a positional — unknown subcommand, missing or invalid `.multivac/config.yml`. The refusal names the argument and states what the command takes, and comes before the command does anything. |
+| **0** | ok — including these degraded states: unevaluated repos, absent adapters, missing repos, unsupported door targets, non-blocking broken legs. Not every degraded state: a brain mount that is not a brain exits 2 (below) |
+| **1** | a check failed or a gate refused: blocking leg broken/vacuous, anchor parse error, stale pin under `staleness: block`, `close` before every repo landed, a claim not green, a clone that failed, invalid config **in `doors`, `doctor` and `init`**, a disarmed enforcement gate under **`doctor --strict`** |
+| **2** | usage or environment: no command, unknown command, **an argument most commands do not declare** — a flag or a positional — unknown subcommand, missing or invalid `.multivac/config.yml` (except in `doors`, `doctor` and `init`, which exit 1), a mount that is not a brain. The refusal names the argument and states what the command takes, and comes before the command does anything. |
 
-A command takes what it declares and refuses the rest. `mvac doctor --sttrict`
+Most commands take what they declare and refuse the rest. `mvac doctor --sttrict`
 used to run the report without the assertion and exit 0; `mvac doctor /other/repo`
 used to report on the working directory, because `doctor` declares no directory
 and the argument was discarded. Both refuse now. What each command declares is
 its `--help`, and that is the list the refusal is measured against.
+
+Three things are accepted and do nothing. `mvac help` ignores arguments after
+its topic, so `mvac help anchor junk` prints the grammar and exits 0. On
+`change`, `--landed <repo>` is read only by `land` and `--abandon` only by
+`close`: `--landed` and `--abandon` are declared flags, so another subcommand
+accepts them and ignores them. On `repos`, `--shallow` is read only by `sync`.
 
 ```txt
 $ mvac doctor --sttrict

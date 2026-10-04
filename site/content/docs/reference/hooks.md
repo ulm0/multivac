@@ -371,8 +371,9 @@ brain: notice: .claude/settings.json: hooks.PostToolUse runs `mvac verify` 2 tim
 
 ## What blocks and what informs
 
-Every rung runs the same `verify`, so the policy is the same everywhere:
-**which anchor mode broke** decides whether the exit code gates.
+Every rung runs the same `verify`, so the policy is the same everywhere. For
+a leg, the anchor mode that broke decides whether the exit code gates; the
+table below is that rule.
 
 | leg outcome | default (hooks) | `--strict` (the push, with `strict_pre_push`) |
 | --- | --- | --- |
@@ -388,6 +389,13 @@ Every rung runs the same `verify`, so the policy is the same everywhere:
 The blocking set is the `blocking:` key, default `[absent, count, each]`. You
 can widen it; you cannot drop `absent`. See
 [Configuration](../configuration#blocking).
+
+Some lines gate whatever the anchor mode, in a default run: an `enact` line
+that says REFUSED, the death of the law file, a change to the config made
+without an open change, code outside an open change's branch, a stale pin under
+`staleness: block`, and a mounted brain's SDD refusal. Under `--strict` an open
+change that is finished and not closed gates too. Read the line's own
+`blocking` marker: it is the same fact `verify` used for the exit code.
 
 The asymmetry is the whole design. A mid-refactor commit that moved a file
 should not die on a presence check — that is noise, and a guard that produces
