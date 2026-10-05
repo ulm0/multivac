@@ -1577,3 +1577,4 @@ checks them on every commit.
 <!-- @anchor MV-155 brain:site/content/** /invalid config \*\*in `doors` and `doctor`\*\*/ absent -->
 <!-- @anchor MV-155 brain:site/content/** /`doors` and `doctor` are the two exceptions/ absent -->
 <!-- @anchor MV-155 brain:site/content/** /\*\*which anchor mode broke\*\* decides whether the exit code gates/ absent -->
+| MV-156 | RESERVED by change site-docs-second-audit — state the rule here before close. | open | proposed | 2026-10-05 | [changes/site-docs-second-audit.md](changes/site-docs-second-audit.md) |
