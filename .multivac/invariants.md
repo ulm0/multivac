@@ -1577,4 +1577,14 @@ checks them on every commit.
 <!-- @anchor MV-155 brain:site/content/** /invalid config \*\*in `doors` and `doctor`\*\*/ absent -->
 <!-- @anchor MV-155 brain:site/content/** /`doors` and `doctor` are the two exceptions/ absent -->
 <!-- @anchor MV-155 brain:site/content/** /\*\*which anchor mode broke\*\* decides whether the exit code gates/ absent -->
-| MV-156 | RESERVED by change site-docs-second-audit — state the rule here before close. | open | proposed | 2026-10-05 | [changes/site-docs-second-audit.md](changes/site-docs-second-audit.md) |
+| MV-156 | The pages say what the code does, second pass: a mounted brain's SDD refusal gates only under `--strict`, and `code` outside a change gates in a default run only in a brain checkout, so anchor mode is not the only thing that decides what gates; `verify --strict` refuses a finished change that was not closed and never one in flight; nothing in multivac tells a human's enactment from an agent's, so no page calls that split mechanical (MV-81); `doctor` is no preview before `init`; the notice for a symlink the platform refuses does not name `@AGENTS.md`; `init` asks `git check-ignore` about the paths it names, not every path it writes; and `change close` withholds the orphan line while a claim is red. **Added 2026-10-05**: the 2026-10-05 audit of the site against the 0.15.0 binary (2625 claims, 138 findings) found MV-155's own gating sentence wrong and more than a hundred statements claiming more than the code checks or quoting output it does not print; the pages are corrected and the dead phrasings are named `absent`. | open | proposed | 2026-10-05 | [changes/site-docs-second-audit.md](changes/site-docs-second-audit.md) |
+<!-- @anchor MV-156 brain:site/content/** /staleness: block`, and a mounted brain's SDD refusal\./ absent -->
+<!-- @anchor MV-156 brain:site/content/** /`verify --strict` refuses to publish while a change is/ absent -->
+<!-- @anchor MV-156 brain:site/content/** /That split is mechanical, not advisory/ absent -->
+<!-- @anchor MV-156 brain:site/content/** /npx multivac@latest doctor[[:space:]]+# what it would find here/ absent -->
+<!-- @anchor MV-156 brain:site/content/** /put `@AGENTS\.md` as the first line/ absent -->
+<!-- @anchor MV-156 brain:site/content/** /and refuses the commit when they disagree/ absent -->
+<!-- @anchor MV-156 brain:site/content/** /`git check-ignore` on every path it writes/ absent -->
+<!-- @anchor MV-156 brain:site/content/** /so you never close repeatedly to discover the rest/ absent -->
+<!-- @anchor MV-156 brain:site/content/** /default policy: only blocking modes gate/ absent -->
+<!-- @anchor MV-156 brain:site/content/** /run the default policy — only blocking modes/ absent -->

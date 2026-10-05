@@ -1,27 +1,20 @@
 ---
 slug: site-docs-second-audit
 status: open
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: branched
+landing_order:
+  - - brain
 invariants:
   touches: []
   adds:
     - MV-156
   retires: []
-claims: []
+claims:
+  - MV-156
 ---
 
 # The pages say what the code does, second audit
 
-Declare repos, landing_order, invariants and claims in the frontmatter,
-then run `multivac change plan site-docs-second-audit`. For example:
-
-    # repos: { api: { status: planned } } — planned|branched|committed|mr|landed
-    # landing_order: [[api]] — stages; earlier stages land first
-    # claims: [<ID>] — the rows close verifies; each row states its own rule
-
-multivac owns the frontmatter formatting: every lifecycle step rewrites it, so
-hand-tuned layout will not survive, and a key it does not know is DROPPED
-rather than carried through. Declared values round-trip unchanged; the body,
-below the closing ---, is yours: with an SDD declared, `change close` only
-appends the line citing its directory.
+A second audit of the site against the built 0.15.0 binary, 2026-10-05, found the pages still claiming more than the code does, and quoting output it does not print. This includes a sentence MV-155 itself wrote. The why, the design and the tasks are in `specs/085-site-docs-second-audit/`.
