@@ -1,6 +1,6 @@
 ---
 slug: site-docs-second-audit
-status: open
+status: archived
 repos:
   brain:
     status: landed
