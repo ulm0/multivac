@@ -1442,7 +1442,8 @@ tree**: `git ls-files` per repo — respects `.gitignore`, returns instantly —
 and one in-process `RegExp` per leg over what it returns. No external matcher
 is consulted and none is required to be on PATH.
 
-**English** for code, CLI, docs, and messages. But the brain's content is in
+**English** for code, CLI, docs, and messages (the published site is also
+published in Spanish, es-419, as translations of the English pages). But the brain's content is in
 whatever language the team writes: nothing in the parser may assume English
 headings.
 

@@ -62,8 +62,10 @@ directly.
 
 ## What we ask
 
-- **English everywhere** — code, comments, docs, the site, commit messages,
-  change files. No exceptions.
+- **English everywhere** — code, comments, docs, commit messages, change files,
+  and the site's source and default language. The one exception is the
+  published site, which is also published in Spanish (es-419): its Spanish
+  pages translate the English ones, never the reverse.
 - **Tests with behavior.** `node:test`, no frameworks. If it branches, loops,
   parses, or touches git, it ships with a test.
 - **`pnpm test` and `verify --strict` green** before you open the MR.

@@ -29,6 +29,9 @@ test('the changelog has an entry for the version the package declares (MV-78)', 
 test('the site mounts the changelog rather than copying it (MV-78)', () => {
   const hugo = readFileSync(HUGO, 'utf8');
   assert.match(hugo, /source: \.\.\/CHANGELOG\.md/, `${HUGO} no longer mounts the repo changelog`);
+  // MV-157: once per language, the same file — never a copy.
+  assert.equal((hugo.match(/source: \.\.\/CHANGELOG\.md/g) ?? []).length, 2, `${HUGO} must mount the changelog once per language`);
+  assert.match(hugo, /target: content\/docs\/changelog\.es\.md/, `${HUGO} no longer mounts the changelog for the Spanish site`);
   assert.match(hugo, /target: content\/docs\/changelog\.md/, `${HUGO} no longer targets the changelog page`);
   // Declaring any content mount replaces Hugo's default, so losing this line
   // silently empties the whole site rather than just the changelog.
