@@ -4,7 +4,7 @@ weight: 2
 ---
 
 This page assumes the binary is on your `PATH`. If it is not,
-[Install](../install) is three commands.
+[Install](../install) is one command.
 
 ## `mvac init .`
 
@@ -17,7 +17,7 @@ init: git init — the brain is git-native
 init: wrote .multivac/config.yml — declare your repos under repos:
 init: wrote AGENTS.md — the door; your agent reads it first
 init: wrote .multivac/invariants.md — the law table, zero rows
-init: wrote .multivac/ritual.md — empty; what you write there, `change close` prints
+init: wrote .multivac/ritual.md — candidates, all commented; uncomment what your team owes each other
 init: hooks in .multivac/hooks (core.hooksPath) — verify runs on commit
 
 init: done — the brain is scaffolded and empty. Session zero fills it:
@@ -31,8 +31,9 @@ init:   4. a human enacts each row in .multivac/invariants.md, then `multivac do
 ```
 
 Step 3 is the branch [Session zero](../session-zero) turns on. `init` prints
-both and marks the one that fits this directory: source, tracked or not,
-means discovery, an empty repo means the interview. A new brain for code that lives
+both and marks the one that fits this directory: on a first run, any file git
+does not ignore means discovery and an empty repo means the interview; a kept config decides by
+whether it declares the brain as one of its repos. A new brain for code that lives
 in other repos is empty, and still wants discovery. Declare `repos:` before the
 first commit: after it, a changed config needs an open change.
 
@@ -41,10 +42,10 @@ Exactly these files, nothing else:
 ```txt
 AGENTS.md                    the door — first thing any agent reads
 .multivac/invariants.md      the law table, zero rows
-.multivac/changes/           one file per ecosystem change (empty)
+.multivac/changes/           one file per ecosystem change (a `.gitkeep` for now)
 .multivac/config.yml         the registry: repos, doors, adapters
-.multivac/ritual.md          the closing ceremony, empty but for one comment
-.multivac/projected.yml      which multivac projected this brain last
+.multivac/ritual.md          the closing ceremony, candidate lines all commented out
+.multivac/projected.yml      the version this brain was brought to; only `doors --adopt` moves it
 .multivac/hooks/pre-commit   runs `mvac verify` on every commit
 .multivac/hooks/pre-push     same, on push
 .multivac/hooks/pre-merge-commit  same, on a local merge
@@ -56,7 +57,11 @@ where harnesses read it; everything else it owns lives under `.multivac/`,
 out of the way of your own content. `git init` runs only when
 the directory is not already a repo. `core.hooksPath` is pointed at
 `.multivac/hooks/`, so the hooks are versioned and travel with the clone;
-`multivac doors` arms them in each new clone.
+`multivac doors` arms them in each new clone. The exception is a repo whose
+`core.hooksPath` already names a directory of its own, or that has `.husky/`
+and no `core.hooksPath`: the shims go into that directory where the hook name
+is free, and `core.hooksPath` stays as it was. A hook already there that does
+not run multivac is left untouched, and `init` prints the line to append to it.
 
 On a repo that already has opinions, `init` checks before it writes: a
 `.gitignore` that would swallow the brain gets explicit negations appended
@@ -106,8 +111,9 @@ brain empty — load the multivac skill to fill it.
 ```
 
 With `--sdd`, the door also carries that tool's flow, and `init` installs it
-in the brain. A brain whose directory holds any file is also a code repo, so
-its config gets `brain: .`; a new brain for code that lives in other repos is
+in the brain — or, finding the tool's binary on neither `PATH` nor the brain's
+`node_modules/.bin`, refuses with exit 1 before writing anything. A brain whose directory already holds any file git does not ignore is also a code repo, so
+its new config gets `brain: .`; a new brain for code that lives in other repos is
 empty, and declares those repos instead. The SDD stays in the brain:
 it is where every change's specs are written, and no code repo installs it. For
 spec-kit, the install also writes three skeleton templates where spec-kit looks
@@ -166,12 +172,14 @@ mvac repos check  # offline: is each repo the declared clone, with its tools and
 mvac doors        # write each repo's door and hooks
 ```
 
-`repos sync` mounts the brain at `.brain` in every repo and leaves it staged;
-commit it in each repo. `brain_url` has to be the address everyone clones the
-brain from — `init` suggests your `origin`, but that may be an ssh alias only
-your machine knows. Run the same two commands again whenever you declare
-another repo: `repos sync` checks every repo each time, so the new one is
-mounted and the rest are left as they are.
+`repos sync` mounts the brain at `.brain` in each repo multivac may write to and
+leaves it staged; commit it in each of them. A repo declared `managed: false`,
+and a shallow clone, are read-only and get no mount. `brain_url` has to be the
+address everyone clones the brain from — `init` suggests your `origin`, but that
+may be an ssh alias only your machine knows. Run the same commands again
+whenever you declare another repo: `repos sync` clones the new one, fetches the
+repos already on disk, and mounts the brain in each writable repo that still
+lacks it.
 
 ### One repo? Say so
 
@@ -185,8 +193,8 @@ repos:
   brain: .
 ```
 
-`mvac init` writes exactly that when the repo it initializes already holds
-source, tracked or not. Anchors then target `brain:<glob>`, `mvac change` branches
+`mvac init` writes that `brain: .` entry, with a few comment lines around it,
+when it writes the config of a repo that already holds any file git does not ignore. Anchors then target `brain:<glob>`, `mvac change` branches
 right here, and `doctor` stops looking for a brain mount there is no reason
 to have — nothing is submoduled into itself. Sibling repos are more keys
 alongside it whenever the project grows into an ecosystem.

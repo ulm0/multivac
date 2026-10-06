@@ -23,10 +23,9 @@ $ mvac repos sync
 ```
 
 Declare `repos:` before the brain's first commit, then sync. It clones every
-declared repo not on disk and installs the declared SDD in the brain, where
-every change's specs are written, so nothing is drafted over a repo nobody can
-read.
-`mvac repos check` names what is still missing.
+declared repo with a `url` that is not on disk and installs the declared SDD in
+the brain, where every change's specs are written, so nothing is drafted over a
+repo nobody can read. `mvac repos check` names what is still missing.
 
 ### 1. Seed
 
@@ -46,7 +45,8 @@ kustomize, skaffold), **decisions / intent** (ADRs, AGENTS.md, CONTRIBUTING
 routes, protobuf, graphql, sql, api specs, docker, terraform, ci, package
 manifests and env examples. Test fixtures, `examples/` and vendored trees
 are excluded; every category caps at 25 listed files plus a count. No LLM,
-no network. The report:
+no network. The report, abridged; it closes with the open questions and a
+`## next` pointer:
 
 ```markdown
 # seed report
@@ -74,11 +74,11 @@ brain holds no code, in the brain's entry when it does:
 
 ### setup
 
-- project document .specify/memory/constitution.md: template (placeholders remain: [PROJECT_NAME]) → run /speckit.constitution in your agent …
+- project document .specify/memory/constitution.md: template (byte-identical to the template recorded in .specify/memory/.constitution-template.json) → run /speckit.constitution in your agent …
 ```
 
-A declared repo missing locally is reported unevaluated; run
-`mvac repos sync` first.
+A declared repo missing locally is listed under `## skipped`, with a hint to run
+`mvac repos sync` to clone it, and the summary line counts it as `N skipped`.
 
 ### 2. Read by category, not by repo
 
@@ -88,7 +88,7 @@ calls, the table two services share. A repo-by-repo read hides exactly that.
 
 ### 3. Take the open questions to a human
 
-The report ends with the three questions no cold reader can answer,
+The report carries the three questions no cold reader can answer,
 instantiated against what seed found:
 
 1. **Debt or intent?** — the code violates a written rule; is the
@@ -115,7 +115,7 @@ writes accounts" — suggests. You don't know why it's there; the human does.
 
 ```markdown
 | INV-07 | Only `billing_role` may write `accounts.balance`. | proposed | proposed | 2026-08-13 | seed |
-<!-- @anchor INV-07 api:db/migrations/*.sql /revoke[[:space:]]+update[[:space:]]+on[[:space:]]+accounts/i -->
+<!-- @anchor INV-07 api:sql/migrations/*.sql /revoke[[:space:]]+update[[:space:]]+on[[:space:]]+accounts/i -->
 ```
 
 Anchor to the contract site you just inventoried — that is both what you
@@ -123,8 +123,9 @@ read and what moves least. Full grammar: [Writing anchors](../writing-anchors).
 
 ### 5. File everything as `proposed`
 
-`proposed` rows never block verify. The brain stays honest about what is
-validated and what is not. The agent never marks a row `active` itself.
+The legs of `proposed` rows never block verify; only an anchor line that does
+not parse, or names a repo key nobody declared, still fails the run. The brain
+stays honest about what is validated and what is not. The agent never marks a row `active` itself.
 
 ### 6. Validate in blast-radius batches
 
@@ -137,8 +138,8 @@ per row:
 - **correct** — statement or anchor was wrong; fix and re-present.
 - **discard** — delete the row; an accident is not law.
 
-Whatever the session doesn't reach stays `proposed`: visible, counted,
-non-blocking. Never bulk-accept to finish faster — an enacted lie is worse
+Whatever the session doesn't reach stays `proposed`: visible, and its legs
+never block. Never bulk-accept to finish faster — an enacted lie is worse
 than an unvalidated truth.
 
 ### 7. Write the brain's project document
@@ -156,10 +157,12 @@ for review is removed before the commit; git keeps the record.
 ```txt
 $ mvac doors
 brain: door + hooks updated
+brain: .multivac/flow.md — what your declarations oblige, sorted; generated, binds nothing
 api: door + hooks updated
 ```
 
-Writes the brain door and each consumer repo's door (managed block only —
+Writes the brain door, the generated `.multivac/flow.md`, and each consumer
+repo's door (managed block only —
 hand-written content around it is untouched), and installs the git hooks in
 every declared repo on disk — except a read-only one, declared `managed: false`
 or a shallow clone, which gets nothing. From here run `mvac verify` for the

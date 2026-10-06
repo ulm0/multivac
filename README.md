@@ -10,7 +10,7 @@ tool that makes it mechanism instead of discipline.
 
 The tool (CLI alias `mvac`, named after Asimov's world-computer) verifies the
 brain's claims against the code with content-based anchors — present, absent,
-unique, count — plans and lands cross-repo changes with declared landing
+unique, count, each — plans and lands cross-repo changes with declared landing
 order, projects a single canonical agent door (`AGENTS.md`) to every harness,
 and keeps the brain's distribution pinned but fresh. What it cannot verify it
 surfaces: closing a change prints the team's ritual — who reviews, who is
@@ -21,17 +21,18 @@ Declare a spec-driven development tool (spec-kit or OpenSpec) and it carries its
 own work while multivac adds the gate and the pointer: the tool is installed in
 the brain, where every change's specs are written, and each change is gated on
 its own artifacts. With the spec tool declared and its automation on, multivac
-refuses code that reaches a repo outside a change. Declare none and it works as
-before: the lifecycle binds on its own and code is not refused outside a
-change. multivac keeps no code graph; your agent searches the tree.
+refuses code that reaches a repo outside a change; in a code repo, a branch no
+open change names waits for CI's `verify --strict`, since its mounted brain can
+lag, while one whose open change omits the repo is refused at once. Declare none
+and it works as before: the lifecycle binds on its own and code is not refused
+outside a change. multivac keeps no code graph; your agent searches the tree.
 
 **Status: released, and early.** It is on npm — [CHANGELOG.md](CHANGELOG.md)
 says what each release contained. The day-one capability is implemented and
 tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the `change`
 lifecycle — and multivac develops itself with it: this repo is its own brain,
 its rules are anchored invariants, and CI re-verifies them on every push. What
-it has not done yet is run against a multi-repo ecosystem — the shape it was
-designed for.
+it has not yet met is an ecosystem other than its author's.
 
 ```sh
 npx multivac@latest init
@@ -44,9 +45,10 @@ git clone git@github.com:ulm0/multivac.git && cd multivac
 pnpm install && pnpm run build && pnpm link --global   # bins: multivac, mvac
 ```
 
-Requires Node >= 24 and pnpm. The full design, including the anchorability
-measurement that validated the grammar (95.1% of 82 real invariants
-anchorable), is in [DESIGN.md](DESIGN.md). Docs: https://multivac.ulm0.com
+Requires Node >= 24 and git; only the from-source route also needs pnpm. The
+full design, including the anchorability measurement that validated the grammar
+(95.1% of 82 real invariants anchorable), is in [DESIGN.md](DESIGN.md). Docs:
+https://multivac.ulm0.com
 
 ## Contributing
 

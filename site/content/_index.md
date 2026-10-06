@@ -4,7 +4,9 @@ layout: hextra-home
 description: >-
   Your agent verifies its context before it acts on it. One brain repo holds
   the law as anchored claims; multivac checks them against the code, offline
-  and without a model, and refuses the commit when they disagree.
+  and without a model. By default a broken absent, count or each claim stops
+  the commit; CI's --strict fails the build on a broken claim in any other
+  mode too.
 ---
 
 {{< hextra/hero-badge link="docs/guide/install" >}}
@@ -85,7 +87,7 @@ description: >-
   >}}
   {{< hextra/feature-card
     title="Deterministic verify"
-    subtitle="`mvac verify` checks every anchor against the declared repos. No LLM, no API key, no network — the same answer on your laptop, in the hook, and in your teammate's clone."
+    subtitle="`mvac verify`, run from the brain, checks every anchor against the declared repos. No LLM, no API key, no network — the same bytes give the same answer, and every run says which bytes it read."
     link="docs/reference/commands"
   >}}
   {{< hextra/feature-card
@@ -131,5 +133,5 @@ Published on npm, `npx multivac init` away. It is its
 own first user: multivac's law lives in this repo, and every change to it is
 held by the same hooks you would install; CI re-runs them as `mvac verify --strict`.
 The design was validated against a real
-production ecosystem before the code existed — 82 invariants collected by
-hand, 95.1% of them anchorable.
+production ecosystem before the code existed — 95.1% of its 82 invariants
+were anchorable.

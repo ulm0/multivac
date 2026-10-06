@@ -9,7 +9,7 @@ every consumer repo, and how stale it is allowed to get.
 
 ## What the consumer door carries
 
-The door written into each declared repo used to be four bullets: the law, the
+The door written into a consumer repo used to be four bullets: the law, the
 mount refresh, "the change may cross repos", and "run verify". The brain's door
 listed the ecosystem and carried the adapter blocks; this one carried neither —
 and this is the door most sessions start from, because code is where work
@@ -25,10 +25,10 @@ It now carries:
   marked, a one-line `role` where the operator declared one, and `brain` named
   explicitly because that handle is usable in anchors and can never appear in a
   list built from `repos:`. Nothing is printed below two declared repos.
-- **the adapter that applies to this repo** — one line saying the brain's SDD
-  runs in the brain checkout and where this repo's code belongs, rendered by
-  the same code that renders the brain's door so the two cannot drift. The
-  SDD's flow is the brain's; no code repo carries it.
+- **the adapter that applies to this repo** — one line, when an SDD governs it
+  and `sdd_auto` is on, saying the brain's SDD runs in the brain checkout and
+  where this repo's code belongs. The step list is the brain door's alone; no
+  consumer door carries it.
 
 The list describes what the ecosystem **declares**, not what this machine has
 checked out: a door that changed with which repos happen to be cloned would
@@ -37,16 +37,19 @@ door is committed. Rendering makes no filesystem check and no network call.
 
 ## The mount
 
-Every code repo mounts the brain — default folder `.brain/`, configurable
-per ecosystem, as a git submodule that `repos sync` adds from `brain_url` and
-leaves for you to commit. An agent entering a consumer repo finds the brain there, and
-the consumer door tells it what binds and that the change may cross repos.
+Every code repo multivac manages mounts the brain — default folder `.brain/`,
+configurable per ecosystem, as a git submodule that `repos sync` adds from
+`brain_url` and leaves for you to commit. An agent entering a consumer repo
+finds the brain there, and the consumer door tells it what binds and that the
+change may cross repos.
 
-One exception, and it is the common one for a single project: when the brain
+Two exceptions. The common one for a single project: when the brain
 IS the code repo (`repos: { brain: . }`, see
 [Getting started](../../guide/getting-started/)), there is nothing to mount
 and nothing to pin. That repo keeps the brain door, and mount, pin and
-staleness checks skip it entirely.
+staleness checks skip it entirely. The other is a read-only repo
+(`managed: false`, or a shallow clone): `repos sync` reports it as read-only
+and adds no mount there.
 
 ## Pin + staleness
 
@@ -61,22 +64,31 @@ By default a stale pin **reports**. Set `staleness: block` and a pin behind
 its channel becomes a blocking failure — exit 1, with the fix in the line:
 
 ```txt
-stale     api: pin 35 behind origin/main · last fetch 6d ago — blocking (staleness: block); git -C ../api submodule update --remote .brain
+  stale     api: pin 35 behind origin/main · last fetch 6d ago — blocking (staleness: block); git -C ../api submodule update --remote .brain
 ```
+
+`change new`, `change apply` and `doctor` also report a pin behind its channel,
+but only a `verify` run in the brain checkout can fail on one; a run from a
+consumer repo, which is what that repo's hooks run, is scoped to that repo and
+never compares a pin with its channel.
 
 Offline by construction: staleness compares the pin against the locally
 known remote-tracking ref — best-effort, no network — and the report carries
 the last-fetch age. A channel ref that does not resolve locally stays a
-report even under `block`: offline never guesses and never gates. Fetching
-happens only in explicit operations (`repos sync`, `change plan/apply`),
-never in `verify` or hooks.
+report even under `block`: offline never guesses and never gates. Only
+`repos sync` fetches git refs. `change plan` and `change apply` clone a repo
+the change names that is absent and has a `url` (`apply` creates one without a
+`url` from scratch), and refuse a read-only one (`managed: false`, or a shallow
+clone) before cloning anything; a clone already there is never fetched, and
+`verify` and hooks never fetch.
 
 ## Doors
 
 Two kinds of door, not the same file renamed:
 
 - **Brain door** — how to work on the ecosystem from here: where every repo
-  lives, the law, [the ritual](../the-change#the-ritual), the landing order.
+  lives, the law, how a change enters, [the ritual](../the-change#the-ritual),
+  and the SDD's steps when one is declared.
 - **Consumer door** — what is law in this repo, where the brain lives, and
   that the change may cross repos.
 
@@ -99,19 +111,25 @@ projection at all: `AGENTS.md` alone, already read by most harnesses —
 `doors: [agents, claude]` in config is what adds the symlink.
 
 `doors` also installs the enforcement floor where it projects: in each
-consumer repo it writes the versioned `.multivac/hooks/` directory and
-points `core.hooksPath` at it — the same git-hook shim as the brain's,
-running `verify` scoped to that repo's anchors. With `strict_pre_push: true`
-in config, the pre-push shim runs `verify --strict`; pre-commit stays on the
-default policy either way. The breaking commits happen
-in the code repos, so "everything that commits" includes them. `doors`
-writes working trees only, never commits on its own; absent repos are
-skipped and reported.
+consumer repo it writes the same git-hook shims as the brain's, running
+`verify` scoped to that repo's anchors. In a repo with no hook set-up they sit
+in the versioned `.multivac/hooks/` directory with `core.hooksPath` pointed at
+it (a hook already in `.git/hooks/` runs first). Where `core.hooksPath`
+already names a directory, or `.husky/` is there with the path unset, the shims
+go into that directory instead, wherever the hook name is free or holds an
+earlier multivac shim, and `core.hooksPath` is left alone; a hook there that
+does not run multivac is not touched, and `doors` prints the line to append to
+it. With `strict_pre_push: true` in config, the pre-push shim runs
+`verify --strict`; the other shims stay a plain `verify` either way. The
+breaking commits happen in the code repos, so "everything that commits"
+includes them. `doors` never commits on its own. A declared repo that is absent
+is skipped and reported; a read-only one (`managed: false`, or a shallow clone)
+gets no door, no shims and no `core.hooksPath`.
 
 ## The managed block
 
 `init` and `doors` never clobber an existing door. Everything multivac
-writes into a pre-existing file lives between two markers:
+writes into a pre-existing door file lives between two markers:
 
 ```
 <!-- multivac:begin -->
@@ -122,7 +140,10 @@ writes into a pre-existing file lives between two markers:
 The rest of the file is the user's. Regeneration replaces only the block; a
 missing file is created whole, with the block. Consumer repos arrive with
 rich hand-written `AGENTS.md` files, and a tool that overwrites them loses
-the adoption argument in the first minute.
+the adoption argument in the first minute. The harness hook config,
+`.claude/settings.json`, takes no markers: multivac merges its `verify` hooks
+into the JSON and keeps every key and hook it did not write, and it takes back
+the post-edit graph refresh hooks an earlier multivac wrote, with a notice.
 
 ## Skills: the third artifact class
 
@@ -144,8 +165,8 @@ it. The interview shipping as a skill run by the user's own agent is the same
 no-embedded-LLM rule as everywhere else: multivac validates and files the
 output; it never calls a model itself.
 
-Doors, hooks, and skills live in one tool-shipped targets registry.
+Doors, harness hooks, and skills live in one tool-shipped targets registry.
 `.multivac/config.yml` never defines targets; it only selects them by name.
 Adding a harness is an entry in the registry — an MR to multivac — not a
-module. `doors` mirrors the skill directory whole: a file removed from the
-source is removed from the copy.
+module. `doors` mirrors the skill directory whole: whatever the source does
+not ship is removed from the copy, a file you added there included.

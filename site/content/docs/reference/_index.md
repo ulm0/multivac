@@ -10,7 +10,7 @@ on these pages was captured from a real run; every flag was read out of the
 parser that consumes it.
 
 {{< cards >}}
-  {{< card link="commands" title="Commands" subtitle="All nine, every flag, the exit matrix, real output for each." >}}
+  {{< card link="commands" title="Commands" subtitle="All ten, every flag, the exit matrix, real output for each." >}}
   {{< card link="configuration" title="Configuration" subtitle=".multivac/config.yml key by key: type, default, example, what breaks without it." >}}
   {{< card link="integrations" title="Agent integrations" subtitle="One section per registry entry: what file gets written, how, and what doors does for it." >}}
   {{< card link="sdd" title="SDD tools" subtitle="Artifact vs binary, the three-state policy, each tool's own flow and gates, sdd_auto and --no-sdd." >}}

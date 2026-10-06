@@ -12,7 +12,10 @@ actually in doubt.
 
 One leg per line, an HTML comment directly under the claim's row in
 `.multivac/invariants.md` — invisible when rendered, greppable, no parallel file to
-drift:
+drift. Verify reads them from the brain's root `*.md`, `.multivac/*.md` and
+`.multivac/changes/*.md`; an anchor inside a code fence, indented four spaces or
+in a file in any other directory is skipped without a word, so its claim just
+reads as unanchored and a tombstone there blocks nothing:
 
 ```txt
 <!-- @anchor <CLAIM-ID> <repo-key>:<glob> [![<repo-key>:]<glob> ...] /<regex>/[flags] [mode] -->
@@ -58,17 +61,18 @@ inherits the worst failing leg's severity, and verify reports per leg.
 
 The one dialect every engine on every machine executes the same way.
 `\s` `\b` `\d` `\w` are rejected at parse time — macOS `git grep` drops
-them silently, which turns a tombstone into a vacuous pass:
+them silently, which turns a tombstone into a vacuous pass. The error prints
+above the claim count, and a parse error exits 1 in every mode:
 
 ```txt
 $ mvac verify
+  parse     .multivac/invariants.md:10 — \s is not POSIX ERE — use [[:space:]]
+
 3 claims · 2 anchored (67%)
-
-  ok          2
-  parse     .multivac/invariants.md:12 — \s is not POSIX ERE — use [[:space:]]
-
-0 blocking broken · exit 1 · 1 anchor parse errors
+  ...
 ```
+
+The summary line reads `0 blocking broken · exit 1 · 1 anchor parse errors`.
 
 Translate:
 
@@ -77,7 +81,7 @@ Translate:
 | `\s` | `[[:space:]]` |
 | `\d` | `[[:digit:]]` |
 | `\w` | `[[:alnum:]_]` |
-| `\b` | `(^|[^[:alnum:]_])` … `([^[:alnum:]_]|$)` |
+| `\b` | `(^\|[^[:alnum:]_])` … `([^[:alnum:]_]\|$)` |
 
 Four more constructs are refused for the same reason — they mean something in
 JavaScript and something else, or nothing, to `git grep`:
@@ -113,29 +117,33 @@ members are `:`, `d`, `i`, `g`, `t` — so `PIN[:digit:]` used to become
   `privileged: true` rogue container added to a default k8s manifest left
   fifteen anchors green at exit 0. "For every file, P" is `each`; "for no
   file, P" is `each!` — quantified per file, failing files named. The
-  `count` dry-run nudges you here on purpose: every `count=N` summary ends
-  by naming `each`/`each!`, so a universal-shaped rule is never pinned as a
-  ratchet by accident.
-- **Vacuous globs fail loudly.** A glob matching zero tracked files is a
-  blocking failure for `absent`/`count`/`each` — a directory rename must not
-  silently green a tombstone, and a universal over nothing proves nothing —
-  and broken for `present`/`unique`:
+  `count` dry-run nudges you here on purpose: every summary that offers a
+  ratchet ends by naming `each`/`each!`, so a universal-shaped rule is never
+  pinned as a ratchet by accident.
+- **Vacuous globs fail loudly.** A glob matching zero tracked files is
+  `vacuous` for `absent`, `unique`, `count` and `each` — and for `present`
+  when its regex has nowhere to move to either (see `moved`).
+  `absent`/`count`/`each` block — a directory rename must not silently green
+  a tombstone, and a universal over nothing proves nothing. `present`/`unique`
+  are reported, and block only under `--strict`:
 
   ```txt
-  vacuous   INV-01 [absent] .multivac/invariants.md:7 · glob matched no tracked files — a rename greens this tombstone silently; fix the glob
+  vacuous   INV-01 [absent] .multivac/invariants.md:7 · glob matched no tracked files — a rename greens this tombstone silently; fix the glob · blocking
   ```
 
-- **`moved` self-heals.** A `present` leg with exactly one match of the include's own kind — the same trailing extension, never inside `.multivac/`,
-  outside
-  its glob gets its glob rewritten in place, exit 0:
+- **`moved` self-heals.** A `present` leg with no match inside its glob, whose
+  matches elsewhere fall in exactly one file — of the include's own kind (the
+  same trailing extension), never inside `.multivac/` — gets its glob rewritten
+  in place, exit 0. `verify --check` and a run from a consumer repo report the
+  move and leave the glob alone:
 
   ```txt
   moved     INV-01 [present] .multivac/invariants.md:6 · glob rewritten to sql/migrations/001_accounts.sql — review the diff
   ```
 
   Review the diff like any other edit and let it ride the same branch.
-  Zero or many out-of-glob matches is not a move — it is broken, with
-  candidates listed.
+  With no such file the leg stays broken — vacuous, if its glob is empty.
+  With several files it is broken too, and the first three are named.
 
 ## Choosing the mode
 
@@ -155,7 +163,8 @@ only when there is none, and expect churn.
 | every matched file satisfies the rule ("every manifest declares limits") | `each` |
 | no matched file carries the pattern, and the offender is named per file | `each!` |
 
-`absent`, `count` and `each` block; `present` and `unique` report. Put the
+`absent`, `count` and `each` block by default; `present` and `unique` report,
+and block only under `--strict`. Put the
 teeth in the blocking modes and let `present` document the enactment. Without
 that asymmetry every refactor turns the check red and someone disables the
 tool in week three — lint-family tools die of noise, not of bugs.
@@ -167,13 +176,14 @@ at least one match; `each!` iff every such file contains none. A violation is
 a hard failure and the failing files are **named**, first few + count:
 
 ```txt
-broken    INV-90 [each] .multivac/invariants.md:9 · each: 1 of 4 files lack the pattern (k8s/rogue.yaml) — add it there, or exclude the file with !<glob>
+broken    INV-90 [each] .multivac/invariants.md:9 · each: 1 of 4 files lack the pattern (api:k8s/rogue.yaml) — add it there, or exclude the file with !<glob> · blocking
 ```
 
 Exempt a sanctioned file with an exclusion (`!api:k8s/debug.yaml`). Inside
 matched `.sql` files the per-statement normalization applies as everywhere
 else. Plain `absent` also says "nowhere in the glob"; reach for `each!` when
-the report must name the offending file and an empty glob must fail. What
+you want the report per file — each offender once, as "N of M files" — rather
+than the first three matches. What
 `each` cannot say — deliberately — is a **cross-file relation** ("the
 vendored copy equals the root copy", "the env var matches the
 containerPort"). That is a different primitive, not a quantifier; leave such
@@ -214,7 +224,7 @@ Run both. An anchor that fails either is not ready.
 
 1. **Misfire check — name a refactor that breaks it while the claim stays
    true.** File rename? The glob self-heals only for `present` with one
-   match — an `absent` leg's glob renames to vacuity and blocks. Statement
+   matching file — an `absent` leg's glob renames to vacuity and blocks. Statement
    rewritten in equivalent SQL? Widen the pattern to the invariant part
    (`[^[:space:]]*accounts` survives schema-qualification; a literal
    `public.accounts` does not).

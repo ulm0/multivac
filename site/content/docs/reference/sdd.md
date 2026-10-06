@@ -36,7 +36,7 @@ capabilities, and only the missing half turns off:
 | **read** | multivac can consume what the tool produced | the tool **installed** in that root: its own state file passes its check |
 | **run** | multivac can invoke the tool | every **required binary**, found on `PATH` or in that root's `node_modules/.bin` |
 
-| adapter | installed when | artifact | binary | refresh |
+| adapter | installed when | artifact | binary | refresh (recorded, never run) |
 | --- | --- | --- | --- | --- |
 | `opsx` | `openspec/config.yaml` or `openspec/config.yml` is a file | `openspec/specs`, `openspec/changes` | `openspec` | `openspec update` — refreshes only the command bodies a human installed; in a brain the scaffold made there are none, and it does nothing |
 | `speckit` | `.specify/integration.json` parses, with `integration_state_schema` 1 and a non-empty `installed_integrations` | `.specify` | `specify` | `specify check` |
@@ -88,19 +88,21 @@ Declared repos are the exception, because they are the tool's own data:
 | state | `verify`, `doctor`, `doors` | `init`, `repos sync`, `change` |
 | --- | --- | --- |
 | **not declared** | nothing, not even a notice | nothing |
-| **declared, binary absent** | a notice, **exit 0** | refuses with **exit 1**, naming the binary, the install line and the vendor, before writing anything, where the tool would run |
+| **declared, binary absent** | `doctor` names the binary, the install line and the vendor; `verify` and `doors` say nothing; **exit 0** | `init` and `change new` refuse with **exit 1**, naming the same, before writing anything, where the tool would run; `repos sync` does its clone, fetch and mount pass first, then exits **1**; `change plan`, `apply` and `close` (not `close --abandon`) print the scaffold's line, and the gate that follows decides on its own terms |
 | **declared, installed** | adapter active | adapter active; nothing is re-run |
 
 Declaring means "this project uses it", which stays true on a machine that does
 not have it yet. The surfaces that only read (`verify`, `doctor`, `doors`) never
 turn red over an absent tool. The commands that set a repo up run the tool, so
-they refuse where it cannot run: `init --sdd speckit` without `specify`, a
-`repos sync` that would equip a repo, a `change new` whose SDD is missing. An
+they say so where it cannot run: `init --sdd speckit` without `specify` and a
+`change new` whose SDD is missing refuse before writing anything, and a
+`repos sync` that would equip the brain exits 1 once its other work is done. An
 SDD under `sdd_auto: false`, or a tool already installed, is not required.
 
 That is why not-declared and declared-but-absent are different states: the
 first is "we do not use one", the second is "we use one, it is not here", and
-only the second deserves a line telling you how to get it.
+only the second deserves a line telling you how to get it — `doctor` prints it,
+and so does a command that would run the tool.
 
 ## SDD adapters
 
@@ -143,7 +145,8 @@ With an SDD declared, it lives in the brain alone. It is installed there, its
 steps print there, its gates read the brain and the change's worktrees — a step
 printed at `change land` reads the brain checkout alone — and its project
 document is the brain's. A code repo gets none of that: no vendor
-install, no constitution, and no step block in its door — one line instead:
+install, no constitution, and no step block in its door — one line instead
+(none under `sdd: none` or `sdd_auto: false`):
 
 ```txt
 - The brain's `speckit` SDD runs in the brain checkout, never in this mount: specs, plans and tasks are written there. Code here lands only on the branch of an open change declaring this repo; `verify --strict` refuses it anywhere else.
@@ -166,7 +169,8 @@ sdd speckit: its steps run from the brain checkout, which holds no code of this 
 
 That line is an instruction, not a gate. A brain with no code of its own
 declares no code, so code written into its checkout by mistake is not refused
-there; it is refused in the code repo, whose gate reads the brain's SDD.
+there; `verify --strict` in the code repo refuses it, because the brain's SDD
+governs that repo's code.
 OpenSpec's apply step says where it runs itself: where
 `openspec/changes/<slug>/` is, which is the brain's change worktree once
 `change apply` carried it there. Its archive runs after the merge, in the brain
@@ -199,27 +203,28 @@ sdd opsx:   api: openspec/changes/add-user-auth/proposal.md — not read; the SD
 ```
 
 **What close lands, and the one line it writes.** `change close` — abandoning or
-not — stages the brain's slug directories whatever `sdd_auto` and `--no-sdd`
-say: those switches skip the steps and their gates, never what was already
-written. A slug directory git reports deleted is staged too, and so is each main
-spec that carries the merge: OpenSpec's archive moves `openspec/changes/<slug>/`
-under `archive/` and merges its `specs/<cap>/spec.md` into
-`openspec/specs/<cap>/spec.md`, and all of it lands in close's one commit. A
-main spec carries the merge when its `## Requirements` section holds, whole and
-under the same name, every `### Requirement:` block under the archived delta's
-ADDED and MODIFIED sections — line endings, trailing whitespace and runs of
-blank lines normalised on both sides, tracked or untracked alike, and both read
-the way openspec reads them: a block runs to the next requirement or `## `
-header, and a header inside a fenced code block is none. Only `spec.md` is
-merged, so a file you keep beside a delta maps to nothing under
-`openspec/specs/`. One that does not carry it — the archive was made without
-merging, or the file is a draft of yours — is named dirty and not staged:
+not — puts the brain's slug directories in the `git add` of the commit it
+prints, whatever `sdd_auto` and `--no-sdd` say: those switches skip the steps
+and their gates, never what was already written. A slug directory git reports
+deleted is listed too, and so is each main spec that carries the merge:
+OpenSpec's archive moves `openspec/changes/<slug>/` under `archive/` and merges
+its `specs/<cap>/spec.md` into `openspec/specs/<cap>/spec.md`, and all of it
+goes in that one commit. A main spec carries the merge when its `## Requirements`
+section holds, whole and under the same name, every `### Requirement:` block
+under the archived delta's ADDED and MODIFIED sections — line endings, trailing
+whitespace and runs of blank lines normalised on both sides, tracked or
+untracked alike, and both read the way openspec reads them: a block runs to the
+next requirement or `## ` header, and a header inside a fenced code block is
+none. Only `spec.md` is merged, so a file you keep beside a delta maps to
+nothing under `openspec/specs/`. One that does not carry it — the archive was
+made without merging, or the file is a draft of yours — is named dirty and left
+out of that commit:
 
 ```txt
 sdd opsx: openspec/specs/billing/spec.md is dirty and was not staged — it is not this change's to commit
 ```
 
-A delta with no ADDED or MODIFIED block is staged as the archive left it. Only
+A delta with no ADDED or MODIFIED block is listed as the archive left it. Only
 the files the archive merged into: an unrelated edit beside them in
 `openspec/specs/<cap>/` is named dirty and left for you to commit. Close then
 appends one line to the change body, naming the first slug directory found in
@@ -256,9 +261,9 @@ lookup in that repo's worktrees.
 ### The scaffold: declaring a tool that has never run here
 
 Declaring `sdd: speckit` in a brain where spec-kit has never run used to be a
-deadlock. `change plan` refuses without `specs/<n>-<slug>/spec.md` — a SUFFIX
-match, so another change's directory that merely contains the slug is not proof
-of this one's step; that file comes from `/speckit.specify`; that chat command
+deadlock. `change plan` refuses without `specs/<n>-<slug>/spec.md` — the slug
+must follow one run of digits and a `-` exactly, so another change's directory
+that merely contains the slug is not proof of this one's step; that file comes from `/speckit.specify`; that chat command
 does not exist until `specify init` has run — and `specify init` was what the
 blocked change was going to do. The only exits were `--no-sdd` and
 `sdd_auto: false`, both of which turn the gate off to fix the reason it fired.
@@ -269,7 +274,7 @@ read by the probe above, never a directory being there.
 
 | key | installed when | the tool's own init |
 | --- | --- | --- |
-| `speckit` | `.specify/integration.json` passes its check | `specify init --here --integration <key> --force --ignore-agent-tools`, then `specify integration install <key>` for each further door |
+| `speckit` | `.specify/integration.json` passes its check | `specify init --here --integration <key> --force --ignore-agent-tools`, then `specify integration install <key>` for each further door's integration that is safe beside the first |
 | `opsx` | `openspec/config.yaml` or `openspec/config.yml` | `openspec init --tools none --no-animation .` |
 
 For spec-kit, the integration follows your `doors:`, from a map measured by
@@ -291,16 +296,18 @@ alike and need no command body:
 | `windsurf` | — | `windsurf` |
 
 spec-kit marks some integrations unsafe to install beside another. multivac
-installs the first and names the rest; it never passes `--force` to put them
-together. A door with no spec-kit integration is named too. With no harness
-door at all, spec-kit gets `claude`: its `generic` integration needs a commands
-directory no harness here is known to read. A door you add after spec-kit is
+installs the integration of the first door that has one, then each further one
+only when both it and the first are safe, and names the rest; it never passes
+`--force` to put them together. A door with no spec-kit integration is skipped
+and named too, except `agents`. With no door that has one, spec-kit gets
+`claude`: its `generic` integration
+needs a commands directory no harness here is known to read. A door you add after spec-kit is
 installed is not added to it; run the vendor's own install for it. OpenSpec has
 no gap and no later install: a door added later needs nothing from it.
 
 `init`, `change new`, `change plan`, `change apply` and `change close` run it **in
 the brain** when the tool is missing there, print it first, and skip it where it
-is installed. `repos sync` does the same for the brain after it clones and
+is installed; `change close --abandon` never runs it. `repos sync` does the same for the brain after it clones and
 fetches, and never installs the SDD in a code repo:
 
 ```txt
@@ -386,8 +393,8 @@ A scaffold is **not a step**. It is the tool's own terminal command, run once
 in the brain; the steps stay what your agent runs, and nothing about the
 scaffold satisfies one. `specify init` writes `.specify/memory/constitution.md`
 as the *unfilled template* — writing the constitution is still
-`/speckit.constitution`'s job, and multivac's own check treats a file identical
-to the template as missing.
+`/speckit.constitution`'s job, and multivac's own check reports a file identical
+to the template as still the unfilled template.
 {{< /callout >}}
 
 ### Each tool's own flow, not a fixed triple
@@ -396,8 +403,8 @@ An SDD's steps are **commands the agent runs**, never subcommands multivac
 spawns: chat commands for spec-kit, openspec's own terminal verbs for OpenSpec.
 A step name is not a verb — `openspec propose` exits 1 with `unknown command`.
 And the tools do not agree on what the steps *are*: OpenSpec creates a change,
-writes its artifacts, applies its tasks and archives it; spec-kit has eight
-commands and no archive at all. So the shipped registry
+writes its artifacts, applies its tasks and archives it; spec-kit has ten
+commands and no archive among them. So the shipped registry
 carries, per tool, an **ordered flow of arbitrary length**, each step bound to
 a lifecycle point rather than to a name, with the slug interpolated:
 
@@ -459,8 +466,8 @@ refuses while either still has open boxes. That is [the tool's own
 ledger](#the-tools-own-ledger), and it is why spec-kit's close is checked at all
 despite having no archive step to prove.
 
-The refusal names the command, the path, and where it looked, so the fix is on
-the line above the error:
+The refusal names the command, the path, and where it looked, and the lines
+under it carry the fix:
 
 ```txt
 $ mvac change plan add-user-auth
@@ -490,19 +497,20 @@ The SDD lives in the brain alone, so no code repo's checkout proves a step (one
 that holds a match is named, never read — see
 [The SDD lives in the brain](#the-sdd-lives-in-the-brain)). Both halves of that
 search are said out loud: the refusal says where it looked, and the pass names
-where it found the artifact —
+the artifact it accepted —
 
 ```txt
 sdd opsx: brain: openspec/changes/add-user-auth/proposal.md ok
 ```
 
-— so a bare relative path never leaves you guessing which checkout satisfied the
-gate.
+— the same line whether the checkout or the change's worktree held the file;
+only a task ledger's line names the worktree path it was read from.
 
-The `*` is a real segment matcher, not decoration: spec-kit numbers its own
-feature directory (`specs/003-add-user-auth/`) and OpenSpec date-stamps its
-archive (`archive/2026-08-15-add-user-auth`), so the exact path is the tool's
-to choose.
+`<n>` in a path stands for one run of digits and nothing else: spec-kit numbers
+its own feature directory (`specs/003-add-user-auth/`) and OpenSpec date-stamps
+its archive (`archive/2026-08-15-add-user-auth`), so the exact name is the
+tool's to choose and its shape is not. A directory a wildcard would accept
+proves nothing: `specs/030-points-add-user-auth/` is not `add-user-auth`'s.
 
 **The tool's verdict is reused, never reimplemented.** OpenSpec ships
 `openspec validate`, which knows what a well-formed change is — delta headers,
@@ -537,11 +545,16 @@ sdd opsx: `change apply add-user-auth` refused — `openspec validate add-user-a
   or skip the gates without losing the door: `--no-sdd` for one run, `sdd_auto: false` in .multivac/config.yml for good
 ```
 
-It asks the one lookup in the repo that holds the artifact — `PATH`, then that
-repo's `node_modules/.bin` — so a project-local `npm i -D` is found, exactly as
-`doctor` and every other surface find it. And it never tells you to remove
-`sdd:` — that key also renders the whole flow into the brain door, so dropping
-it would delete the agent's instructions along with the check.
+It asks the one lookup in the root that holds the artifact — `PATH`, then that
+root's `node_modules/.bin` — so a project-local `npm i -D` is found when the
+artifact is in the checkout. Found only in the change's worktree (a re-run of
+`change apply` after the carry), that worktree is the root: a tool installed
+only in the checkout is not found there, though `doctor` finds it, and the
+refusal still names the brain's `node_modules/.bin`.
+
+It never tells you to remove `sdd:` — that key also renders the whole flow into
+the brain door, so dropping it would delete the agent's instructions along with
+the check.
 
 ### Existence is the weakest proof
 
@@ -566,16 +579,17 @@ template's own `# Implementation Plan: [FEATURE]` heading — but nothing in
 spec-kit ever asks anyone to change that line, so a finished, real plan keeps
 it and a regex on it would refuse honest work forever. Equality has no false
 positives at all: a written plan is never byte-identical to its template. It
-also follows spec-kit's documented override stack, so a project with its own
-`plan-template.md` is checked against the file it actually copied — the skeleton
-multivac writes into `overrides/` included:
+is compared with the core template and with
+`.specify/templates/overrides/plan-template.md`, the skeleton multivac writes
+there included:
 
 ```txt
 sdd speckit: `change apply add-user-auth` refused — brain:specs/003-add-user-auth/plan.md is byte-identical to .specify/templates/overrides/plan-template.md: the scaffolding wrote it, nobody has
 ```
 
 What this does **not** catch is said rather than hidden: an agent that edits one
-line and stops.
+line and stops, and a plan left as a preset's own `plan-template.md`, which is
+never compared.
 
 ### The tool's own ledger
 
@@ -617,15 +631,10 @@ ungateable with the reason and are simply not gated — you still run them:
 | step | why nothing can prove it |
 | --- | --- |
 | `openspec instructions apply --change <slug> --json` | its only trace is `- [x]` in `tasks.md`, a character the agent types about its own work |
+| `/speckit.clarify` | optional, and its `## Clarifications` session is the agent's own text — it never shows that a human answered |
 | `/speckit.analyze` | STRICTLY READ-ONLY by its own spec — it writes zero bytes |
 | `/speckit.implement` | "all tasks `[X]`" is the agent grading its own homework |
 | `/speckit.converge` | a clean converge is forbidden to touch `tasks.md` — success is invisible on disk |
-
-A lifecycle point with nothing to prove says so rather than passing quietly:
-
-```txt
-sdd speckit: `change close` is not gated — this tool declares no step whose artifact could prove it
-```
 
 ### The question openspec asks at archive
 
@@ -661,8 +670,8 @@ lands is your answer, and close still reads [the tool's own
 ledger](#the-tools-own-ledger).
 
 The same step's `--skip-specs` answer leaves the main specs as they were, so
-`change close` stages none of them: a main spec is staged only when it carries
-the merge (see [What close lands](#the-sdd-lives-in-the-brain)).
+`change close` lists none of them in its commit: a main spec is listed only when
+it carries the merge (see [What close lands](#the-sdd-lives-in-the-brain)).
 
 ### Command bodies an earlier init left
 
@@ -679,9 +688,10 @@ sdd        opsx @ brain: an earlier init left command bodies no printed step nam
 
 Sibling entries sharing `openspec-` or `opsx-` are collapsed into one pattern,
 which your shell expands before `git rm -r` sees it — so a pattern is printed
-only when every entry it reaches on disk is tracked, and the entries are listed
-one by one otherwise. Entries git does not track are named apart, to delete by
-hand, since `git rm -r` fails on a path it does not track:
+only when every entry it reaches on disk is tracked, or every one is untracked,
+and the entries are listed one by one otherwise. Entries git does not track are
+named apart, to delete by hand, since `git rm -r` fails on a path it does not
+track:
 
 ```txt
 sdd        opsx @ brain: an earlier init left command bodies no printed step names — `git rm -r .claude/commands/opsx` removes them, and .codex/skills/openspec-explore are untracked: delete them; they are not code, so the commit needs no open change
@@ -736,10 +746,12 @@ byte-identical to its own template, so the file exists in every fresh repo and
 its existence proves nothing. A document is still the template when it is
 byte-identical to the one spec-kit recorded in
 `.specify/memory/.constitution-template.json`, or when it still carries one of
-the template's own tokens, such as `[PROJECT_NAME]`. The line names the token:
+the template's own tokens, such as `[PROJECT_NAME]`. The line says which decided
+— here the untouched scaffold; an edited file that keeps a token says
+`placeholders remain: [PROJECT_NAME]` in its place:
 
 ```txt
-sdd        speckit project law @ brain: .specify/memory/constitution.md is still the unfilled template shipped by the tool (placeholders remain: [PROJECT_NAME]) → run /speckit.constitution …
+sdd        speckit project law @ brain: .specify/memory/constitution.md is still the unfilled template shipped by the tool (byte-identical to the template recorded in .specify/memory/.constitution-template.json) → run /speckit.constitution …
 ```
 
 A written constitution may keep the template's HTML comments, and may cite
@@ -751,7 +763,7 @@ missing, unreadable, empty, or still the template. The tokens are the ones
 constitution has none:
 
 ```txt
-sdd speckit: `change plan <slug>` refused — .specify/memory/constitution.md is missing or unreadable — looked in brain
+sdd speckit: `change plan <slug>` refused — brain:.specify/memory/constitution.md is missing or unreadable
   run /speckit.constitution in your agent to write the project principles …
   then re-run: multivac change plan <slug>
 ```
@@ -765,7 +777,7 @@ Staleness is the interesting half: when the law's newest row is newer than the
 constitution, the product's law moved while its constitution did not.
 
 ```txt
-sdd        speckit project law — .specify/memory/constitution.md present (last modified 2026-08-01) but the law's newest row is 2026-08-15 — STALE: the law moved while this did not; a report, never a gate
+sdd        speckit project law @ brain: .specify/memory/constitution.md present (last modified 2026-08-01) but the law's newest row is 2026-08-15 — STALE: the law moved while this did not; a report, never a gate
 ```
 
 It stays a report. Whether a principle still fits the product is a judgement,
@@ -777,7 +789,7 @@ one line. That line does not tell the agent to continue unattended: the
 principles come from you.
 
 ```txt
-sdd speckit @ brain: .specify/memory/constitution.md is template (placeholders remain: [PROJECT_NAME]) — run /speckit.constitution in your agent … Ask the human for the principles and write their answers; `change plan` refuses until it is written
+sdd speckit @ brain: .specify/memory/constitution.md is template (byte-identical to the template recorded in .specify/memory/.constitution-template.json) — run /speckit.constitution in your agent … Ask the human for the principles and write their answers; `change plan` refuses until it is written
 ```
 
 Where a project document and an active row of `.multivac/invariants.md`
@@ -797,15 +809,15 @@ Two ways to opt out, at two scopes. Both turn off the **steps and the gates**:
 | `sdd_auto: false` in config | permanent | the adapter stays declared and reported; nothing is printed and nothing is gated |
 | `--no-sdd` on a `change` invocation | this run | skips the printout and the refusal once |
 
-Neither stops `change close` from staging the brain's slug directories and
-citing one in the change body: the switches skip the steps and their gates,
-never what was already written. With `sdd_auto: false`, the brain door, flow.md
-and `doctor` also stop saying anything refuses; flow.md and `doctor` say no
-command runs the init, and `doctor` names no code the SDD governs, since the
-code gate is off too.
+Neither stops `change close` from listing the brain's slug directories in the
+commit it prints and citing one in the change body: the switches skip the steps
+and their gates, never what was already written. With `sdd_auto: false`, the
+brain door, flow.md and `doctor` also stop saying anything refuses; flow.md and
+`doctor` say no command runs the init, and `doctor` names no code the SDD
+governs, since the code gate is off too.
 
 ```txt
-sdd        opsx @ brain: missing (no openspec) · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
+sdd        opsx @ brain: missing (no openspec) — declared but never run here; under `sdd_auto: false` no command runs the tool's own `openspec init --tools none --no-animation .`: run it there yourself, doctor never does (it writes the vendor's files into the tree) · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
 ```
 
 That is exploration mode. `doctor` keeps reporting the adapter either way —
@@ -814,7 +826,9 @@ know the tool is installed and the binary is current.
 
 ## Detection at init
 
-`init` proposes the adapter it finds, commented out, never enabled:
+When it writes the config and `--sdd` names none, `init` proposes the adapter it
+finds, commented out, never enabled — `openspec/` first, so a repo holding both
+gets `opsx` alone; a config already there is left as it is:
 
 | found on disk | proposed |
 | --- | --- |

@@ -64,6 +64,10 @@ committed: change promoted: tracker-projects-the-roadmap — reserves INV-03
 promoted .multivac/changes/tracker-projects-the-roadmap.md — planned since it was recorded, now open
   title ignored on promotion — the body already carries the one recorded with the intention
 reserved INV-03 — proposed row in .multivac/invariants.md, declared in invariants.adds; drop it from both if this change adds no law
+three edits before plan:
+  1. repos: { api: { status: planned } }        # status: planned|branched|committed|mr|landed
+  2. landing_order: [[api]]                     # stages; earlier stages land first
+  3. claims: [INV-03]                           # the rows close verifies; each states its rule
 ```
 
 Whatever you wrote in the body while the idea was young is carried across byte
@@ -106,7 +110,7 @@ landing_order: []
 invariants:
   touches: []
   adds:
-    - INV-02        # reserved for this change
+    - INV-02
   retires: []
 claims: []
 ---
@@ -119,13 +123,24 @@ then run `multivac change plan points-expire`. For example:
     # repos: { api: { status: planned } } — planned|branched|committed|mr|landed
     # landing_order: [[api]] — stages; earlier stages land first
     # claims: [<ID>] — the rows close verifies; each row states its own rule
+
+multivac owns the frontmatter formatting: every lifecycle step rewrites it, so
+hand-tuned layout will not survive, and a key it does not know is DROPPED
+rather than carried through. Declared values round-trip unchanged; the body,
+below the closing ---, is yours: with an SDD declared, `change close` only
+appends the line citing its directory.
 ```
+
+The last paragraph is the rule: comments and layout do not survive a rewrite,
+and a key multivac does not know is dropped with a warning. Notes go in the
+body.
 
 Fill the four declared fields before writing code:
 
-1. **`repos`** — registry keys, each with a `status` the subcommands move:
-   `planned | branched | committed | mr | landed`. A repo that doesn't
-   exist yet is legal — greenfield apply creates it.
+1. **`repos`** — registry keys, each with a `status`:
+   `planned | branched | committed | mr | landed`. `apply` raises it to
+   `branched` and `land --landed` sets `landed`; nothing writes `committed` or
+   `mr`. A repo that doesn't exist yet is legal — greenfield apply creates it.
 2. **`landing_order`** — ordered stages, each a list of repo keys. Repos in
    the same stage land in parallel; a stage lands only after every earlier
    stage. Empty list = everything in one parallel stage. Every declared
@@ -164,9 +179,12 @@ claims: [INV-02]
 ```
 
 If an SDD adapter is declared, `new` **prints** that tool's propose step for you
-to run in your agent, and names the artifact that will prove it ran — it invokes
-nothing itself. See [SDD tools](../../reference/sdd).
-`--no-sdd` skips the printing and the later gate, once.
+to run in your agent, and names the artifact that will prove it ran. The step is
+yours; the one thing `new` runs is the tool's own `init` in the brain, where the
+tool has never run, and it refuses to open the change if that `init` cannot run
+because the binary cannot be found. See [SDD tools](../../reference/sdd).
+`--no-sdd` skips the printing and the `init` for that run; `plan`, `apply` and
+`close` each run their own gate and take their own `--no-sdd`.
 
 The SDD lives in the brain, so its steps start in the brain checkout and write
 the change's specs there, whichever repos the change names; once `apply` has
@@ -191,8 +209,8 @@ claim INV-02: no anchor — add <!-- @anchor INV-02 <repo>:<glob> /<regex>/ --> 
 
 Which declared repos are present, what the order implies, what is still
 missing for close. A declared repo with a `url` and no local clone gets
-cloned here — the one place implicit cloning is allowed, because you
-explicitly asked for an operation that needs the repo.
+cloned here, and by `apply` if it is still missing — because you explicitly
+asked for an operation that needs the repo.
 
 ## apply — a worktree per repo, or create
 
@@ -214,22 +232,20 @@ Each present repo gets its own git worktree for this change, branched after
 the slug. **Write the feature in the printed paths**, not in the shared
 checkout: another agent may be running another change in the same repo, and a
 shared working tree switched under them puts their edits on your branch. A
-repo that doesn't exist is created first: `git init`, first commit, consumer
-door with the brain mounted — the first agent session in it already knows the
-law. Statuses move to `branched` in the change file; `close` removes the
-worktrees.
+repo that doesn't exist is made first: cloned if it declares a `url`, otherwise
+`git init` and a first commit holding only the consumer door, `AGENTS.md`. The
+door names where the brain mounts but does not mount it: until `multivac repos sync`
+has, the first session there cannot read the law. Statuses move to `branched`
+in the change file; `close` removes the worktrees.
 
 Where git cannot make a worktree, apply branches the repo in place, as it
-always did — but refuses if that tree carries another change's uncommitted
-work, naming the files and the `git stash push` that frees it. It never
-switches a dirty tree onto your branch.
+always did — but refuses if that tree carries any uncommitted work, naming
+the files and the `git stash push` that frees it. It never switches a dirty
+tree onto your branch.
 
 The change's bookkeeping is committed before any branch is made (`committed:
 change apply: <slug> — status branched`), so every checkout apply hands back
 inherits it from the base — nothing rides across a switch uncommitted.
-Anything else uncommitted that the switch would overwrite stops `apply` by
-name, with the command that parks it — never a raw git error, never a silent
-loss.
 
 ### The SDD files ride onto the branch
 
@@ -271,6 +287,7 @@ before its steps run, and say when it named the other.
 
 ```txt
 $ mvac change land points-expire
+channel: origin/main does not resolve here (no remote, or never fetched) — nothing read, so landing is unverified either way: `multivac repos sync`, then re-read
 stage 1 [ready] api:branched
   api: git -C ~/eco/acme-api push -u origin points-expire
   api: open MR points-expire -> main (state the landing order in the description)
@@ -281,25 +298,33 @@ stage 2 [blocked] web:branched
 
 `land` reports stage by stage: what is ready to push and MR now, what is
 blocked behind an earlier stage. It commits nothing on the change's branch:
-what you push is what you committed there.
+what you push is what you committed there. The `channel:` line reads the
+brain's published ref for the declared claims; with no remote, as here, it
+says it read nothing.
 
-The code you push is judged too. Where an SDD is declared, a commit or a merge
-of code that is not on the branch of an open change declaring the repo is
-refused by the git hooks, and the merge request pipeline asks again with
-`verify --strict --range`. See
-[Code lands in a change](../../reference/commands/#code-lands-in-a-change).
+The code you push is judged too. Where an SDD governs the repo and `sdd_auto` is
+on, code that is not on the branch of an open change declaring the repo is
+refused at commit and merge by the git hooks of a brain that holds code. A code repo's own checkout reads a mounted brain
+that can lag: a branch that is no open change there is only reported at commit
+and merge (a consumer's change worktree reads the brain itself and refuses it), and the merge request pipeline's
+`verify --strict --range <base>..<head> --branch <name>` refuses it, while a
+branch whose open change does not declare the repo is refused in any run.
+See [Code lands in a change](../../reference/commands/#code-lands-in-a-change).
 
-When an MR merges, record it:
+When an MR merges, record it — the one form of `land` that writes, committing
+the status bump in the brain:
 
 ```txt
 $ mvac change land points-expire --landed api
 api: recorded as landed — points-expire is merged into main 8fd47c9
+committed: change land: points-expire — api landed
+channel: origin/main does not resolve here (no remote, or never fetched) — nothing read, so landing is unverified either way: `multivac repos sync`, then re-read
 stage 1 [landed] api:landed
 stage 2 [ready] web:branched
   ...
 ```
 
-When every stage is landed:
+When every stage is landed, the last line of the report is:
 
 ```txt
 all stages landed — run `multivac change close points-expire`
@@ -316,11 +341,13 @@ multivac change close points-expire`.
 
 ## close — the gate
 
-`close` refuses until the work is actually done. Repos not landed:
+`close` refuses until the work is actually done. Every repo not landed gets a
+line, so straight after `apply` that is both:
 
 ```txt
 $ mvac change close points-expire
 api: branched — land every stage first (multivac change land points-expire)
+web: branched — land every stage first (multivac change land points-expire)
 ```
 
 exit 1. When everything landed and the declared claims have their rows and
@@ -372,8 +399,8 @@ statement.
 
 The tail is the [ritual](../../concepts/the-change#the-ritual): the half of
 the closing ceremony no tool can check, written by the team in
-`.multivac/ritual.md` and printed here verbatim — never verified, never
-gating. An empty or absent ritual prints nothing.
+`.multivac/ritual.md` and printed here line by line, minus headings, comments
+and blank lines — never verified, never gating. An empty or absent ritual prints nothing.
 
 Decisions made mid-change become claims at close: propose the row, the
 human enacts. This is the organic birth path — the main one at steady

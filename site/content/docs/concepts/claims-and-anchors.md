@@ -9,15 +9,15 @@ The unit is not the document. It is the claim:
 
 The serialized home is the law table in `.multivac/invariants.md`, one row per claim —
 `| ID | statement | authority | state | date | source |` — the exact format
-`init` writes with zero rows. `state` and `date` live in the row because
-`verify` reads them: `proposed` rows never block; `retired` rows evaluate
-only their authored tombstone legs. Anchors are not columns — they are
-comment lines under the row.
+`init` writes with zero rows. `state` lives in the row because `verify` reads
+it: the legs of `proposed` rows and of `drift` rows (a recorded finding not
+yet fixable) never block; `retired` rows evaluate only their authored
+tombstone legs. Anchors are not columns — they are comment lines under the row.
 
 Authority levels are configurable per project (`authorities:` in
-`.multivac/config.yml`). To the tool an authority is surfaced metadata plus
-procedural review — printed with every claim, gating who may enact — never
-interpreted mechanically by `verify`.
+`.multivac/config.yml`). To the tool an authority is a label and nothing
+more: no command prints it, checks it against that list or gates on it.
+Weighing it is the review's work, never `verify`'s.
 
 No database, no proprietary format. If the tool disappears, the brain still
 works.
@@ -29,8 +29,11 @@ says: "in that repo, in those files, something matches this". Verifying is
 asking whether the matcher still hits. If the file moved, it is re-located;
 if it disappeared, the claim becomes suspect — not silently false.
 
-Anchors live inline in the markdown as HTML comments: invisible when
-rendered, greppable, no parallel file to drift. One leg per line:
+Anchors live inline in the brain's markdown as HTML comments — any root
+`*.md`, `.multivac/*.md` or `.multivac/changes/*.md` — invisible when
+rendered, greppable, no parallel file to drift. A line inside a code fence,
+indented four spaces or in any other directory is skipped without a word: the
+claim just reads as unanchored. One leg per line:
 
 ```
 <!-- @anchor <CLAIM-ID> <repo>:<glob> [![<repo>:]<glob> …] /<regex>/[flags] [mode] -->
@@ -40,9 +43,10 @@ rendered, greppable, no parallel file to drift. One leg per line:
   key for reporting and for `change close`.
 - **`repo` is the registry key** from `.multivac/config.yml` (`backend`),
   never the directory name (`acme-backend`). `*` covers every declared repo
-  plus the brain itself. *Which bytes* of that repo a leg reads depends on
-  who is asking: from the brain, the repo's channel ref — the ecosystem as
-  published — and from a consumer repo, its own working tree. See
+  on disk plus the brain itself. *What* a leg reads depends on who is asking:
+  from the brain, each sibling at its channel ref — the ecosystem as
+  published — and from a consumer repo, its own working tree alone, so there
+  `*` reaches only that one repo. See
   [verify](../../reference/commands/#what-each-run-reads).
 - **The glob dialect is picomatch** over repo-relative, `/`-separated paths
   (`git ls-files` output): `**` crosses directories, `{a,b}` alternates,
@@ -168,46 +172,66 @@ When a `present` leg fails in its declared glob, the whole repo is searched
 before reporting. Six states, not two:
 
 - **ok** — every leg holds.
-- **moved** — a `present` leg with exactly one match outside its glob of the include's own kind — the same trailing extension, never inside `.multivac/`: the
-  glob is rewritten in place. Zero or many out-of-glob matches is not a
-  move — it is `broken`, with the candidates listed.
+- **moved** — a `present` leg whose match turns up in exactly one file outside
+  its glob, of the include's own kind — the same trailing extension, never
+  inside `.multivac/`: the glob is rewritten in place, in a brain checkout and
+  without `--check`; any other run only reports the move. No such file is not a
+  move: the leg is `broken`, or `vacuous` if its glob matched no tracked file.
+  Several files is not a move either: the leg is `broken` and names the first
+  three.
 - **broken** — the leg's requirement fails in place.
 - **vacuous** — the glob, after `!` exclusions, matches zero tracked files.
   For `absent`/`count`/`each` this is a blocking failure: a directory rename
   would silently green every tombstone otherwise, and a universal quantified
-  over nothing proves nothing. For `present`/`unique` it reports as broken.
+  over nothing proves nothing. For `present`/`unique` it is reported as
+  `vacuous` and gates only under `--strict`.
 - **pending** — a claim an open change declared before its code exists.
   Informational, never blocking, never self-healed.
-- **unevaluated** — a declared repo is not on disk, so its legs were not read
-  at all. Not a pass: `multivac repos sync`, then re-read.
+- **unevaluated** — the one repo a leg names is not on disk, so the leg was
+  not read at all. Not a pass: `multivac repos sync`, then re-read. A `*` leg
+  never goes unevaluated; it reads the repos that are present, and an absent
+  one shows only on its `read` line.
 
-One exit matrix, no second answer:
+Which anchor mode broke decides whether a leg gates:
 
 | result | default | `--strict` |
 | --- | --- | --- |
 | broken or vacuous leg in a blocking mode (`absent`, `count`, `each`) | **exit 1** | exit 1 |
-| broken `present` / `unique` | reported, exit 0 | exit 1 |
-| moved (self-healed) | exit 0 | exit 0 |
+| broken or vacuous `present` / `unique` | reported, exit 0 | exit 1 |
+| moved | exit 0 | exit 0 |
+| unevaluated (repo not on disk) | exit 0 | exit 0 |
 
-Git hooks and harness hooks run the default policy — only blocking modes
-gate, so a mid-refactor commit never dies on a moved presence check.
-`--strict` adds the presence and uniqueness legs to the gating set;
-`strict_pre_push: true` arms it on the pre-push shim, for a team that wants
-the last hop out of the machine held to a harder bar than a commit anyone can
-still amend.
+A leg of a `proposed` or `drift` row never gates, in either run. In a default
+run — what git hooks and harness hooks run — only the blocking modes gate among
+the legs, so a mid-refactor commit never dies on a moved presence check. Other
+lines gate whatever the mode: an anchor that does not parse and, in a brain
+checkout (a consumer repo's scoped run computes none of these), an `enact` or
+`law` refusal, a modified `.multivac/config.yml` with no open change and a stale
+pin under `staleness: block`. So does the code line, when `sdd_auto` is on and
+an SDD governs the repo: code outside the branch of an open change that declares
+that repo. A consumer repo reads a mounted brain, which can lag, so there a
+branch that is no open change gates only under `--strict`; a consumer's change
+worktree reads the brain itself and gates it in a default run, as a brain
+checkout does. A branch whose open change does not declare the repo gates in a
+default run everywhere. The reference
+tabulates the legs in [the exit matrix](../../reference/commands/#the-exit-matrix) and covers
+[the code line](../../reference/commands/#code-lands-in-a-change) on its own.
+`--strict` widens the set, starting with the presence and uniqueness legs; `strict_pre_push: true` arms it on the pre-push shim, for a
+team that wants the last hop out of the machine held to a harder bar than a
+commit anyone can still amend.
 
 ```txt
 $ mvac verify
-82 claims · 48 anchored (59%)
-  unanchored: INV-03, INV-08, INV-11, … (34)
-  read      backend: origin/main @ abc1234 — fetched 2h ago
-  read      brain: working tree on main @ def5678 — the brain's own repo
+15 claims · 12 anchored (80%)
+  unanchored: INV-03, INV-08, INV-11
+  read      backend: origin/main @ abc1234 — the channel, as published (last fetch 2h ago)
+  read      brain: working tree on main @ def5678 — the brain's own repo, the commit this run gates
 
-  ok         44
-  moved       3
+  ok         10
+  moved       1
   broken      1
   moved     INV-07 [present] .multivac/invariants.md:31 · glob rewritten to sql/002_roles.sql — review the diff
-  broken    INV-15 [present] .multivac/invariants.md:52 · no match in backend — restore the code or retire the claim
+  broken    INV-15 [present] .multivac/invariants.md:52 · no match in backend — restore the code or retire the claim · reported only — "present" is not in blocking: and this run is not --strict
   enact     no row enacted in this commit — 2 staged paths, no row reached active
 
 0 blocking broken · exit 0
@@ -216,11 +240,12 @@ $ mvac verify
 The broken `present` is reported, non-blocking; `--strict` turns it into
 exit 1.
 
-`moved` rewrites the anchor and exits 0; the diff lands in the same PR as
-the refactor. A tool that fixes instead of accusing is what buys adoption.
-Writing follows the `prettier` pattern: the rewrite lands in the working
-tree, where a human reads the diff, and `--check` reports the `moved` leg
-instead for any run that has nothing to commit to.
+`moved` exits 0, and in a brain checkout it rewrites the anchor; the diff lands
+in the same PR as the refactor. A tool that fixes instead of accusing is what
+buys adoption. Writing follows the `prettier` pattern: the rewrite lands in the
+working tree, where a human reads the diff, and `--check` reports the `moved`
+leg instead. So does a run from a consumer repo: its mount is usually a pinned
+submodule, so the heal belongs in the brain checkout.
 
 ## Coverage, not completeness
 
