@@ -341,11 +341,13 @@ multivac change close points-expire`.
 
 ## close — the gate
 
-`close` refuses until the work is actually done. Repos not landed:
+`close` refuses until the work is actually done. Every repo not landed gets a
+line, so straight after `apply` that is both:
 
 ```txt
 $ mvac change close points-expire
 api: branched — land every stage first (multivac change land points-expire)
+web: branched — land every stage first (multivac change land points-expire)
 ```
 
 exit 1. When everything landed and the declared claims have their rows and

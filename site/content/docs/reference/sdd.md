@@ -274,7 +274,7 @@ read by the probe above, never a directory being there.
 
 | key | installed when | the tool's own init |
 | --- | --- | --- |
-| `speckit` | `.specify/integration.json` passes its check | `specify init --here --integration <key> --force --ignore-agent-tools`, then `specify integration install <key>` for each further door |
+| `speckit` | `.specify/integration.json` passes its check | `specify init --here --integration <key> --force --ignore-agent-tools`, then `specify integration install <key>` for each further door's integration that is safe beside the first |
 | `opsx` | `openspec/config.yaml` or `openspec/config.yml` | `openspec init --tools none --no-animation .` |
 
 For spec-kit, the integration follows your `doors:`, from a map measured by
@@ -296,9 +296,11 @@ alike and need no command body:
 | `windsurf` | — | `windsurf` |
 
 spec-kit marks some integrations unsafe to install beside another. multivac
-installs the first and names the rest; it never passes `--force` to put them
-together. A door with no spec-kit integration is named too, except `agents`.
-With no harness door at all, spec-kit gets `claude`: its `generic` integration
+installs the integration of the first door that has one, then each further one
+only when both it and the first are safe, and names the rest; it never passes
+`--force` to put them together. A door with no spec-kit integration is skipped
+and named too, except `agents`. With no door that has one, spec-kit gets
+`claude`: its `generic` integration
 needs a commands directory no harness here is known to read. A door you add after spec-kit is
 installed is not added to it; run the vendor's own install for it. OpenSpec has
 no gap and no later install: a door added later needs nothing from it.
@@ -464,8 +466,8 @@ refuses while either still has open boxes. That is [the tool's own
 ledger](#the-tools-own-ledger), and it is why spec-kit's close is checked at all
 despite having no archive step to prove.
 
-The refusal names the command, the path, and where it looked, so the fix is on
-the line above the error:
+The refusal names the command, the path, and where it looked, and the lines
+under it carry the fix:
 
 ```txt
 $ mvac change plan add-user-auth

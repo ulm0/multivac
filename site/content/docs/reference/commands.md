@@ -194,9 +194,10 @@ the harness hooks. It used to stop at the config and end by telling you to load
 a skill it had not installed. `mvac doors` re-runs that projection after you
 edit `doors:` or `sdd:` by hand.
 
-`agents` is never a `--provider` value. [agents.md](https://agents.md/) is the
+`agents` is not a `--provider` target. [agents.md](https://agents.md/) is the
 open format every other door projects *from*, not a tool anyone could install,
-and `AGENTS.md` is written unconditionally.
+and `AGENTS.md` is written unconditionally; naming it is accepted, adds nothing
+to `doors:`, and still starts the `doors` run.
 
 **The door `init` writes is the door `doors` writes** — one rendering,
 built from the config, so it already names the declared SDD and its flow,
@@ -536,7 +537,7 @@ Per-leg states:
 | state | meaning |
 | --- | --- |
 | `ok` | the leg holds |
-| `moved` | a `present` leg with zero in-glob matches and exactly one match elsewhere of the include's own kind — the same trailing extension, never inside `.multivac/`: the glob is rewritten in place. A candidate of another kind — prose quoting the pattern — is refused and named |
+| `moved` | a `present` leg with zero in-glob matches whose pattern turns up in exactly one other file of the include's own kind — the same trailing extension, never inside `.multivac/`: the glob is rewritten in place. A file of another kind — prose quoting the pattern — is never a target, and is named only when no file of the right kind has the pattern |
 | `broken` | the leg's requirement fails where it was told to look |
 | `vacuous` | the glob matched zero tracked files — the claim was passing by describing nothing |
 | `unevaluated` | the leg's repo is declared but not on disk — counted, never red |
@@ -653,7 +654,8 @@ spec-kit: in a code repo it is code.
 
 - **Commit.** The staged paths, against the checked-out branch.
 - **Local merge.** The shim `pre-merge-commit` runs the same verify, and the
-  branch is the one at `MERGE_HEAD`.
+  branch is the ref being merged: git has not written `MERGE_HEAD` inside that
+  hook, so it is read from the `merge <ref>` git exports as `GIT_REFLOG_ACTION`.
 - **CI.** `--range <base>..<head> --branch <name>` judges the non-merge commits
   in the range, so a commit made with `--no-verify` is still caught.
 
@@ -728,9 +730,9 @@ it is allowed; dropping `absent` is refused.
 
 A `present` leg whose glob no longer matches, but whose content is found in
 exactly one other file of the same kind — the include's own trailing
-extension, never inside `.multivac/` — is a rename, not a broken claim. A
-candidate of another kind is refused and named. `verify` rewrites
-the glob:
+extension, never inside `.multivac/` — is a rename, not a broken claim. A file
+of another kind is never a target; it is named only when no file of the right
+kind has the content. `verify` rewrites the glob:
 
 ```txt
 $ mvac verify --check
@@ -1183,7 +1185,9 @@ disk, an `invalid` one included, which it never clones over:
 ```txt
 $ mvac repos sync
 api: present at ../api — fetched
+api: brain mounted at .brain
 payments: cloned git@example.com:acme/payments.git -> ../payments
+payments: mounted the brain at .brain — staged in ../payments, commit it there (multivac does not commit in your repos)
 ```
 
 The fetch is what keeps `verify` honest: a brain-scoped run reads each sibling
@@ -1245,7 +1249,8 @@ A repo you do not own is checked for its clone alone. Exit 0 when every repo
 passes, 1 when one does not, 2 for an invalid config.
 
 In CI, `multivac repos sync --shallow && multivac repos check` needs no vendor
-tool: a shallow clone is read-only, so only its clone is checked.
+tool once the brain's SDD install is committed: a shallow clone is read-only, so
+only its clone is checked.
 
 `change plan` and `change apply` refuse a repo they name whose directory is
 there but is not that clone, before anything is cloned, branched or bumped.
@@ -1254,12 +1259,11 @@ there but is not that clone, before anything is cloned, branched or bumped.
 
 `repos sync` also installs the declared SDD in the brain: the tool's own init,
 where it has never run there. The SDD reaches no code repo — its specs are
-written in the brain — and a brain where it is installed runs nothing. A
-read-only repo, declared `managed: false` or a shallow clone, gets nothing,
-which is why `repos sync --shallow` on a CI machine needs no vendor tool. Under
-`sdd_auto: false` it installs nothing and says nothing of the SDD, so
-`repos check` keeps failing on the missing install until you run the tool's own
-init in the brain yourself.
+written in the brain — and a brain where it is installed runs nothing, which is
+why `repos sync --shallow` on a CI machine needs no vendor tool once the install
+is committed. Under `sdd_auto: false` it installs nothing and says nothing of
+the SDD, so `repos check` keeps failing on the missing install until you run the
+tool's own init in the brain yourself.
 
 A tool it would run and cannot find is named with where to get it, and the run
 exits 1.
@@ -2070,7 +2074,8 @@ no .multivac/config.yml in /home/you/somewhere — run `multivac init .` to crea
 ```
 
 Below a brain, the same refusal names it instead; below a repository no brain
-governs, or outside any repository, `verify` says so — see
+governs, `verify` says so. Outside any repository it says so only when a brain
+sits in a child directory, and otherwise gives the advice above — see
 [Where a run roots](#where-a-run-roots):
 
 ```txt

@@ -89,10 +89,10 @@ on. Names must exist in the shipped registry; see
 **`doors` and `--provider` are not the same list**, which is why the flag adds
 to this key rather than being it. `--provider` answers *which coding agents do
 you use* — `claude`, `cursor`, `copilot`. `doors` records *which doors are
-projected*, and the first one always is `agents`: the canonical `AGENTS.md`,
-which is not an agent anyone installs but the format the others project from.
-Naming this key `providers` would put a non-provider at the head of every
-list.
+projected*, and the list `init` writes starts with `agents`: the canonical
+`AGENTS.md`, which is not an agent anyone installs but the format the others
+project from. Naming this key `providers` would put a non-provider at the head
+of that list.
 
 **Without it:** `doors` still writes the canonical `AGENTS.md` and the git hook
 shims into the brain and every repo on disk that is not read-only, because that
@@ -657,10 +657,14 @@ these files, never that they still are what was written.
 
 ## Layout
 
-The config lives at `.multivac/config.yml`, and everything else multivac
-creates lives beside it: the law, the changes, the ritual, the hooks, the
-gitignored cache and worktrees. `AGENTS.md` at the repo root is the one
-exception, because that is where harnesses look. Your own content is never
+The config lives at `.multivac/config.yml`, and everything multivac keeps for
+itself lives beside it: the law, the changes, the ritual, the gitignored cache
+and worktrees, and the hook shims — unless the repo already claimed a hooks
+directory, where they go instead (see [Hooks](../hooks)). The doors are the
+exception, because they sit where harnesses look: `AGENTS.md` at the repo root,
+plus the files `doors`
+projects for each vendor you list (`CLAUDE.md`, `GEMINI.md`, `.claude/`,
+`.github/copilot-instructions.md`). Your own content is never
 under `.multivac/` — the line is the user's files versus multivac's artifacts.
 
 ```txt
@@ -670,9 +674,9 @@ AGENTS.md                  the door
 .multivac/changes/         one file per ecosystem change
 .multivac/ritual.md        the closing ceremony
 .multivac/flow.md          what the declarations oblige; generated
-.multivac/hooks/           pre-commit, pre-push and pre-merge-commit shims
+.multivac/hooks/           pre-commit, pre-push and pre-merge-commit shims, unless the repo has its own hooks dir
 .multivac/cache/           gitignored
-.multivac/worktrees/       one checkout per open change, gitignored
+.multivac/worktrees/       one checkout per repo a change names, from change apply until change close, gitignored
 ```
 
 A brain that still keeps `invariants.md` or `changes/` at its root is the

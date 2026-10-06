@@ -32,8 +32,7 @@ says what each release contained. The day-one capability is implemented and
 tested — `init`, `verify`, `doors`, `doctor`, `repos`, `seed`, and the `change`
 lifecycle — and multivac develops itself with it: this repo is its own brain,
 its rules are anchored invariants, and CI re-verifies them on every push. What
-it has not done yet is run against a multi-repo ecosystem — the shape it was
-designed for.
+it has not yet met is an ecosystem other than its author's.
 
 ```sh
 npx multivac@latest init

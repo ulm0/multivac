@@ -45,7 +45,7 @@ AGENTS.md                    the door — first thing any agent reads
 .multivac/changes/           one file per ecosystem change (a `.gitkeep` for now)
 .multivac/config.yml         the registry: repos, doors, adapters
 .multivac/ritual.md          the closing ceremony, candidate lines all commented out
-.multivac/projected.yml      which multivac projected this brain last
+.multivac/projected.yml      the version this brain was brought to; only `doors --adopt` moves it
 .multivac/hooks/pre-commit   runs `mvac verify` on every commit
 .multivac/hooks/pre-push     same, on push
 .multivac/hooks/pre-merge-commit  same, on a local merge
@@ -172,13 +172,14 @@ mvac repos check  # offline: is each repo the declared clone, with its tools and
 mvac doors        # write each repo's door and hooks
 ```
 
-`repos sync` mounts the brain at `.brain` in every repo and leaves it staged;
-commit it in each repo. `brain_url` has to be the address everyone clones the
-brain from — `init` suggests your `origin`, but that may be an ssh alias only
-your machine knows. Run the same commands again whenever you declare
-another repo: `repos sync` clones the new one and mounts the brain in it,
-fetches the repos already on disk, and mounts the brain in any of them that
-still lack it.
+`repos sync` mounts the brain at `.brain` in each repo multivac may write to and
+leaves it staged; commit it in each of them. A repo declared `managed: false`,
+and a shallow clone, are read-only and get no mount. `brain_url` has to be the
+address everyone clones the brain from — `init` suggests your `origin`, but that
+may be an ssh alias only your machine knows. Run the same commands again
+whenever you declare another repo: `repos sync` clones the new one, fetches the
+repos already on disk, and mounts the brain in each writable repo that still
+lacks it.
 
 ### One repo? Say so
 

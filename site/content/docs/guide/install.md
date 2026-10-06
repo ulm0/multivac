@@ -99,11 +99,9 @@ See [Hooks](../../reference/hooks).
 $ mvac --version
 ```
 
-It prints the version in the package you installed. The site does not repeat
-that number anywhere — the law keeps every version string off these pages, so
-there is nothing here to fall out of step. What holds the published version
-honest is the release job: it refuses to publish under a tag that disagrees with
-the manifest.
+It prints the version in the package you installed. What holds the published
+version honest is the release job: it refuses to publish under a tag that
+disagrees with the manifest.
 
 ```txt
 $ mvac --help

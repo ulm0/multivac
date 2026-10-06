@@ -38,8 +38,9 @@ drafts the map from `seed`'s inventory and **interviews for the law** — the
 interview is the product, not an accessory. The journal is the asset, not the cost: the one
 layer that cannot be regenerated, separated so it isn't always loaded.
 
-The brain's content is in whatever language the team writes. Nothing in the
-parser assumes English headings.
+The statements are in whatever language the team writes. The law table's
+header row (`ID | statement | authority | state | date | source`) and its state
+words are multivac's own schema and stay as written.
 
 ## The session is home
 
@@ -53,11 +54,12 @@ is false still changes what gets written. Design consequences:
 - **Self-healing is the normal mode.** The agent is already editing and
   reviews the diff on the spot; `moved` is not a special case.
 - **Hard latency budget: under one second.** A hook that takes five seconds
-  gets uninstalled. Hence `git ls-files` rather than walking the tree, and
-  matching in process — one `RegExp` compiled from the anchor's POSIX ERE, run
-  over the enumerated files. No subprocess per leg, no external matcher, and
-  nothing cached: at this size the read is cheaper than the bookkeeping a cache
-  would need to stay honest across a rebase.
+  gets uninstalled. Hence `git ls-files` (`git ls-tree` for a ref) rather than
+  walking the tree, and matching in process — one `RegExp` compiled from the
+  anchor's POSIX ERE, run over the enumerated files. No subprocess per file (a
+  ref read fetches each leg's blobs through one `git cat-file`), no external
+  matcher, and nothing kept between runs: at this size the read is cheaper than the
+  bookkeeping a cache would need to stay honest across a rebase.
 
 ## Enforcement: the ladder
 
@@ -70,7 +72,7 @@ the commit.
 | layer | mechanism | coverage | strength |
 | --- | --- | --- | --- |
 | 0 | the door instructs: run `multivac verify` before acting | any agent that reads `AGENTS.md` | weak — obedience |
-| 1 | **git hooks**: `pre-commit`, `pre-push` and `pre-merge-commit` run `verify`. Blocking-mode legs gate in every repo ([the exit matrix](../../reference/commands/#the-exit-matrix)); enactment, law removal and a config edit made with no change open gate in the brain checkout; [code outside a change](../../reference/commands/#code-lands-in-a-change) gates in a brain checkout or a consumer's change worktree where `sdd_auto` is on and an SDD governs a declared repo, the brain's own when it is declared; in a consumer's own checkout, whose mounted brain can lag, a branch whose open change does not declare the repo gates in any run and a branch that is no open change only under `--strict` | **universal** — everything that commits | strong |
+| 1 | **git hooks**: `pre-commit`, `pre-push` and `pre-merge-commit` run `verify`. Blocking-mode legs gate in every repo ([the exit matrix](../../reference/commands/#the-exit-matrix)); an enactment beside the code it anchors, law removal and a config edit made with no change open gate in the brain checkout; [code outside a change](../../reference/commands/#code-lands-in-a-change) gates in a brain checkout or a consumer's change worktree where `sdd_auto` is on and an SDD governs a declared repo, the brain's own when it is declared; in a consumer's own checkout, whose mounted brain can lag, a branch whose open change does not declare the repo gates in any run and a branch that is no open change only under `--strict` | **universal** — everything that commits | strong |
 | 2 | harness hooks (session start, post-edit), shipped as data per harness | per harness | best UX — catches before the commit |
 
 One rung asks and two enforce; there is no third, on purpose. Both enforcing
@@ -80,8 +82,9 @@ lie to whoever reads it next, with the code already written on top of it.
 
 The two are not redundant; they catch different failure modes:
 
-- **Harness hooks are the read side.** Session start catches a stale pin or a
-  lying brain before the agent conceives code on top of it.
+- **Harness hooks are the read side.** Session start catches a lying brain —
+  and, in the brain checkout, a stale pin — before the agent conceives code on
+  top of it.
 - **Git hooks are the write side.** Commit time catches claims the edit
   broke, before they land.
 

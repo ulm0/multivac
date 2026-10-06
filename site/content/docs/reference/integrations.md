@@ -186,12 +186,16 @@ opencode reads `AGENTS.md` at the project root and up the tree. There is
 nothing to project: extra instruction files would go under `instructions` in
 `opencode.json`, which multivac does not own.
 
-Declaring `opencode` in `doors:` changes no bytes on disk. It changes
-`doctor`, which now reports the canonical door on opencode's behalf:
+`doors` writes nothing for `opencode`. Declaring it changes what `doctor`
+reports, which is the canonical door on opencode's behalf:
 
 ```txt
 opencode: AGENTS.md ok (read natively)
 ```
+
+The declaration also reaches the SDD tool's own init: when spec-kit is declared
+and has not run yet, `opencode` as the first door it maps makes that init write
+`.opencode/` ([the scaffold](../sdd#the-scaffold-declaring-a-tool-that-has-never-run-here)).
 
 If `AGENTS.md` is missing, `doctor` names `multivac init .` for a native entry,
 as it does for the canonical one. It never names `init .` for a symlink or stub

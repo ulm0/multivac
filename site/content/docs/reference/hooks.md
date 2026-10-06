@@ -19,9 +19,14 @@ a human typing `git commit`, a script, an agent in a harness with no hook
 support.
 
 Both fire while the session that broke the claim is still open — the only
-window in which the answer still changes what gets written. There is no rung
-after that, deliberately: a check that runs once everyone has gone home
-reports the lie to its next reader, with the code already written on top.
+window in which the answer still changes what gets written. The ladder stops
+there, deliberately: a check that runs once everyone has gone home reports the
+lie to its next reader, with the code already written on top. A merge request
+pipeline can back it up with
+`verify --strict --range <base>..<head> --branch <name>`, which judges what a
+hook skipped with `--no-verify` let through; that is a forge setting multivac
+cannot arm or read from disk (see
+[Code lands in a change](../commands#code-lands-in-a-change)).
 
 ## Which multivac runs
 
@@ -389,10 +394,10 @@ table below is that rule.
 | broken/vacuous `present` / `unique` | informs, exit 0 | **blocks** |
 | `moved` — self-healed rename | informs, exit 0 | informs, exit 0 |
 | `unevaluated` — repo not on disk | informs, exit 0 | informs, exit 0 |
-| a row in the `proposed` state | informs, exit 0 | informs, exit 0 |
+| a leg of a `proposed` row | informs, exit 0 | informs, exit 0 |
 | a leg of a `drift` row — a recorded finding | informs, exit 0 | informs, exit 0 |
 | a claim an open change declares — `pending` | informs, exit 0 | informs, exit 0 |
-| anchor parse error | **blocks** | blocks |
+| anchor parse error, on a `proposed` row too | **blocks** | blocks |
 
 The blocking set is the `blocking:` key, default `[absent, count, each]`. You
 can widen it; you cannot drop `absent`. See

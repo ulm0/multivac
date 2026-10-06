@@ -81,10 +81,10 @@ when it is declared as one — the code comes through the change as well. In the
 brain's own checkout and in a change's worktrees, a commit or a merge of code
 outside the branch of an open change that declares the repo is refused, and so
 is a merge request whose commits do so, when the pipeline runs
-`verify --strict --range`. A consumer checkout reads a mounted brain that can
-lag the change, so there a branch that is no open change is only reported and
-CI's `verify --strict --range` decides, while a branch whose open change does
-not declare the repo is refused in any run. A change is how code reaches a
+`verify --strict --range <base>..<head> --branch <name>`. A consumer checkout
+reads a mounted brain that can lag the change, so there a branch that is no
+open change is only reported and the `--range` run in CI decides, while a
+branch whose open change does not declare the repo is refused in any run. A change is how code reaches a
 repo, not a description written next to it.
 
 Updating the documentation stops being discipline and becomes mechanism.

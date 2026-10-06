@@ -54,8 +54,9 @@ still names `doors`, which refreshes the brain's own door. And if you passed
   the table is empty on purpose, and the door says so.
 - **seed** — a deterministic inventory of where architecture actually lives:
   policy gates, workspace graph, deploy manifests, models, decisions. Nothing in
-  it is law. Its value is that it is *complete and boring* — you stop wondering
-  what you missed.
+  it is law. Its value is that it is *boring and repeatable*: the same files
+  give the same inventory. It matches a fixed set of patterns, so what it does
+  not name is left to your agent's own reading of the tree.
 - **the interview** — the reasons, which are not in the code. A `REVOKE UPDATE`
   in a migration suggests a rule; only a person knows whether it is a promise or
   an accident someone never cleaned up.

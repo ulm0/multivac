@@ -129,7 +129,7 @@ gets no door, no shims and no `core.hooksPath`.
 ## The managed block
 
 `init` and `doors` never clobber an existing door. Everything multivac
-writes into a pre-existing file lives between two markers:
+writes into a pre-existing door file lives between two markers:
 
 ```
 <!-- multivac:begin -->
@@ -140,7 +140,10 @@ writes into a pre-existing file lives between two markers:
 The rest of the file is the user's. Regeneration replaces only the block; a
 missing file is created whole, with the block. Consumer repos arrive with
 rich hand-written `AGENTS.md` files, and a tool that overwrites them loses
-the adoption argument in the first minute.
+the adoption argument in the first minute. The harness hook config,
+`.claude/settings.json`, takes no markers: multivac merges its `verify` hooks
+into the JSON and keeps every key and hook it did not write, and it takes back
+the post-edit graph refresh hooks an earlier multivac wrote, with a notice.
 
 ## Skills: the third artifact class
 
@@ -165,5 +168,5 @@ output; it never calls a model itself.
 Doors, harness hooks, and skills live in one tool-shipped targets registry.
 `.multivac/config.yml` never defines targets; it only selects them by name.
 Adding a harness is an entry in the registry — an MR to multivac — not a
-module. `doors` mirrors the skill directory whole: a file removed from the
-source is removed from the copy.
+module. `doors` mirrors the skill directory whole: whatever the source does
+not ship is removed from the copy, a file you added there included.
