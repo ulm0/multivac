@@ -9,18 +9,23 @@ declares where the repos are. It never defines behaviour.
 
 `init` writes it. Every key below is optional; a file containing nothing but
 `{}` loads with every default applied. Every validation error names the key
-and the fix.
+and the fix, and a key multivac does not know — at the top level or in a repo
+entry — is one: `strict_prepush` is refused as `.multivac/config.yml: unknown
+key "strict_prepush" — did you mean "strict_pre_push"?`, never loaded and
+ignored.
 
 A config an earlier release wrote may still declare a code graph, at the root
 or on a repo. Those keys load and are ignored — multivac keeps no code graph —
-and `verify` and `doctor` each name them in one line, with how to delete them.
+and `doctor` names them in one line, as does `verify` in the brain checkout,
+with how to delete them.
 
-What `init` writes with no flags:
+What `init` writes with no flags, in an empty directory with no git remote:
 
 ```yaml
 # multivac configuration — seeded by `multivac init`.
 # Edit directly; adopting a new agent later is one line here + `multivac doors`.
 doors: [agents]
+# brain_url:   # no git remote detected — the URL others clone the brain from, for `repos sync` to mount
 # repos:
 #   backend: ../backend   # bare string = { path }
 ```
@@ -89,11 +94,10 @@ which is not an agent anyone installs but the format the others project from.
 Naming this key `providers` would put a non-provider at the head of every
 list.
 
-**Without it:** `doors` still writes the canonical `AGENTS.md` into the brain
-and every repo on disk that is not read-only, because that write is
-unconditional — but no symlink,
-no stub, no skill, no harness hook is installed for any vendor. `doctor` says
-so:
+**Without it:** `doors` still writes the canonical `AGENTS.md` and the git hook
+shims into the brain and every repo on disk that is not read-only, because that
+write is unconditional — but no symlink, no stub, no skill, no harness hook is
+installed for any vendor. `doctor` says so:
 
 ```txt
 doors      none declared — add doors: [agents] to .multivac/config.yml
@@ -126,9 +130,9 @@ own entry may declare it instead. `none` declares no SDD.
 A declaration that would resolve in no root is refused when the config loads,
 naming the key and the fix: a tool in a repo's own `sdd:`, a top-level tool the
 brain's own entry contradicts with another tool or `none`, or a name multivac
-does not know. Every command in the brain exits 2 on it, except `doctor`,
-`doors` and `init`, which report it and exit 1, as they do for any config they
-cannot load — `doctor` on its `config invalid` line:
+does not know. Commands that load the config exit 2 on it; the exceptions are
+under [Errors are exit 2](#errors-are-exit-2). `doctor` reports it on its
+`config invalid` line:
 
 ```txt
 repos.landing.sdd: opsx — REFUSED: the SDD lives in the brain alone, so a code repo's sdd: takes only none, which exempts its code from the change gate. Fix: remove repos.landing.sdd or set it to none in .multivac/config.yml, then open a change for the config edit: `multivac change new <slug>`
@@ -152,9 +156,11 @@ declaring something absent — the first is "we do not use one", the second is
 | default | `true` |
 | example | `sdd_auto: false` |
 
-Whether the declared `sdd` adapter prints its steps and gates on their
-artifacts at `change new`, `change plan`, `change apply` and `change land`,
-and `change close` on the tool's task ledger.
+Whether the declared `sdd` adapter prints its steps at `change new`,
+`change plan`, `change apply`, `change land` and `change close`, and gates on
+their artifacts at `change plan` and `change apply`, and at `change close` on
+the tool's archive, where it has one, and its task ledger. `false` also drops
+the check that code lands only on the branch of an open change.
 
 **Without it:** each lifecycle point prints its steps and the next command
 refuses without their artifacts. Set it to `false` to keep the adapter
@@ -164,15 +170,18 @@ declared — `doctor` still reports it — while running its steps by hand:
 sdd        opsx @ brain: installed · binary ok · sdd_auto: false — the lifecycle prints nothing and gates nothing; run the steps yourself
 ```
 
-`--no-sdd` on a single `change` invocation does the same thing once, without
-editing the config. Neither stops `change close` from naming the brain's spec
-directories for the change in the archive commit it prints and citing them in
-its body: the switch skips the steps and their gates, never what was already
-written.
+`--no-sdd` on a single `change` invocation skips the steps and their gates once,
+without editing the config; at `change plan`, `change apply` and `change close`
+it also records the skip in the change file. Neither
+stops `change close` from naming the brain's spec directories for the change in
+the archive commit it prints and citing them in its body: the switch skips the
+steps and their gates, never what was already written.
 
 ### `tracker`
 
-Which issue tracker the roadmap projects to: `gitlab`, `github`, or absent.
+Which issue tracker the roadmap projects to: `gitlab`, `github`, or absent
+(`none` reads as absent). Any other name loads, and only `roadmap sync`
+refuses it.
 
 ```yaml
 tracker: gitlab
@@ -183,12 +192,14 @@ projects the **change** — and changes live only in the brain, so a
 per-repo override would answer a question nobody can ask.
 
 Projection is one way and runs only from `multivac roadmap sync`. It reaches the
-network, so it never runs from `verify`, `doctor` or `doors`.
+network, so it never runs from `verify`, `doctor` or `doors`. Each issue carries
+a `multivac::planned` or `multivac::open` label, added and never removed, so an
+issue that was both carries both.
 
 ### `repos.<key>.role`
 
 Optional. One line saying what a repo is **for**, rendered in the ecosystem list
-every door carries.
+a repo's own door carries once two repos are declared.
 
 ```yaml
 repos:
@@ -286,7 +297,10 @@ your agent; do not expect it to gate anything today.
 | example | `blocking: [absent, count, each, unique]` |
 
 Which anchor modes make a broken leg exit 1 under the **default** policy.
-Everything else is reported and exits 0 unless you pass `--strict`.
+A broken leg in any other mode is reported and exits 0 unless you pass
+`--strict`. It decides legs only: the lines about the commit itself
+(enactment, law removal, a config edit, code outside a change) and a stale pin
+under `staleness: block` gate on their own terms.
 
 **Without it:** tombstones (`absent`), counted claims (`count`) and
 universals (`each`/`each!`) gate; presence and uniqueness report. That
@@ -318,16 +332,18 @@ What happens when a consumer repo's pinned brain mount is behind the declared
 `channel`. `report` prints the line and exits 0; `block` makes it a verify
 failure.
 
-**Without it:** stale pins are reported, never gating. Under `block`, a
-resolvable stale pin exits 1 with the sync command in the line — but a
-channel ref that does not resolve locally still only reports, because offline
-never guesses and never gates:
+**Without it:** stale pins are reported, never gating. Under `block`, a stale
+pin exits 1, and its line carries the `git submodule update --remote` that
+moves the pin — but a channel ref that does not resolve locally, or a pin whose
+commit the brain checkout lacks (the line reads `pin ? behind`), still only
+reports, because offline never guesses and never gates:
 
 ```txt
   stale?    api: channel origin/main unknown locally — reported only, cannot gate offline; `multivac repos sync` fetches it
 ```
 
-A pin **ahead** of the channel is not stale and never gates.
+A pin **ahead** of the channel is not stale and never gates. Any other value of
+the key is refused:
 
 ```txt
 .multivac/config.yml: "staleness" must be "report" or "block" — block makes a stale pin exit 1
@@ -344,9 +360,10 @@ A pin **ahead** of the channel is not stale and never gates.
 Whether `doors` writes the pre-push shim as `mvac verify --strict` instead of
 `mvac verify`.
 
-**Without it:** both hooks run the default policy. Turning it on keeps
-commits permissive and makes a push gate on the presence and uniqueness legs
-as well — the last hop out of the machine held to a harder bar than a commit
+**Without it:** every hook shim runs `mvac verify`. Turning it on leaves
+commits and merges on it and makes a push also gate on a broken leg in any
+mode, presence and uniqueness included, and on a finished change nobody has
+closed — the last hop out of the machine held to a harder bar than a commit
 anyone can still amend. It only takes effect the next time `doors` (or
 `init`) rewrites the shims. See [Hooks](../hooks).
 
@@ -430,7 +447,9 @@ key commented out, with the origin it found as a suggestion:
 # brain_url: git@work-github:acme/brain.git   # the URL others clone the brain from — uncomment to let `repos sync` mount it
 ```
 
-Read it, fix it if it is an alias, and uncomment it.
+Read it, fix it if it is an alias, and uncomment it. A blank value
+(`brain_url: ""`) is refused when the config loads: state the URL or remove the
+key.
 
 **Without it:** `repos sync` mounts nothing, and says so once:
 
@@ -453,10 +472,10 @@ requires: ">=X.Y.Z"
 ```
 
 Grammar is `>=X.Y.Z` and nothing else. A floor gets a floor's grammar: `^0.3` or
-`>=0.3 <1` needs a semver range parser, which would be a third runtime
-dependency, and the law pins the count. A malformed value is **refused by
-name**, not ignored — silently dropping it would leave you believing a gate is
-declared that is not.
+`>=0.3 <1` needs a semver range parser, which would be a fourth runtime
+dependency, and the law pins the count at three. A malformed value is
+**refused by name**, not ignored — silently dropping it would leave you
+believing a gate is declared that is not.
 
 A binary below the floor gets the loudest notice on every run and is **not
 refused**. Nothing here changes an exit code: enforcement degrades, it never
@@ -472,7 +491,7 @@ locks you out.
 
 The ecosystem. Every anchor's `<repo>` prefix is one of these keys — plus two
 built-ins you do not declare: `brain` (the brain itself) and `*` (every
-declared repo).
+declared repo plus the brain).
 
 ```yaml
 repos:
@@ -511,10 +530,12 @@ tool name there is refused when the config loads.
 
 **The brain's own entry.** Without an entry at path `.`, the brain holds no
 code. Add `brain: .` — inside a change, once the config is committed — when the
-brain starts holding code; `init` writes it when the repo it scaffolds holds
-any file, a README, a LICENSE or a `.gitignore` included. For the SDD, the
-brain's entry may repeat the top-level tool or declare one where the top level
-has none; a different tool, or `none` under a top-level tool, is refused:
+brain starts holding code; `init` writes it into a config it creates when the
+repo it scaffolds holds any file of its own, a README, a LICENSE or a
+`.gitignore` included — files git ignores do not count, and a config `init`
+keeps is not touched. For the SDD, the brain's entry may repeat the top-level
+tool or declare one where the top level has none; a different tool, or `none`
+under a top-level tool, is refused:
 
 ```yaml
 sdd: speckit
@@ -531,7 +552,7 @@ an earlier release equipped with the SDD keeps that install until someone
 removes it; `doctor` names it with the removal and never fails over it:
 
 ```txt
-sdd        speckit @ brain: installed · binary ok · sdd_auto on
+sdd        speckit @ brain: installed · binary ok · sdd_auto on — the lifecycle prints this tool's own steps and refuses to move on without their artifacts
 sdd        speckit governs the code of api — its steps run in the brain; exempt (sdd: none): landing
 sdd        leftover speckit install @ api: .specify/integration.json (tracked) — delete .specify/ there; `specify integration uninstall <key>` removes its skills and leaves .specify/
 ```
@@ -552,8 +573,8 @@ repos      none declared — add repos: to .multivac/config.yml
 ```
 
 `seed` writes the same finding into its report — *No repos declared — add
-them under `repos:` in `.multivac/config.yml`* — and `doors` just writes the
-brain's own door and stops.
+them under `repos:` in `.multivac/config.yml`* — and `doors` projects into the
+brain alone: its door, its git hook shims and `.multivac/flow.md`.
 
 `*` is reserved outright — it already means "every repo" in an anchor leg:
 
@@ -583,7 +604,9 @@ Every command that reads it exits **2** and prints one line naming the key
 and the repair. `doors`, `doctor` and `init` are the exceptions and exit 1:
 for `doors` and `doctor` an unloadable config is the diagnosis they were asked
 for, and `init` stops rather than re-render every projection from a config it
-could not read.
+could not read. Bare `roadmap` never reads it and `roadmap add` reads it only to
+check the slug, so both carry on and exit 0 when it does not load or is missing;
+only `roadmap sync` exits 2.
 
 ```txt
 $ mvac verify
@@ -595,10 +618,11 @@ $ mvac verify
 no .multivac/config.yml in /private/tmp — run `multivac init .` to create it
 ```
 
-The `init` advice is given only where no brain holds the directory. Below a
-brain every command's refusal names it, and `verify`, which reads the checkout
-that holds where it is asked, says where it stands when nothing governs it —
-see [Where a run roots](../commands#where-a-run-roots):
+The `init` advice is given only where no brain holds the directory — `init`
+itself does not look upward, so run below a brain it scaffolds a second one
+there. Below a brain the refusal names that brain instead, and `verify`, which
+reads the checkout that holds where it is asked, says where it stands when
+nothing governs it — see [Where a run roots](../commands#where-a-run-roots):
 
 ```txt
 $ cd src && mvac repos sync
@@ -615,6 +639,8 @@ A second file lives beside the config, and it is **not** yours to edit:
 
 ```yaml
 # Written by multivac, never by hand.
+# The version this brain was deliberately brought to — not whatever
+# binary last touched it. `mvac doors --adopt` is what moves it.
 version: X.Y.Z
 ```
 
@@ -650,6 +676,9 @@ AGENTS.md                  the door
 ```
 
 A brain that still keeps `invariants.md` or `changes/` at its root is the
-pre-`.multivac/` layout: every command refuses it and names `multivac init .`,
-which migrates with `git mv` so history follows. It never moves a file
-multivac did not write.
+pre-`.multivac/` layout: every command that loads the config refuses it and
+names `multivac init .`, which migrates with `git mv` so history follows. It
+never moves a file multivac did not write. When both copies exist and read as
+multivac's own, those commands and `init .` refuse without offering the
+migration: merge what you want from the root file into `.multivac/` by hand,
+then delete the root one.

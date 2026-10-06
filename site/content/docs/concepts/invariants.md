@@ -5,13 +5,17 @@ weight: 5
 
 The law is a table of claims with a lifecycle:
 
-    proposed → active → amended → retired
+    proposed → active → retired
+
+An amendment is not a state: it is an edit to an `active` row, made through a
+change (see Amend below). A fourth state, `drift`, records a real finding the
+code has not caught up with: its legs report and never gate.
 
 ## Three birth paths, one table
 
-- **Seeded** — `seed` proposes candidates from boundaries (a `revoke update`
-  in a migration *suggests* "nobody writes balances"). Born `proposed`: not
-  law until a human validates.
+- **Seeded** — `seed` inventories the boundaries and the agent drafts
+  candidates from them (a `revoke update` in a migration *suggests* "nobody
+  writes balances"). Born `proposed`: not law until a human validates.
 - **Interviewed** — the from-scratch path: the interview protocol draws the
   law out of the person's head.
 - **Organic** — the main path at steady state: a decision made inside a
@@ -21,7 +25,8 @@ The law is a table of claims with a lifecycle:
 
 The authority label demands it: "published" means someone with authority
 answered for it, and an LLM cannot answer for it alone. New claims enter as
-`proposed` rows — never blocking — and only a human flips a row to `active`.
+`proposed` rows, whose legs never block, and only a human flips a row to
+`active`.
 Validation of seeded output runs in batches ordered by blast radius:
 accept / correct / discard, with whatever stays unvalidated remaining marked
 `proposed`.
@@ -61,8 +66,10 @@ where the hooks are armed, and refused only in a blocking mode or under
 
 ## Retire
 
-The row is not deleted — it is marked `retired`, keeps its ID, and its
-existing legs stop being evaluated. The tombstone is **authored, not
+The row is not deleted — it is marked `retired` and keeps its ID. On a retired
+row `verify` evaluates only the `absent` legs; every other mode stops being
+evaluated, and an `absent` leg the row already carried keeps gating, because
+`verify` cannot tell it from a tombstone. The tombstone is **authored, not
 derived**: retiring writes NEW `absent` legs on that row for the dead
 mechanism's identifiers — the names someone would grep for, in every surface
 where they could resurface:

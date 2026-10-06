@@ -36,9 +36,12 @@ can be checked, mechanically, right now, offline, with no model in the loop.
 
 The row is the claim. The comment under it is the anchor: a content-based
 assertion about the code — *in that repo, in those files, exactly one line
-matches this*. `mvac verify` evaluates it against the actual checkout. If
-someone adds a second migration creating accounts, the claim goes red the
-same day, not eleven days later.
+matches this*. Run from the brain, `mvac verify` reads each sibling repo as
+published, at its channel ref (its working tree under `--worktree`, or where the
+ref does not resolve here); run from the repo itself, it reads that checkout's
+working tree. If someone adds a
+second migration creating accounts, the claim goes red the same day, not
+eleven days later.
 
 That is the whole idea. Everything else is plumbing around it.
 
@@ -61,20 +64,22 @@ code — a regulator, a contract, a postmortem, a decision someone made in a
 room. And the journal is the only layer that cannot be regenerated at all,
 which makes it the asset rather than the cost.
 
-So the tool's job is not "read the repo and write the docs". It is: **derive
-the map, interview for the law, and then keep the law honest against the code
-forever.**
+So the tool's job is not "read the repo and write the docs". It is: **inventory
+the boundaries, interview for the law, and then keep the law honest against the
+code forever.**
 
 ## Who proposes, who enacts
 
 An agent may draft. Only a human enacts.
 
-That split is mechanical, not advisory. `mvac seed` produces a deterministic
-inventory of boundaries — no interpretation, nothing that is law. Your agent
-reads it and drafts rows in the `proposed` state. A `proposed` row is
-reported by `verify` and **never blocks**, not even under `--strict`. It
-becomes `active` when a human moves the state cell, which is a commit with a
-name on it.
+That is the project's rule, and `verify` cannot check who made a commit — see
+[Invariants](../invariants#that-rule-is-ungateable-and-the-law-says-so).
+What it does refuse is the timing: a row turning `active` in the same commit
+as the code it anchors. `mvac seed` produces a deterministic inventory of
+boundaries — no interpretation, nothing that is law. Your agent reads it and
+drafts rows in the `proposed` state. The legs of a `proposed` row are reported
+by `verify` and **never block**, not even under `--strict`. It becomes `active`
+when a human moves the state cell, in a commit of its own.
 
 The reason is not ceremony. A model extracting invariants from a codebase
 produces confident, plausible, wrong claims, and a wrong claim promoted to
@@ -87,38 +92,39 @@ multivac validates and files what it produces and never calls a model itself.
 ## The ritual
 
 Closing a change has two halves. One is mechanical, and multivac runs it:
-the landing order held, every declared repo landed, and every claim the
-change promised resolves green and cites a row of the law that states its
-rule. `mvac change close` refuses until that half passes.
+every declared repo landed, and every claim the change promised resolves
+green and cites a row of the law that states its rule. `mvac change close`
+refuses until that half passes.
 
 The other half is the team's, and no tool can invent or check it — who
 reviews what, who gets told, what ships before what when the reason is not
 technical. That half lives in `.multivac/ritual.md`, written by the team in
-plain prose, and `change close` prints it verbatim as a checklist after the
-gate passes:
+plain prose, and once the gate passes `change close` prints its lines as
+written, in file order, minus headings, comments and blank lines:
 
 ```txt
 $ mvac change close points-expire
 …
 ritual (.multivac/ritual.md) — multivac cannot check these; walk them with the user:
-  - [ ] The branch is pushed and an MR is open — nothing lands on main directly.
-  - [ ] The MR description states the landing order and names every claim.
+  - [ ] Somebody who did not write it read it, and said so out loud.
+  - [ ] What this taught that is not yet law is written down somewhere a person will find it.
 ```
 
 What `close` prints before the ritual is in the
 [commands reference](../../reference/commands/#close).
 
-Printed, never parsed, never gating. An empty or absent ritual prints
-nothing. It gets its own file rather than a section of the law because the
-law is a machine-parsed table — `verify` reads its anchors, `change plan`
-reads its state cells — and free-form prose inside a parsed table is how a
-parser learns to lie.
+Printed, never checked, never gating. An absent ritual, or one with nothing
+but headings and comments, prints nothing. It gets its own file rather than a
+section of the law because the law is a machine-parsed table — `verify` reads
+its anchors, `change plan` reads its state cells — and free-form prose inside a
+parsed table is how a parser learns to lie.
 
 ## What follows from all this
 
 - **Deterministic or nothing.** `verify` uses `git ls-files` and a regex
-  engine. Same answer on your laptop, in the pre-commit hook, and in your
-  teammate's clone.
+  engine. Same bytes, same answer, and every run prints which bytes it read:
+  each repo's ref or branch and sha, and for a sibling read at its channel
+  ref, when it was last fetched here.
 - **The message is the product, not the exit code.** A red leg says which
   file, which line, and what to do about it. The consumer is an agent about
   to act, not a dashboard someone checks tomorrow.
@@ -128,10 +134,10 @@ parser learns to lie.
   never blocks gets ignored.
 - **Enforcement degrades, it never locks you out.** A machine without the
   binary on `PATH` commits normally. See [Hooks](../../reference/hooks).
-- **Unanchored claims are counted, not pretended verified.** `verify` prints
-  the anchored percentage in its first line. Grep covers tombstones, not
-  semantics, and the tool says so rather than implying coverage it does not
-  have.
+- **Unanchored claims are counted, not pretended verified.** A brain run
+  of `verify` prints the anchored count and percentage in its header line and
+  names the unanchored rows. Grep covers tombstones, not semantics, and the
+  tool says so rather than implying coverage it does not have.
 
 Next: [Brain-driven development](../brain-driven-development) for the
 practice, or [Claims and anchors](../claims-and-anchors) for the grammar.

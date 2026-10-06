@@ -20,7 +20,8 @@ Select them in `.multivac/config.yml`:
 doors: [agents, claude, cursor, opencode, codex, windsurf, gemini, copilot]
 ```
 
-Then `mvac doors`. That is the whole adoption step — never re-run `init`.
+Then `mvac doors`. That is the whole adoption step: `init` keeps an existing
+config, so re-running it never picks up the new entry.
 
 ## The four kinds
 
@@ -29,11 +30,11 @@ Then `mvac doors`. That is the whole adoption step — never re-run `init`.
 | `canonical` | `AGENTS.md` itself — the source every other kind projects from | `agents` |
 | `native` | **nothing.** The harness already reads `AGENTS.md`; a second file would be a paraphrase | `opencode`, `codex`, `windsurf`, `cursor` |
 | `symlink` | a second name for the same bytes: `<door> → AGENTS.md` | `claude`, `gemini` |
-| `stub` | a small tool-owned file, optional frontmatter, then the managed block, pointing at `AGENTS.md` | `copilot` |
+| `stub` | a small file at the harness's path: optional frontmatter on creation, then the managed block, pointing at `AGENTS.md` | `copilot` |
 
 There is no kind for "cannot be owned". A harness whose door multivac cannot
 write gets **no entry**, because an entry is how this tool says *supported* —
-it appears in `--provider`'s legal values, in the table above, and in the count
+it is listed in `init --provider`'s help, in the table above, and in the count
 of what multivac integrates with. `aider` had one for a while, carrying a note
 that explained at length why none of it applied; it read as support to anyone
 who did not open it. An unknown name already gets the list of what is
@@ -41,12 +42,12 @@ supported, which is the answer that helps.
 
 Cursor was a `stub` until multivac stopped projecting one: it reads `AGENTS.md` at the project root, so
 the rules file was a second door that could disagree with the canonical one. A target that retires a file it used to project takes it with it —
-one `doors` run removes multivac's block from `.cursor/rules/multivac.mdc` and
+one `doors` run, with `cursor` still in `doors:`, removes multivac's block from `.cursor/rules/multivac.mdc` and
 deletes the file when nothing but the frontmatter multivac itself wrote is left,
-saying which of the two it did. Lines you added there survive, and the file with
-them stays.
+saying which of the two it did. Lines you added there survive, and the file
+stays with them, frontmatter (`alwaysApply: true`) included.
 
-Everything multivac writes into a file it does not fully own lands between
+Everything multivac writes into a door file it does not fully own lands between
 `<!-- multivac:begin -->` and `<!-- multivac:end -->`. Content outside that
 block is yours and is never touched — including in a `stub` door, which reads
 the file before it writes it and adds its frontmatter only when creating the
@@ -58,6 +59,7 @@ for `.github/copilot-instructions.md` and `.cursor/rules/multivac.mdc`.
 ```txt
 $ mvac doors
 brain: door + hooks updated
+brain: .multivac/flow.md — what your declarations oblige, sorted; generated, binds nothing
 ```
 
 ```txt
@@ -78,11 +80,13 @@ doors      agents: AGENTS.md ok · claude: CLAUDE.md ok (symlink) · cursor: AGE
 | source | <https://agents.md/> |
 
 The canonical door. Every other target projects from this file, and `doors`
-writes it whether or not `agents` is in your list. In the brain it carries
-the law summary and the active-invariant count; in a consumer repo it carries
-where the brain is mounted, what binds, and that a change may cross repos.
+writes it whether or not `agents` is in your list. In the brain it points at
+the law, the changes, the ritual and `verify`, and says the brain is empty
+while the law table has no row that is not retired; in a consumer repo it carries where the brain is
+mounted, what binds, and that a change may cross repos.
 
-`init` is what creates it; `doors` refreshes its managed block.
+`init` and `doors` both write it: either creates it when it is missing and
+refreshes its managed block when it is not.
 
 ## `claude`
 
@@ -123,7 +127,7 @@ and entry it does not own:
 `SessionStart` catches a lying brain before the agent conceives code on top
 of it, in one line when nothing is off and in full otherwise; `PostToolUse`
 re-checks after every edit, in the checkout of the file written when a brain
-governs it, and says nothing while it is green. Both run the **default**
+governs it, and while it is green nothing reaches the model. Both run the **default**
 policy, not `--strict`, and neither command carries a switch: `verify` reads
 the harness's own hook payload (see
 [hooks](/docs/reference/hooks/#harness-hooks--the-early-ceiling)).
@@ -151,8 +155,9 @@ it and says what to do:
 api: notice: CLAUDE.md exists as a regular file — merge it into AGENTS.md and remove it to get the symlink
 ```
 
-On Windows without developer mode the symlink is not permitted; the notice
-tells you to put `@AGENTS.md` as the first line of `CLAUDE.md` instead.
+Where the symlink cannot be created — Windows without developer mode, for one —
+`doors` makes no `CLAUDE.md` and prints `symlink not permitted on this platform —
+read AGENTS.md directly, or enable developer mode to get CLAUDE.md`.
 
 ## `cursor`
 
@@ -188,9 +193,10 @@ Declaring `opencode` in `doors:` changes no bytes on disk. It changes
 opencode: AGENTS.md ok (read natively)
 ```
 
-If `AGENTS.md` is missing, the fix `doctor` names for a native entry is
-`multivac init .`, not `multivac doors` — because `init` is what creates the
-canonical file.
+If `AGENTS.md` is missing, `doctor` names `multivac init .` for a native entry,
+as it does for the canonical one. It never names `init .` for a symlink or stub
+entry: those get `multivac doors` when their own file is missing, the symlink
+points elsewhere, or the file lacks the managed block.
 
 ## `codex`
 
@@ -266,9 +272,9 @@ repo `doors` reaches, regardless of which harness entries you declared — see
 
 ## Detection
 
-With no `--provider` flag, `init` probes for the `detect` path of every registry
-entry and writes what it found as a **commented proposal**, never as an
-enabled key:
+`init` probes for the `detect` path of each registry entry that has one and
+writes what it found, beyond what `--provider` already named, as a **commented proposal**,
+never as an enabled key:
 
 ```yaml
 doors: [agents]

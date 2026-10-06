@@ -38,19 +38,20 @@ mvac init
    steady state: change new → plan → apply → land → close
 ```
 
-The two branches are asymmetric on purpose. `doors` is an explicit step only on
-the existing-code path, because there are repos already sitting there needing a
-door. On the from-scratch path there is nothing to project onto yet: greenfield
-`apply` creates each repo with its first commit and its door already written.
-And if you passed `--provider` to `init`, that projection already happened in
-the same run — `doors` is for adopting a harness *later*.
+The two branches are asymmetric on purpose. Discovery ends in `doors`, because
+there are repos already sitting there needing a door. On the from-scratch path
+there is nothing to project onto yet: greenfield `apply` creates each repo with
+its first commit and its door already written, though `init`'s closing list
+still names `doors`, which refreshes the brain's own door. And if you passed
+`--provider` to `init`, that projection already happened in the same run —
+`doors` is for adopting a harness *later*.
 
 ## What each phase buys
 
 - **`init`** — the brain exists and the git hooks are armed. `verify` now runs
-  without you, at session start and at commit. It does not read your code, does
-  not interview anyone, and writes zero law: the table is empty on purpose, and
-  the door says so.
+  at every commit without you; `--provider claude` adds a run at session start.
+  It does not read your code, does not interview anyone, and writes zero law:
+  the table is empty on purpose, and the door says so.
 - **seed** — a deterministic inventory of where architecture actually lives:
   policy gates, workspace graph, deploy manifests, models, decisions. Nothing in
   it is law. Its value is that it is *complete and boring* — you stop wondering
@@ -83,12 +84,14 @@ the same run — `doors` is for adopting a harness *later*.
   foreign `core.hooksPath`, a `.gitignore` that would swallow the brain. `init`
   checks before it writes, chains an existing hook rather than replacing it,
   refuses rather than clobber, and prints the strategy it used.
-- **A declared repo not on disk** — seed reports it unevaluated rather than
+- **A declared repo not on disk** — seed lists it under `skipped` rather than
   guessing. `mvac repos sync` clones it.
 - **A repo that does not exist at all** — legal. Declare it in a change;
   greenfield `apply` creates it.
 - **Adopting a harness three months in** — one line in `.multivac/config.yml`
-  plus `mvac doors`. Never re-run `init`.
+  (once the config is committed, `verify` refuses a commit that edits it
+  unless a change is open) plus `mvac doors`. `init` keeps the config it
+  finds, so re-running it would not pick the line up.
 - **A consumer repo** — no config of its own; it resolves the brain through the
   mount and verifies its own working tree, scoped to its anchors.
 

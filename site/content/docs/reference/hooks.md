@@ -58,6 +58,7 @@ clone, which gets nothing:
 ```txt
 $ mvac doors
 brain: door + hooks updated
+brain: .multivac/flow.md — what your declarations oblige, sorted; generated, binds nothing
 api: door + hooks updated
 payments: notice: not found at ../payments — run `multivac repos sync` to clone it
 ```
@@ -127,29 +128,31 @@ uses the pre-commit framework has `.pre-commit-config.yaml` but **no**
 `.git/hooks/pre-commit` yet, and `pre-commit install` refuses to write one
 while `core.hooksPath` is set. So when the config exists and the hook does
 not, the shim runs the config directly — `pre-commit run --hook-stage
-pre-commit` (`pre-push` in the push shim) — and its exit code wins, exactly
+pre-commit` (`pre-push` in the push shim, `pre-merge-commit` in the merge shim) — and its exit code wins, exactly
 as if the hook were installed. The chain arms in every order. With the
 config present but no `pre-commit` binary on `PATH`, the shim warns loudly
 on stderr and never blocks — the same posture it takes for a missing
 multivac runner — and `init` and `doctor` both name the state:
 
 ```txt
-hooks      core.hooksPath ok · pre-commit installed · pre-push installed · .pre-commit-config.yaml with no .git/hooks/pre-commit — the shim runs `pre-commit run --hook-stage <stage>` directly (`pre-commit install` refuses while core.hooksPath is set) · active (mvac)
+hooks      core.hooksPath ok · pre-commit installed · pre-push installed · .pre-commit-config.yaml with no .git/hooks/pre-commit — the shim runs `pre-commit run --hook-stage <stage>` directly (`pre-commit install` refuses while core.hooksPath is set) · active (mvac on PATH)
 ```
 
 ```txt
-hooks      core.hooksPath ok · pre-commit installed · pre-push installed · WARNING .pre-commit-config.yaml present, no .git/hooks/pre-commit and no pre-commit binary — the project's gate cannot run → install pre-commit (pipx install pre-commit, or brew install pre-commit) · active (mvac)
+hooks      core.hooksPath ok · pre-commit installed · pre-push installed · WARNING .pre-commit-config.yaml present, no .git/hooks/pre-commit and no pre-commit binary — the project's gate cannot run → install pre-commit (pipx install pre-commit, or brew install pre-commit) · active (mvac on PATH)
 ```
 
-Husky and lefthook do not have this trap: `.husky/` means multivac installs
-alongside and leaves `core.hooksPath` for husky's own `prepare` to claim, so
-both gates arm in either order; a `lefthook.yml` chains through
+Husky and lefthook do not have this trap: a `.husky/` with `core.hooksPath`
+still unset means multivac installs alongside and leaves `core.hooksPath` for
+husky's own `prepare` to claim, so both gates arm in either order; a
+`lefthook.yml` chains through
 `.git/hooks/` the moment `lefthook install` writes there.
 
 | hook | runs | when `strict_pre_push: true` |
 | --- | --- | --- |
 | `.multivac/hooks/pre-commit` | `mvac verify` | unchanged — commits stay permissive |
 | `.multivac/hooks/pre-push` | `mvac verify` | `mvac verify --strict` |
+| `.multivac/hooks/pre-merge-commit` | `mvac verify` | unchanged — merges stay permissive |
 
 ### Why they live in `.multivac/hooks/`
 
@@ -166,7 +169,7 @@ file: it travels with the clone, and the only per-machine state is the one
 `core.hooksPath` line, which `doctor` checks.
 
 ```txt
-hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac)
+hooks      core.hooksPath ok · pre-commit installed · pre-push installed · active (mvac on PATH)
 ```
 
 ```txt
@@ -174,12 +177,14 @@ hooks      core.hooksPath unset → git config core.hooksPath .multivac/hooks ·
 ```
 
 ```txt
-hooks      core.hooksPath ok · pre-commit installed · pre-commit chains .git/hooks/pre-commit (runs first, its exit code wins) · pre-push installed · active (mvac)
+hooks      core.hooksPath ok · pre-commit installed · pre-commit chains .git/hooks/pre-commit (runs first, its exit code wins) · pre-push installed · active (mvac on PATH)
 ```
 
 Bare `doctor` reports every one of these states and exits 0 — including the
-disarmed ones (`core.hooksPath` unset, a shim missing, no runnable multivac).
-That is a report, and a human has to read it. **`doctor --strict` turns the
+disarmed ones (`core.hooksPath` unset, a `pre-commit` or `pre-push` shim
+missing, no runnable multivac). It reads those two shims only; a missing
+`pre-merge-commit` shim goes unreported. That is a report, and a human has to
+read it. **`doctor --strict` turns the
 floor into an assertion**: it exits 1 when the gate is not armed, so a setup
 step or a session-start hook running `mvac doctor --strict` fails the moment
 the floor is down instead of staying quiet while nothing is enforced. See
@@ -198,7 +203,7 @@ picks one of three strategies, and says which one it used:
 | --- | --- | --- |
 | nothing | **fresh** | shims in `.multivac/hooks/`, `core.hooksPath` set to it |
 | `.git/hooks/<name>`, `.pre-commit-config.yaml`, `lefthook.yml` | **chained** | same shims; each runs the repo's own `.git/hooks` hook first, its exit code wins — and a `.pre-commit-config.yaml` with no hook installed runs via `pre-commit run` |
-| `core.hooksPath` set elsewhere, or `.husky/` | **alongside** | never repoint — the shim is written INTO that directory where the name is free |
+| `core.hooksPath` set elsewhere, or `.husky/` with `core.hooksPath` unset | **alongside** | never repoint — the shim is written INTO that directory where the name is free |
 
 `core.hooksPath` is read **the way git reads it**, with `git config
 --path`: a leading `~` or `~user` expands to the home directory first, and what
@@ -257,8 +262,8 @@ every key and entry it does not own:
 
 | event | matcher | command |
 | --- | --- | --- |
-| `SessionStart` | — | `mvac verify 2>&1 || true` |
-| `PostToolUse` | `Edit\|Write\|MultiEdit` | `mvac verify >&2 || exit 2` |
+| `SessionStart` | — | `mvac verify 2>&1 \|\| true` |
+| `PostToolUse` | `Edit\|Write\|MultiEdit` | `mvac verify >&2 \|\| exit 2` |
 
 ```json
 {
@@ -297,9 +302,10 @@ broke, a binary that has gone — because after an agent's edit each of those is
 the agent's to answer. The edit is already on disk: the block is a forced read
 in the same turn, not a revert.
 
-After an edit a green run says nothing; at session start it is one line —
-summary, header, reads, enact. A gate that speaks at length when it has nothing
-to say teaches the reader to stop reading it.
+After an edit the command sends the binary's full report to stderr, but a
+green run exits 0, so the model is handed none of it; at session start the run is quiet
+and a green one is one line — summary, header, reads, enact. A gate that speaks
+at length when it has nothing to say teaches the reader to stop reading it.
 
 **The commands carry no switch.** Claude Code hands every hook the event and,
 after an edit, the file written, as JSON on stdin, and sets
@@ -352,7 +358,7 @@ rewrite your matcher to get there. It adds its own entry beside yours and says
 so:
 
 ```txt
-brain: notice: .claude/settings.json: hooks.PostToolUse already runs `mvac verify`, but not on matcher `Edit|Write|MultiEdit` — the gate has to cover what it gates, so multivac added its own entry beside yours rather than rewrite a matcher it does not own. Delete whichever you do not want by hand.
+brain: notice: .claude/settings.json: hooks.PostToolUse already runs `mvac verify >&2 || exit 2`, but not on matcher `Edit|Write|MultiEdit` — the gate has to cover what it gates, so multivac added its own entry beside yours rather than rewrite a matcher it does not own. Delete whichever you do not want by hand.
 ```
 
 Adding is reversible and rewriting your matcher is not, so that is the way it
@@ -380,22 +386,32 @@ table below is that rule.
 | broken/vacuous `absent` — a tombstone | **blocks** | blocks |
 | broken/vacuous `count` | **blocks** | blocks |
 | broken/vacuous `each` / `each!` — a universal | **blocks** | blocks |
-| broken `present` / `unique` | informs, exit 0 | **blocks** |
+| broken/vacuous `present` / `unique` | informs, exit 0 | **blocks** |
 | `moved` — self-healed rename | informs, exit 0 | informs, exit 0 |
 | `unevaluated` — repo not on disk | informs, exit 0 | informs, exit 0 |
 | a row in the `proposed` state | informs, exit 0 | informs, exit 0 |
+| a leg of a `drift` row — a recorded finding | informs, exit 0 | informs, exit 0 |
+| a claim an open change declares — `pending` | informs, exit 0 | informs, exit 0 |
 | anchor parse error | **blocks** | blocks |
 
 The blocking set is the `blocking:` key, default `[absent, count, each]`. You
 can widen it; you cannot drop `absent`. See
 [Configuration](../configuration#blocking).
 
-Some lines gate whatever the anchor mode, in a default run: an `enact` line
-that says REFUSED, the death of the law file, a change to the config made
-without an open change, code outside an open change's branch, a stale pin under
-`staleness: block`, and a mounted brain's SDD refusal. Under `--strict` an open
-change that is finished and not closed gates too. Read the line's own
-`blocking` marker: it is the same fact `verify` used for the exit code.
+In a brain checkout, some lines gate whatever the anchor mode, in a default
+run: an `enact` line that says REFUSED, the law file removed or a row that was
+law deleted rather than retired, a stale pin under `staleness: block`, a change
+to the config made without an open change, and, where the brain is itself a
+declared repo that an SDD governs with `sdd_auto` on, code outside the branch
+of an open change that declares the repo. `--strict` adds an open change that
+is finished and not closed. A consumer repo that reads a mounted brain can
+carry two such lines, code outside an open change's branch (on the same
+condition) and the mounted brain's SDD refusal. Both gate only under
+`--strict`; a default run prints them, except
+for code on the branch of an open change that does not declare the repo, which
+gates in any run. A line that gates says `blocking` in its own text — the
+config line says instead that it is modified and no change is open — and the
+exit code reads the same fact.
 
 The asymmetry is the whole design. A mid-refactor commit that moved a file
 should not die on a presence check — that is noise, and a guard that produces

@@ -24,7 +24,7 @@
 ## Requirements
 - **FR-001:** Every correction is checkable against the `src/` line its finding cites; the page states the behaviour, not the line. A finding the code does not bear out is dropped and named in the change body.
 - **FR-002:** The statements this change removes are named by MV-156 as `absent` legs over `site/content/**`, written before any page moves, so `verify` goes red on them first (Constitution III).
-- **FR-003:** No page names a law ID (Constitution I). No file outside `site/content/`, `.multivac/` and `specs/` changes; no `src/` change.
+- **FR-003:** No page names a law ID (Constitution I). No file outside `site/content/`, the footer line of `site/i18n/en.yaml`, `README.md`, `.multivac/` and `specs/` changes; no `src/` change.
 - **FR-004:** The corrections keep every existing anchor green, including MV-31's `count=` legs over `commands.md` headings and MV-155's `absent` legs.
 - **FR-005:** The 0.15.0 migration notes about graphs stay as they are.
 

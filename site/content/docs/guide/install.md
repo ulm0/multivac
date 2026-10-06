@@ -26,8 +26,8 @@ and the constitution moved before the package, and a fourth faces the same.
 for the first command you ever run against a repo:
 
 ```sh
-npx multivac@latest doctor        # what it would find here
 npx multivac@latest init          # write the brain
+npx multivac@latest doctor        # what is declared, what was found
 ```
 
 Once you know you want it, put it on your `PATH` so the hooks find it too:
@@ -54,7 +54,7 @@ still moving say so where they appear.
 For working on multivac itself, or to run an unreleased commit:
 
 ```sh
-git clone https://gitlab.com/ulm0/multivac
+git clone https://github.com/ulm0/multivac
 cd multivac
 corepack pnpm install
 pnpm run build
@@ -116,7 +116,7 @@ commands:
   count      dry-run an anchor leg: match count + per-file breakdown, verify's own matcher
   doors      project doors + install git hooks into the brain and declared repos
   doctor     what is declared, what was found, what is degraded, how to fix it
-  repos      list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest
+  repos      list declared repos; `repos sync [--shallow]` clones the missing, fetches the rest; `repos check` verifies them offline
   change     new/plan/apply/land/close — the ecosystem change lifecycle
   roadmap    the changes that have not started yet — list them, record one
   help       help <topic|command> — `help anchor` prints the anchor grammar on one screen
@@ -130,8 +130,11 @@ a build between releases carries the previous release's number.
 
 ## Every machine needs its own runner
 
-The hooks travel with the clone — `core.hooksPath` points at a versioned
-`.multivac/hooks/` — but the binary does not. On a machine where none of the
+The hook files travel with the clone — they are versioned under
+`.multivac/hooks/`, and `multivac doors` points `core.hooksPath` at them in each
+new clone — unless the repo's `core.hooksPath` already names a directory of its
+own, or it has `.husky/` and no `core.hooksPath`: then the shims go beside the
+repo's own hooks and `core.hooksPath` stays as it was — but the binary does not. On a machine where none of the
 three runners resolves, the shim prints one warning to stderr and exits 0:
 the commit lands, unverified. That is deliberate, and it is why the install
 above is per machine and why `multivac doctor` names the runner it found, or
