@@ -1588,4 +1588,12 @@ checks them on every commit.
 <!-- @anchor MV-156 brain:site/content/** /so you never close repeatedly to discover the rest/ absent -->
 <!-- @anchor MV-156 brain:site/content/** /default policy: only blocking modes gate/ absent -->
 <!-- @anchor MV-156 brain:site/content/** /run the default policy — only blocking modes/ absent -->
-| MV-157 | RESERVED by change site-in-spanish — state the rule here before close. | open | proposed | 2026-10-06 | [changes/site-in-spanish.md](changes/site-in-spanish.md) |
+| MV-157 | The site is published in English (en-US, the default, at `/`) and Spanish (es-419, at `/es/`), and the two cannot drift apart silently: every page has a twin, the twin of `x.md` being `x.es.md`; the fenced blocks are identical and in the same order; the headings match in level, count and anchor id, so a link to a heading works in both languages; no page of either language names a law ID; every page of both carries a description; and the Spanish site mounts the changelog untranslated, as the record it is. A test pins the pairing, so a page added in one language fails the suite until it exists in the other. **Added 2026-10-06**: the human asked for the site in Spanish and English; the constitution's "English everywhere, no exceptions" is amended for the published site only (3.1.0), and every other surface stays English. | open | proposed | 2026-10-06 | [changes/site-in-spanish.md](changes/site-in-spanish.md) |
+<!-- @anchor MV-157 brain:site/hugo.yaml /^defaultContentLanguage: en$/ unique -->
+<!-- @anchor MV-157 brain:site/hugo.yaml /^  en:$/ unique -->
+<!-- @anchor MV-157 brain:site/hugo.yaml /^  es:$/ unique -->
+<!-- @anchor MV-157 brain:site/hugo.yaml /target: content\/docs\/changelog\.es\.md/ unique -->
+<!-- @anchor MV-157 brain:site/i18n/es.yaml /^copyright:/ unique -->
+<!-- @anchor MV-157 brain:site/layouts/_partials/custom/head-end.html /hreflang/ present -->
+<!-- @anchor MV-157 brain:test/invariants/site-i18n.test.ts /a Spanish twin exists for every English page and the reverse/ unique -->
+<!-- @anchor MV-157 brain:.specify/memory/constitution.md /except the published site, which is also published in Spanish/ unique -->

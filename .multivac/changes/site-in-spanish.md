@@ -1,27 +1,20 @@
 ---
 slug: site-in-spanish
 status: open
-repos: {}
-landing_order: []
+repos:
+  brain:
+    status: branched
+landing_order:
+  - - brain
 invariants:
   touches: []
   adds:
     - MV-157
   retires: []
-claims: []
+claims:
+  - MV-157
 ---
 
 # The site is published in Spanish and English
 
-Declare repos, landing_order, invariants and claims in the frontmatter,
-then run `multivac change plan site-in-spanish`. For example:
-
-    # repos: { api: { status: planned } } — planned|branched|committed|mr|landed
-    # landing_order: [[api]] — stages; earlier stages land first
-    # claims: [<ID>] — the rows close verifies; each row states its own rule
-
-multivac owns the frontmatter formatting: every lifecycle step rewrites it, so
-hand-tuned layout will not survive, and a key it does not know is DROPPED
-rather than carried through. Declared values round-trip unchanged; the body,
-below the closing ---, is yours: with an SDD declared, `change close` only
-appends the line citing its directory.
+The site is published in English (en-US, the default) and Spanish (es-419), each page twice and kept in step by a test. The human asked for it on 2026-10-06, which moves the constitution's "English everywhere, no exceptions" for the site only; the constitution is amended in this change. The why, the design and the tasks are in `specs/086-site-in-spanish/`.
