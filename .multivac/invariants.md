@@ -1588,3 +1588,4 @@ checks them on every commit.
 <!-- @anchor MV-156 brain:site/content/** /so you never close repeatedly to discover the rest/ absent -->
 <!-- @anchor MV-156 brain:site/content/** /default policy: only blocking modes gate/ absent -->
 <!-- @anchor MV-156 brain:site/content/** /run the default policy — only blocking modes/ absent -->
+| MV-157 | RESERVED by change site-in-spanish — state the rule here before close. | open | proposed | 2026-10-06 | [changes/site-in-spanish.md](changes/site-in-spanish.md) |
