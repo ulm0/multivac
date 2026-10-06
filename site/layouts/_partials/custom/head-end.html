@@ -26,11 +26,11 @@
   reflows — and some scrapers refuse to render an image they have not measured.
 */ -}}
 <meta property="og:site_name" content="{{ .Site.Title }}" />
-<meta property="og:locale" content="{{ replace (or .Site.LanguageCode "en-US") "-" "_" }}" />
+<meta property="og:locale" content="{{ or .Site.Params.ogLocale (replace (or .Site.Language.Locale "en-US") "-" "_") }}" />
 {{- with (index (or .Site.Params.images slice) 0) }}
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="The multivac mark: a console panel of six lamps, one lit acid green." />
+  <meta property="og:image:alt" content="{{ i18n "ogImageAlt" }}" />
 {{- end }}
 
 {{- /*
@@ -47,7 +47,7 @@
   "headline" (cond .IsHome .Site.Title .Title)
   "description" (partial "utils/page-description.html" .)
   "url" .Permalink
-  "inLanguage" (or .Site.LanguageCode "en-US")
+  "inLanguage" (or .Site.Language.Locale "en-US")
 -}}
 {{- if .IsHome -}}
   {{- $ld = merge $ld (dict
@@ -58,5 +58,19 @@
 {{- end -}}
 {{- with (index (or .Site.Params.images slice) 0) }}
   {{- $ld = merge $ld (dict "image" (. | absURL)) -}}
+{{- end }}
+{{- /*
+  MV-157. A page in two languages says so: each language names every
+  translation of the page (including itself), and `x-default` is the English
+  one, the page a reader with neither language preference gets. Hugo emits the
+  same alternates in the sitemap; a page's head is what a scraper reads first.
+*/ -}}
+{{- if .IsTranslated }}
+  {{- range .AllTranslations }}
+<link rel="alternate" hreflang="{{ .Language.Locale }}" href="{{ .Permalink }}" />
+    {{- if eq .Language.Lang "en" }}
+<link rel="alternate" hreflang="x-default" href="{{ .Permalink }}" />
+    {{- end }}
+  {{- end }}
 {{- end }}
 <script type="application/ld+json">{{ $ld | jsonify | safeJS }}</script>

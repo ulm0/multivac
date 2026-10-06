@@ -5,6 +5,46 @@ baseURL: https://multivac.ulm0.com/
 languageCode: en-US
 title: multivac
 
+# MV-157. English is the default and the source, served at `/`; Spanish
+# (es-419) is a twin of every page, `x.es.md` beside `x.md`, served at `/es/`.
+# Twins by filename, not a second content tree: no English address, no anchor
+# and no law leg that names `site/content/**` moves. `locale` sits under each
+# language, never at the top (MV-100 keeps the top level to `languageCode`).
+defaultContentLanguage: en
+languages:
+  en:
+    label: English
+    locale: en-US
+    weight: 1
+    params:
+      ogLocale: en_US
+  es:
+    label: Español
+    locale: es-419
+    weight: 2
+    title: multivac
+    params:
+      ogLocale: es_LA
+      description: >-
+        Desarrollo guiado por el brain: un repo brain de afirmaciones ancladas,
+        verificadas contra el código antes de que un agente actúe sobre ellas.
+        Determinista, sin conexión, sin ningún modelo en la ruta de verificación.
+    menus:
+      main:
+        - name: Documentación
+          pageRef: /docs
+          weight: 1
+        - name: Changelog
+          pageRef: /docs/changelog
+          weight: 2
+        - name: GitHub
+          url: https://github.com/ulm0/multivac
+          weight: 3
+        - name: Buscar
+          weight: 4
+          params:
+            type: search
+
 # MV-100. Without this the crawler file 404s while the sitemap it should name
 # returns 200 — the map exists and nothing points at it.
 enableRobotsTXT: true
@@ -34,6 +74,11 @@ module:
       target: content
     - source: ../CHANGELOG.md
       target: content/docs/changelog.md
+    # MV-157. The same file, mounted once more for the Spanish site: the
+    # changelog is a record of releases, not prose to translate, so `/es/`
+    # shows it as written and there is still no second copy to forget.
+    - source: ../CHANGELOG.md
+      target: content/docs/changelog.es.md
 
 enableInlineShortcodes: true
 

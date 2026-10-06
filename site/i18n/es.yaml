@@ -1,0 +1,5 @@
+# El tema muestra esto como línea de copyright del pie (se procesa como markdown).
+copyright: >-
+  multivac tiene [licencia MIT](https://github.com/ulm0/multivac/blob/main/LICENSE).
+  © 2026 Pierre Ugaz.
+ogImageAlt: "La marca de multivac: un panel de consola de seis luces, una encendida en verde ácido."

@@ -16,14 +16,14 @@
 2. **Given** `CHANGELOG.md`, **when** the Spanish site mounts it, **then** it appears there untranslated, as the record of releases it is, and says so nowhere it would need editing the changelog.
 
 ### US3 - The two languages cannot drift apart silently (P1)
-1. **Given** a page added, removed or restructured in one language, **when** the suite runs, **then** a test fails until the other language matches: a Spanish twin exists for every English page and the reverse, the fenced blocks are byte-identical in the same order, the headings match in level, count and anchor id, the shortcodes match in sequence, the front matter keys match with the same `weight`, and both carry a `description`.
+1. **Given** a page added, removed or restructured in one language, **when** the suite runs, **then** a test fails until the other language matches: a Spanish twin exists for every English page and the reverse, the fenced blocks are byte-identical in the same order, the headings match in level, count and anchor id, the shortcodes match in sequence, the front matter keys match with the same `weight`, both carry a `description`, and the twin uses the same law ids, links and inline code.
 2. **Given** a heading in Spanish, **when** another page links to it, **then** the link works in both languages because the Spanish heading keeps the English heading's id.
 
 ## Requirements
 - **FR-001:** Every page under `site/content/` except the mounted changelog has a Spanish twin `<name>.es.md`, written in neutral Latin American Spanish, second person singular (tú), consistently using the glossary in `glossary.md`.
 - **FR-002:** Fenced code blocks, inline code, commands, flags, config keys, file names and quoted tool output are identical in both languages; only prose, headings, table cells of prose, link text, `title` and `description` are translated.
 - **FR-003:** `hugo.yaml` declares `en` (default, at `/`) and `es` (at `/es/`); the menu, footer, search, `og:locale`, JSON-LD `inLanguage` and card alt text follow the page's language; `hreflang` alternates and `x-default` are emitted.
-- **FR-004:** No page names a law ID (Constitution I), in either language.
+- **FR-004:** A Spanish twin names exactly the law ids its English page names, and uses the same links and the same inline code: translating adds none (Constitution I).
 - **FR-005:** The constitution's language constraint is amended in place (version bumped, MINOR) to carve out the site; `CONTRIBUTING.md` and `DESIGN.md` are brought into line. No `src/` change.
 - **FR-006:** MV-157 states the rule on its row, with legs on `hugo.yaml` and the parity test; the row is `proposed`, a human enacts it.
 

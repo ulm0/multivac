@@ -4,7 +4,7 @@
 - **Hugo, two languages by filename.** `site/hugo.yaml` declares `en` (default, at `/`) and `es` (at `/es/`). Each English page `x.md` gets a twin `x.es.md` beside it, so the English URLs, the anchors and the law legs that name `site/content/**` do not move. The mounted `CHANGELOG.md` is mounted a second time as `changelog.es.md` and stays English.
 - **Theme and head.** Hextra v0.12.3 renders the language switcher when two languages exist and ships Spanish UI strings; `site/i18n/es.yaml` carries the footer and card-alt strings, `head-end.html` localizes `og:locale`, `og:image:alt` and `inLanguage`, and adds `hreflang` alternates with `x-default`.
 - **Translation by chunks.** Agents translate chunks of each page into es-419 following `glossary.md`; a script assembles the twins and pins every Spanish heading to the English heading's id, so `#anchor` links and cards resolve in both languages.
-- **One test.** `test/invariants/site-i18n.test.ts` pins the pairing: a twin for every page and the reverse, identical fenced blocks, matching headings and ids, shortcode sequence, front matter keys and `weight`, a `description` on both, no law ID on a page.
+- **One test.** `test/invariants/site-i18n.test.ts` pins the pairing: a twin for every page and the reverse, identical fenced blocks, matching headings and ids, shortcode sequence, front matter keys and `weight`, a `description` on both, the same law ids, links and inline code on a twin.
 - **Law.** MV-157 states the rule with legs on `hugo.yaml` and the test; filed `proposed`. The constitution's language line is amended (3.0.3 to 3.1.0, MINOR) and `CONTRIBUTING.md` and `DESIGN.md` follow.
 
 ## Technical Context
@@ -13,7 +13,7 @@
 - **Constraints**: pages name no law ID (Constitution I); fonts are the site's own (MV-83); no network in `verify`; MV-100's head rules hold per language (`languageCode` unique at the top level, no top-level `locale:`).
 
 ## Constitution Check
-- **I.** MV-157 and the constitution amendment are cited by ID in the brain; the Spanish pages name no law ID, like the English ones.
+- **I.** MV-157 and the constitution amendment are cited by ID in the brain; a Spanish twin names exactly the law ids its English page names.
 - **II.** The Spanish pages claim nothing the English ones do not; the changelog stays English and the pages say the binary prints English.
 - **III.** MV-157's row and legs are written before the pages; the row is `proposed`, a human enacts it. The constitution amendment is the human's request of 2026-10-06, recorded in the change and read by a human in the merge request.
 - **IV.** No network and no model added to `verify`; the test reads tracked files.

@@ -82,8 +82,10 @@ catch, committed by the tool itself.
 
 ## Engineering Constraints
 
-- **English everywhere** — code, comments, docs, the site, commit messages,
-  change files. No exceptions.
+- **English everywhere** — code, comments, docs, commit messages, change files,
+  and the site's source and default language. No exceptions
+  except the published site, which is also published in Spanish (es-419): its
+  Spanish pages translate the English ones, never the reverse.
 - **Tests ship with behaviour.** `node:test`, no frameworks, no fixtures beyond
   the shared helpers. If it branches, loops, parses, or touches git, it ships
   with a test. A behaviour nothing would miss if reverted is not pinned.
@@ -139,4 +141,4 @@ unreadable, empty, or still carrying the fill-in tokens spec-kit's template
 ships. Its freshness stays a report, per MV-57: a version that never moves
 while the law does is a signal to revisit rather than a failing grade.
 
-**Version**: 3.0.3 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-10-02
+**Version**: 3.1.0 | **Ratified**: 2026-08-16 | **Last Amended**: 2026-10-06

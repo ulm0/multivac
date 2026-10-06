@@ -48,7 +48,7 @@ pnpm install && pnpm run build && pnpm link --global   # bins: multivac, mvac
 Requires Node >= 24 and git; only the from-source route also needs pnpm. The
 full design, including the anchorability measurement that validated the grammar
 (95.1% of 82 real invariants anchorable), is in [DESIGN.md](DESIGN.md). Docs:
-https://multivac.ulm0.com
+https://multivac.ulm0.com (English) and https://multivac.ulm0.com/es/ (Español)
 
 ## Contributing
 
